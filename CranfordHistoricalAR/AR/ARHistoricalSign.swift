@@ -78,8 +78,7 @@ final class ARHistoricalSignEntity: Entity {
         }
 
         if post == nil {
-            var postMaterial = SimpleMaterial(color: UIColor(red: 0.22, green: 0.20, blue: 0.18, alpha: 1), roughness: 0.6, isMetallic: false)
-            postMaterial.color.tint = UIColor(red: 0.22, green: 0.20, blue: 0.18, alpha: 1)
+            let postMaterial = SimpleMaterial(color: UIColor(red: 0.22, green: 0.20, blue: 0.18, alpha: 1), roughness: 0.6, isMetallic: false)
             let post = ModelEntity(mesh: .generateBox(width: 0.06, height: ARHistoricalSignEntity.postHeight, depth: 0.06, cornerRadius: 0.01), materials: [postMaterial])
             post.name = "sign-post"
             post.position = SIMD3<Float>(0, -ARHistoricalSignEntity.postHeight / 2, -0.03)

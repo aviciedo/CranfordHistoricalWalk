@@ -22,8 +22,12 @@ final class ARViewModel {
 
     private(set) var cameraPermission: CameraPermission
     private(set) var availability: Availability
+    /// Presents the readable 2D sheet for the sign (tap on the AR sign or "Read").
+    var isShowingSignDetails = false
     let geoAnchors: GeoAnchorManager
     let tour: TourViewModel
+    /// Supplies sign artwork; `nil` means no images (Stage 6 injects the real loader).
+    var imageProvider: ((HistoricalStop) -> UIImage?)?
 
     @ObservationIgnored private weak var arView: ARView?
     @ObservationIgnored private var observationTask: Task<Void, Never>?
@@ -137,8 +141,14 @@ final class ARViewModel {
     }
 
     private func pushTourStateToAnchors() {
-        // Reads tracked properties: userLocation, heading, currentStop, routeProgress.
+        // Reads tracked properties: userLocation, heading, currentStop, routeProgress, presentedSignStopID.
         geoAnchors.locationDidUpdate(tour.userLocation, heading: tour.heading)
+        if let signStop = tour.presentedSignStop {
+            let scale = arView?.traitCollection.displayScale ?? 2
+            geoAnchors.presentSign(for: signStop, image: imageProvider?(signStop), displayScale: scale)
+        } else {
+            geoAnchors.dismissSign()
+        }
         guard let stop = tour.currentStop, let user = tour.userLocation else {
             geoAnchors.setNavigationTarget(nil)
             return
@@ -187,7 +197,24 @@ final class ARViewModel {
         runSession(on: arView)
     }
 
+    // MARK: Sign interactions (spec §8, §9)
+
     func didTap(entity: Entity?, at point: CGPoint) {
-        // Sign interactions arrive in Stage 5.
+        guard let entity, geoAnchors.isSignEntity(entity), tour.isSignPresented else { return }
+        isShowingSignDetails = true
+    }
+
+    func closeSign() {
+        isShowingSignDetails = false
+        tour.closeSign()
+    }
+
+    func showSign() {
+        tour.openSignManually()
+    }
+
+    var canShowSignManually: Bool {
+        guard let state = tour.proximityState else { return false }
+        return state == .signDismissed || state == .nearby || (state == .approaching && tour.isWithinArrivalRadius)
     }
 }

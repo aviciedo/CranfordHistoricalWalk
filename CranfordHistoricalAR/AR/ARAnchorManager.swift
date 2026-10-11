@@ -10,10 +10,12 @@ final class ARAnchorManager {
     private(set) weak var arView: ARView?
     private let rootAnchor = AnchorEntity(world: SIMD3<Float>(repeating: 0))
     let arrows = ARNavigationArrowEntity()
+    let sign = ARHistoricalSignEntity()
 
     init() {
         rootAnchor.name = "tour-root"
         rootAnchor.addChild(arrows)
+        rootAnchor.addChild(sign)
     }
 
     func attach(to arView: ARView) {
@@ -40,5 +42,10 @@ final class ARAnchorManager {
     /// Hides everything (used when tracking is lost or the user is at the stop).
     func hideNavigation() {
         arrows.setVisible(false)
+    }
+
+    func hideAll() {
+        arrows.setVisible(false)
+        sign.dismiss()
     }
 }

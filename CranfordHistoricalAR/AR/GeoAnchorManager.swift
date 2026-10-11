@@ -4,6 +4,7 @@ import Observation
 import RealityKit
 import simd
 import TourCore
+import UIKit
 
 /// Where AR tracking stands, in user terms (spec §15, §21).
 enum ARLocalizationState: Equatable {
@@ -53,7 +54,20 @@ final class GeoAnchorManager {
         var arrivalRadius: Double
     }
 
+    /// Sign content requested by the view model; placed as soon as the camera is tracking.
+    struct SignRequest: Equatable {
+        var stop: HistoricalStop
+        var image: UIImage?
+        var displayScale: CGFloat
+        static func == (lhs: SignRequest, rhs: SignRequest) -> Bool {
+            lhs.stop.id == rhs.stop.id && (lhs.image == nil) == (rhs.image == nil)
+        }
+    }
+
     @ObservationIgnored private var target: NavigationTarget?
+    @ObservationIgnored private var signRequest: SignRequest?
+    @ObservationIgnored private var signAnchoredPosition: SIMD3<Float>?
+    @ObservationIgnored private var lastSignMoveTime: TimeInterval = 0
     @ObservationIgnored private var lastFrameTime: TimeInterval = 0
     @ObservationIgnored private var cameraTransform: simd_float4x4?
     @ObservationIgnored private var trackingState: ARCamera.TrackingState = .notAvailable
@@ -87,14 +101,16 @@ final class GeoAnchorManager {
 
     func sessionDidStop() {
         provider.detach()
-        anchors.hideNavigation()
+        anchors.hideAll()
+        signAnchoredPosition = nil
         localizationState = .notStarted
         cameraTransform = nil
     }
 
     func sessionWasInterrupted() {
         isInterrupted = true
-        anchors.hideNavigation()
+        anchors.hideAll()
+        signAnchoredPosition = nil
         localizationState = .interrupted
     }
 
@@ -124,6 +140,77 @@ final class GeoAnchorManager {
         provider.update(cameraTransform: cameraTransform, trackingState: trackingState, timestamp: timestamp)
         refreshLocalizationState()
         placeContent(now: timestamp)
+        placeSign(now: timestamp)
+    }
+
+    // MARK: Sign
+
+    /// Show the sign for `stop` (idempotent). The texture is rendered once per stop.
+    func presentSign(for stop: HistoricalStop, image: UIImage?, displayScale: CGFloat) {
+        let request = SignRequest(stop: stop, image: image, displayScale: displayScale)
+        guard request != signRequest else { return }
+        signRequest = request
+        signAnchoredPosition = nil
+        anchors.sign.configure(stop: stop, image: image, scale: displayScale)
+        if anchors.sign.isPresented { anchors.sign.dismiss() }
+        placeSign(now: lastFrameTime)
+    }
+
+    func dismissSign() {
+        guard signRequest != nil else { return }
+        signRequest = nil
+        signAnchoredPosition = nil
+        anchors.sign.dismiss()
+    }
+
+    var isSignEntity: (Entity) -> Bool { { [anchors] in anchors.sign.contains($0) } }
+
+    /// Sign base sits this far below the camera (bottom edge roughly at chest height).
+    static let signBaseBelowCamera: Float = 0.45
+    static let signMinDistance: Float = 2.4
+    static let signMaxDistance: Float = 9.0
+
+    private func placeSign(now: TimeInterval) {
+        guard let request = signRequest, let cameraTransform else { return }
+        guard case .normal = trackingState, !isInterrupted else { return }
+        let cameraPosition = cameraTransform.translation
+
+        // Geographic placement when the provider can localize; otherwise a comfortable spot ahead.
+        var base: SIMD3<Float>
+        if let geo = provider.worldPosition(for: request.stop.coordinate, heightBelowCamera: GeoAnchorManager.signBaseBelowCamera) {
+            base = geo
+        } else {
+            let forward = -SIMD3<Float>(cameraTransform.columns.2.x, 0, cameraTransform.columns.2.z)
+            let dir = simd_length(forward) > 0.1 ? simd_normalize(forward) : SIMD3<Float>(0, 0, -1)
+            base = cameraPosition + dir * 3.5
+            base.y = cameraPosition.y - GeoAnchorManager.signBaseBelowCamera
+        }
+        // Clamp so GPS error never puts the sign inside the user or a block away (spec §15 honesty).
+        var flat = SIMD3<Float>(base.x - cameraPosition.x, 0, base.z - cameraPosition.z)
+        var distance = simd_length(flat)
+        if distance < 0.01 {
+            flat = -SIMD3<Float>(cameraTransform.columns.2.x, 0, cameraTransform.columns.2.z)
+            distance = max(simd_length(flat), 0.01)
+        }
+        let clamped = min(max(distance, GeoAnchorManager.signMinDistance), GeoAnchorManager.signMaxDistance)
+        let dir = flat / distance
+        base = SIMD3<Float>(cameraPosition.x + dir.x * clamped, base.y, cameraPosition.z + dir.z * clamped)
+
+        let sign = anchors.sign
+        if !sign.isPresented {
+            sign.present(at: base, facing: cameraPosition)
+            signAnchoredPosition = base
+            lastSignMoveTime = now
+            return
+        }
+        // Re-anchor only on meaningful change, at most every few seconds, so the sign feels fixed.
+        if let anchored = signAnchoredPosition, simd_distance(anchored, base) > 2.5, now - lastSignMoveTime > 3 {
+            sign.move(to: base, facing: cameraPosition)
+            signAnchoredPosition = base
+            lastSignMoveTime = now
+        } else if now - lastSignMoveTime > 0.7 {
+            sign.face(cameraPosition, animated: false)
+        }
     }
 
     func locationDidUpdate(_ location: LocationSample?, heading: HeadingSample?) {

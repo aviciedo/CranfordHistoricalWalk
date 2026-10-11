@@ -8,6 +8,7 @@ struct TourView: View {
     @State private var mapModel = MapViewModel()
     @State private var isShowingStopList = false
     @State private var isShowingAR = false
+    @State private var isShowingSignDetails = false
     @State private var panelHeight: CGFloat = 170
 
     var body: some View {
@@ -22,14 +23,21 @@ struct TourView: View {
                     Spacer()
                 }
 
-                NextStopCard(onEnterAR: tour.currentStop == nil ? nil : { isShowingAR = true })
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 10)
-                    .background(
-                        GeometryReader { proxy in
-                            Color.clear.preference(key: PanelHeightKey.self, value: proxy.size.height + 10)
-                        }
-                    )
+                VStack(spacing: 10) {
+                    if let arrived = tour.presentedSignStop {
+                        ArrivalCard(stop: arrived, onEnterAR: { isShowingAR = true }, onRead: { isShowingSignDetails = true })
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
+                    NextStopCard(onEnterAR: tour.currentStop == nil ? nil : { isShowingAR = true })
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 10)
+                .background(
+                    GeometryReader { proxy in
+                        Color.clear.preference(key: PanelHeightKey.self, value: proxy.size.height + 10)
+                    }
+                )
+                .animation(.spring(duration: 0.4), value: tour.presentedSignStop?.id)
             }
             .onPreferenceChange(PanelHeightKey.self) { panelHeight = $0 }
             .navigationTitle(tour.tourName)
@@ -51,6 +59,13 @@ struct TourView: View {
             }
             .fullScreenCover(isPresented: $isShowingAR) {
                 ARTourView()
+            }
+            .sheet(isPresented: $isShowingSignDetails) {
+                if let stop = tour.presentedSignStop ?? tour.currentStop {
+                    HistoricalSignView(stop: stop, image: nil, style: .sheet, onClose: { isShowingSignDetails = false })
+                        .presentationDetents([.medium, .large])
+                        .presentationDragIndicator(.visible)
+                }
             }
             .onChange(of: mapModel.selectedStopID) { _, id in
                 guard id != nil else { return }

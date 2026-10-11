@@ -46,6 +46,18 @@ struct ARTourView: View {
 
             ARHUDView(model: model, onClose: { dismiss() })
         }
+        .sheet(isPresented: Binding(get: { model.isShowingSignDetails }, set: { model.isShowingSignDetails = $0 })) {
+            if let stop = tour.presentedSignStop ?? tour.currentStop {
+                HistoricalSignView(
+                    stop: stop,
+                    image: model.imageProvider?(stop),
+                    style: .sheet,
+                    onClose: { model.isShowingSignDetails = false }
+                )
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+            }
+        }
     }
 }
 
@@ -123,25 +135,64 @@ struct ARHUDView: View {
         .transition(.move(edge: .top).combined(with: .opacity))
     }
 
+    @ViewBuilder
     private var bottomPanel: some View {
-        HStack(alignment: .bottom) {
-            ARNavigationArrowView(
-                relativeBearing: model.relativeBearingToWaypoint,
-                distanceText: model.distanceText,
-                isProminent: model.shouldShowFallbackIndicator
-            )
-            Spacer()
-            if let instruction = model.tour.currentInstruction, !model.tour.isRouteAnEstimate {
-                Text(instruction)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.trailing)
-                    .padding(10)
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .frame(maxWidth: 200, alignment: .trailing)
+        if model.tour.isSignPresented {
+            signControls
+        } else {
+            HStack(alignment: .bottom) {
+                ARNavigationArrowView(
+                    relativeBearing: model.relativeBearingToWaypoint,
+                    distanceText: model.distanceText,
+                    isProminent: model.shouldShowFallbackIndicator
+                )
+                Spacer()
+                if model.canShowSignManually {
+                    Button {
+                        model.showSign()
+                    } label: {
+                        Label("Show sign", systemImage: "signpost.right")
+                            .font(.subheadline.weight(.semibold))
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .background(.regularMaterial, in: Capsule())
+                    }
+                } else if let instruction = model.tour.currentInstruction, !model.tour.isRouteAnEstimate {
+                    Text(instruction)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.trailing)
+                        .padding(10)
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .frame(maxWidth: 200, alignment: .trailing)
+                }
             }
         }
+    }
+
+    /// Shown while the historical sign is up: read the full text, or close it (spec §9 manual close).
+    private var signControls: some View {
+        HStack(spacing: 12) {
+            Button {
+                model.isShowingSignDetails = true
+            } label: {
+                Label("Read", systemImage: "text.book.closed")
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(.regularMaterial, in: Capsule())
+            }
+            Button {
+                model.closeSign()
+            } label: {
+                Label("Close sign", systemImage: "xmark")
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(.regularMaterial, in: Capsule())
+            }
+        }
+        .font(.subheadline.weight(.semibold))
+        .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 }
 
