@@ -2,7 +2,8 @@ import Foundation
 import Observation
 import TourCore
 
-/// Single source of truth for the tour (spec §17). Stage 1: stops + tour phase + navigation.
+/// Single source of truth for the tour (spec §17): stops, progress, the user's location and
+/// heading. Stage 2 adds the location pipeline; routing and AR state follow in later stages.
 @MainActor
 @Observable
 final class TourViewModel {
@@ -13,6 +14,55 @@ final class TourViewModel {
         case failed(String)
     }
 
+    /// User-facing location problems (spec §21). `nil` means everything is fine.
+    enum LocationIssue: Equatable {
+        case permissionNotDetermined
+        case permissionDenied
+        case permissionRestricted
+        case reducedAccuracy
+        case waitingForSignal
+        case poorAccuracy(meters: Double)
+        case failure(String)
+
+        var title: String {
+            switch self {
+            case .permissionNotDetermined: return "Location access needed"
+            case .permissionDenied: return "Location access is off"
+            case .permissionRestricted: return "Location access is restricted"
+            case .reducedAccuracy: return "Precise location is off"
+            case .waitingForSignal: return "Finding your location…"
+            case .poorAccuracy: return "GPS signal is weak"
+            case .failure: return "Location problem"
+            }
+        }
+
+        var message: String {
+            switch self {
+            case .permissionNotDetermined:
+                return "Cranford Historical AR needs your location to guide you between stops and reveal AR signs when you arrive."
+            case .permissionDenied:
+                return "Turn on location access in Settings to see where you are and follow the walking route. You can still browse the stops."
+            case .permissionRestricted:
+                return "Location services are restricted on this device, so live navigation is unavailable."
+            case .reducedAccuracy:
+                return "Precise location helps AR arrows and signs line up with the streets. Enable it in Settings or allow it once when prompted."
+            case .waitingForSignal:
+                return "Walk outdoors with a clear view of the sky for the best GPS signal."
+            case .poorAccuracy(let meters):
+                return "Position is accurate to about \(Int(meters)) m. Distances may be approximate until the signal improves."
+            case .failure(let text):
+                return text
+            }
+        }
+
+        var isBlocking: Bool {
+            switch self {
+            case .permissionDenied, .permissionRestricted: return true
+            default: return false
+            }
+        }
+    }
+
     // MARK: Tour data
     private(set) var tourName: String = "Cranford Historical Walk"
     private(set) var dataStatus: String?
@@ -20,37 +70,62 @@ final class TourViewModel {
     private(set) var loadState: LoadState = .idle
     private(set) var progress = TourProgress(stopIDs: [])
 
+    // MARK: Location
+    private(set) var userLocation: LocationSample?
+    private(set) var heading: HeadingSample?
+    private(set) var locationAuthorization: LocationAuthorization = .notDetermined
+    private(set) var isPreciseLocation = true
+    private(set) var locationIssue: LocationIssue? = .permissionNotDetermined
+    private(set) var lastLocationFailure: LocationFailure?
+
+    /// Accuracy worse than this is reported to the user as "weak GPS".
+    static let poorAccuracyThreshold: Double = 40
+
     // MARK: Navigation
     private(set) var isShowingTour = false
 
     private let stopService: any HistoricalStopService
+    private(set) var locationService: any LocationService
+    private var locationTask: Task<Void, Never>?
 
-    init(stopService: any HistoricalStopService) {
+    init(stopService: any HistoricalStopService, locationService: any LocationService) {
         self.stopService = stopService
+        self.locationService = locationService
+        self.locationAuthorization = locationService.authorization
+        self.isPreciseLocation = locationService.isPreciseLocationAuthorized
+        refreshLocationIssue()
     }
 
     // MARK: Derived state
 
     var phase: TourPhase { progress.phase }
 
-    var currentStop: HistoricalStop? {
-        progress.currentStopID.flatMap(stop(withID:))
+    var currentStop: HistoricalStop? { progress.currentStopID.flatMap(stop(withID:)) }
+    var nextStop: HistoricalStop? { progress.nextStopID.flatMap(stop(withID:)) }
+    var lastCompletedStop: HistoricalStop? { progress.previousCompletedStopID.flatMap(stop(withID:)) }
+
+    func stop(withID id: String) -> HistoricalStop? { stops.first { $0.id == id } }
+    func isCompleted(_ stop: HistoricalStop) -> Bool { progress.isCompleted(stop.id) }
+
+    /// Heading to draw on the map/AR: compass when reliable, else GPS course while moving.
+    var displayHeading: Double? {
+        if let heading, heading.isReliable { return heading.bestHeading }
+        if let userLocation, let course = userLocation.course, (userLocation.speed ?? 0) > 0.5 { return course }
+        return heading?.bestHeading
     }
 
-    var nextStop: HistoricalStop? {
-        progress.nextStopID.flatMap(stop(withID:))
+    var hasReliableHeading: Bool { displayHeading != nil }
+
+    /// Straight-line distance to the current stop. Used for proximity only — never for the
+    /// navigation panel, which uses the walking route (spec §5).
+    var straightLineDistanceToCurrentStop: Double? {
+        guard let userLocation, let currentStop else { return nil }
+        return GeoMath.distance(from: userLocation.coordinate, to: currentStop.coordinate)
     }
 
-    var lastCompletedStop: HistoricalStop? {
-        progress.previousCompletedStopID.flatMap(stop(withID:))
-    }
-
-    func stop(withID id: String) -> HistoricalStop? {
-        stops.first { $0.id == id }
-    }
-
-    func isCompleted(_ stop: HistoricalStop) -> Bool {
-        progress.isCompleted(stop.id)
+    var hasUsableLocation: Bool {
+        guard let userLocation else { return false }
+        return userLocation.horizontalAccuracy >= 0 && Date().timeIntervalSince(userLocation.timestamp) < 60
     }
 
     // MARK: Loading
@@ -78,6 +153,7 @@ final class TourViewModel {
             progress.start()
         }
         isShowingTour = true
+        startLocationIfPossible()
     }
 
     func leaveTour() {
@@ -86,6 +162,112 @@ final class TourViewModel {
 
     func resetTour() {
         progress.reset()
+        progress.start()
+    }
+
+    // MARK: Location pipeline
+
+    /// Idempotent: subscribes to the location service and asks for permission when needed.
+    func startLocationIfPossible() {
+        if locationTask == nil {
+            let stream = locationService.events()
+            locationTask = Task { [weak self] in
+                for await event in stream {
+                    guard let self, !Task.isCancelled else { return }
+                    self.handle(event)
+                }
+            }
+        }
+        switch locationService.authorization {
+        case .notDetermined:
+            locationService.requestWhenInUseAuthorization()
+        case .authorized:
+            locationService.start()
+            locationService.requestTemporaryPreciseLocationIfNeeded()
+        case .denied, .restricted:
+            break
+        }
+        refreshLocationIssue()
+    }
+
+    func stopLocation() {
+        locationTask?.cancel()
+        locationTask = nil
+        locationService.stop()
+    }
+
+    /// Swaps the live source (used by Developer Mode to inject a simulator). Re-subscribes.
+    func replaceLocationService(with service: any LocationService) {
+        let wasRunning = locationTask != nil
+        stopLocation()
+        locationService = service
+        locationAuthorization = service.authorization
+        isPreciseLocation = service.isPreciseLocationAuthorized
+        userLocation = nil
+        heading = nil
+        if wasRunning || isShowingTour { startLocationIfPossible() }
+    }
+
+    private func handle(_ event: LocationEvent) {
+        switch event {
+        case .authorization(let status, let precise):
+            locationAuthorization = status
+            isPreciseLocation = precise
+            if status == .authorized {
+                locationService.start()
+                locationService.requestTemporaryPreciseLocationIfNeeded()
+            }
+            refreshLocationIssue()
+
+        case .location(let sample):
+            if let previous = userLocation, progress.phase == .inProgress, sample.horizontalAccuracy <= TourViewModel.poorAccuracyThreshold {
+                let moved = GeoMath.distance(from: previous.coordinate, to: sample.coordinate)
+                // Ignore GPS jitter when accumulating walked distance.
+                if moved > max(2, sample.horizontalAccuracy * 0.5) { progress.recordWalked(meters: moved) }
+            }
+            userLocation = sample
+            lastLocationFailure = nil
+            refreshLocationIssue()
+            didUpdateLocation(sample)
+
+        case .heading(let sample):
+            heading = sample
+
+        case .failure(let failure):
+            lastLocationFailure = failure
+            refreshLocationIssue()
+        }
+    }
+
+    /// Hook for later stages (routing, proximity). Kept separate so `handle` stays readable.
+    func didUpdateLocation(_ sample: LocationSample) {}
+
+    private func refreshLocationIssue() {
+        switch locationAuthorization {
+        case .notDetermined:
+            locationIssue = .permissionNotDetermined
+        case .denied:
+            locationIssue = .permissionDenied
+        case .restricted:
+            locationIssue = .permissionRestricted
+        case .authorized:
+            if let failure = lastLocationFailure, userLocation == nil {
+                switch failure {
+                case .denied: locationIssue = .permissionDenied
+                case .locationUnknown: locationIssue = .waitingForSignal
+                case .network: locationIssue = .failure("Location needs a network connection right now.")
+                case .other(let text): locationIssue = .failure(text)
+                }
+            } else if !isPreciseLocation {
+                locationIssue = .reducedAccuracy
+            } else if let userLocation {
+                locationIssue = userLocation.horizontalAccuracy > TourViewModel.poorAccuracyThreshold
+                    ? .poorAccuracy(meters: userLocation.horizontalAccuracy)
+                    : nil
+            } else {
+                locationIssue = .waitingForSignal
+            }
+        }
     }
 }
 

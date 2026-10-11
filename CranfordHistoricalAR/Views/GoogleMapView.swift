@@ -1,0 +1,400 @@
+import CoreLocation
+import GoogleMaps
+import SwiftUI
+import TourCore
+
+/// Thin `UIViewRepresentable` around `GMSMapView` (the Maps SDK is UIKit-only, which is the one
+/// place the spec allows UIKit). All decisions live in `MapViewModel`/`TourViewModel`; this view
+/// only diffs models into markers, polylines and camera moves.
+struct GoogleMapView: UIViewRepresentable {
+    var markers: [StopMarkerModel]
+    var userPuck: UserPuckModel?
+    var routeCoordinates: [CLLocationCoordinate2D]
+    var cameraRequest: MapCameraRequest?
+    var bottomInset: CGFloat
+    var onUserGesture: () -> Void
+    var onMarkerTap: (String) -> Void
+
+    static let cranfordFallbackCamera = GMSCameraPosition(latitude: 40.6584, longitude: -74.3035, zoom: 15.2)
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    func makeUIView(context: Context) -> GMSMapView {
+        let options = GMSMapViewOptions()
+        options.camera = Self.cranfordFallbackCamera
+        options.frame = .zero
+        let mapView = GMSMapView(options: options)
+        mapView.delegate = context.coordinator
+        // The puck is drawn from TourViewModel's single location source (works in simulation too).
+        mapView.isMyLocationEnabled = false
+        mapView.settings.myLocationButton = false
+        mapView.settings.compassButton = true
+        mapView.settings.tiltGestures = false
+        mapView.isBuildingsEnabled = false
+        mapView.isIndoorEnabled = false
+        mapView.isTrafficEnabled = false
+        mapView.mapStyle = MapStyle.style(for: context.environment.colorScheme)
+        context.coordinator.mapView = mapView
+        return mapView
+    }
+
+    func updateUIView(_ mapView: GMSMapView, context: Context) {
+        context.coordinator.parent = self
+        mapView.padding = UIEdgeInsets(top: 0, left: 0, bottom: bottomInset, right: 0)
+        if context.coordinator.colorScheme != context.environment.colorScheme {
+            context.coordinator.colorScheme = context.environment.colorScheme
+            mapView.mapStyle = MapStyle.style(for: context.environment.colorScheme)
+        }
+        context.coordinator.render(markers: markers)
+        context.coordinator.render(userPuck: userPuck)
+        context.coordinator.render(route: routeCoordinates)
+        context.coordinator.apply(cameraRequest: cameraRequest)
+    }
+
+    // MARK: Coordinator
+
+    @MainActor
+    final class Coordinator: NSObject, GMSMapViewDelegate {
+        var parent: GoogleMapView
+        weak var mapView: GMSMapView?
+        var colorScheme: ColorScheme?
+
+        private var markersByID: [String: GMSMarker] = [:]
+        private var markerModels: [String: StopMarkerModel] = [:]
+        private var iconCache: [String: UIImage] = [:]
+
+        private var userMarker: GMSMarker?
+        private var accuracyCircle: GMSCircle?
+        private var lastPuck: UserPuckModel?
+
+        private var polyline: GMSPolyline?
+        private var polylineCasing: GMSPolyline?
+        private var lastRouteHash: Int = 0
+
+        private var lastCameraRequestID: Int = -1
+
+        init(_ parent: GoogleMapView) {
+            self.parent = parent
+        }
+
+        // MARK: Markers
+
+        func render(markers: [StopMarkerModel]) {
+            guard let mapView else { return }
+            let incoming = Set(markers.map(\.id))
+            for (id, marker) in markersByID where !incoming.contains(id) {
+                marker.map = nil
+                markersByID[id] = nil
+                markerModels[id] = nil
+            }
+            for model in markers {
+                if let existing = markersByID[model.id] {
+                    if markerModels[model.id] != model {
+                        existing.icon = icon(for: model)
+                        existing.zIndex = zIndex(for: model.state)
+                        existing.position = model.coordinate
+                        markerModels[model.id] = model
+                    }
+                } else {
+                    let marker = GMSMarker(position: model.coordinate)
+                    marker.icon = icon(for: model)
+                    marker.groundAnchor = CGPoint(x: 0.5, y: 1.0)
+                    marker.userData = model.id
+                    marker.title = model.name
+                    marker.zIndex = zIndex(for: model.state)
+                    marker.appearAnimation = .pop
+                    marker.map = mapView
+                    markersByID[model.id] = marker
+                    markerModels[model.id] = model
+                }
+            }
+        }
+
+        private func zIndex(for state: StopMarkerModel.State) -> Int32 {
+            switch state {
+            case .current: return 30
+            case .upcoming: return 20
+            case .visited: return 10
+            }
+        }
+
+        private func icon(for model: StopMarkerModel) -> UIImage? {
+            let key = "\(model.order)|\(model.state)|\(model.name)|\(colorScheme == .dark)"
+            if let cached = iconCache[key] { return cached }
+            let renderer = ImageRenderer(content: StopMarkerLabel(model: model).environment(\.colorScheme, colorScheme ?? .light))
+            renderer.scale = UITraitCollection.current.displayScale
+            let image = renderer.uiImage
+            iconCache[key] = image
+            return image
+        }
+
+        // MARK: User puck
+
+        func render(userPuck: UserPuckModel?) {
+            guard let mapView else { return }
+            guard let puck = userPuck else {
+                userMarker?.map = nil
+                accuracyCircle?.map = nil
+                userMarker = nil
+                accuracyCircle = nil
+                lastPuck = nil
+                return
+            }
+            guard puck != lastPuck else { return }
+            lastPuck = puck
+
+            if userMarker == nil {
+                let marker = GMSMarker(position: puck.coordinate)
+                marker.groundAnchor = CGPoint(x: 0.5, y: 0.5)
+                marker.isFlat = true
+                marker.zIndex = 100
+                marker.isTappable = false
+                marker.map = mapView
+                userMarker = marker
+                let circle = GMSCircle(position: puck.coordinate, radius: puck.accuracyMeters)
+                circle.fillColor = UIColor.systemBlue.withAlphaComponent(0.12)
+                circle.strokeColor = UIColor.systemBlue.withAlphaComponent(0.25)
+                circle.strokeWidth = 1
+                circle.zIndex = 5
+                circle.map = mapView
+                accuracyCircle = circle
+            }
+            CATransaction.begin()
+            CATransaction.setAnimationDuration(0.35)
+            userMarker?.position = puck.coordinate
+            accuracyCircle?.position = puck.coordinate
+            CATransaction.commit()
+            accuracyCircle?.radius = max(puck.accuracyMeters, 3)
+
+            let key = "puck|\(puck.heading != nil)|\(puck.isSimulated)"
+            if iconCache[key] == nil {
+                let renderer = ImageRenderer(content: UserPuckView(hasHeading: puck.heading != nil, isSimulated: puck.isSimulated))
+                renderer.scale = UITraitCollection.current.displayScale
+                iconCache[key] = renderer.uiImage
+            }
+            userMarker?.icon = iconCache[key]
+            userMarker?.rotation = puck.heading ?? 0
+        }
+
+        // MARK: Route
+
+        func render(route: [CLLocationCoordinate2D]) {
+            guard let mapView else { return }
+            var hasher = Hasher()
+            hasher.combine(route.count)
+            if let f = route.first, let l = route.last {
+                hasher.combine(f.latitude); hasher.combine(f.longitude); hasher.combine(l.latitude); hasher.combine(l.longitude)
+            }
+            if route.count > 2 {
+                let mid = route[route.count / 2]
+                hasher.combine(mid.latitude); hasher.combine(mid.longitude)
+            }
+            let hash = hasher.finalize()
+            guard hash != lastRouteHash else { return }
+            lastRouteHash = hash
+
+            guard route.count >= 2 else {
+                polyline?.map = nil
+                polylineCasing?.map = nil
+                polyline = nil
+                polylineCasing = nil
+                return
+            }
+            let path = GMSMutablePath()
+            route.forEach(path.add)
+
+            if polylineCasing == nil {
+                let casing = GMSPolyline(path: path)
+                casing.strokeWidth = 9
+                casing.strokeColor = UIColor.white.withAlphaComponent(0.9)
+                casing.zIndex = 1
+                casing.map = mapView
+                polylineCasing = casing
+            } else {
+                polylineCasing?.path = path
+            }
+            if polyline == nil {
+                let line = GMSPolyline(path: path)
+                line.strokeWidth = 5
+                line.strokeColor = UIColor(AppTheme.heritageGreen)
+                line.zIndex = 2
+                line.map = mapView
+                polyline = line
+            } else {
+                polyline?.path = path
+            }
+        }
+
+        // MARK: Camera
+
+        func apply(cameraRequest: MapCameraRequest?) {
+            guard let mapView, let request = cameraRequest, request.id != lastCameraRequestID else { return }
+            lastCameraRequestID = request.id
+
+            let update: GMSCameraUpdate
+            switch request.kind {
+            case .fitAll:
+                let coordinates = markerModels.values.map(\.coordinate) + (lastPuck.map { [$0.coordinate] } ?? [])
+                guard var bounds = coordinates.first.map({ GMSCoordinateBounds(coordinate: $0, coordinate: $0) }) else {
+                    mapView.animate(to: GoogleMapView.cranfordFallbackCamera)
+                    return
+                }
+                for c in coordinates.dropFirst() { bounds = bounds.includingCoordinate(c) }
+                update = GMSCameraUpdate.fit(bounds, with: UIEdgeInsets(top: 90, left: 40, bottom: 40, right: 40))
+            case .follow(let coordinate, let bearing):
+                let position = GMSCameraPosition(target: coordinate, zoom: max(mapView.camera.zoom, 16.5), bearing: bearing ?? mapView.camera.bearing, viewingAngle: 0)
+                update = GMSCameraUpdate.setCamera(position)
+            case .fitUserAndDestination(let a, let b):
+                let bounds = GMSCoordinateBounds(coordinate: a, coordinate: b)
+                update = GMSCameraUpdate.fit(bounds, with: UIEdgeInsets(top: 110, left: 60, bottom: 60, right: 60))
+            }
+            if request.animated {
+                mapView.animate(with: update)
+            } else {
+                mapView.moveCamera(update)
+            }
+        }
+
+        // MARK: GMSMapViewDelegate
+
+        nonisolated func mapView(_ mapView: GMSMapView, willMove gesture: Bool) {
+            guard gesture else { return }
+            Task { @MainActor in self.parent.onUserGesture() }
+        }
+
+        nonisolated func mapView(_ mapView: GMSMapView, didTap marker: GMSMarker) -> Bool {
+            let id = marker.userData as? String
+            Task { @MainActor in
+                if let id { self.parent.onMarkerTap(id) }
+            }
+            // Returning false keeps the default behavior (center + info window with the stop name).
+            return false
+        }
+    }
+}
+
+// MARK: - Marker artwork (rendered to images via ImageRenderer)
+
+/// Numbered pin with the stop name underneath so names are visible without tapping (spec §4).
+struct StopMarkerLabel: View {
+    let model: StopMarkerModel
+
+    private var fill: Color {
+        switch model.state {
+        case .current: return AppTheme.heritageGreen
+        case .upcoming: return AppTheme.brass
+        case .visited: return AppTheme.visited
+        }
+    }
+
+    var body: some View {
+        VStack(spacing: 3) {
+            Text(model.name)
+                .font(.system(size: 11, weight: .semibold))
+                .lineLimit(1)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 3)
+                .background(.thinMaterial, in: Capsule())
+                .foregroundStyle(.primary)
+            ZStack {
+                PinShape()
+                    .fill(fill)
+                    .frame(width: model.state == .current ? 34 : 28, height: model.state == .current ? 44 : 36)
+                    .shadow(color: .black.opacity(0.25), radius: 3, y: 2)
+                Group {
+                    if model.state == .visited {
+                        Image(systemName: "checkmark").font(.system(size: 12, weight: .bold))
+                    } else {
+                        Text("\(model.order)").font(.system(size: 13, weight: .bold, design: .rounded))
+                    }
+                }
+                .foregroundStyle(.white)
+                .offset(y: model.state == .current ? -7 : -6)
+            }
+        }
+        .padding(4)
+    }
+}
+
+/// Teardrop pin.
+struct PinShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        let r = rect.width / 2
+        let center = CGPoint(x: rect.midX, y: rect.minY + r)
+        p.addArc(center: center, radius: r, startAngle: .degrees(150), endAngle: .degrees(30), clockwise: false)
+        p.addQuadCurve(to: CGPoint(x: rect.midX, y: rect.maxY), control: CGPoint(x: rect.maxX - r * 0.1, y: rect.minY + r * 1.9))
+        p.addQuadCurve(to: CGPoint(x: center.x - r * cos(.pi / 6), y: center.y + r * sin(.pi / 6)), control: CGPoint(x: rect.minX + r * 0.1, y: rect.minY + r * 1.9))
+        p.closeSubpath()
+        return p
+    }
+}
+
+/// Blue dot with an optional heading cone; the image is rotated by the marker's `rotation`.
+struct UserPuckView: View {
+    let hasHeading: Bool
+    let isSimulated: Bool
+
+    var body: some View {
+        ZStack {
+            if hasHeading {
+                HeadingCone()
+                    .fill(LinearGradient(colors: [Color.blue.opacity(0.45), Color.blue.opacity(0)], startPoint: .bottom, endPoint: .top))
+                    .frame(width: 56, height: 56)
+                    .offset(y: -22)
+            }
+            Circle().fill(.white).frame(width: 24, height: 24).shadow(radius: 2)
+            Circle().fill(isSimulated ? AppTheme.warning : Color.blue).frame(width: 16, height: 16)
+        }
+        .frame(width: 72, height: 72)
+    }
+}
+
+struct HeadingCone: Shape {
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: rect.midX, y: rect.maxY))
+        p.addLine(to: CGPoint(x: rect.minX, y: rect.minY))
+        p.addQuadCurve(to: CGPoint(x: rect.maxX, y: rect.minY), control: CGPoint(x: rect.midX, y: rect.minY - rect.height * 0.3))
+        p.closeSubpath()
+        return p
+    }
+}
+
+// MARK: - Map styling
+
+enum MapStyle {
+    /// Muted, archival look so markers and the route stand out (spec §13). Not a copy of any product's style.
+    static func style(for scheme: ColorScheme) -> GMSMapStyle? {
+        try? GMSMapStyle(jsonString: scheme == .dark ? darkJSON : lightJSON)
+    }
+
+    private static let lightJSON = """
+    [
+      {"elementType":"geometry","stylers":[{"color":"#f3efe6"}]},
+      {"elementType":"labels.text.fill","stylers":[{"color":"#5f5a4f"}]},
+      {"elementType":"labels.text.stroke","stylers":[{"color":"#f8f5ee"}]},
+      {"featureType":"poi","stylers":[{"visibility":"off"}]},
+      {"featureType":"poi.park","elementType":"geometry","stylers":[{"color":"#dfe6d3"},{"visibility":"on"}]},
+      {"featureType":"road","elementType":"geometry","stylers":[{"color":"#ffffff"}]},
+      {"featureType":"road","elementType":"geometry.stroke","stylers":[{"color":"#e2dccd"}]},
+      {"featureType":"road.arterial","elementType":"geometry","stylers":[{"color":"#fbf7ee"}]},
+      {"featureType":"transit","stylers":[{"visibility":"simplified"}]},
+      {"featureType":"water","elementType":"geometry","stylers":[{"color":"#bfd0d6"}]}
+    ]
+    """
+
+    private static let darkJSON = """
+    [
+      {"elementType":"geometry","stylers":[{"color":"#1d1f22"}]},
+      {"elementType":"labels.text.fill","stylers":[{"color":"#9a9892"}]},
+      {"elementType":"labels.text.stroke","stylers":[{"color":"#1d1f22"}]},
+      {"featureType":"poi","stylers":[{"visibility":"off"}]},
+      {"featureType":"poi.park","elementType":"geometry","stylers":[{"color":"#1f2a25"},{"visibility":"on"}]},
+      {"featureType":"road","elementType":"geometry","stylers":[{"color":"#2c2f33"}]},
+      {"featureType":"road","elementType":"geometry.stroke","stylers":[{"color":"#1a1c1f"}]},
+      {"featureType":"transit","stylers":[{"visibility":"simplified"}]},
+      {"featureType":"water","elementType":"geometry","stylers":[{"color":"#15222a"}]}
+    ]
+    """
+}

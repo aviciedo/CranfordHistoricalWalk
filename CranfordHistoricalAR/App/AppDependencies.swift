@@ -9,24 +9,29 @@ import TourCore
 final class AppDependencies {
     let configuration: AppConfiguration
     let stopService: any HistoricalStopService
+    let locationService: any LocationService
     let tourViewModel: TourViewModel
 
-    init(configuration: AppConfiguration, stopService: any HistoricalStopService, tourViewModel: TourViewModel) {
+    init(configuration: AppConfiguration, stopService: any HistoricalStopService, locationService: any LocationService, tourViewModel: TourViewModel) {
         self.configuration = configuration
         self.stopService = stopService
+        self.locationService = locationService
         self.tourViewModel = tourViewModel
     }
 
     static func live(configuration: AppConfiguration) -> AppDependencies {
+        GoogleMapsBootstrap.configure(with: configuration)
         let stopService = BundledJSONHistoricalStopService()
-        let tour = TourViewModel(stopService: stopService)
-        return AppDependencies(configuration: configuration, stopService: stopService, tourViewModel: tour)
+        let locationService = CoreLocationService()
+        let tour = TourViewModel(stopService: stopService, locationService: locationService)
+        return AppDependencies(configuration: configuration, stopService: stopService, locationService: locationService, tourViewModel: tour)
     }
 
     /// Used by SwiftUI previews.
     static func preview() -> AppDependencies {
         let stopService = InMemoryHistoricalStopService(stops: HistoricalStop.previewStops)
-        let tour = TourViewModel(stopService: stopService)
-        return AppDependencies(configuration: .empty, stopService: stopService, tourViewModel: tour)
+        let locationService = CoreLocationService()
+        let tour = TourViewModel(stopService: stopService, locationService: locationService)
+        return AppDependencies(configuration: .empty, stopService: stopService, locationService: locationService, tourViewModel: tour)
     }
 }
