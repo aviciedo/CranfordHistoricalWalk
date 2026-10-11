@@ -94,6 +94,11 @@ final class TourViewModel {
     @ObservationIgnored var summaryLegsTask: Task<Void, Never>?
     @ObservationIgnored var routingGeneration = 0
 
+    // MARK: Proximity / AR sign (mutated by TourViewModel+Proximity.swift)
+    var proximityMachine: StopProximityStateMachine?
+    var presentedSignStopID: String?
+    var signPresentationSource: SignPresentationSource?
+
     // MARK: Navigation
     private(set) var isShowingTour = false
 
@@ -171,6 +176,7 @@ final class TourViewModel {
         startLocationIfPossible()
         loadTourSummaryLegsIfNeeded()
         evaluateRouteRefresh()
+        if proximityMachine == nil { resetProximityForCurrentStop() }
     }
 
     func leaveTour() {
@@ -262,6 +268,7 @@ final class TourViewModel {
     /// Fan-out for location-dependent subsystems. Kept separate so `handle` stays readable.
     func didUpdateLocation(_ sample: LocationSample) {
         handleLocationForRouting(sample)
+        handleLocationForProximity(sample)
     }
 
     private func refreshLocationIssue() {

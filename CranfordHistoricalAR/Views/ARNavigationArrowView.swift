@@ -30,11 +30,13 @@ struct ARNavigationArrowView: View {
             }
             if isProminent {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(relativeBearing == nil ? "Heading unavailable" : hint(for: relativeBearing!))
-                        .font(.subheadline.weight(.semibold))
-                    Text(relativeBearing == nil ? "Walk a few steps so GPS can tell which way you're facing." : "\(distanceText) to go")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                    if let relativeBearing {
+                        Text(hint(for: relativeBearing)).font(.subheadline.weight(.semibold))
+                        Text("\(distanceText) to go").font(.footnote).foregroundStyle(.secondary)
+                    } else {
+                        Text("Heading unavailable").font(.subheadline.weight(.semibold))
+                        Text("Walk a few steps so GPS can tell which way you're facing.").font(.footnote).foregroundStyle(.secondary)
+                    }
                 }
                 .padding(.trailing, 6)
             }

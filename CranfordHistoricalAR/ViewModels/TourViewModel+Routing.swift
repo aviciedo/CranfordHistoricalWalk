@@ -166,6 +166,7 @@ extension TourViewModel {
         currentRoute = nil
         routeProgress = nil
         routingError = nil
+        resetProximityForCurrentStop()
         evaluateRouteRefresh()
     }
 

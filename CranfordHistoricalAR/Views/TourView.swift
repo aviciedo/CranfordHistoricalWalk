@@ -7,6 +7,7 @@ struct TourView: View {
     @Environment(TourViewModel.self) private var tour
     @State private var mapModel = MapViewModel()
     @State private var isShowingStopList = false
+    @State private var isShowingAR = false
     @State private var panelHeight: CGFloat = 170
 
     var body: some View {
@@ -21,7 +22,7 @@ struct TourView: View {
                     Spacer()
                 }
 
-                NextStopCard()
+                NextStopCard(onEnterAR: tour.currentStop == nil ? nil : { isShowingAR = true })
                     .padding(.horizontal, 16)
                     .padding(.bottom, 10)
                     .background(
@@ -47,6 +48,9 @@ struct TourView: View {
                 StopListSheet()
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
+            }
+            .fullScreenCover(isPresented: $isShowingAR) {
+                ARTourView()
             }
             .onChange(of: mapModel.selectedStopID) { _, id in
                 guard id != nil else { return }

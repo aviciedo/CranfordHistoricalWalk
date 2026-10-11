@@ -22,6 +22,16 @@ final class AppDependencies {
         self.tourViewModel = tourViewModel
     }
 
+    /// One provider per AR session. ARCore is used only when it is actually compiled in.
+    func makeGeoSpatialProvider() -> any GeoSpatialProvider {
+        #if ARCORE_GEOSPATIAL && canImport(ARCoreGeospatial)
+        if configuration.arCoreGeospatialEnabled, configuration.hasRoutesKey {
+            return ARCoreGeoSpatialProvider(apiKey: configuration.googleRoutesAPIKey)
+        }
+        #endif
+        return CoreLocationGeoSpatialProvider()
+    }
+
     static func live(configuration: AppConfiguration) -> AppDependencies {
         GoogleMapsBootstrap.configure(with: configuration)
         let stopService = BundledJSONHistoricalStopService()
