@@ -50,6 +50,24 @@ extension TourViewModel {
         TourSummary.make(stops: stops, legs: summaryLegs())
     }
 
+    /// Figures for the TOUR COMPLETE screen (spec §12). Distance prefers what was actually measured
+    /// from location updates; it falls back to the routed total when the device barely moved
+    /// (e.g. a simulated or jumped-through tour) so the screen is never blank.
+    var completionFigures: TourCompletionFigures {
+        let summary = tourSummary
+        let walked = progress.walkedMeters
+        let measured = walked >= 50
+        return TourCompletionFigures(
+            distanceMeters: measured ? walked : summary.totalDistanceMeters,
+            isDistanceMeasured: measured,
+            walkingSeconds: summary.totalWalkingSeconds,
+            elapsedSeconds: progress.elapsed,
+            visitedCount: progress.completedCount,
+            totalStops: progress.totalStops,
+            isFromWalkingRoutes: summary.isFromWalkingRoutes
+        )
+    }
+
     /// Legs: user → first stop (or first-stop placeholder) then stop i → stop i+1.
     private func summaryLegs() -> [WalkingRoute?] {
         guard !stops.isEmpty else { return [] }
@@ -217,6 +235,16 @@ extension TourViewModel {
         summaryLegsTask = nil
         isRoutingInFlight = false
     }
+}
+
+struct TourCompletionFigures: Equatable {
+    var distanceMeters: Double
+    var isDistanceMeasured: Bool
+    var walkingSeconds: TimeInterval
+    var elapsedSeconds: TimeInterval?
+    var visitedCount: Int
+    var totalStops: Int
+    var isFromWalkingRoutes: Bool
 }
 
 struct RouteRequestRecord: Equatable, Sendable {

@@ -5,6 +5,7 @@ import TourCore
 /// panel at the bottom.
 struct TourView: View {
     @Environment(TourViewModel.self) private var tour
+    @Environment(AppDependencies.self) private var dependencies
     @State private var mapModel = MapViewModel()
     @State private var isShowingStopList = false
     @State private var isShowingAR = false
@@ -12,6 +13,19 @@ struct TourView: View {
     @State private var panelHeight: CGFloat = 170
 
     var body: some View {
+        ZStack {
+            if tour.phase == .complete {
+                TourCompleteView()
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            } else {
+                tourContent
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.4), value: tour.phase)
+    }
+
+    private var tourContent: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
                 TourMapView(mapModel: mapModel, bottomInset: panelHeight)
@@ -62,7 +76,7 @@ struct TourView: View {
             }
             .sheet(isPresented: $isShowingSignDetails) {
                 if let stop = tour.presentedSignStop ?? tour.currentStop {
-                    HistoricalSignView(stop: stop, image: nil, style: .sheet, onClose: { isShowingSignDetails = false })
+                    HistoricalSignSheet(stop: stop)
                         .presentationDetents([.medium, .large])
                         .presentationDragIndicator(.visible)
                 }
@@ -73,8 +87,12 @@ struct TourView: View {
             }
             .onChange(of: tour.currentStop?.id) { _, _ in
                 mapModel.showUserAndDestination(tour: tour)
+                dependencies.imageLoader.prefetch([tour.currentStop, tour.nextStop].compactMap { $0 })
             }
-            .task { tour.startLocationIfPossible() }
+            .task {
+                tour.startLocationIfPossible()
+                dependencies.imageLoader.prefetch([tour.currentStop, tour.nextStop].compactMap { $0 })
+            }
         }
     }
 }

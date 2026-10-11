@@ -53,20 +53,47 @@ extension TourViewModel {
         apply(effects, for: stop, source: .manual)
     }
 
+    // MARK: Completion (spec §11)
+
+    /// True once the current stop counts as visited (its sign has been displayed).
+    var isCurrentStopVisited: Bool { progress.isCurrentStopVisited }
+
+    /// Explicit "Mark as visited" / "Continue": completes the current stop and moves the tour on.
+    /// Route, panel, AR arrows and destination all follow from `destinationDidChange()`.
+    func completeCurrentStopAndAdvance() {
+        guard progress.phase == .inProgress, currentStop != nil else { return }
+        proximityMachine?.handle(.markCompleted)
+        presentedSignStopID = nil
+        signPresentationSource = nil
+        progress.completeCurrentStop()
+        // When this was the last stop, `currentStop` is nil: routing stops, the proximity machine
+        // is dropped and the "TOUR COMPLETE" screen takes over. Summary legs are kept for its totals.
+        destinationDidChange()
+    }
+
     private func apply(_ effects: [StopProximityEffect], for stop: HistoricalStop, source: SignPresentationSource) {
+        var shouldAdvance = false
         for effect in effects {
             switch effect {
             case .presentSign:
                 presentedSignStopID = stop.id
                 signPresentationSource = source
+                // Reaching the site and seeing the sign is what "visited" means (spec §11).
+                // The marker changes now; the destination advances once the sign is put away.
+                if stop.id == currentStop?.id { progress.markCurrentStopVisited() }
             case .dismissSign:
                 if presentedSignStopID == stop.id {
                     presentedSignStopID = nil
                     signPresentationSource = nil
                 }
+                // Closing the sign (by hand or by walking off) at a visited stop moves the tour on.
+                shouldAdvance = stop.id == currentStop?.id && progress.isCompleted(stop.id)
             case .stopCompleted:
                 break
             }
+        }
+        if shouldAdvance {
+            completeCurrentStopAndAdvance()
         }
     }
 }

@@ -43,7 +43,7 @@ final class ARHistoricalSignEntity: Entity {
 
     /// Builds or swaps the texture for `stop`. Returns false if rendering failed.
     @discardableResult
-    func configure(stop: HistoricalStop, image: UIImage?, scale: CGFloat) -> Bool {
+    func configure(stop: HistoricalStop, image: LoadedImage?, scale: CGFloat) -> Bool {
         let key = "\(stop.id)|\(image != nil)"
         let textureAndAspect: (TextureResource, CGFloat)
         if let cached = textureCache[key] {
@@ -88,7 +88,7 @@ final class ARHistoricalSignEntity: Entity {
         return true
     }
 
-    private static func renderTexture(for stop: HistoricalStop, image: UIImage?, scale: CGFloat) -> (TextureResource, CGFloat)? {
+    private static func renderTexture(for stop: HistoricalStop, image: LoadedImage?, scale: CGFloat) -> (TextureResource, CGFloat)? {
         let view = HistoricalSignView(stop: stop, image: image, style: .arTexture)
         let renderer = ImageRenderer(content: view)
         renderer.scale = min(scale, 2) // 2x of 720 pt = 1440 px wide: sharp, still cheap on GPU memory

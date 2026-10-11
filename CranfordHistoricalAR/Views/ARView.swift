@@ -19,7 +19,7 @@ struct ARTourView: View {
         }
         .task {
             if model == nil {
-                model = ARViewModel(tour: tour, provider: dependencies.makeGeoSpatialProvider())
+                model = ARViewModel(tour: tour, provider: dependencies.makeGeoSpatialProvider(), imageLoader: dependencies.imageLoader)
             }
             await model?.requestCameraAccessIfNeeded()
         }
@@ -48,14 +48,9 @@ struct ARTourView: View {
         }
         .sheet(isPresented: Binding(get: { model.isShowingSignDetails }, set: { model.isShowingSignDetails = $0 })) {
             if let stop = tour.presentedSignStop ?? tour.currentStop {
-                HistoricalSignView(
-                    stop: stop,
-                    image: model.imageProvider?(stop),
-                    style: .sheet,
-                    onClose: { model.isShowingSignDetails = false }
-                )
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
+                HistoricalSignSheet(stop: stop)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
             }
         }
     }
@@ -137,7 +132,9 @@ struct ARHUDView: View {
 
     @ViewBuilder
     private var bottomPanel: some View {
-        if model.tour.isSignPresented {
+        if model.tour.phase == .complete {
+            tourCompletePanel
+        } else if model.tour.isSignPresented {
             signControls
         } else {
             HStack(alignment: .bottom) {
@@ -171,6 +168,28 @@ struct ARHUDView: View {
         }
     }
 
+    /// The last sign was put away while in AR: hand off to the summary screen (spec §12).
+    private var tourCompletePanel: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            EyebrowText("Tour complete", color: AppTheme.brass)
+            Text("You've visited every stop on the walk.")
+                .font(.system(.headline, design: .serif))
+            Button(action: onClose) {
+                Label("See your summary", systemImage: "list.bullet.rectangle")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(AppTheme.heritageGreen, in: Capsule())
+                    .foregroundStyle(.white)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .transition(.move(edge: .bottom).combined(with: .opacity))
+    }
+
     /// Shown while the historical sign is up: read the full text, or close it (spec §9 manual close).
     private var signControls: some View {
         HStack(spacing: 12) {
@@ -185,7 +204,7 @@ struct ARHUDView: View {
             Button {
                 model.closeSign()
             } label: {
-                Label("Close sign", systemImage: "xmark")
+                Label(model.closeSignTitle, systemImage: model.tour.isCurrentStopVisited ? "arrow.right" : "xmark")
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
                     .background(.regularMaterial, in: Capsule())

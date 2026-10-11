@@ -30,6 +30,24 @@ final class TourProgressTests: XCTestCase {
         XCTAssertNotNil(p.completedAt)
     }
 
+    func testMarkVisitedDoesNotAdvanceAndPanelExcludesCurrent() {
+        var p = TourProgress(stopIDs: ids)
+        p.start()
+        XCTAssertFalse(p.isCurrentStopVisited)
+        XCTAssertTrue(p.markCurrentStopVisited())
+        XCTAssertFalse(p.markCurrentStopVisited(), "second mark is a no-op")
+        XCTAssertTrue(p.isCompleted("a"))
+        XCTAssertTrue(p.isCurrentStopVisited)
+        XCTAssertEqual(p.currentStopID, "a", "marker changes but the destination stays until the sign is closed")
+        XCTAssertNil(p.previousCompletedStopID, "the current stop must not show up as the previous one")
+        XCTAssertEqual(p.completedCount, 1)
+
+        XCTAssertEqual(p.completeCurrentStop(), "b")
+        XCTAssertEqual(p.completedCount, 1, "advancing after a mark does not double-count")
+        XCTAssertEqual(p.previousCompletedStopID, "a")
+        XCTAssertFalse(p.isCurrentStopVisited)
+    }
+
     func testCompleteBeforeStartIsNoOp() {
         var p = TourProgress(stopIDs: ids)
         XCTAssertNil(p.completeCurrentStop())

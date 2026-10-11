@@ -12,13 +12,15 @@ final class AppDependencies {
     let stopService: any HistoricalStopService
     let locationService: any LocationService
     let directionsService: any DirectionsService
+    let imageLoader: any ImageLoader
     let tourViewModel: TourViewModel
 
-    init(configuration: AppConfiguration, stopService: any HistoricalStopService, locationService: any LocationService, directionsService: any DirectionsService, tourViewModel: TourViewModel) {
+    init(configuration: AppConfiguration, stopService: any HistoricalStopService, locationService: any LocationService, directionsService: any DirectionsService, imageLoader: any ImageLoader, tourViewModel: TourViewModel) {
         self.configuration = configuration
         self.stopService = stopService
         self.locationService = locationService
         self.directionsService = directionsService
+        self.imageLoader = imageLoader
         self.tourViewModel = tourViewModel
     }
 
@@ -38,7 +40,7 @@ final class AppDependencies {
         let locationService = CoreLocationService()
         let directionsService = DirectionsServiceFactory.make(configuration: configuration)
         let tour = TourViewModel(stopService: stopService, locationService: locationService, directionsService: directionsService)
-        return AppDependencies(configuration: configuration, stopService: stopService, locationService: locationService, directionsService: directionsService, tourViewModel: tour)
+        return AppDependencies(configuration: configuration, stopService: stopService, locationService: locationService, directionsService: directionsService, imageLoader: CompositeImageLoader(), tourViewModel: tour)
     }
 
     /// Used by SwiftUI previews.
@@ -47,7 +49,7 @@ final class AppDependencies {
         let locationService = CoreLocationService()
         let directionsService = PreviewDirectionsService()
         let tour = TourViewModel(stopService: stopService, locationService: locationService, directionsService: directionsService)
-        return AppDependencies(configuration: .empty, stopService: stopService, locationService: locationService, directionsService: directionsService, tourViewModel: tour)
+        return AppDependencies(configuration: .empty, stopService: stopService, locationService: locationService, directionsService: directionsService, imageLoader: CompositeImageLoader(), tourViewModel: tour)
     }
 }
 

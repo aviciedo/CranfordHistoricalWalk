@@ -36,7 +36,18 @@ public struct TourProgress: Sendable, Equatable, Codable {
         return stopIDs[next]
     }
 
-    public var previousCompletedStopID: String? { completedStopIDs.last }
+    /// Most recently visited stop other than the current one (the "CURRENT ✓" line of the panel).
+    /// The current stop can itself be marked visited while its sign is open; it is excluded so the
+    /// panel never lists the same stop twice.
+    public var previousCompletedStopID: String? {
+        completedStopIDs.last { $0 != currentStopID }
+    }
+
+    /// True once the current stop's sign has been displayed, before the tour has moved on.
+    public var isCurrentStopVisited: Bool {
+        guard let current = currentStopID else { return false }
+        return completedStopIDs.contains(current)
+    }
     public var totalStops: Int { stopIDs.count }
     public var completedCount: Int { completedStopIDs.count }
     public var remainingStopIDs: ArraySlice<String> {
@@ -63,11 +74,21 @@ public struct TourProgress: Sendable, Equatable, Codable {
         completedAt = nil
     }
 
+    /// Marks the current stop visited without advancing (spec §11: the marker changes as soon as
+    /// the sign has been displayed; the panel advances when the user is done with the sign).
+    /// Returns true if the stop was newly marked.
+    @discardableResult
+    public mutating func markCurrentStopVisited() -> Bool {
+        guard phase == .inProgress, let current = currentStopID, !completedStopIDs.contains(current) else { return false }
+        completedStopIDs.append(current)
+        return true
+    }
+
     /// Marks the current stop visited and advances. Returns the new current stop, or `nil` when done.
     @discardableResult
     public mutating func completeCurrentStop(at date: Date = Date()) -> String? {
-        guard phase == .inProgress, let current = currentStopID else { return nil }
-        if !completedStopIDs.contains(current) { completedStopIDs.append(current) }
+        guard phase == .inProgress, currentStopID != nil else { return nil }
+        markCurrentStopVisited()
         if stopIDs.indices.contains(currentIndex + 1) {
             currentIndex += 1
             return stopIDs[currentIndex]

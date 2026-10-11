@@ -9,11 +9,12 @@ struct HistoricalSignView: View {
     enum Style { case arTexture, sheet }
 
     let stop: HistoricalStop
-    var image: UIImage?
+    var image: LoadedImage?
     var style: Style = .sheet
     var onClose: (() -> Void)? = nil
     var onMarkVisited: (() -> Void)? = nil
     var isVisited = false
+    var continueTitle = "Continue to next stop"
 
     /// Logical width of the AR texture in points; keeps text crisp on the plane.
     static let textureWidth: CGFloat = 720
@@ -65,7 +66,7 @@ struct HistoricalSignView: View {
 
             // No empty image frame when there is no image (spec §10).
             if let image {
-                SignImage(image: image, isPlaceholder: stop.isSample || stop.imageName?.hasPrefix("placeholder") == true, cornerRadius: 14)
+                SignImage(image: image, cornerRadius: 14)
                     .frame(maxWidth: .infinity)
                     .frame(height: 300)
                     .padding(.top, 22)
@@ -118,7 +119,7 @@ struct HistoricalSignView: View {
                     }
 
                     if let image {
-                        SignImage(image: image, isPlaceholder: stop.isSample || stop.imageName?.hasPrefix("placeholder") == true, cornerRadius: 16)
+                        SignImage(image: image, cornerRadius: 16)
                             .frame(height: 220)
                             .frame(maxWidth: .infinity)
                     }
@@ -139,14 +140,21 @@ struct HistoricalSignView: View {
                     .foregroundStyle(.secondary)
 
                     if let onMarkVisited {
-                        Button(action: onMarkVisited) {
-                            Label(isVisited ? "Visited" : "Mark as visited", systemImage: isVisited ? "checkmark.circle.fill" : "checkmark.circle")
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 14)
+                        VStack(spacing: 8) {
+                            if isVisited {
+                                Label("Visited", systemImage: "checkmark.circle.fill")
+                                    .font(.footnote.weight(.semibold))
+                                    .foregroundStyle(AppTheme.visited)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            Button(action: onMarkVisited) {
+                                Label(isVisited ? continueTitle : "Mark as visited", systemImage: isVisited ? "arrow.right.circle" : "checkmark.circle")
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 14)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(AppTheme.heritageGreen)
                         }
-                        .buttonStyle(.borderedProminent)
-                        .tint(AppTheme.heritageGreen)
-                        .disabled(isVisited)
                         .padding(.top, 8)
                     }
                 }
@@ -164,20 +172,52 @@ struct HistoricalSignView: View {
     }
 }
 
+/// Sheet wrapper that resolves artwork through the app's `ImageLoader` and offers
+/// "Mark as visited / Continue" for the current stop (spec §10, §11).
+struct HistoricalSignSheet: View {
+    @Environment(AppDependencies.self) private var dependencies
+    @Environment(TourViewModel.self) private var tour
+    @Environment(\.dismiss) private var dismiss
+    let stop: HistoricalStop
+    /// Invoked after the sheet closes because the user continued to the next stop.
+    var onContinue: (() -> Void)? = nil
+    @State private var image: LoadedImage?
+
+    var body: some View {
+        let isCurrent = stop.id == tour.currentStop?.id
+        HistoricalSignView(
+            stop: stop,
+            image: image,
+            style: .sheet,
+            onClose: { dismiss() },
+            onMarkVisited: isCurrent ? {
+                dismiss()
+                tour.completeCurrentStopAndAdvance()
+                onContinue?()
+            } : nil,
+            isVisited: tour.isCompleted(stop),
+            continueTitle: tour.nextStop == nil ? "Finish tour" : "Continue to next stop"
+        )
+        .task(id: stop.id) {
+            image = dependencies.imageLoader.cachedImage(for: stop)
+            if image == nil { image = await dependencies.imageLoader.image(for: stop) }
+        }
+    }
+}
+
 /// Image with a clear "PLACEHOLDER" ribbon when the asset is not real history (spec §10).
 struct SignImage: View {
-    let image: UIImage
-    let isPlaceholder: Bool
+    let image: LoadedImage
     var cornerRadius: CGFloat
 
     var body: some View {
         ZStack(alignment: .bottomLeading) {
-            Image(uiImage: image)
+            Image(uiImage: image.image)
                 .resizable()
                 .scaledToFill()
                 .clipped()
-            if isPlaceholder {
-                Text("PLACEHOLDER IMAGE")
+            if image.isPlaceholder {
+                Text(image.kind == .illustration ? "PLACEHOLDER ILLUSTRATION" : "PLACEHOLDER IMAGE")
                     .font(.system(size: 13, weight: .bold))
                     .tracking(2)
                     .padding(.horizontal, 10)

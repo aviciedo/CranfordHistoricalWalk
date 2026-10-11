@@ -57,7 +57,7 @@ final class GeoAnchorManager {
     /// Sign content requested by the view model; placed as soon as the camera is tracking.
     struct SignRequest: Equatable {
         var stop: HistoricalStop
-        var image: UIImage?
+        var image: LoadedImage?
         var displayScale: CGFloat
         static func == (lhs: SignRequest, rhs: SignRequest) -> Bool {
             lhs.stop.id == rhs.stop.id && (lhs.image == nil) == (rhs.image == nil)
@@ -146,12 +146,16 @@ final class GeoAnchorManager {
     // MARK: Sign
 
     /// Show the sign for `stop` (idempotent). The texture is rendered once per stop.
-    func presentSign(for stop: HistoricalStop, image: UIImage?, displayScale: CGFloat) {
+    func presentSign(for stop: HistoricalStop, image: LoadedImage?, displayScale: CGFloat) {
         let request = SignRequest(stop: stop, image: image, displayScale: displayScale)
         guard request != signRequest else { return }
+        let sameStop = signRequest?.stop.id == stop.id
         signRequest = request
-        signAnchoredPosition = nil
         anchors.sign.configure(stop: stop, image: image, scale: displayScale)
+        // Artwork arriving for the sign already on display swaps the texture in place; a new stop
+        // replays the entrance at a fresh position.
+        guard !(sameStop && anchors.sign.isPresented) else { return }
+        signAnchoredPosition = nil
         if anchors.sign.isPresented { anchors.sign.dismiss() }
         placeSign(now: lastFrameTime)
     }

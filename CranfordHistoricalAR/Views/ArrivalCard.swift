@@ -16,12 +16,11 @@ struct ArrivalCard: View {
                     Image(systemName: "sparkles").foregroundStyle(AppTheme.brass)
                     EyebrowText("You've arrived", color: AppTheme.brass)
                     Spacer()
-                    Button {
-                        tour.closeSign()
-                    } label: {
-                        Image(systemName: "xmark").font(.footnote.weight(.semibold)).frame(width: 28, height: 28)
+                    if tour.isCompleted(stop) {
+                        Label("Visited", systemImage: "checkmark.circle.fill")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(AppTheme.visited)
                     }
-                    .accessibilityLabel("Dismiss")
                 }
                 Text(stop.name).font(AppTheme.Fonts.title).lineLimit(2)
                 Text("Open the camera to see the historical sign placed in front of you.")
@@ -42,6 +41,17 @@ struct ArrivalCard: View {
                     }
                     .buttonStyle(.bordered)
                 }
+                // Closing the sign at a visited stop advances the tour (spec §11).
+                Button {
+                    tour.closeSign()
+                } label: {
+                    Label(tour.nextStop == nil ? "Finish tour" : "Continue to next stop", systemImage: "arrow.right")
+                        .font(.footnote.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(AppTheme.heritageGreen)
+                .padding(.top, 2)
             }
         }
     }
