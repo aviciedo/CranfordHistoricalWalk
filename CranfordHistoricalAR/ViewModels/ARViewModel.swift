@@ -38,9 +38,11 @@ final class ARViewModel {
         self.tour = tour
         self.geoAnchors = GeoAnchorManager(provider: provider)
         self.imageLoader = imageLoader
-        let status = AVCaptureDevice.authorizationStatus(for: .video)
-        cameraPermission = ARViewModel.permission(from: status)
-        availability = ARViewModel.availability(permission: cameraPermission)
+        // Compute into locals first: @Observable turns stored properties into accessors on self,
+        // which may not be read before all stored properties are initialized.
+        let permission = ARViewModel.permission(from: AVCaptureDevice.authorizationStatus(for: .video))
+        cameraPermission = permission
+        availability = ARViewModel.availability(permission: permission)
     }
 
     // MARK: Derived HUD values

@@ -85,8 +85,8 @@ final class TourCompletionFlowTests: XCTestCase {
             return SimulatedLocationService.Route(path: tour.currentRoute?.routeCoordinates ?? [], target: stop.coordinate)
         }
         simulator.startWalking()
-        try await waitUntil("walker arrives and the sign appears", timeout: 40) { self.tour.isSignPresented }
-        XCTAssertFalse(simulator.isWalking)
+        try await waitUntil("walker arrives", timeout: 40) { !self.simulator.isWalking }
+        XCTAssertTrue(tour.isSignPresented, "crossing the arrival radius presented the sign")
         XCTAssertGreaterThan(tour.progress.walkedMeters, 200)
         XCTAssertLessThan(tour.remainingDistanceMeters ?? .infinity, 5)
     }

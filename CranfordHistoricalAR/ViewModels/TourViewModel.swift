@@ -68,7 +68,8 @@ final class TourViewModel {
     private(set) var dataStatus: String?
     private(set) var stops: [HistoricalStop] = []
     private(set) var loadState: LoadState = .idle
-    private(set) var progress = TourProgress(stopIDs: [])
+    /// Internal setter: the proximity/completion extension (separate file) mutates it.
+    var progress = TourProgress(stopIDs: [])
 
     // MARK: Location
     private(set) var userLocation: LocationSample?
