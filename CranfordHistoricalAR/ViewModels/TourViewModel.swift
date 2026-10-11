@@ -81,16 +81,31 @@ final class TourViewModel {
     /// Accuracy worse than this is reported to the user as "weak GPS".
     static let poorAccuracyThreshold: Double = 40
 
+    // MARK: Routing (mutated by TourViewModel+Routing.swift)
+    var currentRoute: WalkingRoute?
+    var routeProgress: RouteProgress?
+    var isRoutingInFlight = false
+    var routingError: String?
+    var lastRouteRequest: RouteRequestRecord?
+    /// Stop→stop legs used for the tour summary, keyed by `legKey(from:to:)` / `startLegKey`.
+    var legRoutes: [String: WalkingRoute] = [:]
+    var refreshPolicy = RouteRefreshPolicy.default
+    @ObservationIgnored var routingTask: Task<Void, Never>?
+    @ObservationIgnored var summaryLegsTask: Task<Void, Never>?
+    @ObservationIgnored var routingGeneration = 0
+
     // MARK: Navigation
     private(set) var isShowingTour = false
 
     private let stopService: any HistoricalStopService
+    let directionsService: any DirectionsService
     private(set) var locationService: any LocationService
     private var locationTask: Task<Void, Never>?
 
-    init(stopService: any HistoricalStopService, locationService: any LocationService) {
+    init(stopService: any HistoricalStopService, locationService: any LocationService, directionsService: any DirectionsService) {
         self.stopService = stopService
         self.locationService = locationService
+        self.directionsService = directionsService
         self.locationAuthorization = locationService.authorization
         self.isPreciseLocation = locationService.isPreciseLocationAuthorized
         refreshLocationIssue()
@@ -154,6 +169,8 @@ final class TourViewModel {
         }
         isShowingTour = true
         startLocationIfPossible()
+        loadTourSummaryLegsIfNeeded()
+        evaluateRouteRefresh()
     }
 
     func leaveTour() {
@@ -161,8 +178,11 @@ final class TourViewModel {
     }
 
     func resetTour() {
+        cancelRouting()
         progress.reset()
         progress.start()
+        destinationDidChange()
+        loadTourSummaryLegsIfNeeded()
     }
 
     // MARK: Location pipeline
@@ -239,8 +259,10 @@ final class TourViewModel {
         }
     }
 
-    /// Hook for later stages (routing, proximity). Kept separate so `handle` stays readable.
-    func didUpdateLocation(_ sample: LocationSample) {}
+    /// Fan-out for location-dependent subsystems. Kept separate so `handle` stays readable.
+    func didUpdateLocation(_ sample: LocationSample) {
+        handleLocationForRouting(sample)
+    }
 
     private func refreshLocationIssue() {
         switch locationAuthorization {

@@ -1,17 +1,25 @@
 import SwiftUI
 import TourCore
 
-/// Main tour screen (spec §4): full-bleed map with a persistent navigation panel.
+/// Main tour screen (spec §4): full-bleed map, tour summary at the top, persistent navigation
+/// panel at the bottom.
 struct TourView: View {
     @Environment(TourViewModel.self) private var tour
     @State private var mapModel = MapViewModel()
     @State private var isShowingStopList = false
-    @State private var panelHeight: CGFloat = 160
+    @State private var panelHeight: CGFloat = 170
 
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
                 TourMapView(mapModel: mapModel, bottomInset: panelHeight)
+
+                VStack {
+                    TourHeaderView()
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+                    Spacer()
+                }
 
                 NextStopCard()
                     .padding(.horizontal, 16)
@@ -44,13 +52,16 @@ struct TourView: View {
                 guard id != nil else { return }
                 mapModel.select(stopID: nil)
             }
+            .onChange(of: tour.currentStop?.id) { _, _ in
+                mapModel.showUserAndDestination(tour: tour)
+            }
             .task { tour.startLocationIfPossible() }
         }
     }
 }
 
 private struct PanelHeightKey: PreferenceKey {
-    static var defaultValue: CGFloat = 160
+    static var defaultValue: CGFloat = 170
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }
 
@@ -109,37 +120,6 @@ struct StopRow: View {
             }
         }
         .padding(.vertical, 4)
-    }
-}
-
-/// Persistent bottom panel (spec §4). Distance/time become live in Stage 3.
-struct NextStopCard: View {
-    @Environment(TourViewModel.self) private var tour
-
-    var body: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: 8) {
-                if let current = tour.currentStop {
-                    EyebrowText("Next stop")
-                    Text(current.name)
-                        .font(AppTheme.Fonts.title)
-                        .lineLimit(2)
-                    HStack(spacing: 18) {
-                        Label("—", systemImage: "figure.walk")
-                        Label("—", systemImage: "clock")
-                    }
-                    .font(AppTheme.Fonts.metric)
-                    .foregroundStyle(.secondary)
-                } else if tour.phase == .complete {
-                    EyebrowText("Tour complete")
-                    Text("You visited every stop.").font(AppTheme.Fonts.title)
-                } else {
-                    EyebrowText("Walking tour")
-                    Text("Loading stops…").font(AppTheme.Fonts.title)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
     }
 }
 

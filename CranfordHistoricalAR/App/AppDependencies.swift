@@ -1,3 +1,4 @@
+import CoreLocation
 import Foundation
 import SwiftUI
 import TourCore
@@ -10,12 +11,14 @@ final class AppDependencies {
     let configuration: AppConfiguration
     let stopService: any HistoricalStopService
     let locationService: any LocationService
+    let directionsService: any DirectionsService
     let tourViewModel: TourViewModel
 
-    init(configuration: AppConfiguration, stopService: any HistoricalStopService, locationService: any LocationService, tourViewModel: TourViewModel) {
+    init(configuration: AppConfiguration, stopService: any HistoricalStopService, locationService: any LocationService, directionsService: any DirectionsService, tourViewModel: TourViewModel) {
         self.configuration = configuration
         self.stopService = stopService
         self.locationService = locationService
+        self.directionsService = directionsService
         self.tourViewModel = tourViewModel
     }
 
@@ -23,15 +26,26 @@ final class AppDependencies {
         GoogleMapsBootstrap.configure(with: configuration)
         let stopService = BundledJSONHistoricalStopService()
         let locationService = CoreLocationService()
-        let tour = TourViewModel(stopService: stopService, locationService: locationService)
-        return AppDependencies(configuration: configuration, stopService: stopService, locationService: locationService, tourViewModel: tour)
+        let directionsService = DirectionsServiceFactory.make(configuration: configuration)
+        let tour = TourViewModel(stopService: stopService, locationService: locationService, directionsService: directionsService)
+        return AppDependencies(configuration: configuration, stopService: stopService, locationService: locationService, directionsService: directionsService, tourViewModel: tour)
     }
 
     /// Used by SwiftUI previews.
     static func preview() -> AppDependencies {
         let stopService = InMemoryHistoricalStopService(stops: HistoricalStop.previewStops)
         let locationService = CoreLocationService()
-        let tour = TourViewModel(stopService: stopService, locationService: locationService)
-        return AppDependencies(configuration: .empty, stopService: stopService, locationService: locationService, tourViewModel: tour)
+        let directionsService = PreviewDirectionsService()
+        let tour = TourViewModel(stopService: stopService, locationService: locationService, directionsService: directionsService)
+        return AppDependencies(configuration: .empty, stopService: stopService, locationService: locationService, directionsService: directionsService, tourViewModel: tour)
+    }
+}
+
+/// Offline directions for previews/tests: a two-point route at walking pace, labeled as simulated.
+struct PreviewDirectionsService: DirectionsService {
+    func walkingRoute(from origin: CLLocationCoordinate2D, to destination: CLLocationCoordinate2D) async throws -> WalkingRoute {
+        var route = WalkingRoute.straightLineEstimate(from: GeoCoordinate(origin), to: GeoCoordinate(destination))
+        route.source = .simulated
+        return route
     }
 }

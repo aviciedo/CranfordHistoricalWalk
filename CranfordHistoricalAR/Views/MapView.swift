@@ -5,8 +5,7 @@ import TourCore
 /// the location/permission notices. Keeps no business logic.
 struct TourMapView: View {
     @Environment(TourViewModel.self) private var tour
-    @Environment(AppDependencies.self) private var dependencies
-    @Bindable var mapModel: MapViewModel
+    var mapModel: MapViewModel
     var bottomInset: CGFloat
 
     var body: some View {
@@ -15,7 +14,7 @@ struct TourMapView: View {
                 GoogleMapView(
                     markers: mapModel.markers(for: tour),
                     userPuck: mapModel.userPuck(for: tour),
-                    routeCoordinates: [],
+                    routeCoordinates: tour.currentRoute?.clCoordinates ?? [],
                     cameraRequest: mapModel.cameraRequest,
                     bottomInset: bottomInset,
                     onUserGesture: { mapModel.userDidMoveCamera() },
@@ -58,7 +57,7 @@ struct TourMapView: View {
 /// Recenter / overview buttons.
 struct MapControlStack: View {
     @Environment(TourViewModel.self) private var tour
-    @Bindable var mapModel: MapViewModel
+    var mapModel: MapViewModel
 
     var body: some View {
         VStack(spacing: 0) {
