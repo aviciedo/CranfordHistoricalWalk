@@ -1,0 +1,33 @@
+{
+  "status": "OK",
+  "routes": [
+    {
+      "overview_polyline": { "points": "ipkcFfichVnP@j@BLoFVwM{E?" },
+      "legs": [
+        {
+          "distance": { "text": "0.5 mi", "value": 772 },
+          "duration": { "text": "9 mins", "value": 555 },
+          "steps": [
+            {
+              "distance": { "text": "394 ft", "value": 120 },
+              "duration": { "text": "1 min", "value": 86 },
+              "start_location": { "lat": 37.4197318, "lng": -122.0827887 },
+              "end_location": { "lat": 37.4194007, "lng": -122.0828363 },
+              "html_instructions": "Head <b>south</b> on <b>Amphitheatre Pkwy</b>",
+              "polyline": { "points": "ipkcFfichVnP@j@B" }
+            },
+            {
+              "distance": { "text": "0.4 mi", "value": 652 },
+              "duration": { "text": "8 mins", "value": 469 },
+              "start_location": { "lat": 37.4194007, "lng": -122.0828363 },
+              "end_location": { "lat": 37.4176670, "lng": -122.0795950 },
+              "html_instructions": "Turn <b>left</b> onto <b>Charleston Rd</b>",
+              "maneuver": "turn-left",
+              "polyline": { "points": "cnkcFfichVLoFVwM{E?" }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

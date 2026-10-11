@@ -1,0 +1,7 @@
+#include "Base.xcconfig"
+// Optional include: the build does not fail if Secrets.xcconfig is missing.
+#include? "Secrets.xcconfig"
+
+APP_COMPILATION_CONDITIONS_1 = ARCORE_GEOSPATIAL
+APP_COMPILATION_CONDITIONS_0 =
+APP_COMPILATION_CONDITIONS = $(APP_COMPILATION_CONDITIONS_$(ENABLE_ARCORE_GEOSPATIAL))

@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>Cranford AR</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIColorName</key>
+		<string>LaunchBackground</string>
+	</dict>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>arm64</string>
+		<string>location-services</string>
+	</array>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+	</dict>
+
+	<!-- Permissions (spec §14) -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Cranford Historical AR uses your location to show where you are on the map, guide you to each historical stop, and reveal AR signs as you approach them.</string>
+	<key>NSLocationTemporaryUsageDescriptionDictionary</key>
+	<dict>
+		<key>PreciseLocationForAR</key>
+		<string>Precise location lets the AR arrows and historical signs line up with the streets around you.</string>
+	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>The camera is used for the augmented-reality view that shows walking directions and historical signs over the real world.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>Motion data improves compass heading so AR arrows point the right way.</string>
+
+	<!-- Configuration injected from Config/*.xcconfig at build time (never hard-code keys here) -->
+	<key>GoogleMapsAPIKey</key>
+	<string>$(GOOGLE_MAPS_API_KEY)</string>
+	<key>GoogleRoutesAPIKey</key>
+	<string>$(GOOGLE_ROUTES_API_KEY)</string>
+	<key>DirectionsProvider</key>
+	<string>$(DIRECTIONS_PROVIDER)</string>
+	<key>EnableARCoreGeospatial</key>
+	<string>$(ENABLE_ARCORE_GEOSPATIAL)</string>
+</dict>
+</plist>
