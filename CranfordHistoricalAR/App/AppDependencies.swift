@@ -14,6 +14,10 @@ final class AppDependencies {
     let directionsService: any DirectionsService
     let imageLoader: any ImageLoader
     let tourViewModel: TourViewModel
+    #if DEVELOPER_MENU
+    /// Developer Mode (spec §19); Debug builds only.
+    private(set) var developer: DeveloperModeController?
+    #endif
 
     init(configuration: AppConfiguration, stopService: any HistoricalStopService, locationService: any LocationService, directionsService: any DirectionsService, imageLoader: any ImageLoader, tourViewModel: TourViewModel) {
         self.configuration = configuration
@@ -40,7 +44,15 @@ final class AppDependencies {
         let locationService = CoreLocationService()
         let directionsService = DirectionsServiceFactory.make(configuration: configuration)
         let tour = TourViewModel(stopService: stopService, locationService: locationService, directionsService: directionsService)
-        return AppDependencies(configuration: configuration, stopService: stopService, locationService: locationService, directionsService: directionsService, imageLoader: CompositeImageLoader(), tourViewModel: tour)
+        let dependencies = AppDependencies(configuration: configuration, stopService: stopService, locationService: locationService, directionsService: directionsService, imageLoader: CompositeImageLoader(), tourViewModel: tour)
+        dependencies.installDeveloperMode()
+        return dependencies
+    }
+
+    private func installDeveloperMode() {
+        #if DEVELOPER_MENU
+        developer = DeveloperModeController(tour: tourViewModel, realLocationService: locationService)
+        #endif
     }
 
     /// Used by SwiftUI previews.
@@ -49,7 +61,9 @@ final class AppDependencies {
         let locationService = CoreLocationService()
         let directionsService = PreviewDirectionsService()
         let tour = TourViewModel(stopService: stopService, locationService: locationService, directionsService: directionsService)
-        return AppDependencies(configuration: .empty, stopService: stopService, locationService: locationService, directionsService: directionsService, imageLoader: CompositeImageLoader(), tourViewModel: tour)
+        let dependencies = AppDependencies(configuration: .empty, stopService: stopService, locationService: locationService, directionsService: directionsService, imageLoader: CompositeImageLoader(), tourViewModel: tour)
+        dependencies.installDeveloperMode()
+        return dependencies
     }
 }
 

@@ -10,6 +10,7 @@ struct TourView: View {
     @State private var isShowingStopList = false
     @State private var isShowingAR = false
     @State private var isShowingSignDetails = false
+    @State private var isShowingDeveloperControls = false
     @State private var panelHeight: CGFloat = 170
 
     var body: some View {
@@ -63,9 +64,25 @@ struct TourView: View {
                     Button("Home", systemImage: "chevron.left", action: tour.leaveTour)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Stops", systemImage: "list.bullet") { isShowingStopList = true }
+                    Menu {
+                        Button("Stops", systemImage: "list.bullet") { isShowingStopList = true }
+                        Button("Fit whole tour", systemImage: "map") { mapModel.requestOverview() }
+                        #if DEVELOPER_MENU
+                        Divider()
+                        Button("Developer Controls", systemImage: "hammer") { isShowingDeveloperControls = true }
+                        #endif
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
+                    .accessibilityLabel("More")
                 }
             }
+            #if DEVELOPER_MENU
+            .sheet(isPresented: $isShowingDeveloperControls) {
+                DeveloperControlsView()
+                    .presentationDetents([.large])
+            }
+            #endif
             .sheet(isPresented: $isShowingStopList) {
                 StopListSheet()
                     .presentationDetents([.medium, .large])

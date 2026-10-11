@@ -51,6 +51,30 @@ The xcconfig values flow into `Info.plist` (`GoogleMapsAPIKey`, `GoogleRoutesAPI
 `AppConfiguration`. If keys are missing the app still runs: the map shows a configuration notice and routes fall
 back to clearly labeled straight-line estimates.
 
+## Developer Mode (simulate the walk)
+
+Debug builds define `DEVELOPER_MENU` (see `project.yml`), which compiles in **Developer Controls** (spec §19):
+
+- On the tour screen: `⋯` menu → **Developer Controls**.
+- On the first screen: long-press the *CRANFORD / HISTORICAL AR* title for about a second.
+
+Controls: toggle a **simulated location** (replaces Core Location through the same single `LocationService`
+the app uses in production), **walk toward the next stop** along the live walking route at 1×/3×/10× pace,
+**move 25 m**, **jump to the next stop** (lands inside the arrival radius so the real arrival flow fires),
+**trigger the historical sign**, **mark visited & skip**, **reset tour**, simulate weak GPS accuracy, and a
+diagnostics panel (proximity state, route source, routing errors, key presence). Release builds contain none
+of this code.
+
+In the iOS Simulator the map, routing, panel and Developer Controls all work; ARKit does not run in the
+Simulator, so the AR screen shows its "AR isn't available on this device" state there.
+
+## Tests
+
+| Where | What | How |
+| --- | --- | --- |
+| `Packages/TourCore` | 70 XCTest cases: models/JSON, geo math, polyline, Routes API decoding, route progress, refresh policy, proximity hysteresis, tour progress, summary, formatting, walk simulator | `cd Packages/TourCore && swift test` (macOS or Linux) |
+| `CranfordHistoricalARTests` | Host-app flows: arrival → visited → close → advance, hysteresis via the simulated walker, tour completion figures, configuration fallbacks | Xcode **Product ▸ Test** (iOS Simulator is fine) |
+
 ## Project layout
 
 ```
@@ -62,11 +86,28 @@ CranfordHistoricalAR/
   Models/                   Bridges TourCore models to CoreLocation
   Services/                 HistoricalStopService, LocationService, DirectionsService, GeoSpatialProvider, ImageLoader
   AR/                       ARViewContainer, GeoAnchorManager, ARNavigationArrow, ARHistoricalSign
-  Views/                    HomeView, TourView, MapView, ARView, NextStopCard, TourHeaderView, …
+  Views/                    HomeView, TourView, MapView, ARView, NextStopCard, TourHeaderView, TourCompleteView, …
   ViewModels/               TourViewModel (single source of truth), MapViewModel, ARViewModel
+  Developer/                Developer Controls (DEVELOPER_MENU only)
   Resources/                historical_stops.json
+CranfordHistoricalARTests/  Host-app unit tests (Mac/Xcode)
 ```
+
+## Behaviour notes
+
+- **Distances and times** on the panel always come from the walking route (Routes API `computeRoutes`,
+  `travelMode: WALK`), refreshed on a policy (moved ≥ 25 m, off-route > 30 m, stale > 90 s, destination
+  change, ≥ 8 s apart) and interpolated locally between refreshes. If routing fails the last known route is
+  kept; with no route at all a clearly labeled straight-line estimate is shown.
+- **Arrival** opens the sign at 35 m and closes it only beyond 50 m (hysteresis), or when the user closes it.
+  A stop counts as **visited** once its sign has been displayed; putting the sign away (close, walk away,
+  "Continue") advances the tour — route, panel, AR arrows and destination update together.
+- **AR placement** uses ARKit `gravityAndHeading` alignment plus GPS/compass; distances to the sign are
+  clamped (2.4–9 m) and the HUD says "AR positioning is temporarily unavailable…" when tracking is poor.
+  ARCore Geospatial is an optional, off-by-default upgrade (`ENABLE_ARCORE_GEOSPATIAL=1` + package).
 
 ## Status
 
-Built in stages (see `docs/` in the project store for the plan and build report). This README is updated as stages land.
+All seven implementation stages are in place (project skeleton → maps → routing → AR arrows → AR sign →
+completion/summary → developer mode & polish). The pure logic is tested on Linux; the iOS app itself needs a
+Mac build (see `docs/build-report.md` in the project store for exactly what was and was not compiled).

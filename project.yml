@@ -64,7 +64,9 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.cranford.historicalar
-        PRODUCT_NAME: Cranford Historical AR
+        # Keep PRODUCT_NAME free of spaces so XcodeGen's generated TEST_HOST path is valid;
+        # the user-facing name comes from CFBundleDisplayName in Info.plist.
+        PRODUCT_NAME: CranfordHistoricalAR
         INFOPLIST_FILE: CranfordHistoricalAR/Info.plist
         GENERATE_INFOPLIST_FILE: "NO"
         CODE_SIGN_STYLE: Automatic
@@ -90,3 +92,22 @@ targets:
       - sdk: AVFoundation.framework
     scheme:
       gatherCoverageData: false
+      testTargets:
+        - CranfordHistoricalARTests
+
+  # Host-app unit tests (view-model flows that need CoreLocation/UIKit types). Run on a Mac with
+  # Product > Test; the platform-independent logic is covered by Packages/TourCore on any OS.
+  CranfordHistoricalARTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: CranfordHistoricalARTests
+    dependencies:
+      - target: CranfordHistoricalAR
+      - package: TourCore
+        product: TourCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.cranford.historicalar.tests
+        GENERATE_INFOPLIST_FILE: "YES"
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) DEBUG"

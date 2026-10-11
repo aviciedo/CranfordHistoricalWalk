@@ -4,6 +4,7 @@ import TourCore
 /// First screen (spec §23).
 struct HomeView: View {
     @Environment(TourViewModel.self) private var tour
+    @State private var isShowingDeveloperControls = false
 
     var body: some View {
         GeometryReader { proxy in
@@ -13,6 +14,7 @@ struct HomeView: View {
                 VStack(spacing: 0) {
                     header
                         .padding(.top, 24)
+                        .modifier(DebugMenuGesture(isPresented: $isShowingDeveloperControls))
 
                     Spacer(minLength: 16)
 
@@ -88,6 +90,25 @@ struct HomeView: View {
                 }
             }
         }
+    }
+}
+
+/// Debug builds: a long press on the title opens Developer Controls (spec §19 "only accessible
+/// through a debug menu"). Compiles to a no-op in Release.
+private struct DebugMenuGesture: ViewModifier {
+    @Binding var isPresented: Bool
+
+    func body(content: Content) -> some View {
+        #if DEVELOPER_MENU
+        content
+            .onLongPressGesture(minimumDuration: 1.2) { isPresented = true }
+            .sheet(isPresented: $isPresented) {
+                DeveloperControlsView()
+                    .presentationDetents([.large])
+            }
+        #else
+        content
+        #endif
     }
 }
 
@@ -194,6 +215,8 @@ struct StylizedCranfordMapView: View {
 }
 
 #Preview {
-    HomeView()
-        .environment(AppDependencies.preview().tourViewModel)
+    let deps = AppDependencies.preview()
+    return HomeView()
+        .environment(deps)
+        .environment(deps.tourViewModel)
 }
