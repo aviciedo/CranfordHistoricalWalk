@@ -48,11 +48,10 @@ struct ARViewContainer: UIViewRepresentable {
         // to assume main-actor isolation instead of hopping asynchronously for every frame.
 
         nonisolated func session(_ session: ARSession, didUpdate frame: ARFrame) {
-            let transform = frame.camera.transform
-            let tracking = frame.camera.trackingState
-            let timestamp = frame.timestamp
+            // ARSession delivers on the main queue by default. The frame is forwarded into
+            // GARSession.update during this call and is not retained.
             MainActor.assumeIsolated {
-                viewModel.frameDidUpdate(cameraTransform: transform, trackingState: tracking, timestamp: timestamp)
+                viewModel.frameDidUpdate(frame)
             }
         }
 

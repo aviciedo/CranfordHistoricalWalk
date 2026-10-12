@@ -4,77 +4,68 @@ import Foundation
 import simd
 import TourCore
 
-/// How much to trust geographic placement of AR content right now (spec §15, §21).
-enum GeoLocalizationQuality: Equatable {
-    /// No fix, no AR tracking, or the provider is not attached.
-    case unavailable
-    /// Fix exists but accuracy is poor (> 25 m or heading error > 30°).
-    case poor
-    /// Typical outdoor GPS + compass.
-    case fair
-    /// VPS-grade (ARCore Geospatial) or very good GPS.
-    case good
-
-    var isUsable: Bool { self == .fair || self == .good }
-}
-
 struct GeoPose: Equatable, Sendable {
     var coordinate: GeoCoordinate
     var horizontalAccuracy: Double
-    /// True heading in degrees when known.
+    /// True heading in degrees when known (0 = north, clockwise).
     var heading: Double?
     var headingAccuracy: Double?
+    /// WGS84 ellipsoid meters when known (Geospatial / ellipsoidalAltitude).
+    var altitude: Double?
     var timestamp: Date
 }
 
 /// Converts geographic coordinates into AR world-space positions.
 ///
-/// `CoreLocationGeoSpatialProvider` is the MVP implementation (GPS + compass + ARKit world tracking).
-/// `ARCoreGeoSpatialProvider` is the integration point for Google's Geospatial API / VPS; swapping
-/// providers requires no changes to `GeoAnchorManager` or the views.
+/// `CoreLocationGeoSpatialProvider` is GPS + compass + ARKit. `ARCoreGeoSpatialProvider` is Google's
+/// Geospatial API (VPS + GPS). `GeoAnchorManager` and the views talk only to this protocol.
 @MainActor
 protocol GeoSpatialProvider: AnyObject {
     var displayName: String { get }
+    var backend: GeoSpatialBackend { get }
     var quality: GeoLocalizationQuality { get }
     var pose: GeoPose? { get }
-
-    /// The world alignment the AR session should run with for this provider.
     var preferredWorldAlignment: ARConfiguration.WorldAlignment { get }
+    var fallbackReason: GeoSpatialFallbackReason? { get }
+    var vpsCoverage: VPSCoverage { get }
 
-    /// Called once the AR session is running.
     func attach(session: ARSession)
     func detach()
 
     /// Per-frame hook (already throttled by the caller). `cameraTransform` is ARKit world space.
     func update(cameraTransform: simd_float4x4, trackingState: ARCamera.TrackingState, timestamp: TimeInterval)
-
-    /// Fed from the app's single location source.
+    /// Live `ARFrame` (not retained). ARCore Geospatial requires `-[GARSession update:error:]`.
+    func update(frame: ARFrame)
+    /// Fed from the app's single location source. ARCore does not start a second location manager.
     func update(location: LocationSample?, heading: HeadingSample?)
 
-    /// World-space position for a geographic coordinate at the camera's height minus `heightBelowCamera`.
-    /// Returns `nil` when the provider cannot localize yet.
-    func worldPosition(for coordinate: GeoCoordinate, heightBelowCamera: Float) -> SIMD3<Float>?
-
-    /// Unit vector in world space pointing along a compass bearing on the ground plane.
+    /// World-space position for a geographic coordinate.
+    /// `altitude` is WGS84 ellipsoid meters when known; `nil` means “camera height minus `heightBelowCamera`”.
+    func worldPosition(for coordinate: GeoCoordinate, altitude: Double?, heightBelowCamera: Float) -> SIMD3<Float>?
     func worldDirection(forBearing bearing: Double) -> SIMD3<Float>?
+}
+
+extension GeoSpatialProvider {
+    var statusNotice: String? {
+        if let fallbackReason { return fallbackReason.userMessage }
+        if let vps = vpsCoverage.userMessage { return vps }
+        return nil
+    }
 }
 
 // MARK: - Core Location + ARKit implementation
 
 /// Uses ARKit's `.gravityAndHeading` alignment (−Z = true north, +X = east) so that a compass bearing
 /// maps directly onto world axes, then offsets from the most recent (GPS fix, camera position) pair.
-/// ARKit keeps relative motion accurate between GPS fixes; GPS keeps the pair from drifting.
-///
-/// Accuracy is bounded by GPS (3–10 m outdoors) and compass error (5–25°). The quality value tells
-/// the UI when to warn the user instead of pretending to be precise.
 @MainActor
 final class CoreLocationGeoSpatialProvider: GeoSpatialProvider {
     let displayName = "GPS + compass (Core Location)"
+    let backend: GeoSpatialBackend = .coreLocation
     private(set) var quality: GeoLocalizationQuality = .unavailable
     private(set) var pose: GeoPose?
-
-    /// Falls back to `.gravity` + manual yaw correction on devices without a compass.
     let preferredWorldAlignment: ARConfiguration.WorldAlignment
+    private(set) var fallbackReason: GeoSpatialFallbackReason?
+    let vpsCoverage: VPSCoverage = .unknown
 
     private struct ReferencePair {
         var coordinate: GeoCoordinate
@@ -92,8 +83,9 @@ final class CoreLocationGeoSpatialProvider: GeoSpatialProvider {
     /// Only used with `.gravity` alignment: rotation (radians) from ARKit −Z to true north.
     private var yawToNorth: Float?
 
-    init(hasCompass: Bool = CLLocationManager.headingAvailable()) {
+    init(hasCompass: Bool = CLLocationManager.headingAvailable(), fallbackReason: GeoSpatialFallbackReason? = nil) {
         preferredWorldAlignment = hasCompass ? .gravityAndHeading : .gravity
+        self.fallbackReason = fallbackReason
     }
 
     func attach(session: ARSession) {
@@ -109,19 +101,19 @@ final class CoreLocationGeoSpatialProvider: GeoSpatialProvider {
         quality = .unavailable
     }
 
+    func update(frame: ARFrame) {}
+
     func update(cameraTransform: simd_float4x4, trackingState: ARCamera.TrackingState, timestamp: TimeInterval) {
         self.cameraTransform = cameraTransform
         self.trackingState = trackingState
-        // Pair the newest GPS fix with the camera position as soon as a frame is available.
         if let location = pendingLocation {
             pendingLocation = nil
             bind(location: location, cameraPosition: cameraTransform.translation)
         }
         if preferredWorldAlignment == .gravity, let heading = latestHeading, heading.isReliable {
-            // Device yaw in ARKit world: direction the camera looks projected on the ground.
             let forward = -SIMD3<Float>(cameraTransform.columns.2.x, 0, cameraTransform.columns.2.z)
             if simd_length(forward) > 0.2 {
-                let cameraYaw = atan2(forward.x, -forward.z) // radians clockwise from −Z
+                let cameraYaw = atan2(forward.x, -forward.z)
                 let trueYaw = Float(heading.bestHeading * .pi / 180)
                 yawToNorth = trueYaw - cameraYaw
             }
@@ -142,13 +134,13 @@ final class CoreLocationGeoSpatialProvider: GeoSpatialProvider {
             horizontalAccuracy: location.horizontalAccuracy,
             heading: heading?.bestHeading,
             headingAccuracy: heading?.accuracy,
+            altitude: location.altitude,
             timestamp: location.timestamp
         )
         recomputeQuality()
     }
 
     private func bind(location: LocationSample, cameraPosition: SIMD3<Float>) {
-        // Prefer not to replace a good reference with a worse one unless the old one is stale.
         if let reference, location.horizontalAccuracy > reference.accuracy * 1.5,
            Date().timeIntervalSince(reference.date) < 20 {
             return
@@ -166,7 +158,7 @@ final class CoreLocationGeoSpatialProvider: GeoSpatialProvider {
         return direction
     }
 
-    func worldPosition(for coordinate: GeoCoordinate, heightBelowCamera: Float) -> SIMD3<Float>? {
+    func worldPosition(for coordinate: GeoCoordinate, altitude: Double?, heightBelowCamera: Float) -> SIMD3<Float>? {
         guard let reference, let cameraTransform else { return nil }
         let offset = GeoMath.localOffset(of: coordinate, from: reference.coordinate)
         var delta = SIMD3<Float>(Float(offset.east), 0, Float(-offset.north))
@@ -188,53 +180,72 @@ final class CoreLocationGeoSpatialProvider: GeoSpatialProvider {
         guard session != nil, let pose else { quality = .unavailable; return }
         guard case .normal = trackingState, reference != nil else { quality = .unavailable; return }
         if preferredWorldAlignment == .gravity && yawToNorth == nil { quality = .unavailable; return }
-        let headingError = pose.headingAccuracy ?? 15
-        if pose.horizontalAccuracy > 25 || headingError > 30 || headingError < 0 {
-            quality = .poor
-        } else if pose.horizontalAccuracy <= 8 && headingError <= 12 {
-            quality = .good
-        } else {
-            quality = .fair
-        }
+        quality = GeoSpatialSelector.quality(horizontalAccuracy: pose.horizontalAccuracy, yawAccuracy: pose.headingAccuracy ?? -1)
     }
 }
 
-// MARK: - ARCore Geospatial integration point
+// MARK: - ARCore Geospatial
 
-#if ARCORE_GEOSPATIAL && canImport(ARCoreGeospatial)
+#if canImport(ARCoreGeospatial)
 import ARCoreGeospatial
 
-/// Google ARCore Geospatial API (VPS) provider. Compiled only when the ARCore package is linked and
-/// `ENABLE_ARCORE_GEOSPATIAL=1`. The structure follows Google's iOS Geospatial quickstart:
-/// create a `GARSession`, enable `geospatialMode`, forward every `ARFrame`, read
-/// `earth.cameraGeospatialTransform`, and create anchors with `createAnchor(coordinate:altitude:eastUpSouthQAnchor:)`.
-/// Verify names against the ARCore SDK version you link before shipping.
+/// Google ARCore Geospatial API. Official selectors (do not invent replacements):
+/// `+[GARSession sessionWithAPIKey:bundleIdentifier:error:]`
+/// `-[GARSession isGeospatialModeSupported:]` (`GARGeospatialModeEnabled`)
+/// `GARSessionConfiguration.geospatialMode`
+/// `-[GARSession setConfiguration:error:]`
+/// `-[GARSession update:error:]`
+/// `GAREarth.cameraGeospatialTransform` / `trackingState` / `earthState`
+/// `-[GARSession transformFromGeospatialCoordinate:altitude:eastUpSouthQTarget:error:]`
+/// `-[GARSession checkVPSAvailabilityAtCoordinate:completionHandler:]`
+/// Heading from `eastUpSouthQTarget` (`heading` is deprecated).
 @MainActor
 final class ARCoreGeoSpatialProvider: GeoSpatialProvider {
     let displayName = "ARCore Geospatial (VPS)"
+    let backend: GeoSpatialBackend = .arCoreGeospatial
     private(set) var quality: GeoLocalizationQuality = .unavailable
     private(set) var pose: GeoPose?
     let preferredWorldAlignment: ARConfiguration.WorldAlignment = .gravity
+    private(set) var fallbackReason: GeoSpatialFallbackReason?
+    private(set) var vpsCoverage: VPSCoverage = .unknown
 
     private let apiKey: String
     private var garSession: GARSession?
     private var arSession: ARSession?
-    private var lastFrame: GARFrame?
-    private var lastEarth: GAREarth?
+    private var lastAltitude: Double?
+    private var lastHeading: Double?
+    private var lastVPSCheck: Date?
+    private var lastVPSCoordinate: GeoCoordinate?
 
     init(apiKey: String) { self.apiKey = apiKey }
 
     func attach(session: ARSession) {
         arSession = session
+        fallbackReason = nil
+        quality = .unavailable
+        pose = nil
         do {
+            // Official: +[GARSession sessionWithAPIKey:bundleIdentifier:error:]
             let gar = try GARSession(apiKey: apiKey, bundleIdentifier: nil)
-            guard gar.isGeospatialModeSupported(.enabled) else { quality = .unavailable; return }
+            // Official: -[GARSession isGeospatialModeSupported:]
+            guard gar.isGeospatialModeSupported(.enabled) else {
+                fallbackReason = .deviceUnsupported
+                garSession = nil
+                return
+            }
             let config = GARSessionConfiguration()
             config.geospatialMode = .enabled
             var error: NSError?
+            // Official: -[GARSession setConfiguration:error:]
             gar.setConfiguration(config, error: &error)
-            if error == nil { garSession = gar }
+            if let error {
+                fallbackReason = .sessionConfigurationFailed
+                garSession = nil
+                return
+            }
+            garSession = gar
         } catch {
+            fallbackReason = .sessionConfigurationFailed
             garSession = nil
         }
     }
@@ -242,72 +253,132 @@ final class ARCoreGeoSpatialProvider: GeoSpatialProvider {
     func detach() {
         garSession = nil
         arSession = nil
-        lastEarth = nil
+        lastAltitude = nil
         quality = .unavailable
+        pose = nil
     }
 
-    func update(cameraTransform: simd_float4x4, trackingState: ARCamera.TrackingState, timestamp: TimeInterval) {
-        // Frames are forwarded by `GeoAnchorManager.forward(frame:)` because this hook only has the transform.
-    }
+    func update(cameraTransform: simd_float4x4, trackingState: ARCamera.TrackingState, timestamp: TimeInterval) {}
 
-    /// Call with the live ARFrame (not retained beyond this call).
-    func forward(frame: ARFrame) {
-        guard let garSession, let garFrame = try? garSession.update(frame) else { return }
-        guard let earth = garFrame.earth, earth.trackingState == .tracking, let t = earth.cameraGeospatialTransform else {
+    func update(frame: ARFrame) {
+        guard let garSession else { return }
+        let garFrame: GARFrame
+        do {
+            // Official: -[GARSession update:error:]
+            garFrame = try garSession.update(frame)
+        } catch {
+            return
+        }
+        // Do not retain `garFrame` / `earth` beyond this call.
+        guard let earth = garFrame.earth else {
             quality = .unavailable
             return
         }
-        lastEarth = earth
+        if let reason = GeoSpatialSelector.fallbackReason(fromEarthStateCode: earth.earthState.rawValue) {
+            fallbackReason = reason
+            quality = .unavailable
+            pose = nil
+            return
+        }
+        guard earth.trackingState == .tracking, let transform = earth.cameraGeospatialTransform else {
+            quality = .unavailable
+            return
+        }
+        let heading = ARCoreGeoSpatialProvider.headingDegrees(eastUpSouthQTarget: transform.eastUpSouthQTarget)
+        lastAltitude = transform.altitude
+        lastHeading = heading
         pose = GeoPose(
-            coordinate: GeoCoordinate(latitude: t.coordinate.latitude, longitude: t.coordinate.longitude),
-            horizontalAccuracy: t.horizontalAccuracy,
-            heading: t.heading,
-            headingAccuracy: t.headingAccuracy,
+            coordinate: GeoCoordinate(latitude: transform.coordinate.latitude, longitude: transform.coordinate.longitude),
+            horizontalAccuracy: transform.horizontalAccuracy,
+            heading: heading,
+            headingAccuracy: transform.orientationYawAccuracy,
+            altitude: transform.altitude,
             timestamp: Date()
         )
-        quality = t.horizontalAccuracy <= 5 && t.headingAccuracy <= 10 ? .good : (t.horizontalAccuracy <= 15 ? .fair : .poor)
+        quality = GeoSpatialSelector.quality(
+            horizontalAccuracy: transform.horizontalAccuracy,
+            yawAccuracy: transform.orientationYawAccuracy
+        )
+        maybeCheckVPS(at: pose?.coordinate)
     }
 
     func update(location: LocationSample?, heading: HeadingSample?) {
-        // ARCore computes its own pose; Core Location is only used by ARCore internally.
+        // Location still comes from TourViewModel → LocationService. ARCore consumes camera frames
+        // for the geospatial pose; we do not start another CLLocationManager.
+        if pose == nil, let location {
+            maybeCheckVPS(at: location.coordinate)
+        }
     }
 
-    func worldPosition(for coordinate: GeoCoordinate, heightBelowCamera: Float) -> SIMD3<Float>? {
-        guard let garSession, let earth = lastEarth, earth.trackingState == .tracking, let t = earth.cameraGeospatialTransform else { return nil }
-        // Terrain/rooftop anchors would be preferable; a plain geospatial anchor at camera altitude is the MVP path.
-        let anchor = try? garSession.createAnchor(
-            coordinate: CLLocationCoordinate2D(latitude: coordinate.latitude, longitude: coordinate.longitude),
-            altitude: t.altitude - Double(heightBelowCamera),
-            eastUpSouthQAnchor: simd_quatf(ix: 0, iy: 0, iz: 0, r: 1)
+    func worldPosition(for coordinate: GeoCoordinate, altitude: Double?, heightBelowCamera: Float) -> SIMD3<Float>? {
+        guard let garSession, quality != .unavailable, let lastAltitude else { return nil }
+        let ellipsoidAltitude = altitude ?? (lastAltitude - Double(heightBelowCamera))
+        var error: NSError?
+        // Official: -[GARSession transformFromGeospatialCoordinate:altitude:eastUpSouthQTarget:error:]
+        // Identity EUS: +X east, +Y up, +Z south. RealityKit yaws the sign toward the user separately.
+        let matrix = garSession.transform(
+            fromGeospatialCoordinate: CLLocationCoordinate2D(latitude: coordinate.latitude, longitude: coordinate.longitude),
+            altitude: ellipsoidAltitude,
+            eastUpSouthQTarget: simd_quatf(ix: 0, iy: 0, iz: 0, r: 1),
+            error: &error
         )
-        return anchor?.transform.translation
+        if error != nil { return nil }
+        return matrix.translation
     }
 
     func worldDirection(forBearing bearing: Double) -> SIMD3<Float>? {
-        guard let earth = lastEarth, let t = earth.cameraGeospatialTransform, let arSession, let frame = arSession.currentFrame else { return nil }
-        // Rotate ARKit forward by the difference between true heading and camera yaw.
+        guard let lastHeading, let arSession, let frame = arSession.currentFrame else { return nil }
         let cam = frame.camera.transform
         let forward = -SIMD3<Float>(cam.columns.2.x, 0, cam.columns.2.z)
+        guard simd_length(forward) > 0.1 else { return nil }
         let cameraYaw = atan2(forward.x, -forward.z)
-        let yawToNorth = Float(t.heading * .pi / 180) - cameraYaw
+        let yawToNorth = Float(lastHeading * .pi / 180) - cameraYaw
         let θ = Float(bearing * .pi / 180) - yawToNorth
         return SIMD3<Float>(sin(θ), 0, -cos(θ))
     }
+
+    /// Yaw analogous to compass heading: identity EUS looks north (camera −Z = −south).
+    static func headingDegrees(eastUpSouthQTarget q: simd_quatf) -> Double {
+        let forwardEUS = simd_act(q, SIMD3<Float>(0, 0, -1))
+        return GeoMath.normalizeBearing(Double(atan2(forwardEUS.x, -forwardEUS.z) * 180 / .pi))
+    }
+
+    private func maybeCheckVPS(at coordinate: GeoCoordinate?) {
+        guard let garSession, let coordinate else { return }
+        if let lastVPSCheck, Date().timeIntervalSince(lastVPSCheck) < 30 { return }
+        if let lastVPSCoordinate, GeoMath.distance(from: lastVPSCoordinate, to: coordinate) < 150, lastVPSCheck != nil {
+            return
+        }
+        lastVPSCheck = Date()
+        lastVPSCoordinate = coordinate
+        // Official: -[GARSession checkVPSAvailabilityAtCoordinate:completionHandler:]
+        _ = garSession.checkVPSAvailability(
+            at: CLLocationCoordinate2D(latitude: coordinate.latitude, longitude: coordinate.longitude)
+        ) { [weak self] availability in
+            MainActor.assumeIsolated {
+                self?.vpsCoverage = GeoSpatialSelector.coverage(fromVPSAvailabilityCode: Int(availability.rawValue))
+            }
+        }
+    }
 }
 #else
-/// Placeholder so the type exists in every build. Enable the ARCore package to use the real one.
+/// Compiled on Linux and any Mac build that has not resolved the ARCore package.
 @MainActor
 final class ARCoreGeoSpatialProvider: GeoSpatialProvider {
     let displayName = "ARCore Geospatial (not linked)"
+    let backend: GeoSpatialBackend = .arCoreGeospatial
     let quality: GeoLocalizationQuality = .unavailable
     let pose: GeoPose? = nil
     let preferredWorldAlignment: ARConfiguration.WorldAlignment = .gravity
+    let fallbackReason: GeoSpatialFallbackReason? = .sdkNotLinked
+    let vpsCoverage: VPSCoverage = .unknown
     init(apiKey: String) {}
     func attach(session: ARSession) {}
     func detach() {}
     func update(cameraTransform: simd_float4x4, trackingState: ARCamera.TrackingState, timestamp: TimeInterval) {}
+    func update(frame: ARFrame) {}
     func update(location: LocationSample?, heading: HeadingSample?) {}
-    func worldPosition(for coordinate: GeoCoordinate, heightBelowCamera: Float) -> SIMD3<Float>? { nil }
+    func worldPosition(for coordinate: GeoCoordinate, altitude: Double?, heightBelowCamera: Float) -> SIMD3<Float>? { nil }
     func worldDirection(forBearing bearing: Double) -> SIMD3<Float>? { nil }
 }
 #endif

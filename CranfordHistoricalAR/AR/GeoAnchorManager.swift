@@ -26,7 +26,7 @@ enum ARLocalizationState: Equatable {
         case .tracking(let q):
             switch q {
             case .good, .fair: return nil
-            case .poor: return "AR positioning is approximate — GPS or compass accuracy is low."
+            case .poor: return "AR positioning is approximate — localization accuracy is low."
             case .unavailable: return "AR positioning is temporarily unavailable. Continue walking and try again."
             }
         case .limited(let reason): return reason
@@ -73,6 +73,11 @@ final class GeoAnchorManager {
     @ObservationIgnored private var trackingState: ARCamera.TrackingState = .notAvailable
     @ObservationIgnored private var isInterrupted = false
 
+    /// Called when Geospatial cannot be used and Core Location should take over.
+    var onNeedsFallback: ((GeoSpatialFallbackReason) -> Void)?
+    @ObservationIgnored private var geospatialWaitStarted: TimeInterval?
+    @ObservationIgnored private var didRequestFallback = false
+
     /// Frames are processed at most this often (seconds). ARKit delivers 60 Hz; 10 Hz is plenty.
     static let frameInterval: TimeInterval = 0.1
 
@@ -83,10 +88,23 @@ final class GeoAnchorManager {
 
     var preferredWorldAlignment: ARConfiguration.WorldAlignment { provider.preferredWorldAlignment }
 
+    /// Combines ARKit tracking copy with Geospatial fallback / VPS-reduced-accuracy copy.
+    var userFacingNotice: String? {
+        if let notice = provider.statusNotice {
+            if case .tracking(let quality) = localizationState, quality.isUsable {
+                return notice
+            }
+            if localizationState.userMessage == nil { return notice }
+        }
+        return localizationState.userMessage ?? provider.statusNotice
+    }
+
     /// Swap in a stronger provider (e.g. ARCore) later without touching the rest of the AR code.
     func replaceProvider(with newProvider: any GeoSpatialProvider, session: ARSession?) {
         provider.detach()
         provider = newProvider
+        geospatialWaitStarted = nil
+        didRequestFallback = false
         if let session { newProvider.attach(session: session) }
     }
 
@@ -97,6 +115,7 @@ final class GeoAnchorManager {
         provider.attach(session: session)
         localizationState = .initializing
         isInterrupted = false
+        geospatialWaitStarted = nil
     }
 
     func sessionDidStop() {
@@ -131,14 +150,19 @@ final class GeoAnchorManager {
 
     // MARK: Inputs
 
-    /// Called from the AR session delegate (main queue). Throttled; retains no `ARFrame`.
-    func frameDidUpdate(cameraTransform: simd_float4x4, trackingState: ARCamera.TrackingState, timestamp: TimeInterval) {
+    /// Called from the AR session delegate (main queue). Throttled; the `ARFrame` is not stored.
+    func frameDidUpdate(_ frame: ARFrame) {
+        let timestamp = frame.timestamp
         guard timestamp - lastFrameTime >= GeoAnchorManager.frameInterval else { return }
         lastFrameTime = timestamp
+        let cameraTransform = frame.camera.transform
+        let trackingState = frame.camera.trackingState
         self.cameraTransform = cameraTransform
         self.trackingState = trackingState
+        provider.update(frame: frame)
         provider.update(cameraTransform: cameraTransform, trackingState: trackingState, timestamp: timestamp)
         refreshLocalizationState()
+        considerGeospatialFallback()
         placeContent(now: timestamp)
         placeSign(now: timestamp)
     }
@@ -181,7 +205,7 @@ final class GeoAnchorManager {
 
         // Geographic placement when the provider can localize; otherwise a comfortable spot ahead.
         var base: SIMD3<Float>
-        if let geo = provider.worldPosition(for: request.stop.coordinate, heightBelowCamera: GeoAnchorManager.signBaseBelowCamera) {
+        if let geo = provider.worldPosition(for: request.stop.coordinate, altitude: request.stop.altitude, heightBelowCamera: GeoAnchorManager.signBaseBelowCamera) {
             base = geo
         } else {
             let forward = -SIMD3<Float>(cameraTransform.columns.2.x, 0, cameraTransform.columns.2.z)
@@ -266,8 +290,8 @@ final class GeoAnchorManager {
     }
 
     /// World position for a stop, used by the sign (Stage 5) and by debugging overlays.
-    func worldPosition(for coordinate: GeoCoordinate, heightBelowCamera: Float) -> SIMD3<Float>? {
-        provider.worldPosition(for: coordinate, heightBelowCamera: heightBelowCamera)
+    func worldPosition(for coordinate: GeoCoordinate, altitude: Double? = nil, heightBelowCamera: Float) -> SIMD3<Float>? {
+        provider.worldPosition(for: coordinate, altitude: altitude, heightBelowCamera: heightBelowCamera)
     }
 
     var cameraPosition: SIMD3<Float>? { cameraTransform?.translation }
@@ -285,6 +309,34 @@ final class GeoAnchorManager {
         case .normal:
             localizationState = .tracking(provider.quality)
         }
+    }
+
+    private func considerGeospatialFallback() {
+        guard provider.backend == .arCoreGeospatial, !didRequestFallback else { return }
+        if let reason = provider.fallbackReason {
+            switch reason {
+            case .deviceUnsupported, .sessionConfigurationFailed, .earthNotAuthorized, .earthResourceExhausted, .earthInternalError:
+                requestFallback(reason)
+                return
+            default:
+                break
+            }
+        }
+        guard case .normal = trackingState else { return }
+        if provider.quality.isUsable {
+            geospatialWaitStarted = nil
+            return
+        }
+        if geospatialWaitStarted == nil { geospatialWaitStarted = lastFrameTime }
+        if lastFrameTime - (geospatialWaitStarted ?? lastFrameTime) >= GeoSpatialSelector.localizationTimeout {
+            requestFallback(.localizationTimedOut)
+        }
+    }
+
+    private func requestFallback(_ reason: GeoSpatialFallbackReason) {
+        guard !didRequestFallback else { return }
+        didRequestFallback = true
+        onNeedsFallback?(reason)
     }
 
     static func message(for reason: ARCamera.TrackingState.Reason) -> String {

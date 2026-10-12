@@ -10,11 +10,13 @@ struct AppConfiguration: Sendable, Equatable {
 
     var googleMapsAPIKey: String
     var googleRoutesAPIKey: String
+    var googleARCoreAPIKey: String
     var directionsProvider: DirectionsProvider
     var arCoreGeospatialEnabled: Bool
 
     var hasGoogleMapsKey: Bool { AppConfiguration.looksLikeKey(googleMapsAPIKey) }
     var hasRoutesKey: Bool { AppConfiguration.looksLikeKey(googleRoutesAPIKey) }
+    var hasARCoreKey: Bool { AppConfiguration.looksLikeKey(googleARCoreAPIKey) }
 
     static func fromMainBundle() -> AppConfiguration {
         from(bundle: .main)
@@ -24,9 +26,12 @@ struct AppConfiguration: Sendable, Equatable {
         func string(_ key: String) -> String {
             (bundle.object(forInfoDictionaryKey: key) as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         }
+        let routes = string("GoogleRoutesAPIKey")
+        let arcore = string("GoogleARCoreAPIKey")
         return AppConfiguration(
             googleMapsAPIKey: string("GoogleMapsAPIKey"),
-            googleRoutesAPIKey: string("GoogleRoutesAPIKey"),
+            googleRoutesAPIKey: routes,
+            googleARCoreAPIKey: AppConfiguration.looksLikeKey(arcore) ? arcore : routes,
             directionsProvider: DirectionsProvider(rawValue: string("DirectionsProvider").lowercased()) ?? .routes,
             arCoreGeospatialEnabled: string("EnableARCoreGeospatial") == "1"
         )
@@ -37,5 +42,5 @@ struct AppConfiguration: Sendable, Equatable {
         !value.isEmpty && !value.hasPrefix("$(") && !value.contains("your-")
     }
 
-    static let empty = AppConfiguration(googleMapsAPIKey: "", googleRoutesAPIKey: "", directionsProvider: .routes, arCoreGeospatialEnabled: false)
+    static let empty = AppConfiguration(googleMapsAPIKey: "", googleRoutesAPIKey: "", googleARCoreAPIKey: "", directionsProvider: .routes, arCoreGeospatialEnabled: false)
 }

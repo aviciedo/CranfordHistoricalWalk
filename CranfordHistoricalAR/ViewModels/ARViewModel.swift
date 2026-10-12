@@ -48,7 +48,8 @@ final class ARViewModel {
     // MARK: Derived HUD values
 
     var localizationState: ARLocalizationState { geoAnchors.localizationState }
-    var statusMessage: String? { geoAnchors.localizationState.userMessage }
+    var statusMessage: String? { geoAnchors.userFacingNotice }
+    var geoBackendName: String { geoAnchors.provider.displayName }
     var destinationName: String? { tour.currentStop?.name }
     var distanceText: String { tour.remainingDistanceText }
     var timeText: String { tour.remainingTimeText }
@@ -99,6 +100,9 @@ final class ARViewModel {
 
     func arViewDidLoad(_ arView: ARView) {
         self.arView = arView
+        geoAnchors.onNeedsFallback = { [weak self] reason in
+            self?.fallbackToCoreLocation(reason: reason)
+        }
         if cameraPermission == .authorized { runSession(on: arView) }
         startObservingTour()
     }
@@ -188,8 +192,19 @@ final class ARViewModel {
 
     // MARK: Session delegate forwarding
 
-    func frameDidUpdate(cameraTransform: simd_float4x4, trackingState: ARCamera.TrackingState, timestamp: TimeInterval) {
-        geoAnchors.frameDidUpdate(cameraTransform: cameraTransform, trackingState: trackingState, timestamp: timestamp)
+    func frameDidUpdate(_ frame: ARFrame) {
+        geoAnchors.frameDidUpdate(frame)
+    }
+
+    /// Geospatial unavailable: same AR session owner, same LocationService, Core Location provider.
+    func fallbackToCoreLocation(reason: GeoSpatialFallbackReason) {
+        guard geoAnchors.provider.backend == .arCoreGeospatial else { return }
+        let next = CoreLocationGeoSpatialProvider(fallbackReason: reason)
+        geoAnchors.replaceProvider(with: next, session: arView?.session)
+        if let arView {
+            isSessionRunning = false
+            runSession(on: arView)
+        }
     }
 
     func trackingStateDidChange(_ state: ARCamera.TrackingState) {

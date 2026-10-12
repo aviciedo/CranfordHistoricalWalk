@@ -10,7 +10,7 @@ Walk toward a historical site, follow AR arrows, and a large AR historical sign 
 
 - macOS with **Xcode 16.0+** (Google Maps SDK 11.x requires it), iOS 17.0+ device for AR (the Simulator runs the map and Developer Controls but not ARKit).
 - [XcodeGen](https://github.com/yonaskolb/XcodeGen) 2.40+ — `brew install xcodegen`.
-- A Google Cloud project with billing enabled and these APIs turned on: **Maps SDK for iOS**, **Routes API** (the legacy Directions API is not available to new projects; see below).
+- A Google Cloud project with billing enabled and these APIs turned on: **Maps SDK for iOS**, **Routes API** (the legacy Directions API is not available to new projects; see below). **ARCore API** is required only if you turn on Geospatial.
 
 ## Open, build, run (Mac)
 
@@ -22,7 +22,8 @@ open CranfordHistoricalAR.xcodeproj
 ```
 
 Select the `CranfordHistoricalAR` scheme, pick your iPhone, and run. Xcode resolves the Swift packages
-(`GoogleMaps` 11.1.0 from `https://github.com/googlemaps/ios-maps-sdk`, and the local `Packages/TourCore`).
+(`GoogleMaps` 11.1.0 from `https://github.com/googlemaps/ios-maps-sdk`, `ARCoreGeospatial` from
+`https://github.com/google-ar/arcore-ios-sdk` up to next minor of 1.56.0, and the local `Packages/TourCore`).
 
 ### Run the platform-independent tests anywhere
 
@@ -63,13 +64,49 @@ insecure HTTP only for `preservecranford.com`.
 | --- | --- |
 | `GOOGLE_MAPS_API_KEY` | Maps SDK for iOS. Restrict the key to iOS apps with bundle id `com.cranford.historicalar`. |
 | `GOOGLE_ROUTES_API_KEY` | Routes API (`computeRoutes`, `travelMode: WALK`). Can be the same key during development. |
+| `GOOGLE_ARCORE_API_KEY` | ARCore Geospatial (`GARSession` API-key auth). If empty, the Routes key is reused. Restrict the key to bundle id `com.cranford.historicalar` **and** the ARCore API. |
 | `DIRECTIONS_PROVIDER` | `routes` (default) or `legacy` for Cloud projects that still have the Directions API enabled. |
-| `ENABLE_ARCORE_GEOSPATIAL` | `0` (default). Set `1` only after enabling the ARCore package in `project.yml`. |
+| `ENABLE_ARCORE_GEOSPATIAL` | `0` (default). Set `1` to *request* Geospatial at runtime. Still needs key, precise location, network, device support, and first-run consent. |
 | `DEVELOPMENT_TEAM` | Apple Team ID for device signing. |
 
-The xcconfig values flow into `Info.plist` (`GoogleMapsAPIKey`, `GoogleRoutesAPIKey`, …) and are read by
+The xcconfig values flow into `Info.plist` (`GoogleMapsAPIKey`, `GoogleRoutesAPIKey`, `GoogleARCoreAPIKey`, …) and are read by
 `AppConfiguration`. If keys are missing the app still runs: the map shows a configuration notice and routes fall
-back to clearly labeled straight-line estimates.
+back to clearly labeled straight-line estimates. Geospatial falls back to GPS + compass.
+
+## ARCore Geospatial (Mac + device)
+
+The `ARCoreGeospatial` product is linked via SPM (`project.yml`: `https://github.com/google-ar/arcore-ios-sdk`,
+up to next minor from **1.56.0**). Linker flags already include `$(inherited) -ObjC`; bitcode is off; modules
+and auto-linking are on.
+
+This does **not** mean Geospatial is on. Runtime still requires all of:
+
+1. Google Cloud: enable **ARCore API**. Create (or extend) an API key. If the key is restricted, allow
+   bundle id `com.cranford.historicalar` and the ARCore API. Maps-only restrictions produce
+   `GAREarthStateErrorNotAuthorized`.
+2. `GOOGLE_ARCORE_API_KEY` in `Secrets.xcconfig` (or a reusable Routes key) and `ENABLE_ARCORE_GEOSPATIAL = 1`.
+3. Location When In Use **and** precise location (`PreciseLocationForAR`) **before** the Geospatial session is configured.
+4. Network (VPS and Cloud auth).
+5. First-run consent with Google’s required text (“To power this session, Google will process sensor data… Learn more”
+   → https://support.google.com/ar?p=how-google-play-services-for-ar-handles-your-data). The home screen also
+   discloses Google Play Services for AR / the Google Privacy Policy.
+6. A physical iPhone that reports `isGeospatialModeSupported(.enabled)`. The Simulator cannot run ARKit or Geospatial.
+
+`GARSession` is created with `sessionWithAPIKey:bundleIdentifier:error:`, configured with
+`geospatialMode = enabled`, and fed the same `ARSession` frames (`update:error:`). There is no second
+camera or `CLLocationManager`. Site placement uses
+`transformFromGeospatialCoordinate:altitude:eastUpSouthQTarget:error:` at the stop’s lat/lon and optional
+WGS84 ellipsoid `altitude` (otherwise camera geospatial altitude). Heading comes from `eastUpSouthQTarget`
+(`heading` is deprecated). VPS coverage is queried with `checkVPSAvailabilityAtCoordinate:completionHandler:`;
+missing VPS does **not** by itself fall back (Geospatial can still use GPS) but the HUD says accuracy is reduced.
+
+If Geospatial is unsupported, unauthorized, offline, declined, or does not localize within 12 seconds,
+`CoreLocationGeoSpatialProvider` takes over (ARKit `.gravityAndHeading`) and the HUD says positioning is
+GPS/compass and less precise. Arrival 35 m / departure 50 m, RealityKit signs, arrows, Maps routes, and
+Developer Controls stay as they are.
+
+**This repository’s Linux build cannot compile or run ARCore.** After `xcodegen generate` on a Mac, resolve
+packages, run on a device, and confirm Earth tracking in Cranford before treating Geospatial as working.
 
 ## Developer Mode (simulate the walk)
 
@@ -159,12 +196,13 @@ CranfordHistoricalARTests/  Host-app unit tests (Mac/Xcode)
 - **Arrival** opens the sign at 35 m and closes it only beyond 50 m (hysteresis), or when the user closes it.
   A stop counts as **visited** once its sign has been displayed; putting the sign away (close, walk away,
   "Continue") advances the tour — route, panel, AR arrows and destination update together.
-- **AR placement** uses ARKit `gravityAndHeading` alignment plus GPS/compass; distances to the sign are
-  clamped (2.4–9 m) and the HUD says "AR positioning is temporarily unavailable…" when tracking is poor.
-  ARCore Geospatial is an optional, off-by-default upgrade (`ENABLE_ARCORE_GEOSPATIAL=1` + package).
+- **AR placement** uses ARCore Geospatial when it is requested and actually localizing; otherwise ARKit
+  `gravityAndHeading` plus GPS/compass. Distances to the sign are clamped (2.4–9 m). The HUD says
+  "AR positioning is temporarily unavailable…" when tracking is poor, and names GPS/compass when Geospatial
+  is unavailable. `ENABLE_ARCORE_GEOSPATIAL=1` requests the upgrade; it still falls back instead of blocking the tour.
 
 ## Status
 
-All seven implementation stages are in place (project skeleton → maps → routing → AR arrows → AR sign →
-completion/summary → developer mode & polish). The pure logic is tested on Linux; the iOS app itself needs a
-Mac build (see `docs/build-report.md` in the project store for exactly what was and was not compiled).
+All seven implementation stages are in place, plus narration/HPAB catalog work and an ARCore Geospatial
+provider behind `GeoSpatialProvider`. The pure logic is tested on Linux; the iOS app and Geospatial itself
+need a Mac + device (see `docs/arcore-geospatial-report.md` in the project store).

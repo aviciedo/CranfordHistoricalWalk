@@ -8,23 +8,45 @@ struct ARTourView: View {
     @Environment(AppDependencies.self) private var dependencies
     @Environment(\.dismiss) private var dismiss
     @State private var model: ARViewModel?
+    @State private var awaitingGeospatialConsent = false
 
     var body: some View {
         ZStack {
-            if let model {
+            if awaitingGeospatialConsent {
+                ARCorePrivacyConsentView(
+                    onAccept: {
+                        ARCoreConsentStore.accept()
+                        awaitingGeospatialConsent = false
+                        startAR()
+                    },
+                    onDecline: {
+                        awaitingGeospatialConsent = false
+                        startAR()
+                    }
+                )
+            } else if let model {
                 content(model)
             } else {
                 Color.black.ignoresSafeArea()
             }
         }
         .task {
-            if model == nil {
-                model = ARViewModel(tour: tour, provider: dependencies.makeGeoSpatialProvider(), imageLoader: dependencies.imageLoader)
+            if model != nil || awaitingGeospatialConsent { return }
+            if dependencies.configuration.arCoreGeospatialEnabled, !ARCoreConsentStore.hasAccepted {
+                awaitingGeospatialConsent = true
+                return
             }
-            await model?.requestCameraAccessIfNeeded()
+            startAR()
         }
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(awaitingGeospatialConsent ? .light : .dark)
         .statusBarHidden(false)
+    }
+
+    private func startAR() {
+        if model == nil {
+            model = ARViewModel(tour: tour, provider: dependencies.makeGeoSpatialProvider(), imageLoader: dependencies.imageLoader)
+        }
+        Task { await model?.requestCameraAccessIfNeeded() }
     }
 
     @ViewBuilder

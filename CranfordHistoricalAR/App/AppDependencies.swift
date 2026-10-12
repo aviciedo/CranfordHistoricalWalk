@@ -30,14 +30,13 @@ final class AppDependencies {
         self.tourViewModel = tourViewModel
     }
 
-    /// One provider per AR session. ARCore is used only when it is actually compiled in.
+    /// One provider per AR session. Selection uses the existing LocationService state — no extra manager.
     func makeGeoSpatialProvider() -> any GeoSpatialProvider {
-        #if ARCORE_GEOSPATIAL && canImport(ARCoreGeospatial)
-        if configuration.arCoreGeospatialEnabled, configuration.hasRoutesKey {
-            return ARCoreGeoSpatialProvider(apiKey: configuration.googleRoutesAPIKey)
-        }
-        #endif
-        return CoreLocationGeoSpatialProvider()
+        GeoSpatialProviderFactory.make(
+            configuration: configuration,
+            locationAuthorized: tourViewModel.locationAuthorization == .authorized,
+            preciseLocation: tourViewModel.isPreciseLocation
+        )
     }
 
     static func live(configuration: AppConfiguration) -> AppDependencies {

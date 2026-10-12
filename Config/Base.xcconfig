@@ -5,6 +5,7 @@
 // instead of crashing.
 GOOGLE_MAPS_API_KEY =
 GOOGLE_ROUTES_API_KEY =
+GOOGLE_ARCORE_API_KEY =
 
 // "routes" (Google Routes API, default — required for Cloud projects created after 2025-03-01)
 // or "legacy" (Directions API, only for projects that still have it enabled).

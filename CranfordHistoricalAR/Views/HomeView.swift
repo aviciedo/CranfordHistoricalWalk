@@ -90,6 +90,8 @@ struct HomeView: View {
                         .multilineTextAlignment(.center)
                         .lineLimit(3)
                 }
+                ARCoreHomeDisclosure()
+                    .padding(.top, 4)
             }
         }
     }

@@ -78,5 +78,9 @@
 	<string>$(DIRECTIONS_PROVIDER)</string>
 	<key>EnableARCoreGeospatial</key>
 	<string>$(ENABLE_ARCORE_GEOSPATIAL)</string>
+	<key>GoogleARCoreAPIKey</key>
+	<string>$(GOOGLE_ARCORE_API_KEY)</string>
+	<key>ARCorePrivacyNotice</key>
+	<string>To power this session, Google will process sensor data (e.g., camera and location). This application runs on Google Play Services for AR (ARCore), which is provided by Google and governed by the Google Privacy Policy.</string>
 </dict>
 </plist>

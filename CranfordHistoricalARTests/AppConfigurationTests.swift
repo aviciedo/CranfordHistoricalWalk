@@ -8,6 +8,7 @@ final class AppConfigurationTests: XCTestCase {
         XCTAssertFalse(AppConfiguration.looksLikeKey("$(GOOGLE_MAPS_API_KEY)"), "unexpanded xcconfig variable")
         XCTAssertFalse(AppConfiguration.looksLikeKey("your-maps-key-here"), "Secrets.example.xcconfig placeholder")
         XCTAssertTrue(AppConfiguration.looksLikeKey("AIzaSyExampleExampleExampleExample"))
+        XCTAssertFalse(AppConfiguration.looksLikeKey("AIza...your-arcore-api-key..."))
     }
 
     func testMainBundleConfigurationNeverCrashesWithoutSecrets() {

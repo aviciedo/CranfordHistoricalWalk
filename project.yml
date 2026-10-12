@@ -31,12 +31,12 @@ packages:
   # Platform-independent tour logic, unit-tested on Linux/macOS with `swift test`.
   TourCore:
     path: Packages/TourCore
-  # OPTIONAL — ARCore Geospatial. Not linked by default (spec §15: must not block the MVP).
-  # To enable: uncomment this package, the `ARCoreGeospatial` dependency below, and set
-  # ENABLE_ARCORE_GEOSPATIAL=1 in Secrets.xcconfig. Also enable the "ARCore API" in Google Cloud.
-  # ARCore:
-  #   url: https://github.com/google-ar/arcore-ios-sdk
-  #   minorVersion: 1.56.0
+  # ARCore Geospatial (SPM since 1.36.0). Latest checked 2026-10-12: 1.56.0.
+  # Runtime still requires ENABLE_ARCORE_GEOSPATIAL=1, an ARCore API key, precise location,
+  # network, device support, and first-run consent. Google's install rule is "Up to Next Minor".
+  ARCore:
+    url: https://github.com/google-ar/arcore-ios-sdk
+    minorVersion: 1.56.0
 
 settings:
   base:
@@ -46,6 +46,7 @@ settings:
     TARGETED_DEVICE_FAMILY: "1"
     ENABLE_BITCODE: "NO"
     CLANG_ENABLE_MODULES: "YES"
+    CLANG_MODULES_AUTOLINK: "YES"
     ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES: "YES"
     # Required by ARCore (harmless otherwise); keeps the ARCore opt-in a one-line change.
     OTHER_LDFLAGS: "$(inherited) -ObjC"
@@ -84,12 +85,13 @@ targets:
         product: GoogleMaps
       - package: TourCore
         product: TourCore
-      # - package: ARCore
-      #   product: ARCoreGeospatial
+      - package: ARCore
+        product: ARCoreGeospatial
       - sdk: ARKit.framework
       - sdk: RealityKit.framework
       - sdk: CoreLocation.framework
       - sdk: AVFoundation.framework
+      - sdk: Network.framework
     scheme:
       gatherCoverageData: false
       testTargets:

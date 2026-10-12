@@ -129,8 +129,22 @@ struct DeveloperControlsView: View {
             Section("Configuration") {
                 row("Maps SDK key", dependencies.configuration.hasGoogleMapsKey ? "present" : "missing")
                 row("Routes API key", dependencies.configuration.hasRoutesKey ? "present" : "missing")
+                row("ARCore API key", dependencies.configuration.hasARCoreKey ? "present" : "missing")
                 row("Directions provider", dependencies.configuration.directionsProvider.rawValue)
-                row("ARCore Geospatial", dependencies.configuration.arCoreGeospatialEnabled ? "requested" : "off")
+                row("ARCore Geospatial flag", dependencies.configuration.arCoreGeospatialEnabled ? "requested" : "off")
+                row("ARCore SDK linked", GeoSpatialProviderFactory.isSDKLinked ? "yes" : "no")
+                row("Geospatial consent", ARCoreConsentStore.hasAccepted ? "accepted" : "not accepted")
+                row("Precise location", tour.isPreciseLocation ? "yes" : "no")
+                row("Network", NetworkPathMonitor.shared.isSatisfied ? "satisfied" : "unsatisfied")
+                let selection = GeoSpatialProviderFactory.selection(
+                    configuration: dependencies.configuration,
+                    locationAuthorized: tour.locationAuthorization == .authorized,
+                    preciseLocation: tour.isPreciseLocation
+                )
+                row("Would use", selection.backend == .arCoreGeospatial ? "ARCore Geospatial" : "Core Location")
+                if let reason = selection.fallbackReason {
+                    Text(reason.userMessage).font(.footnote).foregroundStyle(AppTheme.warning)
+                }
                 row("Bundle", Bundle.main.bundleIdentifier ?? "—")
             }
         }
