@@ -62,6 +62,8 @@ struct NextStopCard: View {
                 }
             }
 
+            NarrationControls(stop: current)
+
             footnote
         }
     }

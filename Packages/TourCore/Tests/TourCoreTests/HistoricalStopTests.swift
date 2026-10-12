@@ -2,15 +2,18 @@ import XCTest
 @testable import TourCore
 
 final class HistoricalStopTests: XCTestCase {
-    func testBundledTourJSONIsThreeHPABStops() throws {
+    func testBundledTourJSONIsFiveHPABStops() throws {
         let document = try HistoricalStopDecoder.decode(Fixtures.data("historical_stops"))
         XCTAssertEqual(document.schemaVersion, 1)
-        XCTAssertEqual(document.stops.map(\.name), ["Droescher's Mill", "Cranford Hall", "Rahway River"])
-        XCTAssertEqual(document.stops.map(\.order), [1, 2, 3])
-        XCTAssertEqual(document.stops.map(\.id), ["hpab-001", "hpab-002", "hpab-003"])
+        XCTAssertEqual(document.stops.map(\.name), [
+            "Droescher's Mill", "Cranford Hall", "Rahway River", "First Baptist Church", "Cranford Hotel"
+        ])
+        XCTAssertEqual(document.stops.map(\.order), [1, 2, 3, 4, 5])
+        XCTAssertEqual(document.stops.map(\.id), ["hpab-001", "hpab-002", "hpab-003", "hpab-004", "hpab-005"])
         XCTAssertTrue(document.dataStatus?.contains("HPAB") == true)
         XCTAssertEqual(document.stops[0].imageName, "droeschers-mill")
-        for stop in document.stops {
+        let audioFiles = ["Droescher Mill.mp3", "Greystone.mp3", "Rahway River.mp3", "First Baptist.mp3", "Cranford Hotel.mp3"]
+        for (stop, file) in zip(document.stops, audioFiles) {
             XCTAssertFalse(stop.isSample)
             XCTAssertTrue(stop.coordinatesUnverified)
             XCTAssertEqual(stop.arrivalRadius, 35)
@@ -20,6 +23,7 @@ final class HistoricalStopTests: XCTestCase {
             }
             XCTAssertEqual(url.scheme, "http")
             XCTAssertTrue(url.host?.contains("preservecranford.com") == true)
+            XCTAssertEqual(url.lastPathComponent, file)
         }
     }
 

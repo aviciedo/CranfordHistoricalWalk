@@ -67,41 +67,44 @@ struct HomeStopCallout: View {
     var onDismiss: () -> Void
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill(isVisited ? AppTheme.visited : AppTheme.heritageGreen)
-                    .frame(width: 30, height: 30)
-                if isVisited {
-                    Image(systemName: "checkmark").font(.caption.weight(.bold)).foregroundStyle(.white)
-                } else {
-                    Text("\(stop.order)").font(.caption.weight(.bold)).foregroundStyle(.white)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(isVisited ? AppTheme.visited : AppTheme.heritageGreen)
+                        .frame(width: 30, height: 30)
+                    if isVisited {
+                        Image(systemName: "checkmark").font(.caption.weight(.bold)).foregroundStyle(.white)
+                    } else {
+                        Text("\(stop.order)").font(.caption.weight(.bold)).foregroundStyle(.white)
+                    }
                 }
-            }
-            VStack(alignment: .leading, spacing: 3) {
-                Text(stop.name)
-                    .font(.system(.subheadline, design: .serif).weight(.semibold))
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-                if !stop.address.isEmpty {
-                    Text(stop.address)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(stop.name)
+                        .font(.system(.subheadline, design: .serif).weight(.semibold))
                         .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if !stop.address.isEmpty {
+                        Text(stop.address)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+                    if stop.isSample {
+                        EyebrowText("Sample location", color: AppTheme.warning)
+                    }
                 }
-                if stop.isSample {
-                    EyebrowText("Sample location", color: AppTheme.warning)
+                Spacer(minLength: 0)
+                Button(action: onDismiss) {
+                    Image(systemName: "xmark")
+                        .font(.footnote.weight(.semibold))
+                        .frame(width: 28, height: 28)
+                        .background(.quaternary, in: Circle())
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Dismiss")
             }
-            Spacer(minLength: 0)
-            Button(action: onDismiss) {
-                Image(systemName: "xmark")
-                    .font(.footnote.weight(.semibold))
-                    .frame(width: 28, height: 28)
-                    .background(.quaternary, in: Circle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Dismiss")
+            NarrationControls(stop: stop)
         }
         .padding(12)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -110,8 +113,6 @@ struct HomeStopCallout: View {
                 .strokeBorder(.white.opacity(0.12), lineWidth: 0.5)
         )
         .shadow(color: .black.opacity(0.15), radius: 12, y: 4)
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isStaticText)
     }
 }
 

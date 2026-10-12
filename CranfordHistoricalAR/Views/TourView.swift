@@ -11,6 +11,7 @@ struct TourView: View {
     @State private var isShowingAR = false
     @State private var isShowingSignDetails = false
     @State private var isShowingDeveloperControls = false
+    @State private var listenStop: HistoricalStop?
     @State private var panelHeight: CGFloat = 170
 
     var body: some View {
@@ -98,8 +99,15 @@ struct TourView: View {
                         .presentationDragIndicator(.visible)
                 }
             }
+            .sheet(item: $listenStop) { stop in
+                HistoricalSignSheet(stop: stop)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+            }
             .onChange(of: mapModel.selectedStopID) { _, id in
-                guard id != nil else { return }
+                if let id, let stop = tour.stop(withID: id) {
+                    listenStop = stop
+                }
                 mapModel.select(stopID: nil)
             }
             .onChange(of: tour.currentStop?.id) { _, _ in
@@ -125,18 +133,36 @@ struct StopListSheet: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                Section {
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 12) {
+                    Text("Play any stop from here. You do not need to be at the GPS location.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 4)
+
                     ForEach(tour.stops) { stop in
-                        StopRow(stop: stop, isCurrent: stop.id == tour.currentStop?.id, isCompleted: tour.isCompleted(stop))
+                        VStack(alignment: .leading, spacing: 12) {
+                            StopRow(stop: stop, isCurrent: stop.id == tour.currentStop?.id, isCompleted: tour.isCompleted(stop))
+                            NarrationControls(stop: stop)
+                        }
+                        .padding(14)
+                        .background(AppTheme.parchment, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .strokeBorder(AppTheme.brass.opacity(0.2), lineWidth: 1)
+                        )
                     }
-                } footer: {
+
                     if let status = tour.dataStatus {
-                        Text(status).font(.caption2)
+                        Text(status)
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                            .padding(.top, 4)
                     }
                 }
+                .padding(16)
             }
-            .listStyle(.insetGrouped)
+            .background(AppTheme.parchment)
             .navigationTitle("Stops")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

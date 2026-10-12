@@ -27,7 +27,7 @@ extension HistoricalStop {
         return historicalDate
     }
 
-    /// Same three stops as the bundled walking tour (previews and host-app tests).
+    /// Same five stops as the bundled walking tour (previews and host-app tests).
     static let previewStops: [HistoricalStop] = [
         HistoricalStop(
             id: "hpab-001", name: "Droescher's Mill", latitude: 40.6551018, longitude: -74.2925808,
@@ -52,6 +52,22 @@ extension HistoricalStop {
             longDescription: "",
             audioURL: URL(string: "http://preservecranford.com/Audio/Rahway%20River.mp3"),
             order: 3, isSample: false, coordinatesUnverified: true
+        ),
+        HistoricalStop(
+            id: "hpab-004", name: "First Baptist Church", latitude: 40.6534498, longitude: -74.3027952,
+            address: "100 High St, Cranford, NJ",
+            shortDescription: "HPAB audio-tour stop. Play the recording for the site description. No transcript is bundled.",
+            longDescription: "",
+            audioURL: URL(string: "http://preservecranford.com/Audio/First%20Baptist.mp3"),
+            order: 4, isSample: false, coordinatesUnverified: true
+        ),
+        HistoricalStop(
+            id: "hpab-005", name: "Cranford Hotel", latitude: 40.65513, longitude: -74.304765,
+            address: "1 S Union Ave, Cranford, NJ",
+            shortDescription: "HPAB audio-tour stop. Play the recording for the site description. No transcript is bundled.",
+            longDescription: "",
+            audioURL: URL(string: "http://preservecranford.com/Audio/Cranford%20Hotel.mp3"),
+            order: 5, isSample: false, coordinatesUnverified: true
         )
     ]
 }

@@ -3,9 +3,10 @@
 A SwiftUI + ARKit/RealityKit + Core Location + Google Maps walking-tour MVP for Cranford, New Jersey.
 Walk toward a historical site, follow AR arrows, and a large AR historical sign appears when you arrive.
 
-> The bundled walking tour is **three** HPAB audio-tour stops (Droescher's Mill, Cranford Hall, Rahway River).
-> Names, addresses, and recordings come from the HPAB May 2020 brochure. Coordinates are **unverified geocodes**,
-> not surveyed site positions. No historical narrative is invented — play the recording for each stop.
+> The bundled walking tour is **five** HPAB audio-tour stops (Droescher's Mill, Cranford Hall, Rahway River,
+> First Baptist Church, Cranford Hotel). Names, addresses, and recordings come from the HPAB May 2020 brochure.
+> Coordinates are **unverified geocodes**, not surveyed site positions. No historical narrative is invented —
+> play the recording for each stop from anywhere; you do not need to be at the GPS location.
 
 ## Requirements
 
@@ -41,15 +42,22 @@ walking simulator.
 
 Each stop can play narration from `audioURL` (remote HTTP(S) or a bundled file name) or, if none is
 set, from speech synthesis of `longDescription` / `shortDescription`. `NarrationPlayer` is created
-once in `AppDependencies` so the map sheet and the AR screen share one player.
+once in `AppDependencies` so home, the stop list, the map sheet, and AR share one player.
+
+The in-stop control is a Spotify-like bar: play/pause, skip back/forward 15 seconds, a scrubber
+with elapsed/remaining time, and the stop title. Playback is **not** gated on GPS — open **Listen
+to a stop** on the home screen, tap a home-map marker, open **Stops** during the walk, or tap a
+tour-map pin. You can start and stop any of the five recordings from the living room.
 
 The Droescher's Mill photograph lives in `Assets.xcassets/droeschers-mill` (`imageName: "droeschers-mill"`
 on stop 1).
 
-`Resources/historical_stops.json` is the three-stop walking tour the app loads: HPAB brochure stops 1–3
-(Droescher's Mill, Cranford Hall, Rahway River). `audioURL` values are the QR destinations (probed
-`HTTP 200` / `audio/mpeg`). Coordinates are **unverified Nominatim geocodes** (`coordinatesUnverified: true`).
-A three-stop SAMPLE fixture remains in TourCore tests only (`sample_historical_stops.json`).
+`Resources/historical_stops.json` is the five-stop walking tour the app loads: HPAB brochure stops 1–5
+(Droescher's Mill, Cranford Hall, Rahway River, First Baptist Church, Cranford Hotel). `audioURL`
+values are the QR destinations (probed `HTTP 200` / `audio/mpeg`). First Baptist uses the QR file
+`First Baptist.mp3` (not `First Baptist Church.mp3`). Cranford Hall uses `Greystone.mp3`. Coordinates
+are **unverified Nominatim geocodes** (`coordinatesUnverified: true`). A three-stop SAMPLE fixture
+remains in TourCore tests only (`sample_historical_stops.json`).
 
 The HPAB QR codes use `http://` (the host's HTTPS certificate is self-signed). `Info.plist` allows
 insecure HTTP only for `preservecranford.com`.
@@ -197,14 +205,17 @@ CranfordHistoricalAR/
   Views/                    HomeView, TourView, MapView, ARView, NextStopCard, TourHeaderView, TourCompleteView, …
   ViewModels/               TourViewModel (single source of truth), MapViewModel, ARViewModel
   Developer/                Developer Controls (DEVELOPER_MENU only)
-  Resources/                historical_stops.json (3-stop HPAB walking tour)
+  Resources/                historical_stops.json (5-stop HPAB walking tour)
 CranfordHistoricalARTests/  Host-app unit tests (Mac/Xcode)
 ```
 
 ## Behaviour notes
 
+- **Narration** is a Spotify-like player on every stop (play/pause, ±15 s, scrubber). It is not
+  gated on GPS: **Listen to a stop** on the home screen, a home-map callout, the **Stops** list,
+  a tour-map pin, the next-stop card, the arrival card, and the AR/sign sheet all share one player.
 - **First screen map** is a live Google map of all stops (dots; numbered once zoomed past level 16;
-  tap a numbered or plain dot for an in-map name popup plus a callout, tap the map to dismiss).
+  tap a numbered or plain dot for an in-map name popup plus a callout with the player, tap the map to dismiss).
   Without a Maps key it falls back to the stylized sketch map.
 
 - **Distances and times** on the panel always come from the walking route (Routes API `computeRoutes`,

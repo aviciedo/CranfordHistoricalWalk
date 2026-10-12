@@ -5,6 +5,7 @@ import TourCore
 struct HomeView: View {
     @Environment(TourViewModel.self) private var tour
     @State private var isShowingDeveloperControls = false
+    @State private var isShowingListenSheet = false
 
     var body: some View {
         GeometryReader { proxy in
@@ -19,9 +20,9 @@ struct HomeView: View {
                     Spacer(minLength: 16)
 
                     HomeMapView()
-                        .frame(height: min(proxy.size.height * 0.46, 420))
+                        .frame(height: min(proxy.size.height * 0.42, 380))
                         .padding(.horizontal, 24)
-                        .accessibilityLabel("Map of Cranford with \(tour.stops.count) historical stops. Tap a dot to see the stop name.")
+                        .accessibilityLabel("Map of Cranford with \(tour.stops.count) historical stops. Tap a stop to see its name and play the narration from anywhere.")
 
                     Spacer(minLength: 16)
 
@@ -63,6 +64,30 @@ struct HomeView: View {
                     .multilineTextAlignment(.center)
             }
 
+            Button { isShowingListenSheet = true } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "headphones")
+                    Text("LISTEN TO A STOP")
+                        .tracking(1.5)
+                }
+                .font(.system(.headline, design: .default).weight(.semibold))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .background(AppTheme.heritageGreen.opacity(0.12), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .strokeBorder(AppTheme.heritageGreen.opacity(0.45), lineWidth: 1)
+                )
+                .foregroundStyle(AppTheme.heritageGreen)
+            }
+            .disabled(tour.loadState != .loaded)
+            .opacity(tour.loadState == .loaded ? 1 : 0.5)
+            .sheet(isPresented: $isShowingListenSheet) {
+                StopListSheet()
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+            }
+
             Button(action: tour.startTour) {
                 HStack(spacing: 10) {
                     Image(systemName: "figure.walk")
@@ -79,6 +104,9 @@ struct HomeView: View {
             .opacity(tour.loadState == .loaded ? 1 : 0.5)
 
             VStack(spacing: 6) {
+                Label("Play any stop from here — you don't have to be at the site.", systemImage: "headphones")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
                 Label("Explore historical sites through augmented reality.", systemImage: "arkit")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
