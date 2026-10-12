@@ -14,6 +14,16 @@ struct GoogleMapView: UIViewRepresentable {
     var bottomInset: CGFloat
     var onUserGesture: () -> Void
     var onMarkerTap: (String) -> Void
+    var markerStyle: StopMarkerStyle = .labeledPin
+    /// Highlighted stop for dot styles (the labeled pin style has no selection state).
+    var selectedStopID: String? = nil
+    var showsCompass = true
+    /// Padding used when fitting all stops into view.
+    var fitInsets = UIEdgeInsets(top: 90, left: 40, bottom: 40, right: 40)
+    /// Tap on the map away from any marker (used to dismiss callouts).
+    var onMapTap: () -> Void = {}
+    /// Camera came to rest at this zoom level.
+    var onCameraIdle: (Float) -> Void = { _ in }
 
     static let cranfordFallbackCamera = GMSCameraPosition(latitude: 40.6584, longitude: -74.3035, zoom: 15.2)
 
@@ -28,8 +38,12 @@ struct GoogleMapView: UIViewRepresentable {
         // The puck is drawn from TourViewModel's single location source (works in simulation too).
         mapView.isMyLocationEnabled = false
         mapView.settings.myLocationButton = false
-        mapView.settings.compassButton = true
+        mapView.settings.compassButton = showsCompass
         mapView.settings.tiltGestures = false
+        // Pinch, pan and double-tap zoom are on by default; make it explicit so a future change cannot
+        // silently disable them.
+        mapView.settings.zoomGestures = true
+        mapView.settings.scrollGestures = true
         mapView.isBuildingsEnabled = false
         mapView.isIndoorEnabled = false
         mapView.isTrafficEnabled = false
@@ -45,7 +59,7 @@ struct GoogleMapView: UIViewRepresentable {
             context.coordinator.colorScheme = context.environment.colorScheme
             mapView.mapStyle = MapStyle.style(for: context.environment.colorScheme)
         }
-        context.coordinator.render(markers: markers)
+        context.coordinator.render(markers: markers, style: markerStyle, selectedID: selectedStopID)
         context.coordinator.render(userPuck: userPuck)
         context.coordinator.render(route: routeCoordinates)
         context.coordinator.apply(cameraRequest: cameraRequest)
@@ -62,6 +76,9 @@ struct GoogleMapView: UIViewRepresentable {
         private var markersByID: [String: GMSMarker] = [:]
         private var markerModels: [String: StopMarkerModel] = [:]
         private var iconCache: [String: UIImage] = [:]
+        private var markerStyle: StopMarkerStyle = .labeledPin
+        private var selectedID: String?
+        private var cameraRetryCount = 0
 
         private var userMarker: GMSMarker?
         private var accuracyCircle: GMSCircle?
@@ -79,8 +96,13 @@ struct GoogleMapView: UIViewRepresentable {
 
         // MARK: Markers
 
-        func render(markers: [StopMarkerModel]) {
+        func render(markers: [StopMarkerModel], style: StopMarkerStyle, selectedID newSelectedID: String?) {
             guard let mapView else { return }
+            let styleChanged = style != markerStyle
+            let previousSelected = selectedID
+            markerStyle = style
+            selectedID = newSelectedID
+
             let incoming = Set(markers.map(\.id))
             for (id, marker) in markersByID where !incoming.contains(id) {
                 marker.map = nil
@@ -88,20 +110,23 @@ struct GoogleMapView: UIViewRepresentable {
                 markerModels[id] = nil
             }
             for model in markers {
+                let isSelected = model.id == newSelectedID
                 if let existing = markersByID[model.id] {
-                    if markerModels[model.id] != model {
-                        existing.icon = icon(for: model)
-                        existing.zIndex = zIndex(for: model.state)
+                    let selectionChanged = model.id == previousSelected || isSelected
+                    if markerModels[model.id] != model || styleChanged || selectionChanged {
+                        existing.icon = icon(for: model, isSelected: isSelected)
+                        existing.groundAnchor = groundAnchor
+                        existing.zIndex = zIndex(for: model.state, isSelected: isSelected)
                         existing.position = model.coordinate
                         markerModels[model.id] = model
                     }
                 } else {
                     let marker = GMSMarker(position: model.coordinate)
-                    marker.icon = icon(for: model)
-                    marker.groundAnchor = CGPoint(x: 0.5, y: 1.0)
+                    marker.icon = icon(for: model, isSelected: isSelected)
+                    marker.groundAnchor = groundAnchor
                     marker.userData = model.id
                     marker.title = model.name
-                    marker.zIndex = zIndex(for: model.state)
+                    marker.zIndex = zIndex(for: model.state, isSelected: isSelected)
                     marker.appearAnimation = .pop
                     marker.map = mapView
                     markersByID[model.id] = marker
@@ -110,7 +135,13 @@ struct GoogleMapView: UIViewRepresentable {
             }
         }
 
-        private func zIndex(for state: StopMarkerModel.State) -> Int32 {
+        /// Pins stand on their tip; dots are centred on the coordinate.
+        private var groundAnchor: CGPoint {
+            markerStyle == .labeledPin ? CGPoint(x: 0.5, y: 1.0) : CGPoint(x: 0.5, y: 0.5)
+        }
+
+        private func zIndex(for state: StopMarkerModel.State, isSelected: Bool) -> Int32 {
+            if isSelected { return 40 }
             switch state {
             case .current: return 30
             case .upcoming: return 20
@@ -118,10 +149,17 @@ struct GoogleMapView: UIViewRepresentable {
             }
         }
 
-        private func icon(for model: StopMarkerModel) -> UIImage? {
-            let key = "\(model.order)|\(model.state)|\(model.name)|\(colorScheme == .dark)"
+        private func icon(for model: StopMarkerModel, isSelected: Bool) -> UIImage? {
+            let key = "\(markerStyle)|\(isSelected)|\(model.order)|\(model.state)|\(model.name)|\(colorScheme == .dark)"
             if let cached = iconCache[key] { return cached }
-            let renderer = ImageRenderer(content: StopMarkerLabel(model: model).environment(\.colorScheme, colorScheme ?? .light))
+            let scheme = colorScheme ?? .light
+            let renderer: ImageRenderer<AnyView>
+            switch markerStyle {
+            case .labeledPin:
+                renderer = ImageRenderer(content: AnyView(StopMarkerLabel(model: model).environment(\.colorScheme, scheme)))
+            case .dot, .numberedDot:
+                renderer = ImageRenderer(content: AnyView(StopDotMarker(model: model, isSelected: isSelected, showsNumber: markerStyle == .numberedDot).environment(\.colorScheme, scheme)))
+            }
             renderer.scale = UITraitCollection.current.displayScale
             let image = renderer.uiImage
             iconCache[key] = image
@@ -229,6 +267,17 @@ struct GoogleMapView: UIViewRepresentable {
 
         func apply(cameraRequest: MapCameraRequest?) {
             guard let mapView, let request = cameraRequest, request.id != lastCameraRequestID else { return }
+            // A bounds fit is computed against the map's current size; before the first layout pass
+            // that size is zero and the fit would land on the wrong zoom. Try again shortly.
+            if mapView.bounds.isEmpty, cameraRetryCount < 20 {
+                cameraRetryCount += 1
+                Task { @MainActor [weak self] in
+                    try? await Task.sleep(for: .milliseconds(50))
+                    self?.apply(cameraRequest: request)
+                }
+                return
+            }
+            cameraRetryCount = 0
             lastCameraRequestID = request.id
 
             let update: GMSCameraUpdate
@@ -240,7 +289,7 @@ struct GoogleMapView: UIViewRepresentable {
                     return
                 }
                 for c in coordinates.dropFirst() { bounds = bounds.includingCoordinate(c) }
-                update = GMSCameraUpdate.fit(bounds, with: UIEdgeInsets(top: 90, left: 40, bottom: 40, right: 40))
+                update = GMSCameraUpdate.fit(bounds, with: parent.fitInsets)
             case .follow(let coordinate, let bearing):
                 let position = GMSCameraPosition(target: coordinate, zoom: max(mapView.camera.zoom, 16.5), bearing: bearing ?? mapView.camera.bearing, viewingAngle: 0)
                 update = GMSCameraUpdate.setCamera(position)
@@ -264,12 +313,70 @@ struct GoogleMapView: UIViewRepresentable {
 
         nonisolated func mapView(_ mapView: GMSMapView, didTap marker: GMSMarker) -> Bool {
             let id = marker.userData as? String
+            let position = marker.position
+            let customCallout = MainActor.assumeIsolated { self.markerStyle.usesCustomCallout }
             Task { @MainActor in
                 if let id { self.parent.onMarkerTap(id) }
+                // With a SwiftUI callout we still centre on the stop, as the SDK would have done.
+                if customCallout { self.mapView?.animate(toLocation: position) }
             }
-            // Returning false keeps the default behavior (center + info window with the stop name).
-            return false
+            // false = SDK default (centre + info window titled with the stop name); true = handled here.
+            return customCallout
         }
+
+        nonisolated func mapView(_ mapView: GMSMapView, didTapAt coordinate: CLLocationCoordinate2D) {
+            Task { @MainActor in self.parent.onMapTap() }
+        }
+
+        nonisolated func mapView(_ mapView: GMSMapView, idleAt position: GMSCameraPosition) {
+            let zoom = position.zoom
+            Task { @MainActor in self.parent.onCameraIdle(zoom) }
+        }
+    }
+}
+
+/// Compact marker for overview maps with many stops: a dot, optionally numbered, that grows and
+/// gains a brass ring when selected. No text label, so dense clusters never overlap into mush.
+struct StopDotMarker: View {
+    let model: StopMarkerModel
+    let isSelected: Bool
+    let showsNumber: Bool
+
+    private var fill: Color {
+        switch model.state {
+        case .current: return AppTheme.heritageGreen
+        case .upcoming: return AppTheme.heritageGreen
+        case .visited: return AppTheme.visited
+        }
+    }
+
+    private var diameter: CGFloat {
+        if isSelected { return 30 }
+        return showsNumber ? 24 : 14
+    }
+
+    var body: some View {
+        ZStack {
+            if isSelected {
+                Circle().fill(AppTheme.brass.opacity(0.28)).frame(width: diameter + 16, height: diameter + 16)
+            }
+            Circle()
+                .fill(fill)
+                .frame(width: diameter, height: diameter)
+                .overlay(Circle().strokeBorder(isSelected ? AppTheme.brass : .white, lineWidth: isSelected ? 3 : 2))
+                .shadow(color: .black.opacity(0.25), radius: 2, y: 1)
+            if showsNumber || isSelected {
+                Group {
+                    if model.state == .visited {
+                        Image(systemName: "checkmark").font(.system(size: isSelected ? 13 : 10, weight: .bold))
+                    } else {
+                        Text("\(model.order)").font(.system(size: isSelected ? 13 : 11, weight: .bold, design: .rounded))
+                    }
+                }
+                .foregroundStyle(.white)
+            }
+        }
+        .frame(width: 48, height: 48)
     }
 }
 

@@ -19,6 +19,17 @@ struct StopMarkerModel: Identifiable, Equatable {
     }
 }
 
+/// How stop markers are drawn. The tour map uses labeled pins; the home map uses plain dots so
+/// 25+ stops stay legible, switching to numbered dots once the user zooms in.
+enum StopMarkerStyle: Equatable {
+    case labeledPin
+    case dot
+    case numberedDot
+
+    /// Dot styles handle taps through SwiftUI selection instead of the SDK's info window.
+    var usesCustomCallout: Bool { self != .labeledPin }
+}
+
 struct UserPuckModel: Equatable {
     var coordinate: CLLocationCoordinate2D
     var accuracyMeters: Double
@@ -64,8 +75,18 @@ final class MapViewModel {
     private(set) var cameraMode: CameraMode = .overview
     private(set) var cameraRequest: MapCameraRequest?
     private(set) var selectedStopID: String?
+    /// Last settled zoom level reported by the map; `nil` until the first idle callback.
+    private(set) var zoom: Float?
     private var requestCounter = 0
     private var lastFollowedCoordinate: GeoCoordinate?
+
+    /// Zoom at which the home map switches from plain dots to numbered dots.
+    static let numberedDotZoom: Float = 16
+
+    /// Marker style for an overview map of many stops (home screen).
+    var overviewMarkerStyle: StopMarkerStyle {
+        (zoom ?? 0) >= MapViewModel.numberedDotZoom ? .numberedDot : .dot
+    }
 
     func markers(for tour: TourViewModel) -> [StopMarkerModel] {
         tour.stops.map { stop in
@@ -126,6 +147,15 @@ final class MapViewModel {
 
     func select(stopID: String?) {
         selectedStopID = stopID
+    }
+
+    /// Toggle semantics for dot markers: tapping the selected stop again deselects it.
+    func toggleSelection(stopID: String) {
+        selectedStopID = selectedStopID == stopID ? nil : stopID
+    }
+
+    func cameraDidSettle(zoom newZoom: Float) {
+        if zoom != newZoom { zoom = newZoom }
     }
 
     private func push(_ kind: MapCameraRequest.Kind, animated: Bool) {

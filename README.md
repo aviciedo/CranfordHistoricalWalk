@@ -128,6 +128,10 @@ CranfordHistoricalARTests/  Host-app unit tests (Mac/Xcode)
 
 ## Behaviour notes
 
+- **First screen map** is a live Google map of all stops (dots; numbered once zoomed past level 16;
+  tap a dot for a name callout, tap the map to dismiss). Without a Maps key it falls back to the
+  stylized sketch map. Both stay legible with 25+ stops because no text labels are drawn on dots.
+
 - **Distances and times** on the panel always come from the walking route (Routes API `computeRoutes`,
   `travelMode: WALK`), refreshed on a policy (moved ≥ 25 m, off-route > 30 m, stale > 90 s, destination
   change, ≥ 8 s apart) and interpolated locally between refreshes. If routing fails the last known route is

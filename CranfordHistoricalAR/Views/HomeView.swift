@@ -18,10 +18,10 @@ struct HomeView: View {
 
                     Spacer(minLength: 16)
 
-                    StylizedCranfordMapView(stops: tour.stops)
-                        .frame(height: min(proxy.size.height * 0.42, 360))
+                    HomeMapView()
+                        .frame(height: min(proxy.size.height * 0.46, 420))
                         .padding(.horizontal, 24)
-                        .accessibilityLabel("Stylized map of Cranford with \(tour.stops.count) historical stops")
+                        .accessibilityLabel("Map of Cranford with \(tour.stops.count) historical stops. Tap a dot to see the stop name.")
 
                     Spacer(minLength: 16)
 
@@ -82,11 +82,13 @@ struct HomeView: View {
                 Label("Explore historical sites through augmented reality.", systemImage: "arkit")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
-                if tour.dataStatus?.isEmpty == false {
-                    Text("Sample data — stops and text are placeholders pending verification.")
+                // Caption comes from the tour document (`dataStatus`), never from the view.
+                if let status = tour.dataStatus, !status.isEmpty {
+                    Text(status)
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                         .multilineTextAlignment(.center)
+                        .lineLimit(3)
                 }
             }
         }
@@ -116,6 +118,7 @@ private struct DebugMenuGesture: ViewModifier {
 /// laid out by their real relative coordinates. It is a stylization, not a surveyed map.
 struct StylizedCranfordMapView: View {
     let stops: [HistoricalStop]
+    static let maxNumberedStops = 12
 
     var body: some View {
         ZStack {
@@ -199,17 +202,22 @@ struct StylizedCranfordMapView: View {
         }
         context.stroke(route, with: .color(AppTheme.heritageGreen.opacity(0.5)), style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round, dash: [6, 6]))
 
+        // Numbers only while they stay legible; with many stops the dots alone read better.
+        let showsNumbers = ordered.count <= StylizedCranfordMapView.maxNumberedStops
+        let radius: CGFloat = showsNumbers ? 7 : 5
         for stop in ordered {
             let p = point(for: stop)
-            let halo = Path(ellipseIn: CGRect(x: p.x - 13, y: p.y - 13, width: 26, height: 26))
+            let halo = Path(ellipseIn: CGRect(x: p.x - radius - 6, y: p.y - radius - 6, width: (radius + 6) * 2, height: (radius + 6) * 2))
             context.fill(halo, with: .color(AppTheme.brass.opacity(0.22)))
-            let dot = Path(ellipseIn: CGRect(x: p.x - 7, y: p.y - 7, width: 14, height: 14))
+            let dot = Path(ellipseIn: CGRect(x: p.x - radius, y: p.y - radius, width: radius * 2, height: radius * 2))
             context.fill(dot, with: .color(AppTheme.heritageGreen))
             context.stroke(dot, with: .color(.white), lineWidth: 2)
-            context.draw(
-                Text("\(stop.order)").font(.system(size: 9, weight: .bold, design: .rounded)).foregroundColor(.white),
-                at: p
-            )
+            if showsNumbers {
+                context.draw(
+                    Text("\(stop.order)").font(.system(size: 9, weight: .bold, design: .rounded)).foregroundColor(.white),
+                    at: p
+                )
+            }
         }
     }
 }
