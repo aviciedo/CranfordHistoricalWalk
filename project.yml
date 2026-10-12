@@ -94,6 +94,15 @@ targets:
       gatherCoverageData: false
       testTargets:
         - CranfordHistoricalARTests
+      environmentVariables:
+        # Silences the unified-logging noise the Simulator prints on every launch
+        # ("cannot add handler to 0 from 0 - dropping", "Failed to send CA Event…",
+        # "non-launching port is incompatible with … com.apple.PointerUI…"). Off by default
+        # because it also hides Google Maps SDK / Core Location diagnostics you want while
+        # setting up API keys. Tick it in Edit Scheme ▸ Run ▸ Arguments, or set isEnabled: true.
+        - variable: OS_ACTIVITY_MODE
+          value: disable
+          isEnabled: false
 
   # Host-app unit tests (view-model flows that need CoreLocation/UIKit types). Run on a Mac with
   # Product > Test; the platform-independent logic is covered by Packages/TourCore on any OS.

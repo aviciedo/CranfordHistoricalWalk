@@ -68,6 +68,39 @@ of this code.
 In the iOS Simulator the map, routing, panel and Developer Controls all work; ARKit does not run in the
 Simulator, so the AR screen shows its "AR isn't available on this device" state there.
 
+## Known console messages (Simulator)
+
+Running in the iOS Simulator floods the Xcode console with lines like these on launch and while
+interacting with the UI:
+
+```
+cannot add handler to 0 from 0 - dropping
+Failed to send CA Event for app launch measurements for ca_event_type: 0 event_name: com.apple.app_launch_measurement.FirstFramePresentationMetric
+Failed to send CA Event for app launch measurements for ca_event_type: 1 event_name: com.apple.app_launch_measurement.ExtendedLaunchMetrics
+non-launching port is incompatible with service identifier "com.apple.PointerUI.pointeruid.default-service"
+```
+
+None of these come from this app, TourCore, the Google Maps SDK or Core Location — the app has no
+logging of its own, and the strings do not appear anywhere in the repository or its dependencies. They
+are emitted by Apple system frameworks inside the Simulator (`libapp_launch_measurement.dylib` for the
+"CA Event" lines, UIKit's event/pointer plumbing for the other two) and show up in an empty SwiftUI
+template app as well. They are harmless. You can confirm the origin yourself: in the Xcode console,
+select a line and open the metadata (eye icon / ⌥⌘M) — the *Library* and *Subsystem* columns show the
+Apple framework, not `CranfordHistoricalAR`.
+
+To hide them:
+
+- **Console filter** (recommended): type `cannot add handler` into the console filter field and
+  choose *Hide*, or filter by *Library ≠ UIKitCore*. Nothing from the app is lost.
+- **Scheme variable**: the `CranfordHistoricalAR` scheme already carries `OS_ACTIVITY_MODE = disable`
+  (unchecked). Tick it in *Edit Scheme ▸ Run ▸ Arguments ▸ Environment Variables*, or set
+  `isEnabled: true` in `project.yml` and regenerate. This mutes all unified-logging output, which also
+  hides Google Maps SDK key errors and Core Location diagnostics, so leave it off while setting up keys.
+
+Messages that *are* worth reading in the Simulator: anything mentioning `GMSServices`/`Google Maps SDK`
+(key problems) or `CLLocationManager` (simulated location not set — use *Features ▸ Location* or
+Developer Controls).
+
 ## Tests
 
 | Where | What | How |
