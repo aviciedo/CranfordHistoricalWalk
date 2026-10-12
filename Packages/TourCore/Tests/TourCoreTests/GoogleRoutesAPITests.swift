@@ -1,5 +1,8 @@
 import XCTest
 @testable import TourCore
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 final class GoogleRoutesAPITests: XCTestCase {
     let origin = GeoCoordinate(latitude: 37.4197318, longitude: -122.0827887)

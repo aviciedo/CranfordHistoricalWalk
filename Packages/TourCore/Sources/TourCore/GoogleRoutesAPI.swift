@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 /// Wire types for Google **Routes API** `computeRoutes` (the current replacement for the legacy
 /// Directions API, which became Legacy on 2025-03-01 and is unavailable to new Cloud projects).
