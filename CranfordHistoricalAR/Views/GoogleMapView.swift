@@ -2,6 +2,7 @@ import CoreLocation
 import GoogleMaps
 import SwiftUI
 import TourCore
+import UIKit
 
 /// Thin `UIViewRepresentable` around `GMSMapView` (the Maps SDK is UIKit-only, which is the one
 /// place the spec allows UIKit). All decisions live in `MapViewModel`/`TourViewModel`; this view
@@ -89,6 +90,8 @@ struct GoogleMapView: UIViewRepresentable {
         private var lastRouteHash: Int = 0
 
         private var lastCameraRequestID: Int = -1
+        /// Maps SDK can deliver `didTapAt` for the same gesture as a marker tap; ignore those.
+        private var ignoreMapTapUntil: Date?
 
         init(_ parent: GoogleMapView) {
             self.parent = parent
@@ -114,24 +117,59 @@ struct GoogleMapView: UIViewRepresentable {
                 if let existing = markersByID[model.id] {
                     let selectionChanged = model.id == previousSelected || isSelected
                     if markerModels[model.id] != model || styleChanged || selectionChanged {
-                        existing.icon = icon(for: model, isSelected: isSelected)
-                        existing.groundAnchor = groundAnchor
-                        existing.zIndex = zIndex(for: model.state, isSelected: isSelected)
-                        existing.position = model.coordinate
+                        applyAppearance(existing, model: model, isSelected: isSelected)
                         markerModels[model.id] = model
                     }
                 } else {
                     let marker = GMSMarker(position: model.coordinate)
-                    marker.icon = icon(for: model, isSelected: isSelected)
-                    marker.groundAnchor = groundAnchor
                     marker.userData = model.id
-                    marker.title = model.name
-                    marker.zIndex = zIndex(for: model.state, isSelected: isSelected)
                     marker.appearAnimation = .pop
+                    applyAppearance(marker, model: model, isSelected: isSelected)
                     marker.map = mapView
                     markersByID[model.id] = marker
                     markerModels[model.id] = model
                 }
+            }
+            syncSelectedMarker(on: mapView, selectedID: newSelectedID)
+        }
+
+        private func applyAppearance(_ marker: GMSMarker, model: StopMarkerModel, isSelected: Bool) {
+            marker.title = model.name
+            marker.snippet = nil
+            marker.isTappable = true
+            marker.groundAnchor = groundAnchor
+            marker.zIndex = zIndex(for: model.state, isSelected: isSelected)
+            marker.position = model.coordinate
+            applyIcon(marker, image: icon(for: model, isSelected: isSelected))
+        }
+
+        /// Dot styles use `iconView` so the whole 44 pt control is tappable, not just opaque pixels
+        /// of a padded `UIImage`. Labeled pins keep `icon` (the artwork is already the hit box).
+        private func applyIcon(_ marker: GMSMarker, image: UIImage?) {
+            if markerStyle == .labeledPin {
+                marker.iconView = nil
+                marker.icon = image
+                marker.tracksViewChanges = false
+                return
+            }
+            let side: CGFloat = 44
+            let view = UIImageView(image: image)
+            view.bounds = CGRect(x: 0, y: 0, width: side, height: side)
+            view.contentMode = .center
+            view.isUserInteractionEnabled = false
+            marker.icon = nil
+            marker.tracksViewChanges = true
+            marker.iconView = view
+            marker.tracksViewChanges = false
+        }
+
+        private func syncSelectedMarker(on mapView: GMSMapView, selectedID: String?) {
+            if let selectedID, let marker = markersByID[selectedID] {
+                if mapView.selectedMarker !== marker {
+                    mapView.selectedMarker = marker
+                }
+            } else if mapView.selectedMarker != nil {
+                mapView.selectedMarker = nil
             }
         }
 
@@ -314,18 +352,27 @@ struct GoogleMapView: UIViewRepresentable {
         nonisolated func mapView(_ mapView: GMSMapView, didTap marker: GMSMarker) -> Bool {
             let id = marker.userData as? String
             let position = marker.position
-            let customCallout = MainActor.assumeIsolated { self.markerStyle.usesCustomCallout }
             Task { @MainActor in
+                self.ignoreMapTapUntil = Date().addingTimeInterval(0.4)
                 if let id { self.parent.onMarkerTap(id) }
-                // With a SwiftUI callout we still centre on the stop, as the SDK would have done.
-                if customCallout { self.mapView?.animate(toLocation: position) }
+                self.mapView?.animate(toLocation: position)
             }
-            // false = SDK default (centre + info window titled with the stop name); true = handled here.
-            return customCallout
+            // Consume the tap so we can show both the SDK info window (via selectedMarker in
+            // render) and the SwiftUI callout. Returning false used to race with didTapAt.
+            return true
         }
 
         nonisolated func mapView(_ mapView: GMSMapView, didTapAt coordinate: CLLocationCoordinate2D) {
-            Task { @MainActor in self.parent.onMapTap() }
+            Task { @MainActor in
+                if let until = self.ignoreMapTapUntil, Date() < until { return }
+                self.parent.onMapTap()
+            }
+        }
+
+        nonisolated func mapView(_ mapView: GMSMapView, markerInfoWindow marker: GMSMarker) -> UIView? {
+            let title = marker.title ?? ""
+            guard !title.isEmpty else { return nil }
+            return StopNameInfoWindow(title: title)
         }
 
         nonisolated func mapView(_ mapView: GMSMapView, idleAt position: GMSCameraPosition) {
@@ -333,6 +380,36 @@ struct GoogleMapView: UIViewRepresentable {
             Task { @MainActor in self.parent.onCameraIdle(zoom) }
         }
     }
+}
+
+/// In-map popup for a tapped stop. Name only; the SwiftUI `HomeStopCallout` adds address. No logic.
+final class StopNameInfoWindow: UIView {
+    init(title: String) {
+        let label = UILabel()
+        label.text = title
+        label.font = .systemFont(ofSize: 15, weight: .semibold)
+        label.textColor = .label
+        label.numberOfLines = 2
+        label.lineBreakMode = .byTruncatingTail
+        let fitting = label.sizeThatFits(CGSize(width: 220, height: 80))
+        let width = min(220, max(96, ceil(fitting.width)))
+        let height = max(22, ceil(fitting.height))
+        super.init(frame: CGRect(x: 0, y: 0, width: width + 24, height: height + 16))
+        backgroundColor = UIColor.systemBackground.withAlphaComponent(0.96)
+        layer.cornerRadius = 12
+        clipsToBounds = false
+        layer.shadowColor = UIColor.black.cgColor
+        layer.shadowOpacity = 0.18
+        layer.shadowRadius = 6
+        layer.shadowOffset = CGSize(width: 0, height: 2)
+        label.frame = bounds.insetBy(dx: 12, dy: 8)
+        label.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        addSubview(label)
+        isUserInteractionEnabled = false
+        accessibilityLabel = title
+    }
+
+    required init?(coder: NSCoder) { nil }
 }
 
 /// Compact marker for overview maps with many stops: a dot, optionally numbered, that grows and
