@@ -26,6 +26,7 @@ struct ArrivalCard: View {
                 Text("Open the camera to see the historical sign placed in front of you.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+                NarrationControls(stop: stop)
                 HStack(spacing: 10) {
                     Button(action: onEnterAR) {
                         Label("View in AR", systemImage: "arkit")

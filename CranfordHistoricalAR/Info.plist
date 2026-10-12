@@ -54,6 +54,20 @@
 	<string>The camera is used for the augmented-reality view that shows walking directions and historical signs over the real world.</string>
 	<key>NSMotionUsageDescription</key>
 	<string>Motion data improves compass heading so AR arrows point the right way.</string>
+	<!-- HPAB brochure QR codes point at http://preservecranford.com (HTTPS on that host is a self-signed cert). -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>preservecranford.com</key>
+			<dict>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+			</dict>
+		</dict>
+	</dict>
 
 	<!-- Configuration injected from Config/*.xcconfig at build time (never hard-code keys here) -->
 	<key>GoogleMapsAPIKey</key>

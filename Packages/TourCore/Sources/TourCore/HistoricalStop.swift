@@ -33,6 +33,9 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
     public var estimatedVisitDuration: TimeInterval
     /// True while the stop's coordinates/content are placeholders and not verified history.
     public var isSample: Bool
+    /// True when latitude/longitude came from an unverified geocode (or similar) and must not
+    /// be treated as a surveyed historical-site position.
+    public var coordinatesUnverified: Bool
 
     public init(
         id: String,
@@ -51,7 +54,8 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
         departureRadius: Double? = nil,
         order: Int,
         estimatedVisitDuration: TimeInterval = 90,
-        isSample: Bool = false
+        isSample: Bool = false,
+        coordinatesUnverified: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -70,6 +74,7 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
         self.order = order
         self.estimatedVisitDuration = estimatedVisitDuration
         self.isSample = isSample
+        self.coordinatesUnverified = coordinatesUnverified
     }
 
     public var coordinate: GeoCoordinate {
@@ -89,10 +94,40 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
         imageName != nil || imageURL != nil || illustrationURL != nil
     }
 
+    /// Where narration for this stop comes from, in order of preference:
+    /// a remote/bundled audio file (`audioURL`), else the description read aloud by speech synthesis.
+    public enum NarrationSource: Equatable, Sendable {
+        /// `audioURL` with an `http(s)` or `file` scheme.
+        case remoteAudio(URL)
+        /// `audioURL` given as a bare file name (e.g. `"droeschers-mill.m4a"`), bundled with the app.
+        case bundledAudio(fileName: String)
+        /// No recording; `text` is spoken by the system voice.
+        case synthesizedSpeech(text: String)
+    }
+
+    public var narrationSource: NarrationSource? {
+        if let audioURL {
+            switch audioURL.scheme?.lowercased() {
+            case "http", "https", "file":
+                return .remoteAudio(audioURL)
+            case nil, "":
+                let name = audioURL.lastPathComponent
+                if !name.isEmpty, name != "/" { return .bundledAudio(fileName: name) }
+            default:
+                break
+            }
+        }
+        let text = longDescription.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !text.isEmpty { return .synthesizedSpeech(text: text) }
+        let short = shortDescription.trimmingCharacters(in: .whitespacesAndNewlines)
+        return short.isEmpty ? nil : .synthesizedSpeech(text: short)
+    }
+
     private enum CodingKeys: String, CodingKey {
         case id, name, latitude, longitude, address, shortDescription, longDescription
         case historicalDate, imageName, imageURL, illustrationURL, audioURL
         case arrivalRadius, departureRadius, order, estimatedVisitDuration, isSample
+        case coordinatesUnverified
     }
 
     public init(from decoder: Decoder) throws {
@@ -114,6 +149,7 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
         order = try c.decode(Int.self, forKey: .order)
         estimatedVisitDuration = try c.decodeIfPresent(TimeInterval.self, forKey: .estimatedVisitDuration) ?? 90
         isSample = try c.decodeIfPresent(Bool.self, forKey: .isSample) ?? false
+        coordinatesUnverified = try c.decodeIfPresent(Bool.self, forKey: .coordinatesUnverified) ?? false
     }
 }
 

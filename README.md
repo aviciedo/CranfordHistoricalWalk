@@ -35,6 +35,26 @@ swift test          # macOS or Linux; no Xcode needed
 route-progress math, route-refresh policy, proximity state machine (hysteresis), tour progress and the
 walking simulator.
 
+## Narration and historical photographs
+
+Each stop can play narration from `audioURL` (remote HTTP(S) or a bundled file name) or, if none is
+set, from speech synthesis of `longDescription` / `shortDescription`. `NarrationPlayer` is created
+once in `AppDependencies` so the map sheet and the AR screen share one player.
+
+The Droescher's Mill photograph lives in `Assets.xcassets/droeschers-mill`. It is referenced from
+the HPAB catalog (`imageName: "droeschers-mill"`), not from the sample tour.
+
+`Resources/hpab_audio_tour.json` is a 25-stop catalog extracted from the HPAB *Historic Cranford QR
+Code Audio Tour* brochure (May 2020): names and addresses from the brochure, `audioURL` values from
+the QR codes (probed `HTTP 200` / `audio/mpeg` on preservecranford.com), mill photo on stop 1.
+Coordinates are **unverified Nominatim geocodes** (`coordinatesUnverified: true`) and must not be
+treated as surveyed site positions. The app still ships `Resources/historical_stops.json` as the
+labeled SAMPLE walking tour. To try the HPAB catalog, copy it over that file after verifying
+coordinates — do not invent historical text; the recordings are the description.
+
+The HPAB QR codes use `http://` (the host's HTTPS certificate is self-signed). `Info.plist` allows
+insecure HTTP only for `preservecranford.com`.
+
 ## API keys (never committed)
 
 `Config/Secrets.xcconfig` is gitignored. Copy `Config/Secrets.example.xcconfig` to it and set:
@@ -105,7 +125,7 @@ Developer Controls).
 
 | Where | What | How |
 | --- | --- | --- |
-| `Packages/TourCore` | 70 XCTest cases: models/JSON, geo math, polyline, Routes API decoding, route progress, refresh policy, proximity hysteresis, tour progress, summary, formatting, walk simulator | `cd Packages/TourCore && swift test` (macOS or Linux) |
+| `Packages/TourCore` | XCTest: models/JSON (including HPAB catalog + narration source), geo math, polyline, Routes API decoding, route progress, refresh policy, proximity hysteresis, tour progress, summary, formatting, walk simulator | `cd Packages/TourCore && swift test` (macOS or Linux) |
 | `CranfordHistoricalARTests` | Host-app flows: arrival → visited → close → advance, hysteresis via the simulated walker, tour completion figures, configuration fallbacks | Xcode **Product ▸ Test** (iOS Simulator is fine) |
 
 ## Project layout
@@ -122,7 +142,7 @@ CranfordHistoricalAR/
   Views/                    HomeView, TourView, MapView, ARView, NextStopCard, TourHeaderView, TourCompleteView, …
   ViewModels/               TourViewModel (single source of truth), MapViewModel, ARViewModel
   Developer/                Developer Controls (DEVELOPER_MENU only)
-  Resources/                historical_stops.json
+  Resources/                historical_stops.json (sample tour), hpab_audio_tour.json (HPAB catalog)
 CranfordHistoricalARTests/  Host-app unit tests (Mac/Xcode)
 ```
 

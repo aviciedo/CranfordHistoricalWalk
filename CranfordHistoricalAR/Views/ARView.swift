@@ -192,25 +192,30 @@ struct ARHUDView: View {
 
     /// Shown while the historical sign is up: read the full text, or close it (spec §9 manual close).
     private var signControls: some View {
-        HStack(spacing: 12) {
-            Button {
-                model.isShowingSignDetails = true
-            } label: {
-                Label("Read", systemImage: "text.book.closed")
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(.regularMaterial, in: Capsule())
+        VStack(spacing: 10) {
+            if let stop = model.tour.presentedSignStop ?? model.tour.currentStop {
+                NarrationControls(stop: stop)
             }
-            Button {
-                model.closeSign()
-            } label: {
-                Label(model.closeSignTitle, systemImage: model.tour.isCurrentStopVisited ? "arrow.right" : "xmark")
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(.regularMaterial, in: Capsule())
+            HStack(spacing: 12) {
+                Button {
+                    model.isShowingSignDetails = true
+                } label: {
+                    Label("Read", systemImage: "text.book.closed")
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(.regularMaterial, in: Capsule())
+                }
+                Button {
+                    model.closeSign()
+                } label: {
+                    Label(model.closeSignTitle, systemImage: model.tour.isCurrentStopVisited ? "arrow.right" : "xmark")
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(.regularMaterial, in: Capsule())
+                }
             }
+            .font(.subheadline.weight(.semibold))
         }
-        .font(.subheadline.weight(.semibold))
         .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 }

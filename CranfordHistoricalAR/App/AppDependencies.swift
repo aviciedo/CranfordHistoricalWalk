@@ -13,18 +13,20 @@ final class AppDependencies {
     let locationService: any LocationService
     let directionsService: any DirectionsService
     let imageLoader: any ImageLoader
+    let narrationPlayer: NarrationPlayer
     let tourViewModel: TourViewModel
     #if DEVELOPER_MENU
     /// Developer Mode (spec §19); Debug builds only.
     private(set) var developer: DeveloperModeController?
     #endif
 
-    init(configuration: AppConfiguration, stopService: any HistoricalStopService, locationService: any LocationService, directionsService: any DirectionsService, imageLoader: any ImageLoader, tourViewModel: TourViewModel) {
+    init(configuration: AppConfiguration, stopService: any HistoricalStopService, locationService: any LocationService, directionsService: any DirectionsService, imageLoader: any ImageLoader, narrationPlayer: NarrationPlayer = NarrationPlayer(), tourViewModel: TourViewModel) {
         self.configuration = configuration
         self.stopService = stopService
         self.locationService = locationService
         self.directionsService = directionsService
         self.imageLoader = imageLoader
+        self.narrationPlayer = narrationPlayer
         self.tourViewModel = tourViewModel
     }
 
@@ -44,7 +46,7 @@ final class AppDependencies {
         let locationService = CoreLocationService()
         let directionsService = DirectionsServiceFactory.make(configuration: configuration)
         let tour = TourViewModel(stopService: stopService, locationService: locationService, directionsService: directionsService)
-        let dependencies = AppDependencies(configuration: configuration, stopService: stopService, locationService: locationService, directionsService: directionsService, imageLoader: CompositeImageLoader(), tourViewModel: tour)
+        let dependencies = AppDependencies(configuration: configuration, stopService: stopService, locationService: locationService, directionsService: directionsService, imageLoader: CompositeImageLoader(), narrationPlayer: NarrationPlayer(), tourViewModel: tour)
         dependencies.installDeveloperMode()
         return dependencies
     }
@@ -61,7 +63,7 @@ final class AppDependencies {
         let locationService = CoreLocationService()
         let directionsService = PreviewDirectionsService()
         let tour = TourViewModel(stopService: stopService, locationService: locationService, directionsService: directionsService)
-        let dependencies = AppDependencies(configuration: .empty, stopService: stopService, locationService: locationService, directionsService: directionsService, imageLoader: CompositeImageLoader(), tourViewModel: tour)
+        let dependencies = AppDependencies(configuration: .empty, stopService: stopService, locationService: locationService, directionsService: directionsService, imageLoader: CompositeImageLoader(), narrationPlayer: NarrationPlayer(), tourViewModel: tour)
         dependencies.installDeveloperMode()
         return dependencies
     }

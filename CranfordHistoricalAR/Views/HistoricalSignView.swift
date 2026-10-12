@@ -129,10 +129,16 @@ struct HistoricalSignView: View {
                         .lineSpacing(4)
                         .fixedSize(horizontal: false, vertical: true)
 
+                    NarrationControls(stop: stop)
+
                     VStack(alignment: .leading, spacing: 4) {
                         Label(stop.address, systemImage: "mappin.and.ellipse")
                         if stop.isSample {
                             Label("Placeholder content — not verified history.", systemImage: "exclamationmark.triangle")
+                                .foregroundStyle(AppTheme.warning)
+                        }
+                        if stop.coordinatesUnverified {
+                            Label("Coordinates are unverified — not a surveyed site position.", systemImage: "questionmark.circle")
                                 .foregroundStyle(AppTheme.warning)
                         }
                     }
