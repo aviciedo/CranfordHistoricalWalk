@@ -28,15 +28,6 @@ enum DirectionsError: LocalizedError, Equatable {
         case .network(let text): return "Network problem while routing: \(text)"
         case .http(let status, let message): return "Directions request failed (HTTP \(status))\(message.map { ": \($0)" } ?? "")."
         case .api(let text): return text
-        }
-    }
-
-    /// Maps a Google error envelope onto copy the tour UI can show without crashing.
-    static func fromRoutesAPI(code: Int?, status: String?, message: String?, bundleIdentifier: String) -> DirectionsError {
-        .api(GoogleAPIClientIdentity.userFacingRoutesError(code: code, status: status, message: message, bundleIdentifier: bundleIdentifier))
-    }
-
-    var keepsLastKnownRoute: Bool { true }
         case .noRoute: return "No walking route was found to this stop."
         case .invalidResponse: return "Directions returned an unexpected response."
         }
