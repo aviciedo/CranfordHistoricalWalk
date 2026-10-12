@@ -124,12 +124,12 @@ struct HistoricalSignView: View {
                             .frame(maxWidth: .infinity)
                     }
 
+                    NarrationControls(stop: stop)
+
                     Text(stop.longDescription.isEmpty ? stop.shortDescription : stop.longDescription)
                         .font(.system(.body, design: .serif))
                         .lineSpacing(4)
                         .fixedSize(horizontal: false, vertical: true)
-
-                    NarrationControls(stop: stop)
 
                     VStack(alignment: .leading, spacing: 4) {
                         Label(stop.address, systemImage: "mappin.and.ellipse")
@@ -204,6 +204,31 @@ struct HistoricalSignSheet: View {
             isVisited: tour.isCompleted(stop),
             continueTitle: tour.nextStop == nil ? "Finish tour" : "Continue to next stop"
         )
+        .task(id: stop.id) {
+            image = dependencies.imageLoader.cachedImage(for: stop)
+            if image == nil { image = await dependencies.imageLoader.image(for: stop) }
+        }
+    }
+}
+
+/// Loads a stop's photograph (asset `imageName` or remote URL) and shows it only when one exists.
+/// Placed under the stop name and above `NarrationControls`.
+struct StopPhoto: View {
+    @Environment(AppDependencies.self) private var dependencies
+    let stop: HistoricalStop
+    var height: CGFloat = 160
+    var cornerRadius: CGFloat = 12
+    @State private var image: LoadedImage?
+
+    var body: some View {
+        Group {
+            if let image {
+                SignImage(image: image, cornerRadius: cornerRadius)
+                    .frame(height: height)
+                    .frame(maxWidth: .infinity)
+                    .accessibilityLabel("Photograph of \(stop.name)")
+            }
+        }
         .task(id: stop.id) {
             image = dependencies.imageLoader.cachedImage(for: stop)
             if image == nil { image = await dependencies.imageLoader.image(for: stop) }

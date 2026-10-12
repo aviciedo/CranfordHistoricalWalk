@@ -219,6 +219,7 @@ struct ARHUDView: View {
     private var signControls: some View {
         VStack(spacing: 10) {
             if let stop = model.tour.presentedSignStop ?? model.tour.currentStop {
+                StopPhoto(stop: stop, height: 110)
                 NarrationControls(stop: stop)
             }
             HStack(spacing: 12) {

@@ -143,6 +143,7 @@ struct StopListSheet: View {
                     ForEach(tour.stops) { stop in
                         VStack(alignment: .leading, spacing: 12) {
                             StopRow(stop: stop, isCurrent: stop.id == tour.currentStop?.id, isCompleted: tour.isCompleted(stop))
+                            StopPhoto(stop: stop, height: 160)
                             NarrationControls(stop: stop)
                         }
                         .padding(14)

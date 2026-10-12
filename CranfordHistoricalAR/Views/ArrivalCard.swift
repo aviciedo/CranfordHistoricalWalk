@@ -23,10 +23,11 @@ struct ArrivalCard: View {
                     }
                 }
                 Text(stop.name).font(AppTheme.Fonts.title).lineLimit(2)
+                StopPhoto(stop: stop, height: 140)
+                NarrationControls(stop: stop)
                 Text("Open the camera to see the historical sign placed in front of you.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
-                NarrationControls(stop: stop)
                 HStack(spacing: 10) {
                     Button(action: onEnterAR) {
                         Label("View in AR", systemImage: "arkit")

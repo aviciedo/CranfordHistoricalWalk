@@ -104,6 +104,7 @@ struct HomeStopCallout: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Dismiss")
             }
+            StopPhoto(stop: stop, height: 140)
             NarrationControls(stop: stop)
         }
         .padding(12)

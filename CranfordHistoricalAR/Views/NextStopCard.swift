@@ -42,6 +42,9 @@ struct NextStopCard: View {
                 .lineLimit(2)
                 .contentTransition(.opacity)
 
+            StopPhoto(stop: current, height: 140)
+            NarrationControls(stop: current)
+
             HStack(alignment: .firstTextBaseline, spacing: 18) {
                 metric(systemImage: "figure.walk", value: tour.remainingDistanceText)
                 metric(systemImage: "clock", value: tour.remainingTimeText)
@@ -61,8 +64,6 @@ struct NextStopCard: View {
                     .buttonStyle(.plain)
                 }
             }
-
-            NarrationControls(stop: current)
 
             footnote
         }
