@@ -1,0 +1,16 @@
+{
+  "images" : [
+    {
+      "filename" : "droeschers-mill-plaque.jpg",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  },
+  "properties" : {
+    "width" : 0.18,
+    "unit" : "meters"
+  }
+}

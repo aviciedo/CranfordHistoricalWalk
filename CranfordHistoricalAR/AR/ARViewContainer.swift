@@ -77,5 +77,17 @@ struct ARViewContainer: UIViewRepresentable {
         nonisolated func sessionShouldAttemptRelocalization(_ session: ARSession) -> Bool {
             true
         }
+
+        nonisolated func session(_ session: ARSession, didAdd anchors: [ARAnchor]) {
+            MainActor.assumeIsolated { viewModel.imageAnchorsDidAdd(anchors) }
+        }
+
+        nonisolated func session(_ session: ARSession, didUpdate anchors: [ARAnchor]) {
+            MainActor.assumeIsolated { viewModel.imageAnchorsDidUpdate(anchors) }
+        }
+
+        nonisolated func session(_ session: ARSession, didRemove anchors: [ARAnchor]) {
+            MainActor.assumeIsolated { viewModel.imageAnchorsDidRemove(anchors) }
+        }
     }
 }

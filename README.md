@@ -50,7 +50,11 @@ to a stop** on the home screen, tap a home-map marker, open **Stops** during the
 tour-map pin. You can start and stop any of the five recordings from the living room.
 
 The Droescher's Mill photograph lives in `Assets.xcassets/droeschers-mill` (`imageName: "droeschers-mill"`
-on stop 1).
+on stop 1). Stop 1 also has an ARKit image-tracking plate (`Assets.xcassets/PlaqueAnchors.arresourcegroup`,
+physical width **18 cm**) so the tour card can lock to the bronze door plaque. The plate quote is the
+date line on the door (`c. 1737`), not 1797 and not extra narrative. If the plate is not found
+(Simulator, poor light, missing reference), the existing geo-anchored sign is used. Closing the card
+uses the same 35 m / 50 m `signDismissed` hysteresis as the rest of the tour.
 
 `Resources/historical_stops.json` is the five-stop walking tour the app loads: HPAB brochure stops 1–5
 (Droescher's Mill, Cranford Hall, Rahway River, First Baptist Church, Cranford Hotel). `audioURL`

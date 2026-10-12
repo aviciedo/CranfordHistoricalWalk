@@ -11,6 +11,8 @@ final class ARAnchorManager {
     private let rootAnchor = AnchorEntity(world: SIMD3<Float>(repeating: 0))
     let arrows = ARNavigationArrowEntity()
     let sign = ARHistoricalSignEntity()
+    /// World-space parent for the geo sign. The plaque controller re-parents `sign` onto an image anchor.
+    var worldRoot: Entity { rootAnchor }
 
     init() {
         rootAnchor.name = "tour-root"

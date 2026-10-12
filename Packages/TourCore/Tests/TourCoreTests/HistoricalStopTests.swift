@@ -12,6 +12,14 @@ final class HistoricalStopTests: XCTestCase {
         XCTAssertEqual(document.stops.map(\.id), ["hpab-001", "hpab-002", "hpab-003", "hpab-004", "hpab-005"])
         XCTAssertTrue(document.dataStatus?.contains("HPAB") == true)
         XCTAssertEqual(document.stops[0].imageName, "droeschers-mill")
+        XCTAssertEqual(document.stops[0].historicalDate, "c. 1737")
+        XCTAssertEqual(document.stops[0].plaque?.transcription, "c. 1737")
+        XCTAssertEqual(document.stops[0].plaque?.quoteLabel, "Door plaque")
+        XCTAssertEqual(document.stops[0].plaque?.referenceImageName, SignPlacementPolicy.millReferenceImageName)
+        XCTAssertEqual(document.stops[0].plaque?.physicalWidthMeters, SignPlacementPolicy.assumedPlaqueWidthMeters)
+        XCTAssertTrue(document.stops[0].hasPlaqueReference)
+        XCTAssertFalse((document.stops[0].plaque?.transcription ?? "").contains("1797"))
+        XCTAssertNil(document.stops[1].plaque)
         let audioFiles = ["Droescher Mill.mp3", "Greystone.mp3", "Rahway River.mp3", "First Baptist.mp3", "Cranford Hotel.mp3"]
         for (stop, file) in zip(document.stops, audioFiles) {
             XCTAssertFalse(stop.isSample)

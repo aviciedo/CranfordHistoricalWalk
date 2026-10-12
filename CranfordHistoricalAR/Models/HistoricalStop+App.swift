@@ -33,9 +33,15 @@ extension HistoricalStop {
             id: "hpab-001", name: "Droescher's Mill", latitude: 40.6551018, longitude: -74.2925808,
             address: "347 Lincoln Ave East, Cranford, NJ",
             shortDescription: "HPAB audio-tour stop. Play the recording for the site description. No transcript is bundled.",
-            longDescription: "", imageName: "droeschers-mill",
+            longDescription: "", historicalDate: "c. 1737", imageName: "droeschers-mill",
             audioURL: URL(string: "http://preservecranford.com/Audio/Droescher%20Mill.mp3"),
-            order: 1, isSample: false, coordinatesUnverified: true
+            order: 1, isSample: false, coordinatesUnverified: true,
+            plaque: StopPlaque(
+                transcription: "c. 1737",
+                quoteLabel: "Door plaque",
+                referenceImageName: SignPlacementPolicy.millReferenceImageName,
+                physicalWidthMeters: SignPlacementPolicy.assumedPlaqueWidthMeters
+            )
         ),
         HistoricalStop(
             id: "hpab-002", name: "Cranford Hall", latitude: 40.6522522, longitude: -74.2997607,

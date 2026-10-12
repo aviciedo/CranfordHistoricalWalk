@@ -3,6 +3,7 @@ import RealityKit
 import simd
 import SwiftUI
 import TourCore
+import UIKit
 
 /// The 3D historical sign (spec §8): a textured plane on a slim post. The texture is the SwiftUI
 /// `HistoricalSignView` rasterized once per stop, so typography stays crisp and the layout is
@@ -13,11 +14,20 @@ final class ARHistoricalSignEntity: Entity {
     static let signWidth: Float = 1.6
     static let postHeight: Float = 1.1
 
+    enum Appearance: String {
+        /// Existing geo-placed sign on a slim post.
+        case geoPost
+        /// Popup locked to a detected door plate; no post, centered on the offset.
+        case plaqueCard
+    }
+
     private let pivot = Entity()
     private let floatCarrier = Entity()
     private var plane: ModelEntity?
     private var post: ModelEntity?
+    private var closeControl: ModelEntity?
     private(set) var stopID: String?
+    private var appearance: Appearance = .geoPost
     private var textureCache: [String: (TextureResource, CGFloat)] = [:]
     private(set) var isPresented = false
 
@@ -39,39 +49,52 @@ final class ARHistoricalSignEntity: Entity {
         return false
     }
 
+    /// Top-right close control on the card. Tapping it dismisses; the rest of the card opens the sheet.
+    func containsCloseControl(_ entity: Entity) -> Bool {
+        var current: Entity? = entity
+        while let e = current {
+            if e === closeControl || e.name == "sign-close" { return true }
+            if e === self { return false }
+            current = e.parent
+        }
+        return false
+    }
+
     // MARK: Content
 
     /// Builds or swaps the texture for `stop`. Returns false if rendering failed.
     @discardableResult
-    func configure(stop: HistoricalStop, image: LoadedImage?, scale: CGFloat) -> Bool {
-        let key = "\(stop.id)|\(image != nil)"
+    func configure(stop: HistoricalStop, image: LoadedImage?, scale: CGFloat, appearance: Appearance = .geoPost) -> Bool {
+        let key = "\(stop.id)|\(image != nil)|\(appearance.rawValue)"
         let textureAndAspect: (TextureResource, CGFloat)
         if let cached = textureCache[key] {
             textureAndAspect = cached
         } else {
-            guard let rendered = ARHistoricalSignEntity.renderTexture(for: stop, image: image, scale: scale) else { return false }
+            guard let rendered = ARHistoricalSignEntity.renderTexture(for: stop, image: image, scale: scale, appearance: appearance) else { return false }
             textureCache = [key: rendered] // keep only the latest to avoid retaining large images (spec §22)
             textureAndAspect = rendered
         }
         stopID = stop.id
+        self.appearance = appearance
 
         let (texture, aspect) = textureAndAspect
-        let width = ARHistoricalSignEntity.signWidth
+        let width: Float = appearance == .plaqueCard ? 1.35 : ARHistoricalSignEntity.signWidth
         let height = width * Float(aspect)
 
         var material = UnlitMaterial()
         material.color = .init(tint: .white, texture: .init(texture))
         material.blending = .transparent(opacity: .init(floatLiteral: 1.0))
 
+        let planeY: Float = appearance == .plaqueCard ? 0 : height / 2
         if let plane {
             plane.model?.mesh = .generatePlane(width: width, height: height)
             plane.model?.materials = [material]
-            plane.position = SIMD3<Float>(0, height / 2, 0)
+            plane.position = SIMD3<Float>(0, planeY, 0)
             plane.collision = CollisionComponent(shapes: [.generateBox(width: width, height: height, depth: 0.05)])
         } else {
             let plane = ModelEntity(mesh: .generatePlane(width: width, height: height), materials: [material])
             plane.name = "sign-plane"
-            plane.position = SIMD3<Float>(0, height / 2, 0)
+            plane.position = SIMD3<Float>(0, planeY, 0)
             plane.collision = CollisionComponent(shapes: [.generateBox(width: width, height: height, depth: 0.05)])
             floatCarrier.addChild(plane)
             self.plane = plane
@@ -85,11 +108,29 @@ final class ARHistoricalSignEntity: Entity {
             floatCarrier.addChild(post)
             self.post = post
         }
+        post?.isEnabled = appearance == .geoPost
+        layoutCloseControl(cardWidth: width, cardHeight: height, planeY: planeY)
         return true
     }
 
-    private static func renderTexture(for stop: HistoricalStop, image: LoadedImage?, scale: CGFloat) -> (TextureResource, CGFloat)? {
-        let view = HistoricalSignView(stop: stop, image: image, style: .arTexture)
+    private func layoutCloseControl(cardWidth: Float, cardHeight: Float, planeY: Float) {
+        let size: Float = 0.22
+        if closeControl == nil {
+            var material = UnlitMaterial(color: UIColor.clear)
+            material.blending = .transparent(opacity: .init(floatLiteral: 0.02))
+            let button = ModelEntity(mesh: .generatePlane(width: size, height: size), materials: [material])
+            button.name = "sign-close"
+            button.collision = CollisionComponent(shapes: [.generateBox(width: size, height: size, depth: 0.06)])
+            floatCarrier.addChild(button)
+            closeControl = button
+        }
+        closeControl?.position = SIMD3<Float>(cardWidth / 2 - 0.16, planeY + cardHeight / 2 - 0.16, 0.03)
+        closeControl?.isEnabled = true
+    }
+
+    private static func renderTexture(for stop: HistoricalStop, image: LoadedImage?, scale: CGFloat, appearance: Appearance) -> (TextureResource, CGFloat)? {
+        let style: HistoricalSignView.Style = appearance == .plaqueCard ? .arPlaqueCard : .arTexture
+        let view = HistoricalSignView(stop: stop, image: image, style: style)
         let renderer = ImageRenderer(content: view)
         renderer.scale = min(scale, 2) // 2x of 720 pt = 1440 px wide: sharp, still cheap on GPU memory
         renderer.isOpaque = false
@@ -128,7 +169,25 @@ final class ARHistoricalSignEntity: Entity {
                 playAnimation(resource)
             }
         }
-        startFloating()
+        if appearance == .geoPost {
+            startFloating()
+        }
+    }
+
+    /// Subtle scale-in while parented to a plaque image anchor. No float — the plate is the lock.
+    func presentOnPlaque() {
+        isEnabled = true
+        isPresented = true
+        pivot.transform = Transform(scale: SIMD3<Float>(repeating: 0.88), rotation: simd_quatf(angle: 0, axis: [0, 1, 0]), translation: .zero)
+        pivot.move(to: Transform(scale: .one, rotation: simd_quatf(angle: 0, axis: [0, 1, 0]), translation: .zero), relativeTo: self, duration: 0.35, timingFunction: .easeOut)
+        if #available(iOS 18.0, *) {
+            components.set(OpacityComponent(opacity: 0))
+            let fade = FromToByAnimation<Float>(name: "fade-in", from: 0, to: 1, duration: 0.3, timing: .easeOut, bindTarget: .opacity)
+            if let resource = try? AnimationResource.generate(with: fade) {
+                playAnimation(resource)
+            }
+        }
+        floatCarrier.stopAllAnimations()
     }
 
     /// Reposition without replaying the entrance (new GPS fix / user walked around it).

@@ -28,6 +28,11 @@ struct ArrivalCard: View {
                 Text("Open the camera to see the historical sign placed in front of you.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+                if stop.hasPlaqueReference {
+                    Text(SignPlacementPolicy.millPlaqueHint)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
                 HStack(spacing: 10) {
                     Button(action: onEnterAR) {
                         Label("View in AR", systemImage: "arkit")

@@ -44,6 +44,9 @@ final class GeoAnchorManager {
     private(set) var localizationState: ARLocalizationState = .notStarted
     private(set) var provider: any GeoSpatialProvider
     let anchors: ARAnchorManager
+    let plaqueAnchors = PlaqueAnchorController()
+    /// Placement decided by `SignPlacementPolicy` (image vs geo). Not tour progress.
+    var placementMode: SignPlacementMode = .hidden
 
     /// Navigation target (next waypoint on the route) and destination (the stop itself).
     struct NavigationTarget: Equatable {
@@ -112,6 +115,7 @@ final class GeoAnchorManager {
 
     func sessionDidStart(_ session: ARSession, arView: ARView) {
         anchors.attach(to: arView)
+        plaqueAnchors.attach(to: arView)
         provider.attach(session: session)
         localizationState = .initializing
         isInterrupted = false
@@ -120,6 +124,7 @@ final class GeoAnchorManager {
 
     func sessionDidStop() {
         provider.detach()
+        plaqueAnchors.unbind(sign: anchors.sign, returningTo: anchors.worldRoot)
         anchors.hideAll()
         signAnchoredPosition = nil
         localizationState = .notStarted
@@ -128,6 +133,7 @@ final class GeoAnchorManager {
 
     func sessionWasInterrupted() {
         isInterrupted = true
+        plaqueAnchors.unbind(sign: anchors.sign, returningTo: anchors.worldRoot)
         anchors.hideAll()
         signAnchoredPosition = nil
         localizationState = .interrupted
@@ -171,11 +177,31 @@ final class GeoAnchorManager {
 
     /// Show the sign for `stop` (idempotent). The texture is rendered once per stop.
     func presentSign(for stop: HistoricalStop, image: LoadedImage?, displayScale: CGFloat) {
+        presentSign(for: stop, image: image, displayScale: displayScale, appearance: .geoPost)
+    }
+
+    func presentSign(for stop: HistoricalStop, image: LoadedImage?, displayScale: CGFloat, appearance: ARHistoricalSignEntity.Appearance) {
         let request = SignRequest(stop: stop, image: image, displayScale: displayScale)
-        guard request != signRequest else { return }
         let sameStop = signRequest?.stop.id == stop.id
         signRequest = request
-        anchors.sign.configure(stop: stop, image: image, scale: displayScale)
+        anchors.sign.configure(stop: stop, image: image, scale: displayScale, appearance: appearance)
+        if appearance == .plaqueCard {
+            if let imageAnchor = plaqueAnchors.trackedAnchor {
+                plaqueAnchors.bind(imageAnchor: imageAnchor, sign: anchors.sign, offset: .aboveFacade)
+            }
+            if !anchors.sign.isPresented {
+                anchors.sign.presentOnPlaque()
+            }
+            return
+        }
+        let switchingFromPlaque = anchors.sign.parent !== anchors.worldRoot
+        plaqueAnchors.unbind(sign: anchors.sign, returningTo: anchors.worldRoot)
+        if switchingFromPlaque {
+            signAnchoredPosition = nil
+            if anchors.sign.isPresented { anchors.sign.dismiss() }
+            placeSign(now: lastFrameTime)
+            return
+        }
         // Artwork arriving for the sign already on display swaps the texture in place; a new stop
         // replays the entrance at a fresh position.
         guard !(sameStop && anchors.sign.isPresented) else { return }
@@ -185,13 +211,15 @@ final class GeoAnchorManager {
     }
 
     func dismissSign() {
-        guard signRequest != nil else { return }
+        guard signRequest != nil || anchors.sign.isPresented else { return }
         signRequest = nil
         signAnchoredPosition = nil
+        plaqueAnchors.unbind(sign: anchors.sign, returningTo: anchors.worldRoot)
         anchors.sign.dismiss()
     }
 
     var isSignEntity: (Entity) -> Bool { { [anchors] in anchors.sign.contains($0) } }
+    var isCloseControl: (Entity) -> Bool { { [anchors] in anchors.sign.containsCloseControl($0) } }
 
     /// Sign base sits this far below the camera (bottom edge roughly at chest height).
     static let signBaseBelowCamera: Float = 0.45
@@ -199,6 +227,7 @@ final class GeoAnchorManager {
     static let signMaxDistance: Float = 9.0
 
     private func placeSign(now: TimeInterval) {
+        guard placementMode == .geoFallback else { return }
         guard let request = signRequest, let cameraTransform else { return }
         guard case .normal = trackingState, !isInterrupted else { return }
         let cameraPosition = cameraTransform.translation
@@ -270,7 +299,9 @@ final class GeoAnchorManager {
             return
         }
         // Inside the arrival radius the sign takes over (Stage 5); arrows would only clutter.
-        guard target.distanceToDestination > target.arrivalRadius else {
+        // Keep them while we are still hunting for the mill plaque.
+        let insideArrival = target.distanceToDestination <= target.arrivalRadius
+        guard SignPlacementPolicy.shouldKeepNavigationArrows(mode: placementMode, insideArrivalRadius: insideArrival) else {
             anchors.arrows.setVisible(false)
             return
         }

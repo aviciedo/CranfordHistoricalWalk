@@ -89,6 +89,9 @@ struct ARHUDView: View {
             if let message = model.statusMessage {
                 statusBanner(message)
             }
+            if let hint = model.plaqueHint {
+                plaqueHintBanner(hint)
+            }
             Spacer()
             if model.availability == .ready {
                 bottomPanel
@@ -98,6 +101,7 @@ struct ARHUDView: View {
         .padding(.top, 8)
         .padding(.bottom, 16)
         .animation(.easeInOut(duration: 0.25), value: model.statusMessage)
+        .animation(.easeInOut(duration: 0.25), value: model.plaqueHint)
     }
 
     private var topBar: some View {
@@ -155,11 +159,28 @@ struct ARHUDView: View {
         .transition(.move(edge: .top).combined(with: .opacity))
     }
 
+    private func plaqueHintBanner(_ message: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "door.left.hand.closed")
+                .font(.footnote)
+                .foregroundStyle(AppTheme.brass)
+            Text(message)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .transition(.opacity)
+    }
+
     @ViewBuilder
     private var bottomPanel: some View {
         if model.tour.phase == .complete {
             tourCompletePanel
-        } else if model.tour.isSignPresented {
+        } else if model.tour.isSignPresented, model.placementMode == .plaqueAnchored || model.placementMode == .geoFallback {
             signControls
         } else {
             HStack(alignment: .bottom) {

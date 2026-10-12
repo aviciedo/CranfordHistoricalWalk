@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "tourName": "HPAB Historic Cranford Audio Tour",
   "tourSubtitle": "Names, addresses, and recordings from the Cranford Historic Preservation Advisory Board",
-  "dataStatus": "Extracted from the HPAB Historic Cranford QR Code Audio Tour brochure (May 2020), www.preservecranford.com. Recordings by Bernie Wagenblast. This file is stops 1–5 of that tour. Audio URLs are the QR-code destinations, probed HTTP 200 audio/mpeg. Coordinates are unverified OpenStreetMap Nominatim geocodes of the brochure addresses — not surveyed site positions. Cranford Hall audio is the QR file Greystone.mp3. Play any stop from anywhere; you do not need to be at the site.",
+  "dataStatus": "Extracted from the HPAB Historic Cranford QR Code Audio Tour brochure (May 2020), www.preservecranford.com. Recordings by Bernie Wagenblast. This file is stops 1–5 of that tour. Audio URLs are the QR-code destinations, probed HTTP 200 audio/mpeg. Coordinates are unverified OpenStreetMap Nominatim geocodes of the brochure addresses — not surveyed site positions. Cranford Hall audio is the QR file Greystone.mp3. Play any stop from anywhere; you do not need to be at the site. Droescher's Mill historicalDate and plaque.transcription are the door-plate date line only (c. 1737), not 1797 and not extra narrative.",
   "stops": [
     {
       "id": "hpab-001",
@@ -12,7 +12,7 @@
       "address": "347 Lincoln Ave East, Cranford, NJ",
       "shortDescription": "HPAB audio-tour stop. Play the recording for the site description. No transcript is bundled.",
       "longDescription": "",
-      "historicalDate": null,
+      "historicalDate": "c. 1737",
       "imageName": "droeschers-mill",
       "imageURL": null,
       "illustrationURL": null,
@@ -22,7 +22,13 @@
       "order": 1,
       "estimatedVisitDuration": 90,
       "isSample": false,
-      "coordinatesUnverified": true
+      "coordinatesUnverified": true,
+      "plaque": {
+        "transcription": "c. 1737",
+        "quoteLabel": "Door plaque",
+        "referenceImageName": "droeschers-mill-plaque",
+        "physicalWidthMeters": 0.18
+      }
     },
     {
       "id": "hpab-002",

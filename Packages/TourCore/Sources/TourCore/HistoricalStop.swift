@@ -39,6 +39,9 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
     /// True when latitude/longitude came from an unverified geocode (or similar) and must not
     /// be treated as a surveyed historical-site position.
     public var coordinatesUnverified: Bool
+    /// Optional bronze-plaque / door-plate copy for AR image tracking. Quote this; do not treat it
+    /// as extra narrative.
+    public var plaque: StopPlaque?
 
     public init(
         id: String,
@@ -59,7 +62,8 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
         order: Int,
         estimatedVisitDuration: TimeInterval = 90,
         isSample: Bool = false,
-        coordinatesUnverified: Bool = false
+        coordinatesUnverified: Bool = false,
+        plaque: StopPlaque? = nil
     ) {
         self.id = id
         self.name = name
@@ -80,6 +84,7 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
         self.estimatedVisitDuration = estimatedVisitDuration
         self.isSample = isSample
         self.coordinatesUnverified = coordinatesUnverified
+        self.plaque = plaque
     }
 
     public var coordinate: GeoCoordinate {
@@ -97,6 +102,11 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
 
     public var hasAnyImage: Bool {
         imageName != nil || imageURL != nil || illustrationURL != nil
+    }
+
+    /// True when this stop can be locked to a physical plate via ARKit image tracking.
+    public var hasPlaqueReference: Bool {
+        plaque?.isUsable == true
     }
 
     /// Where narration for this stop comes from, in order of preference:
@@ -132,7 +142,7 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
         case id, name, latitude, longitude, altitude, address, shortDescription, longDescription
         case historicalDate, imageName, imageURL, illustrationURL, audioURL
         case arrivalRadius, departureRadius, order, estimatedVisitDuration, isSample
-        case coordinatesUnverified
+        case coordinatesUnverified, plaque
     }
 
     public init(from decoder: Decoder) throws {
@@ -156,6 +166,39 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
         estimatedVisitDuration = try c.decodeIfPresent(TimeInterval.self, forKey: .estimatedVisitDuration) ?? 90
         isSample = try c.decodeIfPresent(Bool.self, forKey: .isSample) ?? false
         coordinatesUnverified = try c.decodeIfPresent(Bool.self, forKey: .coordinatesUnverified) ?? false
+        plaque = try c.decodeIfPresent(StopPlaque.self, forKey: .plaque)
+    }
+}
+
+/// Physical door-plate / bronze-plaque copy used for AR image tracking.
+///
+/// `transcription` is the plate text only — not a new historical narrative.
+public struct StopPlaque: Hashable, Codable, Sendable {
+    /// Exact plate wording that has been read off the physical sign.
+    public var transcription: String
+    /// Caption shown above the quote (for example "Door plaque").
+    public var quoteLabel: String
+    /// `ARReferenceImage` name inside the `PlaqueAnchors` resource group.
+    public var referenceImageName: String
+    /// Real-world width of the plate in meters, used by ARKit.
+    public var physicalWidthMeters: Double
+
+    public init(
+        transcription: String,
+        quoteLabel: String = "Door plaque",
+        referenceImageName: String,
+        physicalWidthMeters: Double
+    ) {
+        self.transcription = transcription
+        self.quoteLabel = quoteLabel
+        self.referenceImageName = referenceImageName
+        self.physicalWidthMeters = physicalWidthMeters
+    }
+
+    public var isUsable: Bool {
+        !transcription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !referenceImageName.isEmpty
+            && physicalWidthMeters > 0
     }
 }
 

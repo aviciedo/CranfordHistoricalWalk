@@ -33,6 +33,13 @@ final class ARViewModel {
     @ObservationIgnored private var imageTask: Task<Void, Never>?
     @ObservationIgnored private var imageRequestedForStopID: String?
     @ObservationIgnored private var isSessionRunning = false
+    @ObservationIgnored private var plaqueSearchStartedAt: Date?
+    /// True when world tracking accepted a non-empty `PlaqueAnchors` group. Simulator / missing
+    /// assets stay false and the geo sign is used.
+    private(set) var imageTrackingAvailable = false
+    private(set) var placementMode: SignPlacementMode = .hidden
+    /// Restrained HUD line while looking for the mill plate.
+    private(set) var plaqueHint: String?
 
     init(tour: TourViewModel, provider: any GeoSpatialProvider, imageLoader: any ImageLoader) {
         self.tour = tour
@@ -113,6 +120,10 @@ final class ARViewModel {
         imageTask?.cancel()
         imageTask = nil
         isSessionRunning = false
+        plaqueSearchStartedAt = nil
+        imageTrackingAvailable = false
+        placementMode = .hidden
+        plaqueHint = nil
         geoAnchors.sessionDidStop()
         geoAnchors.anchors.detach()
         arView = nil
@@ -126,6 +137,7 @@ final class ARViewModel {
         configuration.environmentTexturing = .none
         configuration.isLightEstimationEnabled = true
         configuration.isAutoFocusEnabled = true
+        imageTrackingAvailable = PlaqueAnchorController.applyDetectionImages(to: configuration)
         arView.session.run(configuration, options: [.resetTracking, .removeExistingAnchors])
         isSessionRunning = true
         geoAnchors.sessionDidStart(arView.session, arView: arView)
@@ -153,13 +165,11 @@ final class ARViewModel {
     private func pushTourStateToAnchors() {
         // Reads tracked properties: userLocation, heading, currentStop, routeProgress, presentedSignStopID.
         geoAnchors.locationDidUpdate(tour.userLocation, heading: tour.heading)
-        if let signStop = tour.presentedSignStop {
-            let image = imageLoader.cachedImage(for: signStop)
-            geoAnchors.presentSign(for: signStop, image: image, displayScale: displayScale)
-            if image == nil, signStop.hasAnyImage { loadSignImage(for: signStop) }
-        } else {
-            geoAnchors.dismissSign()
+        applySignPlacement()
+        if tour.presentedSignStop == nil {
             imageRequestedForStopID = nil
+        } else if let signStop = tour.presentedSignStop, imageLoader.cachedImage(for: signStop) == nil, signStop.hasAnyImage {
+            loadSignImage(for: signStop)
         }
         guard let stop = tour.currentStop, let user = tour.userLocation else {
             geoAnchors.setNavigationTarget(nil)
@@ -186,14 +196,111 @@ final class ARViewModel {
         imageTask = Task { @MainActor [weak self] in
             guard let self, let image = await self.imageLoader.image(for: stop) else { return }
             guard !Task.isCancelled, self.tour.presentedSignStopID == stop.id else { return }
-            self.geoAnchors.presentSign(for: stop, image: image, displayScale: self.displayScale)
+            self.applySignPlacement()
         }
+    }
+
+    // MARK: Plaque image tracking (placement only)
+
+    private func applySignPlacement() {
+        if tour.currentStop?.hasPlaqueReference == true {
+            // Keep the hunt clock at zero while still approaching so a return after the
+            // 50 m hysteresis gets a fresh 8 s, not an immediate geo fallback.
+            if tour.proximityState == .approaching || plaqueSearchStartedAt == nil {
+                plaqueSearchStartedAt = Date()
+            }
+        } else {
+            plaqueSearchStartedAt = nil
+        }
+
+        let input = SignPlacementInput(
+            proximity: tour.proximityState,
+            isSignRequested: tour.isSignPresented,
+            hasManuallyDismissed: tour.proximityMachine?.hasManuallyDismissed ?? false,
+            stopHasPlaqueReference: tour.currentStop?.hasPlaqueReference ?? tour.presentedSignStop?.hasPlaqueReference ?? false,
+            imageTrackingAvailable: imageTrackingAvailable,
+            plaqueDetected: geoAnchors.plaqueAnchors.trackedImageName != nil
+                && geoAnchors.plaqueAnchors.trackedImageName == expectedPlaqueImageName,
+            searchElapsed: plaqueSearchStartedAt.map { Date().timeIntervalSince($0) } ?? 0
+        )
+        let mode = SignPlacementPolicy.mode(input)
+        placementMode = mode
+        geoAnchors.placementMode = mode
+        plaqueHint = SignPlacementPolicy.plaqueHint(
+            mode: mode,
+            stopHasPlaqueReference: input.stopHasPlaqueReference,
+            proximity: input.proximity
+        )
+
+        guard let signStop = tour.presentedSignStop else {
+            geoAnchors.dismissSign()
+            return
+        }
+        let image = imageLoader.cachedImage(for: signStop)
+        switch mode {
+        case .hidden, .searchingForPlaque:
+            geoAnchors.dismissSign()
+        case .plaqueAnchored:
+            geoAnchors.presentSign(for: signStop, image: image, displayScale: displayScale, appearance: .plaqueCard)
+        case .geoFallback:
+            geoAnchors.presentSign(for: signStop, image: image, displayScale: displayScale, appearance: .geoPost)
+        }
+    }
+
+    private var expectedPlaqueImageName: String? {
+        (tour.presentedSignStop ?? tour.currentStop)?.plaque?.referenceImageName
+    }
+
+    func imageAnchorsDidAdd(_ anchors: [ARAnchor]) {
+        for anchor in anchors {
+            guard let imageAnchor = anchor as? ARImageAnchor else { continue }
+            handleRecognizedPlaque(imageAnchor)
+        }
+    }
+
+    func imageAnchorsDidUpdate(_ anchors: [ARAnchor]) {
+        for anchor in anchors {
+            guard let imageAnchor = anchor as? ARImageAnchor else { continue }
+            if imageAnchor.isTracked {
+                handleRecognizedPlaque(imageAnchor)
+            }
+        }
+    }
+
+    func imageAnchorsDidRemove(_ anchors: [ARAnchor]) {
+        for anchor in anchors {
+            guard let imageAnchor = anchor as? ARImageAnchor else { continue }
+            if geoAnchors.plaqueAnchors.trackedAnchor === imageAnchor {
+                geoAnchors.plaqueAnchors.unbind(sign: geoAnchors.anchors.sign, returningTo: geoAnchors.anchors.worldRoot)
+                applySignPlacement()
+            }
+        }
+    }
+
+    /// Recognizing the physical plate can open the sign through the existing state machine
+    /// (`userOpenedSign`) so GPS/geocode error does not block an on-site visitor. Dismissed
+    /// this visit still wins.
+    private func handleRecognizedPlaque(_ imageAnchor: ARImageAnchor) {
+        guard let expected = expectedPlaqueImageName,
+              geoAnchors.plaqueAnchors.matches(imageAnchor, expectedName: expected) else { return }
+        if tour.proximityMachine?.hasManuallyDismissed == true { return }
+        if tour.proximityState == .completed { return }
+        if !tour.isSignPresented {
+            tour.openSignManually()
+        }
+        geoAnchors.plaqueAnchors.bind(imageAnchor: imageAnchor, sign: geoAnchors.anchors.sign, offset: .aboveFacade)
+        applySignPlacement()
     }
 
     // MARK: Session delegate forwarding
 
     func frameDidUpdate(_ frame: ARFrame) {
         geoAnchors.frameDidUpdate(frame)
+        // Observation only fires when tour properties change; the 8 s plaque hunt
+        // must advance on frames so a still visitor still gets the geo fallback.
+        if placementMode == .searchingForPlaque || (tour.isSignPresented && tour.currentStop?.hasPlaqueReference == true && placementMode == .hidden) {
+            applySignPlacement()
+        }
     }
 
     /// Geospatial unavailable: same AR session owner, same LocationService, Core Location provider.
@@ -238,7 +345,12 @@ final class ARViewModel {
     // MARK: Sign interactions (spec §8, §9)
 
     func didTap(entity: Entity?, at point: CGPoint) {
-        guard let entity, geoAnchors.isSignEntity(entity), tour.isSignPresented else { return }
+        guard let entity else { return }
+        if geoAnchors.isCloseControl(entity) {
+            closeSign()
+            return
+        }
+        guard geoAnchors.isSignEntity(entity), tour.isSignPresented else { return }
         isShowingSignDetails = true
     }
 

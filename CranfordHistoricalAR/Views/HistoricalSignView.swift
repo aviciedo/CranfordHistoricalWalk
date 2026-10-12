@@ -6,7 +6,7 @@ import TourCore
 /// - `.sheet`: scrollable, interactive version shown when the user taps the AR sign or arrives
 ///   while on the map (also the accessibility-friendly path).
 struct HistoricalSignView: View {
-    enum Style { case arTexture, sheet }
+    enum Style { case arTexture, arPlaqueCard, sheet }
 
     let stop: HistoricalStop
     var image: LoadedImage?
@@ -22,6 +22,7 @@ struct HistoricalSignView: View {
     var body: some View {
         switch style {
         case .arTexture: textureBody
+        case .arPlaqueCard: plaqueCardBody
         case .sheet: sheetBody
         }
     }
@@ -64,6 +65,11 @@ struct HistoricalSignView: View {
                 .lineSpacing(5)
                 .fixedSize(horizontal: false, vertical: true)
 
+            if let plaque = stop.plaque, plaque.isUsable {
+                plaqueQuote(plaque, labelSize: 18, quoteSize: 26)
+                    .padding(.top, 20)
+            }
+
             // No empty image frame when there is no image (spec §10).
             if let image {
                 SignImage(image: image, cornerRadius: 14)
@@ -102,6 +108,92 @@ struct HistoricalSignView: View {
         .environment(\.colorScheme, .light)
     }
 
+    // MARK: Plaque-anchored popup (no post; sits above the door)
+
+    private var plaqueCardBody: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 6) {
+                    if let date = stop.displayDate {
+                        Text(date)
+                            .font(.system(size: 40, weight: .semibold, design: .serif))
+                            .foregroundStyle(SignPalette.brass)
+                    }
+                    Text(stop.isSample ? "SAMPLE HISTORIC SITE" : "CRANFORD HISTORIC SITE")
+                        .font(.system(size: 18, weight: .semibold))
+                        .tracking(4)
+                        .foregroundStyle(SignPalette.inkMuted)
+                }
+                Spacer()
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 36))
+                    .foregroundStyle(SignPalette.inkMuted.opacity(0.85))
+                    .accessibilityHidden(true)
+            }
+            .padding(.bottom, 12)
+
+            Text(stop.name)
+                .font(.system(size: 40, weight: .bold, design: .serif))
+                .foregroundStyle(SignPalette.ink)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.bottom, 12)
+
+            Rectangle().fill(SignPalette.brass).frame(height: 3).padding(.bottom, 16)
+
+            Text(stop.shortDescription)
+                .font(.system(size: 24, weight: .regular, design: .serif))
+                .foregroundStyle(SignPalette.ink)
+                .lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if !stop.longDescription.isEmpty {
+                Text(stop.longDescription)
+                    .font(.system(size: 22, weight: .regular, design: .serif))
+                    .foregroundStyle(SignPalette.ink)
+                    .lineSpacing(4)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 12)
+            }
+
+            if let plaque = stop.plaque, plaque.isUsable {
+                plaqueQuote(plaque, labelSize: 16, quoteSize: 28)
+                    .padding(.top, 18)
+            }
+        }
+        .padding(36)
+        .frame(width: HistoricalSignView.textureWidth, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(LinearGradient(colors: [SignPalette.paper, SignPalette.paperDeep], startPoint: .top, endPoint: .bottom))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .inset(by: 10)
+                .strokeBorder(SignPalette.brass.opacity(0.9), lineWidth: 3)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .strokeBorder(SignPalette.ink.opacity(0.35), lineWidth: 2)
+        )
+        .environment(\.colorScheme, .light)
+    }
+
+    private func plaqueQuote(_ plaque: StopPlaque, labelSize: CGFloat, quoteSize: CGFloat) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(plaque.quoteLabel.uppercased())
+                .font(.system(size: labelSize, weight: .semibold))
+                .tracking(2)
+                .foregroundStyle(SignPalette.inkMuted)
+            Text("“\(plaque.transcription)”")
+                .font(.system(size: quoteSize, weight: .regular, design: .serif).italic())
+                .foregroundStyle(SignPalette.ink)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(SignPalette.brass.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
     // MARK: Sheet layout
 
     private var sheetBody: some View {
@@ -125,6 +217,10 @@ struct HistoricalSignView: View {
                     }
 
                     NarrationControls(stop: stop)
+
+                    if let plaque = stop.plaque, plaque.isUsable {
+                        plaqueQuote(plaque, labelSize: 12, quoteSize: 20)
+                    }
 
                     Text(stop.longDescription.isEmpty ? stop.shortDescription : stop.longDescription)
                         .font(.system(.body, design: .serif))
