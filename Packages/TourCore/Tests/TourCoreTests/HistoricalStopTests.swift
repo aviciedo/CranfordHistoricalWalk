@@ -2,16 +2,31 @@ import XCTest
 @testable import TourCore
 
 final class HistoricalStopTests: XCTestCase {
-    func testBundledSampleJSONDecodesAndIsOrdered() throws {
+    func testBundledTourJSONIsThreeHPABStops() throws {
         let document = try HistoricalStopDecoder.decode(Fixtures.data("historical_stops"))
         XCTAssertEqual(document.schemaVersion, 1)
-        XCTAssertEqual(document.stops.count, 5)
-        XCTAssertEqual(document.stops.map(\.order), [1, 2, 3, 4, 5])
-        XCTAssertEqual(Set(document.stops.map(\.id)).count, 5)
+        XCTAssertEqual(document.stops.map(\.name), ["Droescher's Mill", "Cranford Hall", "Rahway River"])
+        XCTAssertEqual(document.stops.map(\.order), [1, 2, 3])
+        XCTAssertEqual(document.stops.map(\.id), ["hpab-001", "hpab-002", "hpab-003"])
+        XCTAssertTrue(document.dataStatus?.contains("HPAB") == true)
+        XCTAssertEqual(document.stops[0].imageName, "droeschers-mill")
+        for stop in document.stops {
+            XCTAssertFalse(stop.isSample)
+            XCTAssertTrue(stop.coordinatesUnverified)
+            XCTAssertEqual(stop.arrivalRadius, 35)
+            XCTAssertEqual(stop.effectiveDepartureRadius, 50)
+            guard case .remoteAudio(let url) = stop.narrationSource else {
+                return XCTFail("\(stop.id) must play the HPAB QR recording")
+            }
+            XCTAssertEqual(url.scheme, "http")
+            XCTAssertTrue(url.host?.contains("preservecranford.com") == true)
+        }
     }
 
     func testSampleDataIsHonestlyLabeled() throws {
         let stops = try Fixtures.sampleStops()
+        XCTAssertEqual(stops.count, 3)
+        XCTAssertEqual(stops.map(\.order), [1, 2, 3])
         for stop in stops {
             XCTAssertTrue(stop.isSample, "\(stop.id) must be flagged isSample until verified")
             XCTAssertTrue(stop.address.contains("SAMPLE LOCATION"), "\(stop.id) address must carry the SAMPLE LOCATION label")
@@ -35,31 +50,6 @@ final class HistoricalStopTests: XCTestCase {
         XCTAssertEqual(try stop(audio: nil).narrationSource, .synthesizedSpeech(text: "Long text."))
         XCTAssertEqual(try stop(audio: nil, long: "  ").narrationSource, .synthesizedSpeech(text: "Short."))
         XCTAssertNil(try stop(audio: nil, long: "", short: "").narrationSource)
-    }
-
-    func testHPABAudioTourCatalogDecodesWithRecordingsAndUnverifiedCoordinates() throws {
-        let document = try HistoricalStopDecoder.decode(Fixtures.data("hpab_audio_tour"))
-        XCTAssertEqual(document.stops.count, 25)
-        XCTAssertEqual(document.stops.map(\.order), Array(1...25))
-        XCTAssertEqual(Set(document.stops.map(\.id)).count, 25)
-        XCTAssertTrue(document.dataStatus?.contains("HPAB") == true)
-        for stop in document.stops {
-            XCTAssertFalse(stop.isSample, "\(stop.id) is sourced HPAB content, not sample filler")
-            XCTAssertTrue(stop.coordinatesUnverified, "\(stop.id) coordinates are geocodes, not surveyed")
-            XCTAssertEqual(stop.arrivalRadius, 35)
-            XCTAssertEqual(stop.effectiveDepartureRadius, 50)
-            guard case .remoteAudio(let url) = stop.narrationSource else {
-                return XCTFail("\(stop.id) must play the HPAB QR recording, not synthesized speech")
-            }
-            XCTAssertEqual(url.scheme, "http")
-            XCTAssertTrue(url.host?.contains("preservecranford.com") == true)
-            XCTAssertTrue(url.path.lowercased().hasSuffix(".mp3"))
-        }
-        let mill = try XCTUnwrap(document.stops.first)
-        XCTAssertEqual(mill.id, "hpab-001")
-        XCTAssertEqual(mill.name, "Droescher's Mill")
-        XCTAssertEqual(mill.imageName, "droeschers-mill")
-        XCTAssertTrue(mill.hasAnyImage)
     }
 
     func testSampleCoordinatesAreNearCranford() throws {

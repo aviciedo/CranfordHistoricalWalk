@@ -12,7 +12,7 @@ enum Fixtures {
     }
 
     static func sampleStops() throws -> [HistoricalStop] {
-        try HistoricalStopDecoder.decode(data("historical_stops")).stops
+        try HistoricalStopDecoder.decode(data("sample_historical_stops")).stops
     }
 }
 

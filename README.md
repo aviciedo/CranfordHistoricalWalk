@@ -3,8 +3,9 @@
 A SwiftUI + ARKit/RealityKit + Core Location + Google Maps walking-tour MVP for Cranford, New Jersey.
 Walk toward a historical site, follow AR arrows, and a large AR historical sign appears when you arrive.
 
-> All stops shipped in this repository are **SAMPLE LOCATIONS** with **SAMPLE HISTORICAL DESCRIPTIONS**.
-> Nothing in the app is a historical claim until verified content replaces `Resources/historical_stops.json`.
+> The bundled walking tour is **three** HPAB audio-tour stops (Droescher's Mill, Cranford Hall, Rahway River).
+> Names, addresses, and recordings come from the HPAB May 2020 brochure. Coordinates are **unverified geocodes**,
+> not surveyed site positions. No historical narrative is invented — play the recording for each stop.
 
 ## Requirements
 
@@ -42,16 +43,13 @@ Each stop can play narration from `audioURL` (remote HTTP(S) or a bundled file n
 set, from speech synthesis of `longDescription` / `shortDescription`. `NarrationPlayer` is created
 once in `AppDependencies` so the map sheet and the AR screen share one player.
 
-The Droescher's Mill photograph lives in `Assets.xcassets/droeschers-mill`. It is referenced from
-the HPAB catalog (`imageName: "droeschers-mill"`), not from the sample tour.
+The Droescher's Mill photograph lives in `Assets.xcassets/droeschers-mill` (`imageName: "droeschers-mill"`
+on stop 1).
 
-`Resources/hpab_audio_tour.json` is a 25-stop catalog extracted from the HPAB *Historic Cranford QR
-Code Audio Tour* brochure (May 2020): names and addresses from the brochure, `audioURL` values from
-the QR codes (probed `HTTP 200` / `audio/mpeg` on preservecranford.com), mill photo on stop 1.
-Coordinates are **unverified Nominatim geocodes** (`coordinatesUnverified: true`) and must not be
-treated as surveyed site positions. The app still ships `Resources/historical_stops.json` as the
-labeled SAMPLE walking tour. To try the HPAB catalog, copy it over that file after verifying
-coordinates — do not invent historical text; the recordings are the description.
+`Resources/historical_stops.json` is the three-stop walking tour the app loads: HPAB brochure stops 1–3
+(Droescher's Mill, Cranford Hall, Rahway River). `audioURL` values are the QR destinations (probed
+`HTTP 200` / `audio/mpeg`). Coordinates are **unverified Nominatim geocodes** (`coordinatesUnverified: true`).
+A three-stop SAMPLE fixture remains in TourCore tests only (`sample_historical_stops.json`).
 
 The HPAB QR codes use `http://` (the host's HTTPS certificate is self-signed). `Info.plist` allows
 insecure HTTP only for `preservecranford.com`.
@@ -179,7 +177,7 @@ CranfordHistoricalAR/
   Views/                    HomeView, TourView, MapView, ARView, NextStopCard, TourHeaderView, TourCompleteView, …
   ViewModels/               TourViewModel (single source of truth), MapViewModel, ARViewModel
   Developer/                Developer Controls (DEVELOPER_MENU only)
-  Resources/                historical_stops.json (sample tour), hpab_audio_tour.json (HPAB catalog)
+  Resources/                historical_stops.json (3-stop HPAB walking tour)
 CranfordHistoricalARTests/  Host-app unit tests (Mac/Xcode)
 ```
 
@@ -187,7 +185,7 @@ CranfordHistoricalARTests/  Host-app unit tests (Mac/Xcode)
 
 - **First screen map** is a live Google map of all stops (dots; numbered once zoomed past level 16;
   tap a dot for a name callout, tap the map to dismiss). Without a Maps key it falls back to the
-  stylized sketch map. Both stay legible with 25+ stops because no text labels are drawn on dots.
+  stylized sketch map. Dots stay unlabelled so they remain legible if the tour file grows.
 
 - **Distances and times** on the panel always come from the walking route (Routes API `computeRoutes`,
   `travelMode: WALK`), refreshed on a policy (moved ≥ 25 m, off-route > 30 m, stale > 90 s, destination

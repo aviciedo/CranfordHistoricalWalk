@@ -19,8 +19,8 @@ struct StopMarkerModel: Identifiable, Equatable {
     }
 }
 
-/// How stop markers are drawn. The tour map uses labeled pins; the home map uses plain dots so
-/// 25+ stops stay legible, switching to numbered dots once the user zooms in.
+/// How stop markers are drawn. The tour map uses labeled pins; the home map uses plain dots,
+/// switching to numbered dots once the user zooms in.
 enum StopMarkerStyle: Equatable {
     case labeledPin
     case dot

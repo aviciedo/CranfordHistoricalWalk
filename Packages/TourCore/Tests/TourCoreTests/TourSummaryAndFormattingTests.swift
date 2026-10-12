@@ -12,14 +12,14 @@ final class TourSummaryAndFormattingTests: XCTestCase {
             cursor = stop.coordinate
         }
         let summary = TourSummary.make(stops: stops, legs: legs)
-        XCTAssertEqual(summary.stopCount, 5)
+        XCTAssertEqual(summary.stopCount, 3)
         XCTAssertTrue(summary.isFromWalkingRoutes)
         XCTAssertEqual(summary.pendingLegCount, 0)
         XCTAssertEqual(summary.totalDistanceMeters, legs.compactMap { $0?.distanceMeters }.reduce(0, +), accuracy: 0.001)
         XCTAssertEqual(summary.totalWalkingSeconds, legs.compactMap { $0?.durationSeconds }.reduce(0, +), accuracy: 0.001)
 
         let withVisits = TourSummary.make(stops: stops, legs: legs, includeVisitTime: true)
-        XCTAssertEqual(withVisits.totalVisitSeconds, 90 + 90 + 120 + 90 + 90)
+        XCTAssertEqual(withVisits.totalVisitSeconds, 90 + 90 + 120)
     }
 
     func testSummaryFlagsPendingAndEstimatedLegs() throws {
@@ -28,7 +28,7 @@ final class TourSummaryAndFormattingTests: XCTestCase {
         legs[0] = WalkingRoute.straightLineEstimate(from: cranfordCenter, to: stops[0].coordinate)
         let summary = TourSummary.make(stops: stops, legs: legs)
         XCTAssertFalse(summary.isFromWalkingRoutes)
-        XCTAssertEqual(summary.pendingLegCount, 4)
+        XCTAssertEqual(summary.pendingLegCount, 2)
     }
 
     func testDistanceFormatting() {

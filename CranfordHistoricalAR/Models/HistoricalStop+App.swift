@@ -27,10 +27,32 @@ extension HistoricalStop {
         return historicalDate
     }
 
+    /// Same three stops as the bundled walking tour (previews and host-app tests).
     static let previewStops: [HistoricalStop] = [
-        HistoricalStop(id: "preview-1", name: "Sample Stop 1 — Downtown Area", latitude: 40.6565, longitude: -74.3040, address: "SAMPLE LOCATION — REPLACE WITH VERIFIED CRANFORD HISTORICAL SITE", shortDescription: "SAMPLE HISTORICAL DESCRIPTION — Historical information will appear here.", longDescription: "SAMPLE HISTORICAL DESCRIPTION.", imageName: "placeholder-historic-photo", order: 1, isSample: true),
-        HistoricalStop(id: "preview-2", name: "Sample Stop 2 — Riverside Area", latitude: 40.6580, longitude: -74.3005, address: "SAMPLE LOCATION — REPLACE WITH VERIFIED CRANFORD HISTORICAL SITE", shortDescription: "SAMPLE HISTORICAL DESCRIPTION — Historical information will appear here.", longDescription: "SAMPLE HISTORICAL DESCRIPTION.", order: 2, isSample: true),
-        HistoricalStop(id: "preview-3", name: "Sample Stop 3 — North Side", latitude: 40.6600, longitude: -74.2990, address: "SAMPLE LOCATION — REPLACE WITH VERIFIED CRANFORD HISTORICAL SITE", shortDescription: "SAMPLE HISTORICAL DESCRIPTION — Historical information will appear here.", longDescription: "SAMPLE HISTORICAL DESCRIPTION.", order: 3, isSample: true)
+        HistoricalStop(
+            id: "hpab-001", name: "Droescher's Mill", latitude: 40.6551018, longitude: -74.2925808,
+            address: "347 Lincoln Ave East, Cranford, NJ",
+            shortDescription: "HPAB audio-tour stop. Play the recording for the site description. No transcript is bundled.",
+            longDescription: "", imageName: "droeschers-mill",
+            audioURL: URL(string: "http://preservecranford.com/Audio/Droescher%20Mill.mp3"),
+            order: 1, isSample: false, coordinatesUnverified: true
+        ),
+        HistoricalStop(
+            id: "hpab-002", name: "Cranford Hall", latitude: 40.6522522, longitude: -74.2997607,
+            address: "600 Lincoln Park East, Cranford, NJ",
+            shortDescription: "HPAB audio-tour stop. Play the recording for the site description. No transcript is bundled.",
+            longDescription: "",
+            audioURL: URL(string: "http://www.preservecranford.com/Audio/Greystone.mp3"),
+            order: 2, isSample: false, coordinatesUnverified: true
+        ),
+        HistoricalStop(
+            id: "hpab-003", name: "Rahway River", latitude: 40.6659731, longitude: -74.3108614,
+            address: "Rahway River, Cranford, NJ",
+            shortDescription: "HPAB audio-tour stop. Play the recording for the site description. No transcript is bundled.",
+            longDescription: "",
+            audioURL: URL(string: "http://preservecranford.com/Audio/Rahway%20River.mp3"),
+            order: 3, isSample: false, coordinatesUnverified: true
+        )
     ]
 }
 
