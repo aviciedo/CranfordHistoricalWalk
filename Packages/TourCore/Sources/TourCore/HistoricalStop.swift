@@ -9,6 +9,9 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
     public var name: String
     public var latitude: Double
     public var longitude: Double
+    /// Optional WGS84 ellipsoid altitude in meters (ARCore Geospatial / `CLLocation.ellipsoidalAltitude`,
+    /// **not** `CLLocation.altitude`). `nil` means “use the camera’s geospatial altitude”.
+    public var altitude: Double?
     public var address: String
     public var shortDescription: String
     public var longDescription: String
@@ -42,6 +45,7 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
         name: String,
         latitude: Double,
         longitude: Double,
+        altitude: Double? = nil,
         address: String,
         shortDescription: String,
         longDescription: String,
@@ -61,6 +65,7 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
         self.name = name
         self.latitude = latitude
         self.longitude = longitude
+        self.altitude = altitude
         self.address = address
         self.shortDescription = shortDescription
         self.longDescription = longDescription
@@ -124,7 +129,7 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, name, latitude, longitude, address, shortDescription, longDescription
+        case id, name, latitude, longitude, altitude, address, shortDescription, longDescription
         case historicalDate, imageName, imageURL, illustrationURL, audioURL
         case arrivalRadius, departureRadius, order, estimatedVisitDuration, isSample
         case coordinatesUnverified
@@ -136,6 +141,7 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
         name = try c.decode(String.self, forKey: .name)
         latitude = try c.decode(Double.self, forKey: .latitude)
         longitude = try c.decode(Double.self, forKey: .longitude)
+        altitude = try c.decodeIfPresent(Double.self, forKey: .altitude)
         address = try c.decodeIfPresent(String.self, forKey: .address) ?? "Cranford, NJ"
         shortDescription = try c.decodeIfPresent(String.self, forKey: .shortDescription) ?? ""
         longDescription = try c.decodeIfPresent(String.self, forKey: .longDescription) ?? ""
