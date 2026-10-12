@@ -50,7 +50,7 @@ final class CompositeImageLoader: ImageLoader {
 
     init(session: URLSession = CompositeImageLoader.makeSession()) {
         self.session = session
-        cache.countLimit = 24
+        cache.countLimit = 8
     }
 
     private static func makeSession() -> URLSession {
@@ -120,18 +120,4 @@ final class CompositeImageLoader: ImageLoader {
             return image.preparingForDisplay() ?? image
         }.value
     }
-}
-
-/// Deterministic loader for previews and tests.
-@MainActor
-final class StaticImageLoader: ImageLoader {
-    private var images: [String: LoadedImage]
-
-    init(images: [String: LoadedImage] = [:]) {
-        self.images = images
-    }
-
-    func cachedImage(for stop: HistoricalStop) -> LoadedImage? { images[stop.id] }
-    func image(for stop: HistoricalStop) async -> LoadedImage? { images[stop.id] }
-    func prefetch(_ stops: [HistoricalStop]) {}
 }

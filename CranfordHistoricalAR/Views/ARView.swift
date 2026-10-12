@@ -126,6 +126,9 @@ struct ARHUDView: View {
                     .font(.subheadline.weight(.semibold))
                     .monospacedDigit()
                     .contentTransition(.numericText())
+                    Text(model.geoBackendName)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
                 }
                 .padding(12)
                 .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
