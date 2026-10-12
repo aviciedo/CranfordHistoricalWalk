@@ -71,6 +71,26 @@ The xcconfig values flow into `Info.plist` (`GoogleMapsAPIKey`, `GoogleRoutesAPI
 `AppConfiguration`. If keys are missing the app still runs: the map shows a configuration notice and routes fall
 back to clearly labeled straight-line estimates. Geospatial falls back to GPS + compass.
 
+### Cloud Console checks (walking distance / time)
+
+The tour header and Next Stop card show **walking-route** miles and minutes from the current GPS
+fix to the current stop (`GoogleRoutesDirectionsService` → `RouteProgress` → `DistanceFormatter`).
+If you see **“Requests from this iOS client application \<empty\> are blocked”** and dashes for
+distance/time, Google received no iOS bundle id.
+
+1. This app’s bundle id is **`com.cranford.historicalar`** (`Info.plist` `CFBundleIdentifier` and
+   `PRODUCT_BUNDLE_IDENTIFIER`). Every Routes/Maps request sends `X-Ios-Bundle-Identifier` with that
+   value — never an empty string.
+2. Google Cloud → APIs & Services → **enable Routes API** (not only Maps SDK for iOS; the legacy
+   Directions API is not available to new projects).
+3. Credentials → your key → Application restrictions = **iOS apps**, add bundle id
+   `com.cranford.historicalar` (do not leave the iOS-app list blank). API restrictions should include
+   **Routes API** (and **Maps SDK for iOS** if the same key serves the map).
+4. Rebuild after changing the key. The app does not crash on a 403; it keeps the last known route
+   and otherwise shows a labeled straight-line estimate.
+
+Do not put API keys in source control. `Config/Secrets.example.xcconfig` is the template only.
+
 ## ARCore Geospatial (Mac + device)
 
 The `ARCoreGeospatial` product is linked via SPM (`project.yml`: `https://github.com/google-ar/arcore-ios-sdk`,
@@ -184,8 +204,8 @@ CranfordHistoricalARTests/  Host-app unit tests (Mac/Xcode)
 ## Behaviour notes
 
 - **First screen map** is a live Google map of all stops (dots; numbered once zoomed past level 16;
-  tap a dot for a name callout, tap the map to dismiss). Without a Maps key it falls back to the
-  stylized sketch map. Dots stay unlabelled so they remain legible if the tour file grows.
+  tap a numbered or plain dot for an in-map name popup plus a callout, tap the map to dismiss).
+  Without a Maps key it falls back to the stylized sketch map.
 
 - **Distances and times** on the panel always come from the walking route (Routes API `computeRoutes`,
   `travelMode: WALK`), refreshed on a policy (moved ≥ 25 m, off-route > 30 m, stale > 90 s, destination

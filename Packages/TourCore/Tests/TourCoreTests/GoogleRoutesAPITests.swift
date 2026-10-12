@@ -17,6 +17,41 @@ final class GoogleRoutesAPITests: XCTestCase {
         XCTAssertEqual(json["polylineQuality"] as? String, "HIGH_QUALITY")
     }
 
+    func testRequestAlwaysSendsNonEmptyIOSBundleIdentifier() throws {
+        let empty = try GoogleRoutesAPI.makeURLRequest(apiKey: "AIzaTest", bundleIdentifier: "", origin: origin, destination: destination)
+        XCTAssertEqual(empty.value(forHTTPHeaderField: GoogleAPIClientIdentity.iosBundleIdentifierHeader), "com.cranford.historicalar")
+        let unexpanded = try GoogleRoutesAPI.makeURLRequest(apiKey: "AIzaTest", bundleIdentifier: "$(PRODUCT_BUNDLE_IDENTIFIER)", origin: origin, destination: destination)
+        XCTAssertEqual(unexpanded.value(forHTTPHeaderField: GoogleAPIClientIdentity.iosBundleIdentifierHeader), "com.cranford.historicalar")
+        let custom = try GoogleRoutesAPI.makeURLRequest(apiKey: "AIzaTest", bundleIdentifier: " com.cranford.historicalar ", origin: origin, destination: destination)
+        XCTAssertEqual(custom.value(forHTTPHeaderField: GoogleAPIClientIdentity.iosBundleIdentifierHeader), "com.cranford.historicalar")
+        XCTAssertEqual(custom.httpMethod, "POST")
+        XCTAssertEqual(custom.value(forHTTPHeaderField: "X-Goog-Api-Key"), "AIzaTest")
+    }
+
+    func testBlockedEmptyBundleErrorIsActionable() {
+        let message = GoogleAPIClientIdentity.userFacingRoutesError(
+            code: 403,
+            status: "PERMISSION_DENIED",
+            message: "Requests from this iOS client application <empty> are blocked."
+        )
+        XCTAssertTrue(message.contains("com.cranford.historicalar"))
+        XCTAssertTrue(message.lowercased().contains("routes api"))
+        XCTAssertFalse(message.contains("<empty>"), "Do not echo Google's empty-client wording as the only hint")
+        XCTAssertTrue(GoogleAPIClientIdentity.isBlockedClientMessage("Requests from this iOS client application <empty> are blocked."))
+        XCTAssertEqual(GoogleAPIClientIdentity.resolvedIOSBundleIdentifier(nil), "com.cranford.historicalar")
+        XCTAssertEqual(GoogleAPIClientIdentity.resolvedIOSBundleIdentifier("  "), "com.cranford.historicalar")
+    }
+
+    func testDisabledRoutesAPIErrorMentionsEnablement() {
+        let message = GoogleAPIClientIdentity.userFacingRoutesError(
+            code: 403,
+            status: "PERMISSION_DENIED",
+            message: "Routes API has not been used in project 123 before or it is disabled."
+        )
+        XCTAssertTrue(message.lowercased().contains("enable"))
+        XCTAssertTrue(message.contains("com.cranford.historicalar"))
+    }
+
     func testFieldMaskContainsEssentials() {
         for required in ["routes.distanceMeters", "routes.duration", "routes.polyline.encodedPolyline", "routes.legs.steps.navigationInstruction"] {
             XCTAssertTrue(GoogleRoutesAPI.fieldMask.contains(required), required)

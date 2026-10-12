@@ -8,8 +8,11 @@
 	<string>Cranford Historical AR</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
+	<!-- Literal so Info.plist processing cannot ship an empty or unexpanded
+	     $(PRODUCT_BUNDLE_IDENTIFIER). Must match PRODUCT_BUNDLE_IDENTIFIER in project.yml
+	     and the iOS-app restriction on the Google API key. -->
 	<key>CFBundleIdentifier</key>
-	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<string>com.cranford.historicalar</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>

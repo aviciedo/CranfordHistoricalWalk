@@ -9,6 +9,26 @@ import Foundation
 public enum GoogleRoutesAPI {
     public static let endpoint = URL(string: "https://routes.googleapis.com/directions/v2:computeRoutes")!
 
+    /// POST `computeRoutes` with the iOS bundle id always set (never empty).
+    public static func makeURLRequest(
+        apiKey: String,
+        bundleIdentifier: String?,
+        origin: GeoCoordinate,
+        destination: GeoCoordinate,
+        timeout: TimeInterval = 15
+    ) throws -> URLRequest {
+        let bundleID = GoogleAPIClientIdentity.resolvedIOSBundleIdentifier(bundleIdentifier)
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.timeoutInterval = timeout
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(apiKey, forHTTPHeaderField: "X-Goog-Api-Key")
+        request.setValue(fieldMask, forHTTPHeaderField: "X-Goog-FieldMask")
+        request.setValue(bundleID, forHTTPHeaderField: GoogleAPIClientIdentity.iosBundleIdentifierHeader)
+        request.httpBody = try Request(origin: origin, destination: destination).encoded()
+        return request
+    }
+
     /// Minimal field mask that still yields geometry and step instructions.
     public static let fieldMask = [
         "routes.distanceMeters",

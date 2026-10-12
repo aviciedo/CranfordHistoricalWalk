@@ -226,7 +226,7 @@ final class ARCoreGeoSpatialProvider: GeoSpatialProvider {
         pose = nil
         do {
             // Official: +[GARSession sessionWithAPIKey:bundleIdentifier:error:]
-            let gar = try GARSession(apiKey: apiKey, bundleIdentifier: nil)
+            let gar = try GARSession(apiKey: apiKey, bundleIdentifier: AppConfiguration.iosBundleIdentifier())
             // Official: -[GARSession isGeospatialModeSupported:]
             guard gar.isGeospatialModeSupported(.enabled) else {
                 fallbackReason = .deviceUnsupported

@@ -64,6 +64,8 @@ targets:
           - "Info.plist"
     settings:
       base:
+        # Must match Info.plist CFBundleIdentifier and the iOS-app restriction on the Google API key.
+        # An empty value is what Google reports as "iOS client application <empty>" and blocks Routes/Maps.
         PRODUCT_BUNDLE_IDENTIFIER: com.cranford.historicalar
         # Keep PRODUCT_NAME free of spaces so XcodeGen's generated TEST_HOST path is valid;
         # the user-facing name comes from CFBundleDisplayName in Info.plist.

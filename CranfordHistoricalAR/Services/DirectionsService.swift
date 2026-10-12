@@ -28,6 +28,15 @@ enum DirectionsError: LocalizedError, Equatable {
         case .network(let text): return "Network problem while routing: \(text)"
         case .http(let status, let message): return "Directions request failed (HTTP \(status))\(message.map { ": \($0)" } ?? "")."
         case .api(let text): return text
+        }
+    }
+
+    /// Maps a Google error envelope onto copy the tour UI can show without crashing.
+    static func fromRoutesAPI(code: Int?, status: String?, message: String?, bundleIdentifier: String) -> DirectionsError {
+        .api(GoogleAPIClientIdentity.userFacingRoutesError(code: code, status: status, message: message, bundleIdentifier: bundleIdentifier))
+    }
+
+    var keepsLastKnownRoute: Bool { true }
         case .noRoute: return "No walking route was found to this stop."
         case .invalidResponse: return "Directions returned an unexpected response."
         }
@@ -43,6 +52,11 @@ enum DirectionsError: LocalizedError, Equatable {
             self = .network(urlError.localizedDescription)
         }
     }
+
+    /// Maps a Google error envelope onto copy the tour UI can show without crashing.
+    static func fromRoutesAPI(code: Int?, status: String?, message: String?, bundleIdentifier: String) -> DirectionsError {
+        .api(GoogleAPIClientIdentity.userFacingRoutesError(code: code, status: status, message: message, bundleIdentifier: bundleIdentifier))
+    }
 }
 
 // MARK: - Google Routes API (current)
@@ -51,24 +65,27 @@ enum DirectionsError: LocalizedError, Equatable {
 /// Request/response shapes and the field mask live in `TourCore.GoogleRoutesAPI` so they are unit-tested.
 struct GoogleRoutesDirectionsService: DirectionsService {
     let apiKey: String
+    var bundleIdentifier: String
     var session: URLSession = .shared
     var timeout: TimeInterval = 15
+
+    init(apiKey: String, bundleIdentifier: String = AppConfiguration.iosBundleIdentifier(), session: URLSession = .shared, timeout: TimeInterval = 15) {
+        self.apiKey = apiKey
+        self.bundleIdentifier = GoogleAPIClientIdentity.resolvedIOSBundleIdentifier(bundleIdentifier)
+        self.session = session
+        self.timeout = timeout
+    }
 
     func walkingRoute(from origin: CLLocationCoordinate2D, to destination: CLLocationCoordinate2D) async throws -> WalkingRoute {
         guard AppConfiguration.looksLikeKey(apiKey) else { throw DirectionsError.missingAPIKey }
         let o = GeoCoordinate(origin), d = GeoCoordinate(destination)
-
-        var request = URLRequest(url: GoogleRoutesAPI.endpoint)
-        request.httpMethod = "POST"
-        request.timeoutInterval = timeout
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(apiKey, forHTTPHeaderField: "X-Goog-Api-Key")
-        request.setValue(GoogleRoutesAPI.fieldMask, forHTTPHeaderField: "X-Goog-FieldMask")
-        if let bundleID = Bundle.main.bundleIdentifier {
-            // Lets the key be restricted to this iOS app in Google Cloud.
-            request.setValue(bundleID, forHTTPHeaderField: "X-Ios-Bundle-Identifier")
-        }
-        request.httpBody = try GoogleRoutesAPI.Request(origin: o, destination: d).encoded()
+        let request = try GoogleRoutesAPI.makeURLRequest(
+            apiKey: apiKey,
+            bundleIdentifier: bundleIdentifier,
+            origin: o,
+            destination: d,
+            timeout: timeout
+        )
 
         let (data, response): (Data, URLResponse)
         do {
@@ -84,7 +101,7 @@ struct GoogleRoutesDirectionsService: DirectionsService {
             case .noRoutes: throw DirectionsError.noRoute
             case .missingGeometry: throw DirectionsError.invalidResponse
             case .api(let code, let status, let message):
-                throw DirectionsError.http(status: code ?? (response as? HTTPURLResponse)?.statusCode ?? 0, message: [status, message].compactMap { $0 }.joined(separator: " — "))
+                throw DirectionsError.fromRoutesAPI(code: code ?? (response as? HTTPURLResponse)?.statusCode, status: status, message: message, bundleIdentifier: bundleIdentifier)
             }
         } catch {
             if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
@@ -99,8 +116,16 @@ struct GoogleRoutesDirectionsService: DirectionsService {
 
 struct LegacyGoogleDirectionsService: DirectionsService {
     let apiKey: String
+    var bundleIdentifier: String
     var session: URLSession = .shared
     var timeout: TimeInterval = 15
+
+    init(apiKey: String, bundleIdentifier: String = AppConfiguration.iosBundleIdentifier(), session: URLSession = .shared, timeout: TimeInterval = 15) {
+        self.apiKey = apiKey
+        self.bundleIdentifier = GoogleAPIClientIdentity.resolvedIOSBundleIdentifier(bundleIdentifier)
+        self.session = session
+        self.timeout = timeout
+    }
 
     func walkingRoute(from origin: CLLocationCoordinate2D, to destination: CLLocationCoordinate2D) async throws -> WalkingRoute {
         guard AppConfiguration.looksLikeKey(apiKey) else { throw DirectionsError.missingAPIKey }
@@ -115,6 +140,7 @@ struct LegacyGoogleDirectionsService: DirectionsService {
         ]
         var request = URLRequest(url: components.url!)
         request.timeoutInterval = timeout
+        request.setValue(bundleIdentifier, forHTTPHeaderField: GoogleAPIClientIdentity.iosBundleIdentifierHeader)
         let (data, _): (Data, URLResponse)
         do {
             (data, _) = try await session.data(for: request)
@@ -126,7 +152,8 @@ struct LegacyGoogleDirectionsService: DirectionsService {
         } catch let error as GoogleDirectionsLegacyAPI.ParseError {
             switch error {
             case .noRoutes: throw DirectionsError.noRoute
-            case .status(let status, let message): throw DirectionsError.api("Directions API: \(status)\(message.map { " — \($0)" } ?? "")")
+            case .status(let status, let message):
+                throw DirectionsError.fromRoutesAPI(code: nil, status: status, message: message, bundleIdentifier: bundleIdentifier)
             }
         } catch {
             throw DirectionsError.invalidResponse
@@ -186,9 +213,10 @@ actor CachedDirectionsService: DirectionsService {
 enum DirectionsServiceFactory {
     static func make(configuration: AppConfiguration) -> any DirectionsService {
         let upstream: any DirectionsService
+        let bundleID = AppConfiguration.iosBundleIdentifier()
         switch configuration.directionsProvider {
-        case .routes: upstream = GoogleRoutesDirectionsService(apiKey: configuration.googleRoutesAPIKey)
-        case .legacy: upstream = LegacyGoogleDirectionsService(apiKey: configuration.googleRoutesAPIKey)
+        case .routes: upstream = GoogleRoutesDirectionsService(apiKey: configuration.googleRoutesAPIKey, bundleIdentifier: bundleID)
+        case .legacy: upstream = LegacyGoogleDirectionsService(apiKey: configuration.googleRoutesAPIKey, bundleIdentifier: bundleID)
         }
         return CachedDirectionsService(upstream: upstream)
     }

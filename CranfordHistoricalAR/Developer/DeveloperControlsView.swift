@@ -145,7 +145,7 @@ struct DeveloperControlsView: View {
                 if let reason = selection.fallbackReason {
                     Text(reason.userMessage).font(.footnote).foregroundStyle(AppTheme.warning)
                 }
-                row("Bundle", Bundle.main.bundleIdentifier ?? "—")
+                row("Bundle", AppConfiguration.iosBundleIdentifier())
             }
         }
     }

@@ -17,6 +17,15 @@ final class AppConfigurationTests: XCTestCase {
         XCTAssertTrue([.routes, .legacy].contains(configuration.directionsProvider))
     }
 
+    func testIOSBundleIdentifierIsNeverEmpty() {
+        let id = AppConfiguration.iosBundleIdentifier()
+        XCTAssertFalse(id.isEmpty)
+        XCTAssertFalse(id.hasPrefix("$("))
+        XCTAssertTrue(id.hasPrefix("com.cranford.historicalar"))
+        XCTAssertEqual(GoogleAPIClientIdentity.resolvedIOSBundleIdentifier(""), "com.cranford.historicalar")
+        XCTAssertEqual(GoogleAPIClientIdentity.resolvedIOSBundleIdentifier("$(PRODUCT_BUNDLE_IDENTIFIER)"), "com.cranford.historicalar")
+    }
+
     @MainActor
     func testDirectionsFactoryFallsBackWhenKeyMissing() async {
         let service = DirectionsServiceFactory.make(configuration: .empty)

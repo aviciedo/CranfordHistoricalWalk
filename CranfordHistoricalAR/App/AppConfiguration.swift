@@ -1,7 +1,7 @@
 import Foundation
 
 /// Build-time configuration read from Info.plist, which is populated from Config/*.xcconfig.
-/// Nothing here is hard-coded; see README "API keys".
+/// API keys are never hard-coded; the iOS bundle id fallback is the shipping identifier.
 struct AppConfiguration: Sendable, Equatable {
     enum DirectionsProvider: String, Sendable {
         case routes
@@ -17,6 +17,17 @@ struct AppConfiguration: Sendable, Equatable {
     var hasGoogleMapsKey: Bool { AppConfiguration.looksLikeKey(googleMapsAPIKey) }
     var hasRoutesKey: Bool { AppConfiguration.looksLikeKey(googleRoutesAPIKey) }
     var hasARCoreKey: Bool { AppConfiguration.looksLikeKey(googleARCoreAPIKey) }
+
+    static let expectedBundleIdentifier = GoogleAPIClientIdentity.expectedIOSBundleIdentifier
+
+    /// Bundle id sent on every Google iOS request. Never empty — an empty `CFBundleIdentifier`
+    /// (unexpanded `$(PRODUCT_BUNDLE_IDENTIFIER)`) is what Google reports as `<empty>`.
+    static func iosBundleIdentifier(from bundle: Bundle = .main) -> String {
+        let raw = bundle.bundleIdentifier
+            ?? (bundle.object(forInfoDictionaryKey: kCFBundleIdentifierKey as String) as? String)
+            ?? (bundle.infoDictionary?["CFBundleIdentifier"] as? String)
+        return GoogleAPIClientIdentity.resolvedIOSBundleIdentifier(raw)
+    }
 
     static func fromMainBundle() -> AppConfiguration {
         from(bundle: .main)
