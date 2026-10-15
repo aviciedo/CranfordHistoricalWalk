@@ -31,25 +31,25 @@ extension TourViewModel {
     }
 
     func handleLocationForProximity(_ sample: LocationSample) {
-        guard progress.phase == .inProgress, let stop = currentStop, proximityMachine != nil else { return }
+        guard progress.phase == .inProgress, let stop = currentStop, let machine = proximityMachine else { return }
         // Ignore wildly inaccurate fixes so a 200 m GPS jump cannot open/close the sign.
         guard sample.horizontalAccuracy >= 0, sample.horizontalAccuracy <= 100 else { return }
         let distance = GeoMath.distance(from: sample.coordinate, to: stop.coordinate)
-        let effects = proximityMachine!.handle(.distanceUpdated(meters: distance))
+        let effects = machine.handle(.distanceUpdated(meters: distance))
         apply(effects, for: stop, source: .automatic)
     }
 
     /// User tapped the stop / "Show sign" while the sign is closed.
     func openSignManually() {
-        guard let stop = currentStop, proximityMachine != nil else { return }
-        let effects = proximityMachine!.handle(.userOpenedSign)
+        guard let stop = currentStop, let machine = proximityMachine else { return }
+        let effects = machine.handle(.userOpenedSign)
         apply(effects, for: stop, source: .manual)
     }
 
     /// Close button on the sign.
     func closeSign() {
-        guard let stop = currentStop, proximityMachine != nil else { presentedSignStopID = nil; return }
-        let effects = proximityMachine!.handle(.userClosedSign)
+        guard let stop = currentStop, let machine = proximityMachine else { presentedSignStopID = nil; return }
+        let effects = machine.handle(.userClosedSign)
         apply(effects, for: stop, source: .manual)
     }
 

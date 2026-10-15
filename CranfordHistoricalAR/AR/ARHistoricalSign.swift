@@ -137,7 +137,9 @@ final class ARHistoricalSignEntity: Entity {
         guard let cgImage = renderer.cgImage else { return nil }
         let aspect = CGFloat(cgImage.height) / CGFloat(cgImage.width)
         do {
-            let options = TextureResource.CreateOptions(semantic: .color, mipmapsMode: .allocateAndGenerate)
+            // RealityKit `TextureResource.MipmapsMode` cases (Apple, Xcode 16 / iOS 17+):
+            // `.none`, `.allocateAll`, `.allocateAndGenerateAll`. There is no `.allocateAndGenerate`.
+            let options = TextureResource.CreateOptions(semantic: .color, mipmapsMode: .allocateAndGenerateAll)
             let texture: TextureResource
             if #available(iOS 18.0, *) {
                 texture = try TextureResource(image: cgImage, options: options)
