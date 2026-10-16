@@ -56,6 +56,37 @@ final class RouteProgressTests: XCTestCase {
         XCTAssertEqual(p.remainingSeconds, 1100, accuracy: 1)
     }
 
+    func testCrossingPrefersTheLaterLegInsteadOfSnappingBackward() {
+        // Rectangle that crosses itself: the southbound leg passes through the middle of the
+        // eastbound leg. At that point both projections are exact, so the later segment must win
+        // or the arrows and remaining distance jump back to the start of the walk.
+        let a = cranfordCenter
+        let b = GeoCoordinate(latitude: a.latitude, longitude: a.longitude + 0.001)
+        let c = GeoCoordinate(latitude: a.latitude + 0.0005, longitude: b.longitude)
+        let d = GeoCoordinate(latitude: c.latitude, longitude: a.longitude + 0.0005)
+        let e = GeoCoordinate(latitude: a.latitude - 0.0005, longitude: d.longitude)
+        let crossing = GeoCoordinate(latitude: a.latitude, longitude: a.longitude + 0.0005)
+        let route = WalkingRoute(
+            origin: a,
+            destination: e,
+            distanceMeters: 400,
+            durationSeconds: 400,
+            routeCoordinates: [a, b, c, d, e],
+            source: .googleRoutesAPI
+        )
+
+        let atCrossing = RouteProgressCalculator.progress(along: route, userLocation: crossing)
+        XCTAssertEqual(atCrossing.distanceFromRoute, 0, accuracy: 0.05)
+        XCTAssertEqual(atCrossing.segmentIndex, 3)
+        XCTAssertGreaterThan(atCrossing.fractionComplete, 0.6)
+        XCTAssertLessThan(atCrossing.remainingMeters / route.distanceMeters, 0.4)
+
+        let stillOutbound = GeoCoordinate(latitude: a.latitude, longitude: a.longitude + 0.0002)
+        let outbound = RouteProgressCalculator.progress(along: route, userLocation: stillOutbound)
+        XCTAssertEqual(outbound.segmentIndex, 0)
+        XCTAssertGreaterThan(outbound.remainingMeters, atCrossing.remainingMeters)
+    }
+
     func testCurrentStepIndexAdvances() {
         let start = cranfordCenter
         let corner = GeoMath.destination(from: start, bearing: 90, distance: 300)

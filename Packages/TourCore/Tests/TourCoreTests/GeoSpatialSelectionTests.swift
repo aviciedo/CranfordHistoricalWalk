@@ -45,6 +45,24 @@ final class GeoSpatialSelectionTests: XCTestCase {
         XCTAssertEqual(GeoSpatialSelector.select(input(flag: false)).backend, .coreLocation)
     }
 
+    func testQualityCutoffIsUsableAt25MetersAndNotBeyond() {
+        XCTAssertEqual(GeoSpatialSelector.quality(horizontalAccuracy: 25, yawAccuracy: 10), .fair)
+        XCTAssertTrue(GeoSpatialSelector.quality(horizontalAccuracy: 25, yawAccuracy: 10).isUsable)
+        XCTAssertEqual(GeoSpatialSelector.quality(horizontalAccuracy: 25.01, yawAccuracy: 10), .poor)
+        XCTAssertFalse(GeoSpatialSelector.quality(horizontalAccuracy: 25.01, yawAccuracy: 10).isUsable)
+        XCTAssertEqual(GeoSpatialSelector.quality(horizontalAccuracy: 5, yawAccuracy: 5), .good)
+        XCTAssertEqual(GeoSpatialSelector.quality(horizontalAccuracy: 8, yawAccuracy: 12), .good)
+        XCTAssertEqual(GeoSpatialSelector.quality(horizontalAccuracy: 8.01, yawAccuracy: 12), .fair)
+        XCTAssertEqual(GeoSpatialSelector.quality(horizontalAccuracy: 8, yawAccuracy: -1), .good)
+        XCTAssertEqual(GeoSpatialSelector.quality(horizontalAccuracy: 25, yawAccuracy: -1), .fair)
+        XCTAssertEqual(GeoSpatialSelector.quality(horizontalAccuracy: 25.01, yawAccuracy: -1), .poor)
+        XCTAssertEqual(GeoSpatialSelector.coverage(fromVPSAvailabilityCode: 0), .unknown)
+        XCTAssertEqual(GeoSpatialSelector.coverage(fromVPSAvailabilityCode: -4), .errorResourceExhausted)
+        XCTAssertFalse(VPSCoverage.unknown.reducesAccuracy)
+        XCTAssertTrue(VPSCoverage.errorResourceExhausted.reducesAccuracy)
+        XCTAssertEqual(GeoSpatialSelector.fallbackReason(fromEarthStateCode: 99), .earthInternalError)
+    }
+
     func testQualityBuckets() {
         XCTAssertEqual(GeoSpatialSelector.quality(horizontalAccuracy: 4, yawAccuracy: 4), .good)
         XCTAssertEqual(GeoSpatialSelector.quality(horizontalAccuracy: 7, yawAccuracy: 10), .good)

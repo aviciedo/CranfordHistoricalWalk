@@ -38,7 +38,19 @@ final class PolylineTests: XCTestCase {
 
     func testEmptyAndGarbageInputDoNotCrash() {
         XCTAssertTrue(Polyline.decode("").isEmpty)
-        _ = Polyline.decode("!!!")
-        _ = Polyline.decode("_p~iF")
+        XCTAssertTrue(Polyline.decode("!!!").isEmpty)
+        XCTAssertTrue(Polyline.decode("_p~iF").isEmpty, "a latitude without its longitude must not become a point")
+    }
+
+    func testIncompleteFinalPairDoesNotShiftEarlierPoints() {
+        let full = Polyline.decode("_p~iF~ps|U_ulLnnqC_mqNvxq`@")
+        XCTAssertEqual(full.count, 3)
+        // A trailing continuation chunk (`_`) has a latitude delta and no longitude.
+        let truncated = Polyline.decode("_p~iF~ps|U_ulLnnqC_")
+        XCTAssertEqual(truncated.count, 2)
+        XCTAssertEqual(truncated[0].latitude, full[0].latitude, accuracy: 1e-6)
+        XCTAssertEqual(truncated[0].longitude, full[0].longitude, accuracy: 1e-6)
+        XCTAssertEqual(truncated[1].latitude, full[1].latitude, accuracy: 1e-6)
+        XCTAssertEqual(truncated[1].longitude, full[1].longitude, accuracy: 1e-6)
     }
 }
