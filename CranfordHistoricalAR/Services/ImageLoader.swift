@@ -48,8 +48,8 @@ final class CompositeImageLoader: ImageLoader {
         init(_ value: LoadedImage) { self.value = value }
     }
 
-    init(session: URLSession = CompositeImageLoader.makeSession()) {
-        self.session = session
+    init(session: URLSession? = nil) {
+        self.session = session ?? CompositeImageLoader.makeSession()
         cache.countLimit = 8
     }
 

@@ -370,9 +370,12 @@ struct GoogleMapView: UIViewRepresentable {
         }
 
         nonisolated func mapView(_ mapView: GMSMapView, markerInfoWindow marker: GMSMarker) -> UIView? {
-            let title = marker.title ?? ""
-            guard !title.isEmpty else { return nil }
-            return StopNameInfoWindow(title: title)
+            // Maps SDK delegates run on the main thread; UIKit construction is main-actor isolated.
+            MainActor.assumeIsolated {
+                let title = marker.title ?? ""
+                guard !title.isEmpty else { return nil }
+                return StopNameInfoWindow(title: title)
+            }
         }
 
         nonisolated func mapView(_ mapView: GMSMapView, idleAt position: GMSCameraPosition) {

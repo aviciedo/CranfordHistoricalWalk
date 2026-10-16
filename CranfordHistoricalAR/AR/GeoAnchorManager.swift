@@ -84,9 +84,9 @@ final class GeoAnchorManager {
     /// Frames are processed at most this often (seconds). ARKit delivers 60 Hz; 10 Hz is plenty.
     static let frameInterval: TimeInterval = 0.1
 
-    init(provider: any GeoSpatialProvider, anchors: ARAnchorManager = ARAnchorManager()) {
+    init(provider: any GeoSpatialProvider, anchors: ARAnchorManager? = nil) {
         self.provider = provider
-        self.anchors = anchors
+        self.anchors = anchors ?? ARAnchorManager()
     }
 
     var preferredWorldAlignment: ARConfiguration.WorldAlignment { provider.preferredWorldAlignment }

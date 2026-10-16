@@ -19,7 +19,7 @@ enum GeoSpatialProviderFactory {
         locationAuthorized: Bool,
         preciseLocation: Bool,
         userConsented: Bool = ARCoreConsentStore.hasAccepted,
-        networkAvailable: Bool = NetworkPathMonitor.shared.isSatisfied,
+        networkAvailable: Bool? = nil,
         deviceSupportsGeospatial: Bool = true
     ) -> GeoSpatialSelection {
         GeoSpatialSelector.select(GeoSpatialSelectionInput(
@@ -30,7 +30,7 @@ enum GeoSpatialProviderFactory {
             deviceSupportsGeospatial: deviceSupportsGeospatial,
             locationAuthorized: locationAuthorized,
             preciseLocation: preciseLocation,
-            networkAvailable: networkAvailable
+            networkAvailable: networkAvailable ?? NetworkPathMonitor.shared.isSatisfied
         ))
     }
 
@@ -40,7 +40,7 @@ enum GeoSpatialProviderFactory {
         locationAuthorized: Bool,
         preciseLocation: Bool,
         userConsented: Bool = ARCoreConsentStore.hasAccepted,
-        networkAvailable: Bool = NetworkPathMonitor.shared.isSatisfied
+        networkAvailable: Bool? = nil
     ) -> any GeoSpatialProvider {
         let chosen = selection(
             configuration: configuration,

@@ -1,5 +1,6 @@
 import CoreLocation
 import XCTest
+import TourCore
 @testable import CranfordHistoricalAR
 
 final class AppConfigurationTests: XCTestCase {

@@ -313,16 +313,13 @@ final class ARCoreGeoSpatialProvider: GeoSpatialProvider {
     func worldPosition(for coordinate: GeoCoordinate, altitude: Double?, heightBelowCamera: Float) -> SIMD3<Float>? {
         guard let garSession, quality != .unavailable, let lastAltitude else { return nil }
         let ellipsoidAltitude = altitude ?? (lastAltitude - Double(heightBelowCamera))
-        var error: NSError?
         // Official: -[GARSession transformFromGeospatialCoordinate:altitude:eastUpSouthQTarget:error:]
         // Identity EUS: +X east, +Y up, +Z south. RealityKit yaws the sign toward the user separately.
-        let matrix = garSession.transform(
-            fromGeospatialCoordinate: CLLocationCoordinate2D(latitude: coordinate.latitude, longitude: coordinate.longitude),
+        guard let matrix = try? garSession.transform(
+            coordinate: CLLocationCoordinate2D(latitude: coordinate.latitude, longitude: coordinate.longitude),
             altitude: ellipsoidAltitude,
-            eastUpSouthQTarget: simd_quatf(ix: 0, iy: 0, iz: 0, r: 1),
-            error: &error
-        )
-        if error != nil { return nil }
+            eastUpSouthQTarget: simd_quatf(ix: 0, iy: 0, iz: 0, r: 1)
+        ) else { return nil }
         return matrix.translation
     }
 
@@ -353,7 +350,7 @@ final class ARCoreGeoSpatialProvider: GeoSpatialProvider {
         lastVPSCoordinate = coordinate
         // Official: -[GARSession checkVPSAvailabilityAtCoordinate:completionHandler:]
         _ = garSession.checkVPSAvailability(
-            at: CLLocationCoordinate2D(latitude: coordinate.latitude, longitude: coordinate.longitude)
+            coordinate: CLLocationCoordinate2D(latitude: coordinate.latitude, longitude: coordinate.longitude)
         ) { [weak self] availability in
             MainActor.assumeIsolated {
                 self?.vpsCoverage = GeoSpatialSelector.coverage(fromVPSAvailabilityCode: Int(availability.rawValue))

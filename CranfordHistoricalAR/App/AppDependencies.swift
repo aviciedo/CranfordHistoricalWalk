@@ -20,13 +20,13 @@ final class AppDependencies {
     private(set) var developer: DeveloperModeController?
     #endif
 
-    init(configuration: AppConfiguration, stopService: any HistoricalStopService, locationService: any LocationService, directionsService: any DirectionsService, imageLoader: any ImageLoader, narrationPlayer: NarrationPlayer = NarrationPlayer(), tourViewModel: TourViewModel) {
+    init(configuration: AppConfiguration, stopService: any HistoricalStopService, locationService: any LocationService, directionsService: any DirectionsService, imageLoader: any ImageLoader, narrationPlayer: NarrationPlayer? = nil, tourViewModel: TourViewModel) {
         self.configuration = configuration
         self.stopService = stopService
         self.locationService = locationService
         self.directionsService = directionsService
         self.imageLoader = imageLoader
-        self.narrationPlayer = narrationPlayer
+        self.narrationPlayer = narrationPlayer ?? NarrationPlayer()
         self.tourViewModel = tourViewModel
     }
 

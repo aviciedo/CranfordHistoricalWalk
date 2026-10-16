@@ -34,6 +34,19 @@ cd Packages/TourCore
 swift test          # macOS or Linux; no Xcode needed
 ```
 
+### Verify the iOS build on a Mac
+
+With Xcode (including iOS and Simulator SDKs) and XcodeGen installed, run from the repository folder:
+
+```bash
+bash scripts/verify-ios-build.sh
+```
+
+This generates the ignored Xcode project, builds the app for an iPhone without signing,
+and compiles the app and host-app tests for the Simulator. It stops on failure and records
+logs and Xcode result bundles under the ignored `.build/ios-verification/` directory.
+It does not run the tests or install the app. A Linux test pass does not verify the iOS build.
+
 `TourCore` contains the models, JSON decoding, geo math, polyline codec, Routes API wire types,
 route-progress math, route-refresh policy, proximity state machine (hysteresis), tour progress and the
 walking simulator.

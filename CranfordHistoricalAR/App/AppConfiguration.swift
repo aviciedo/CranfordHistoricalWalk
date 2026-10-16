@@ -1,4 +1,5 @@
 import Foundation
+import TourCore
 
 /// Build-time configuration read from Info.plist, which is populated from Config/*.xcconfig.
 /// API keys are never hard-coded; the iOS bundle id fallback is the shipping identifier.
@@ -24,7 +25,7 @@ struct AppConfiguration: Sendable, Equatable {
     /// (unexpanded `$(PRODUCT_BUNDLE_IDENTIFIER)`) is what Google reports as `<empty>`.
     static func iosBundleIdentifier(from bundle: Bundle = .main) -> String {
         let raw = bundle.bundleIdentifier
-            ?? (bundle.object(forInfoDictionaryKey: kCFBundleIdentifierKey as String) as? String)
+            ?? (bundle.object(forInfoDictionaryKey: "CFBundleIdentifier") as? String)
             ?? (bundle.infoDictionary?["CFBundleIdentifier"] as? String)
         return GoogleAPIClientIdentity.resolvedIOSBundleIdentifier(raw)
     }
