@@ -1,3 +1,24 @@
+# Ready-to-open Xcode project download
+
+This branch includes the generated `CranfordHistoricalAR.xcodeproj` together with the app source.
+It is a download snapshot of the build fixes on `main` at `56da03f`.
+
+On a Mac with Xcode installed:
+
+1. Click **Code > Download ZIP** on this branch and extract the ZIP in Finder.
+2. Open the extracted folder and double-click **CranfordHistoricalAR.xcodeproj**.
+3. Wait for Xcode to download its package dependencies.
+4. Select your signing team and connected iPhone in Xcode, then click Run.
+
+Keep all extracted folders together. Homebrew and XcodeGen are not required to open this snapshot.
+The source includes a subfolder also named CranfordHistoricalAR; the project file is beside that subfolder.
+Project generation succeeded on Linux; a full iOS build and device installation have not been verified.
+Use Xcode's **Product > Build** directly; the optional verification script still requires XcodeGen.
+
+The original project documentation follows.
+
+---
+
 # Cranford Historical AR
 
 A SwiftUI + ARKit/RealityKit + Core Location + Google Maps walking-tour MVP for Cranford, New Jersey.

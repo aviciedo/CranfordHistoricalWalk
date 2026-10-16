@@ -1,0 +1,17 @@
+Cranford Historical AR — Xcode project
+
+Source revision: 56da03fb3449aeba14c81f13a0b6a3effce00de9
+
+1. Extract the entire ZIP on the Mac. Keep its folders together.
+2. Double-click CranfordHistoricalAR.xcodeproj inside this folder.
+3. Allow Xcode to download package dependencies.
+4. Connect and unlock your iPhone, and accept Trust if asked.
+5. In Xcode select the blue project icon, then Targets > CranfordHistoricalAR > Signing & Capabilities.
+6. Turn on Automatically manage signing and select your Apple account under Team.
+7. Select your iPhone in the top toolbar and click the triangular Run button.
+
+Homebrew and XcodeGen are not needed to open this generated project.
+Xcode is still required. This project was generated on Linux; a successful iOS build and installation have NOT been verified.
+
+Without Google API keys, the existing fallback map and estimated distances are expected.
+Do not enter Google keys in the example file or commit them to GitHub. Use Config/Secrets.xcconfig if configuring real Maps/Routes.

@@ -1,0 +1,824 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		012BAA410B6693441ECB0D90 /* SimulatedLocationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1636300C82A2602A371808C /* SimulatedLocationService.swift */; };
+		07C6CC3F2FEF8BF08586BA9A /* GoogleMaps in Frameworks */ = {isa = PBXBuildFile; productRef = F65571425EB2DA6D39C2C26D /* GoogleMaps */; };
+		133ADE3C26D4C44B39E287EE /* DirectionsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D6B98AD9D1811ED29AD8E30 /* DirectionsService.swift */; };
+		182B11F1DFF1355742AFEAE6 /* NarrationPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 137D2F8219EB8BB42BAE5C44 /* NarrationPlayer.swift */; };
+		197B8322EBDE3C8B46E76D1C /* historical_stops.json in Resources */ = {isa = PBXBuildFile; fileRef = F57B915E316FC8864E6039D4 /* historical_stops.json */; };
+		1D07F01BE18F8634CFFEB457 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61482BBC210A05FC35BB89A5 /* AppTheme.swift */; };
+		1F6EEF78FCD807F38B67E5BA /* GoogleMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96E941E591DD1C007DD5736B /* GoogleMapView.swift */; };
+		221B281036C1AEBC8AECE0E9 /* PlaqueAnchorController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47043D4C3769FDF8A4BDF8A7 /* PlaqueAnchorController.swift */; };
+		244361934AE330E278D0E7AC /* ARViewContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E56D3CA45EF4F0EB63EC4F67 /* ARViewContainer.swift */; };
+		2955087274EEA56B3C905E7F /* ARKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2DAB9EB7D1372E8ABFF7D617 /* ARKit.framework */; };
+		2B43E27F10C34AEDDF0E4CB6 /* GeoSpatialProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA595C01936F3A49F21DDF82 /* GeoSpatialProvider.swift */; };
+		2C0055A2D1FE4E831015284E /* TourView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88C17E81A12DFBC8BBCE8A13 /* TourView.swift */; };
+		33B1A153A75735DA384F3949 /* ARNavigationArrow.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2AB7C3DEE3F8D416B57D77E /* ARNavigationArrow.swift */; };
+		42F2D55094889623A08FEC5E /* NetworkPathMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2BEECB81D07513A887C3638 /* NetworkPathMonitor.swift */; };
+		469FC4E3AEA9E7172F1B842B /* ARNavigationArrowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7462D5144235554654C81D75 /* ARNavigationArrowView.swift */; };
+		48053CFF627B89A940C7292C /* GeoSpatialProviderFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5432396D0E5855AE0AC5A7CC /* GeoSpatialProviderFactory.swift */; };
+		49B1EA182AADFD5E5002E505 /* DeveloperModeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55DA561DE9E9470B0950F4EB /* DeveloperModeController.swift */; };
+		4CC8B9A2099DED1C91DF0143 /* ARCorePrivacyConsentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AB87A5E7FD340D6AA8CE077 /* ARCorePrivacyConsentView.swift */; };
+		630FEA8B13E4B2A65A98857F /* Network.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 045B96A351C172F54B2AE1C1 /* Network.framework */; };
+		68507B5FFEB24EB79B30F618 /* TourHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AFC3FAF6E039798A11A2E8A /* TourHeaderView.swift */; };
+		6E4EB7F7C6AC772994D134C5 /* HistoricalStopService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DB526BFC7A251D7059178F8 /* HistoricalStopService.swift */; };
+		738AFBD4C87CBE9EDB1F036E /* MapViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96D5092725839BE7A729776D /* MapViewModel.swift */; };
+		77FF8237F3BD74ACC0B84D5C /* TourViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D85AAA79AE5D7C39B047CE2 /* TourViewModel.swift */; };
+		7A2F56B7EA5FB6C6F8553D3A /* ARHistoricalSign.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27404272F52194E764EC1DA6 /* ARHistoricalSign.swift */; };
+		865BEEEB388A50BFBABC9F54 /* CranfordHistoricalARApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9176F4DB2B26CE088BE850E /* CranfordHistoricalARApp.swift */; };
+		89C6F5E3E2757E5D55950326 /* GoogleMapsBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE96C5614C5502C1361A2ECA /* GoogleMapsBootstrap.swift */; };
+		9088F9D3E762E0770453510C /* NextStopCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7F14D480D3A4028F3D71FCE /* NextStopCard.swift */; };
+		93C896D8AF02B0B6173BB70B /* HistoricalStop+App.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8C9B2E53E70CED4D2BBADE1 /* HistoricalStop+App.swift */; };
+		9B1A3434197E3815A26624F0 /* ARAnchorManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8ABDC93456F96476A3E10D58 /* ARAnchorManager.swift */; };
+		9C044832E76A17DA4127E027 /* TourCompleteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFC77FC2A82FDCBE9A9773EC /* TourCompleteView.swift */; };
+		9C0E30CCFEADBA94FFE556DA /* NarrationControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B3588BED32734B249FBA671 /* NarrationControls.swift */; };
+		9CDD1406DCEE1B3AE4C7D7BB /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F0DE4625D8615D65FD3EFB0 /* HomeView.swift */; };
+		9E1190481B5EFBA1D046684E /* TourCore in Frameworks */ = {isa = PBXBuildFile; productRef = A15A955AA7D82438AAD676FF /* TourCore */; };
+		A05CD80BD25B6079C7CA76F4 /* ArrivalCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA36D5B3E3BA418B745705CF /* ArrivalCard.swift */; };
+		AC868F643CEE0A38A8219235 /* RealityKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BAA7A4387FC614C69C643ACB /* RealityKit.framework */; };
+		B003EAED16DE750332BADB2A /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 61B6796034569996BDF1001A /* AVFoundation.framework */; };
+		B01FDA2B78F3F71650F2B6A2 /* CoreLocation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 740DEF310E0B49F74C661D00 /* CoreLocation.framework */; };
+		B1D6C01408095017BF639EE6 /* ImageLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6AE809FE336032FA6B0F9A7 /* ImageLoader.swift */; };
+		B9A3A282536D008463672101 /* MapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5FCE2C436DF3AAE5E423CF6 /* MapView.swift */; };
+		BB36F634411FB64E70D33407 /* DeveloperControlsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B9E7B53EBC29897FEC0CFB /* DeveloperControlsView.swift */; };
+		BF7A705160B85A488DD2C169 /* TourCompletionFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64F2CF87559A66664B0796E5 /* TourCompletionFlowTests.swift */; };
+		C095F0301C73CE950CA1F8CE /* TourViewModel+Proximity.swift in Sources */ = {isa = PBXBuildFile; fileRef = D06D11065F5889BCA02EDBF9 /* TourViewModel+Proximity.swift */; };
+		C6E855D38F44743E5688ABC6 /* GeoAnchorManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0679E29391ED1F9233133A66 /* GeoAnchorManager.swift */; };
+		C86558EAD221081AC0D679C6 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 2280C3989CFC3989FD1BD1B4 /* Assets.xcassets */; };
+		CEDFFF1E9C8A611B6D40731E /* AppConfigurationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D64B11B4B6F8F30D321E49A /* AppConfigurationTests.swift */; };
+		D4421705AE10F142ABE77DA3 /* MapViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89C955DD23B2078E6AD73003 /* MapViewModelTests.swift */; };
+		D7154D097EF04C20C77A33CD /* HistoricalSignView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CB69186614B09B1DF805224 /* HistoricalSignView.swift */; };
+		D755145E37816D6B465037BD /* LocationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D70F774F54C5A60C1AD3D50 /* LocationService.swift */; };
+		D850A0E7A717A50116270395 /* ARViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69BFCDA2E69B24E157F3F99E /* ARViewModel.swift */; };
+		E1044C4A6F7004F9A17FD817 /* AppConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E3EE07058B04AD0CDF063E1 /* AppConfiguration.swift */; };
+		E3C344F724AFBFE043CA5419 /* GeoSpatialProviderFactoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8755E00CB32C4C55BD08EA81 /* GeoSpatialProviderFactoryTests.swift */; };
+		E58E9825EF1FD2ECE199303A /* TourViewModel+Routing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EC02BA70C9C02011F91EDCD /* TourViewModel+Routing.swift */; };
+		EC1E215CDB695D61D14B1445 /* ARView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F64C0D47DD5245ED54A9A22 /* ARView.swift */; };
+		F162B9ADCFDA01252E2A2752 /* HomeMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0909178F615F884806D7A0A4 /* HomeMapView.swift */; };
+		F7A79CDC031255D87431EDB0 /* AppDependencies.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCB806019C409C7420C0DDE8 /* AppDependencies.swift */; };
+		F95F275F93F652433E3C4744 /* ARCoreGeospatial in Frameworks */ = {isa = PBXBuildFile; productRef = 7CC080AA31AA2B13BA07EFD2 /* ARCoreGeospatial */; };
+		FCCDB810E68D1070CF2F7598 /* TourCore in Frameworks */ = {isa = PBXBuildFile; productRef = 1C37CD7C3C9244A24BAE246A /* TourCore */; };
+		FF8682FD904B345164122DF6 /* ARCoreConsentStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBE7FD3191F06CF47BE56E97 /* ARCoreConsentStore.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		5AFD9B9AE13E032EBCD70B45 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 7C22A9ECBF5685F909B09237 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7E476090D84881E3AB4B5F12;
+			remoteInfo = CranfordHistoricalAR;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		045B96A351C172F54B2AE1C1 /* Network.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Network.framework; path = System/Library/Frameworks/Network.framework; sourceTree = SDKROOT; };
+		0679E29391ED1F9233133A66 /* GeoAnchorManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeoAnchorManager.swift; sourceTree = "<group>"; };
+		0909178F615F884806D7A0A4 /* HomeMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeMapView.swift; sourceTree = "<group>"; };
+		0B3588BED32734B249FBA671 /* NarrationControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NarrationControls.swift; sourceTree = "<group>"; };
+		0D70F774F54C5A60C1AD3D50 /* LocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationService.swift; sourceTree = "<group>"; };
+		0EC02BA70C9C02011F91EDCD /* TourViewModel+Routing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TourViewModel+Routing.swift"; sourceTree = "<group>"; };
+		137D2F8219EB8BB42BAE5C44 /* NarrationPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NarrationPlayer.swift; sourceTree = "<group>"; };
+		1AE2C3253B93B61AEFF8B2EB /* CranfordHistoricalAR.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = CranfordHistoricalAR.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2280C3989CFC3989FD1BD1B4 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		27404272F52194E764EC1DA6 /* ARHistoricalSign.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARHistoricalSign.swift; sourceTree = "<group>"; };
+		2AB87A5E7FD340D6AA8CE077 /* ARCorePrivacyConsentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARCorePrivacyConsentView.swift; sourceTree = "<group>"; };
+		2DAB9EB7D1372E8ABFF7D617 /* ARKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ARKit.framework; path = System/Library/Frameworks/ARKit.framework; sourceTree = SDKROOT; };
+		3AFC3FAF6E039798A11A2E8A /* TourHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TourHeaderView.swift; sourceTree = "<group>"; };
+		3D85AAA79AE5D7C39B047CE2 /* TourViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TourViewModel.swift; sourceTree = "<group>"; };
+		3E3EE07058B04AD0CDF063E1 /* AppConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfiguration.swift; sourceTree = "<group>"; };
+		47043D4C3769FDF8A4BDF8A7 /* PlaqueAnchorController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaqueAnchorController.swift; sourceTree = "<group>"; };
+		4CB69186614B09B1DF805224 /* HistoricalSignView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoricalSignView.swift; sourceTree = "<group>"; };
+		5432396D0E5855AE0AC5A7CC /* GeoSpatialProviderFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeoSpatialProviderFactory.swift; sourceTree = "<group>"; };
+		55DA561DE9E9470B0950F4EB /* DeveloperModeController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeveloperModeController.swift; sourceTree = "<group>"; };
+		5D64B11B4B6F8F30D321E49A /* AppConfigurationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfigurationTests.swift; sourceTree = "<group>"; };
+		61482BBC210A05FC35BB89A5 /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
+		61B6796034569996BDF1001A /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
+		64F2CF87559A66664B0796E5 /* TourCompletionFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TourCompletionFlowTests.swift; sourceTree = "<group>"; };
+		68D807840124D3D845D8F1F6 /* CranfordHistoricalARTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = CranfordHistoricalARTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		69BFCDA2E69B24E157F3F99E /* ARViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARViewModel.swift; sourceTree = "<group>"; };
+		6D6B98AD9D1811ED29AD8E30 /* DirectionsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectionsService.swift; sourceTree = "<group>"; };
+		6DB526BFC7A251D7059178F8 /* HistoricalStopService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoricalStopService.swift; sourceTree = "<group>"; };
+		740DEF310E0B49F74C661D00 /* CoreLocation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreLocation.framework; path = System/Library/Frameworks/CoreLocation.framework; sourceTree = SDKROOT; };
+		7462D5144235554654C81D75 /* ARNavigationArrowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARNavigationArrowView.swift; sourceTree = "<group>"; };
+		7F64C0D47DD5245ED54A9A22 /* ARView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARView.swift; sourceTree = "<group>"; };
+		8755E00CB32C4C55BD08EA81 /* GeoSpatialProviderFactoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeoSpatialProviderFactoryTests.swift; sourceTree = "<group>"; };
+		88C17E81A12DFBC8BBCE8A13 /* TourView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TourView.swift; sourceTree = "<group>"; };
+		89C955DD23B2078E6AD73003 /* MapViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapViewModelTests.swift; sourceTree = "<group>"; };
+		8ABDC93456F96476A3E10D58 /* ARAnchorManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARAnchorManager.swift; sourceTree = "<group>"; };
+		96D5092725839BE7A729776D /* MapViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapViewModel.swift; sourceTree = "<group>"; };
+		96E941E591DD1C007DD5736B /* GoogleMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleMapView.swift; sourceTree = "<group>"; };
+		9F0DE4625D8615D65FD3EFB0 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		A1B9E7B53EBC29897FEC0CFB /* DeveloperControlsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeveloperControlsView.swift; sourceTree = "<group>"; };
+		A7F14D480D3A4028F3D71FCE /* NextStopCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NextStopCard.swift; sourceTree = "<group>"; };
+		ADADDC01F00310B857CEC386 /* TourCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = TourCore; path = Packages/TourCore; sourceTree = SOURCE_ROOT; };
+		B2BEECB81D07513A887C3638 /* NetworkPathMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkPathMonitor.swift; sourceTree = "<group>"; };
+		BAA7A4387FC614C69C643ACB /* RealityKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = RealityKit.framework; path = System/Library/Frameworks/RealityKit.framework; sourceTree = SDKROOT; };
+		BFC77FC2A82FDCBE9A9773EC /* TourCompleteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TourCompleteView.swift; sourceTree = "<group>"; };
+		C2AB7C3DEE3F8D416B57D77E /* ARNavigationArrow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARNavigationArrow.swift; sourceTree = "<group>"; };
+		C6AE809FE336032FA6B0F9A7 /* ImageLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageLoader.swift; sourceTree = "<group>"; };
+		CA36D5B3E3BA418B745705CF /* ArrivalCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArrivalCard.swift; sourceTree = "<group>"; };
+		CCB806019C409C7420C0DDE8 /* AppDependencies.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDependencies.swift; sourceTree = "<group>"; };
+		D06D11065F5889BCA02EDBF9 /* TourViewModel+Proximity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TourViewModel+Proximity.swift"; sourceTree = "<group>"; };
+		D5FCE2C436DF3AAE5E423CF6 /* MapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapView.swift; sourceTree = "<group>"; };
+		D92EB4A83E907EFAE2C46B84 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
+		E488A1F97124FAA569C86BB5 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
+		E56D3CA45EF4F0EB63EC4F67 /* ARViewContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARViewContainer.swift; sourceTree = "<group>"; };
+		E8C9B2E53E70CED4D2BBADE1 /* HistoricalStop+App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HistoricalStop+App.swift"; sourceTree = "<group>"; };
+		E9176F4DB2B26CE088BE850E /* CranfordHistoricalARApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CranfordHistoricalARApp.swift; sourceTree = "<group>"; };
+		EA595C01936F3A49F21DDF82 /* GeoSpatialProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeoSpatialProvider.swift; sourceTree = "<group>"; };
+		EE96C5614C5502C1361A2ECA /* GoogleMapsBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleMapsBootstrap.swift; sourceTree = "<group>"; };
+		F1636300C82A2602A371808C /* SimulatedLocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulatedLocationService.swift; sourceTree = "<group>"; };
+		F57B915E316FC8864E6039D4 /* historical_stops.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = historical_stops.json; sourceTree = "<group>"; };
+		FBE7FD3191F06CF47BE56E97 /* ARCoreConsentStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARCoreConsentStore.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		57F7F5A1A511284654EE5DD7 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FCCDB810E68D1070CF2F7598 /* TourCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D034A9A07C39A32D0CA9FF79 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				07C6CC3F2FEF8BF08586BA9A /* GoogleMaps in Frameworks */,
+				9E1190481B5EFBA1D046684E /* TourCore in Frameworks */,
+				F95F275F93F652433E3C4744 /* ARCoreGeospatial in Frameworks */,
+				2955087274EEA56B3C905E7F /* ARKit.framework in Frameworks */,
+				AC868F643CEE0A38A8219235 /* RealityKit.framework in Frameworks */,
+				B01FDA2B78F3F71650F2B6A2 /* CoreLocation.framework in Frameworks */,
+				B003EAED16DE750332BADB2A /* AVFoundation.framework in Frameworks */,
+				630FEA8B13E4B2A65A98857F /* Network.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		07D2BBA2D37E86ABD1A20601 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				ADADDC01F00310B857CEC386 /* TourCore */,
+			);
+			path = Packages;
+			sourceTree = "<group>";
+		};
+		0E8F25461D7DAC467CA8D338 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				FBE7FD3191F06CF47BE56E97 /* ARCoreConsentStore.swift */,
+				6D6B98AD9D1811ED29AD8E30 /* DirectionsService.swift */,
+				EA595C01936F3A49F21DDF82 /* GeoSpatialProvider.swift */,
+				5432396D0E5855AE0AC5A7CC /* GeoSpatialProviderFactory.swift */,
+				EE96C5614C5502C1361A2ECA /* GoogleMapsBootstrap.swift */,
+				6DB526BFC7A251D7059178F8 /* HistoricalStopService.swift */,
+				C6AE809FE336032FA6B0F9A7 /* ImageLoader.swift */,
+				0D70F774F54C5A60C1AD3D50 /* LocationService.swift */,
+				137D2F8219EB8BB42BAE5C44 /* NarrationPlayer.swift */,
+				B2BEECB81D07513A887C3638 /* NetworkPathMonitor.swift */,
+				F1636300C82A2602A371808C /* SimulatedLocationService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		16D715F2075EB721422E2D68 /* CranfordHistoricalAR */ = {
+			isa = PBXGroup;
+			children = (
+				CA1F30B04610AAC21DE1421B /* App */,
+				3291DB50197602657FA6A94C /* AR */,
+				4BDE42B9F550E2BC4525D637 /* Developer */,
+				A38F78D5036F2413DE3155FF /* Models */,
+				2FB3725FE2AE6DEAA9E0EF98 /* Resources */,
+				0E8F25461D7DAC467CA8D338 /* Services */,
+				8A9BB18C3AC40968E5C2F9F6 /* ViewModels */,
+				FCD63799A533BCE2D9BC7C37 /* Views */,
+				2280C3989CFC3989FD1BD1B4 /* Assets.xcassets */,
+			);
+			path = CranfordHistoricalAR;
+			sourceTree = "<group>";
+		};
+		21461C7AE1E06BC26967D414 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				2DAB9EB7D1372E8ABFF7D617 /* ARKit.framework */,
+				61B6796034569996BDF1001A /* AVFoundation.framework */,
+				740DEF310E0B49F74C661D00 /* CoreLocation.framework */,
+				045B96A351C172F54B2AE1C1 /* Network.framework */,
+				BAA7A4387FC614C69C643ACB /* RealityKit.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		2FB3725FE2AE6DEAA9E0EF98 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				F57B915E316FC8864E6039D4 /* historical_stops.json */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		3291DB50197602657FA6A94C /* AR */ = {
+			isa = PBXGroup;
+			children = (
+				8ABDC93456F96476A3E10D58 /* ARAnchorManager.swift */,
+				27404272F52194E764EC1DA6 /* ARHistoricalSign.swift */,
+				C2AB7C3DEE3F8D416B57D77E /* ARNavigationArrow.swift */,
+				E56D3CA45EF4F0EB63EC4F67 /* ARViewContainer.swift */,
+				0679E29391ED1F9233133A66 /* GeoAnchorManager.swift */,
+				47043D4C3769FDF8A4BDF8A7 /* PlaqueAnchorController.swift */,
+			);
+			path = AR;
+			sourceTree = "<group>";
+		};
+		4BDE42B9F550E2BC4525D637 /* Developer */ = {
+			isa = PBXGroup;
+			children = (
+				A1B9E7B53EBC29897FEC0CFB /* DeveloperControlsView.swift */,
+				55DA561DE9E9470B0950F4EB /* DeveloperModeController.swift */,
+			);
+			path = Developer;
+			sourceTree = "<group>";
+		};
+		56A0AA3281284734EABB51D5 /* CranfordHistoricalARTests */ = {
+			isa = PBXGroup;
+			children = (
+				5D64B11B4B6F8F30D321E49A /* AppConfigurationTests.swift */,
+				8755E00CB32C4C55BD08EA81 /* GeoSpatialProviderFactoryTests.swift */,
+				89C955DD23B2078E6AD73003 /* MapViewModelTests.swift */,
+				64F2CF87559A66664B0796E5 /* TourCompletionFlowTests.swift */,
+			);
+			path = CranfordHistoricalARTests;
+			sourceTree = "<group>";
+		};
+		8A9BB18C3AC40968E5C2F9F6 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				69BFCDA2E69B24E157F3F99E /* ARViewModel.swift */,
+				96D5092725839BE7A729776D /* MapViewModel.swift */,
+				3D85AAA79AE5D7C39B047CE2 /* TourViewModel.swift */,
+				D06D11065F5889BCA02EDBF9 /* TourViewModel+Proximity.swift */,
+				0EC02BA70C9C02011F91EDCD /* TourViewModel+Routing.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		A38F78D5036F2413DE3155FF /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				E8C9B2E53E70CED4D2BBADE1 /* HistoricalStop+App.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		BC77AD91E8357F6100743BDE = {
+			isa = PBXGroup;
+			children = (
+				DF8382283C08AF5CF9AC5CFF /* Config */,
+				16D715F2075EB721422E2D68 /* CranfordHistoricalAR */,
+				56A0AA3281284734EABB51D5 /* CranfordHistoricalARTests */,
+				07D2BBA2D37E86ABD1A20601 /* Packages */,
+				21461C7AE1E06BC26967D414 /* Frameworks */,
+				DE2F93157A0BB07707BEA1E8 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		CA1F30B04610AAC21DE1421B /* App */ = {
+			isa = PBXGroup;
+			children = (
+				3E3EE07058B04AD0CDF063E1 /* AppConfiguration.swift */,
+				CCB806019C409C7420C0DDE8 /* AppDependencies.swift */,
+				61482BBC210A05FC35BB89A5 /* AppTheme.swift */,
+				E9176F4DB2B26CE088BE850E /* CranfordHistoricalARApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		DE2F93157A0BB07707BEA1E8 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				1AE2C3253B93B61AEFF8B2EB /* CranfordHistoricalAR.app */,
+				68D807840124D3D845D8F1F6 /* CranfordHistoricalARTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		DF8382283C08AF5CF9AC5CFF /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				D92EB4A83E907EFAE2C46B84 /* Debug.xcconfig */,
+				E488A1F97124FAA569C86BB5 /* Release.xcconfig */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+		FCD63799A533BCE2D9BC7C37 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				2AB87A5E7FD340D6AA8CE077 /* ARCorePrivacyConsentView.swift */,
+				7462D5144235554654C81D75 /* ARNavigationArrowView.swift */,
+				CA36D5B3E3BA418B745705CF /* ArrivalCard.swift */,
+				7F64C0D47DD5245ED54A9A22 /* ARView.swift */,
+				96E941E591DD1C007DD5736B /* GoogleMapView.swift */,
+				4CB69186614B09B1DF805224 /* HistoricalSignView.swift */,
+				0909178F615F884806D7A0A4 /* HomeMapView.swift */,
+				9F0DE4625D8615D65FD3EFB0 /* HomeView.swift */,
+				D5FCE2C436DF3AAE5E423CF6 /* MapView.swift */,
+				0B3588BED32734B249FBA671 /* NarrationControls.swift */,
+				A7F14D480D3A4028F3D71FCE /* NextStopCard.swift */,
+				BFC77FC2A82FDCBE9A9773EC /* TourCompleteView.swift */,
+				3AFC3FAF6E039798A11A2E8A /* TourHeaderView.swift */,
+				88C17E81A12DFBC8BBCE8A13 /* TourView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		7E476090D84881E3AB4B5F12 /* CranfordHistoricalAR */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9F4E858370F7555A4C22837B /* Build configuration list for PBXNativeTarget "CranfordHistoricalAR" */;
+			buildPhases = (
+				470B9CD6A8B9463F397AD3FA /* Sources */,
+				2169F10ABA0236F9628DA952 /* Resources */,
+				D034A9A07C39A32D0CA9FF79 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = CranfordHistoricalAR;
+			packageProductDependencies = (
+				F65571425EB2DA6D39C2C26D /* GoogleMaps */,
+				A15A955AA7D82438AAD676FF /* TourCore */,
+				7CC080AA31AA2B13BA07EFD2 /* ARCoreGeospatial */,
+			);
+			productName = CranfordHistoricalAR;
+			productReference = 1AE2C3253B93B61AEFF8B2EB /* CranfordHistoricalAR.app */;
+			productType = "com.apple.product-type.application";
+		};
+		F3BD1394805DAB5F82EAAE60 /* CranfordHistoricalARTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8942825457DC7F90894FFFF0 /* Build configuration list for PBXNativeTarget "CranfordHistoricalARTests" */;
+			buildPhases = (
+				777A24878BD54339195D263B /* Sources */,
+				57F7F5A1A511284654EE5DD7 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				EEE8D69B5136E0B071F361A5 /* PBXTargetDependency */,
+			);
+			name = CranfordHistoricalARTests;
+			packageProductDependencies = (
+				1C37CD7C3C9244A24BAE246A /* TourCore */,
+			);
+			productName = CranfordHistoricalARTests;
+			productReference = 68D807840124D3D845D8F1F6 /* CranfordHistoricalARTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		7C22A9ECBF5685F909B09237 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					7E476090D84881E3AB4B5F12 = {
+						DevelopmentTeam = "$(DEVELOPMENT_TEAM)";
+						ProvisioningStyle = Automatic;
+					};
+					F3BD1394805DAB5F82EAAE60 = {
+						DevelopmentTeam = "";
+					};
+				};
+			};
+			buildConfigurationList = B6781D5FCD6B85578D1C7D9F /* Build configuration list for PBXProject "CranfordHistoricalAR" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = BC77AD91E8357F6100743BDE;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				9C59B03546631306E7C64C11 /* XCRemoteSwiftPackageReference "arcore-ios-sdk" */,
+				515EAFEC0608031A68DA4D9D /* XCRemoteSwiftPackageReference "ios-maps-sdk" */,
+				FF2BB518382783346B2E17DE /* XCLocalSwiftPackageReference "Packages/TourCore" */,
+			);
+			preferredProjectObjectVersion = 77;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				7E476090D84881E3AB4B5F12 /* CranfordHistoricalAR */,
+				F3BD1394805DAB5F82EAAE60 /* CranfordHistoricalARTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		2169F10ABA0236F9628DA952 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C86558EAD221081AC0D679C6 /* Assets.xcassets in Resources */,
+				197B8322EBDE3C8B46E76D1C /* historical_stops.json in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		470B9CD6A8B9463F397AD3FA /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9B1A3434197E3815A26624F0 /* ARAnchorManager.swift in Sources */,
+				FF8682FD904B345164122DF6 /* ARCoreConsentStore.swift in Sources */,
+				4CC8B9A2099DED1C91DF0143 /* ARCorePrivacyConsentView.swift in Sources */,
+				7A2F56B7EA5FB6C6F8553D3A /* ARHistoricalSign.swift in Sources */,
+				33B1A153A75735DA384F3949 /* ARNavigationArrow.swift in Sources */,
+				469FC4E3AEA9E7172F1B842B /* ARNavigationArrowView.swift in Sources */,
+				EC1E215CDB695D61D14B1445 /* ARView.swift in Sources */,
+				244361934AE330E278D0E7AC /* ARViewContainer.swift in Sources */,
+				D850A0E7A717A50116270395 /* ARViewModel.swift in Sources */,
+				E1044C4A6F7004F9A17FD817 /* AppConfiguration.swift in Sources */,
+				F7A79CDC031255D87431EDB0 /* AppDependencies.swift in Sources */,
+				1D07F01BE18F8634CFFEB457 /* AppTheme.swift in Sources */,
+				A05CD80BD25B6079C7CA76F4 /* ArrivalCard.swift in Sources */,
+				865BEEEB388A50BFBABC9F54 /* CranfordHistoricalARApp.swift in Sources */,
+				BB36F634411FB64E70D33407 /* DeveloperControlsView.swift in Sources */,
+				49B1EA182AADFD5E5002E505 /* DeveloperModeController.swift in Sources */,
+				133ADE3C26D4C44B39E287EE /* DirectionsService.swift in Sources */,
+				C6E855D38F44743E5688ABC6 /* GeoAnchorManager.swift in Sources */,
+				2B43E27F10C34AEDDF0E4CB6 /* GeoSpatialProvider.swift in Sources */,
+				48053CFF627B89A940C7292C /* GeoSpatialProviderFactory.swift in Sources */,
+				1F6EEF78FCD807F38B67E5BA /* GoogleMapView.swift in Sources */,
+				89C6F5E3E2757E5D55950326 /* GoogleMapsBootstrap.swift in Sources */,
+				D7154D097EF04C20C77A33CD /* HistoricalSignView.swift in Sources */,
+				93C896D8AF02B0B6173BB70B /* HistoricalStop+App.swift in Sources */,
+				6E4EB7F7C6AC772994D134C5 /* HistoricalStopService.swift in Sources */,
+				F162B9ADCFDA01252E2A2752 /* HomeMapView.swift in Sources */,
+				9CDD1406DCEE1B3AE4C7D7BB /* HomeView.swift in Sources */,
+				B1D6C01408095017BF639EE6 /* ImageLoader.swift in Sources */,
+				D755145E37816D6B465037BD /* LocationService.swift in Sources */,
+				B9A3A282536D008463672101 /* MapView.swift in Sources */,
+				738AFBD4C87CBE9EDB1F036E /* MapViewModel.swift in Sources */,
+				9C0E30CCFEADBA94FFE556DA /* NarrationControls.swift in Sources */,
+				182B11F1DFF1355742AFEAE6 /* NarrationPlayer.swift in Sources */,
+				42F2D55094889623A08FEC5E /* NetworkPathMonitor.swift in Sources */,
+				9088F9D3E762E0770453510C /* NextStopCard.swift in Sources */,
+				221B281036C1AEBC8AECE0E9 /* PlaqueAnchorController.swift in Sources */,
+				012BAA410B6693441ECB0D90 /* SimulatedLocationService.swift in Sources */,
+				9C044832E76A17DA4127E027 /* TourCompleteView.swift in Sources */,
+				68507B5FFEB24EB79B30F618 /* TourHeaderView.swift in Sources */,
+				2C0055A2D1FE4E831015284E /* TourView.swift in Sources */,
+				C095F0301C73CE950CA1F8CE /* TourViewModel+Proximity.swift in Sources */,
+				E58E9825EF1FD2ECE199303A /* TourViewModel+Routing.swift in Sources */,
+				77FF8237F3BD74ACC0B84D5C /* TourViewModel.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		777A24878BD54339195D263B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CEDFFF1E9C8A611B6D40731E /* AppConfigurationTests.swift in Sources */,
+				E3C344F724AFBFE043CA5419 /* GeoSpatialProviderFactoryTests.swift in Sources */,
+				D4421705AE10F142ABE77DA3 /* MapViewModelTests.swift in Sources */,
+				BF7A705160B85A488DD2C169 /* TourCompletionFlowTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		EEE8D69B5136E0B071F361A5 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7E476090D84881E3AB4B5F12 /* CranfordHistoricalAR */;
+			targetProxy = 5AFD9B9AE13E032EBCD70B45 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		16CB9481B436DC6373FB3868 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.cranford.historicalar.tests;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CranfordHistoricalAR.app/CranfordHistoricalAR";
+			};
+			name = Release;
+		};
+		400B21785A480B659166A04D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "$(DEVELOPMENT_TEAM)";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = CranfordHistoricalAR/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.cranford.historicalar;
+				PRODUCT_NAME = CranfordHistoricalAR;
+				SDKROOT = iphoneos;
+				SUPPORTED_INTERFACE_ORIENTATIONS = UIInterfaceOrientationPortrait;
+				SUPPORTED_INTERFACE_ORIENTATIONS_IPAD = UIInterfaceOrientationPortrait;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) $(APP_COMPILATION_CONDITIONS)";
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		C1BAB3086AFBF66C6B4D646A /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = E488A1F97124FAA569C86BB5 /* Release.xcconfig */;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_MODULES_AUTOLINK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_BITCODE = NO;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				OTHER_LDFLAGS = "$(inherited) -ObjC";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		E1F1EEF89B85D65B724D3867 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.cranford.historicalar.tests;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CranfordHistoricalAR.app/CranfordHistoricalAR";
+			};
+			name = Debug;
+		};
+		FBFD46B3F5E344A6D436C609 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "$(DEVELOPMENT_TEAM)";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = CranfordHistoricalAR/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.cranford.historicalar;
+				PRODUCT_NAME = CranfordHistoricalAR;
+				SDKROOT = iphoneos;
+				SUPPORTED_INTERFACE_ORIENTATIONS = UIInterfaceOrientationPortrait;
+				SUPPORTED_INTERFACE_ORIENTATIONS_IPAD = UIInterfaceOrientationPortrait;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG DEVELOPER_MENU $(APP_COMPILATION_CONDITIONS)";
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		FF5028CDF77EA88AEFB132AF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = D92EB4A83E907EFAE2C46B84 /* Debug.xcconfig */;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_MODULES_AUTOLINK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_BITCODE = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				OTHER_LDFLAGS = "$(inherited) -ObjC";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		8942825457DC7F90894FFFF0 /* Build configuration list for PBXNativeTarget "CranfordHistoricalARTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E1F1EEF89B85D65B724D3867 /* Debug */,
+				16CB9481B436DC6373FB3868 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		9F4E858370F7555A4C22837B /* Build configuration list for PBXNativeTarget "CranfordHistoricalAR" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FBFD46B3F5E344A6D436C609 /* Debug */,
+				400B21785A480B659166A04D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		B6781D5FCD6B85578D1C7D9F /* Build configuration list for PBXProject "CranfordHistoricalAR" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FF5028CDF77EA88AEFB132AF /* Debug */,
+				C1BAB3086AFBF66C6B4D646A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		FF2BB518382783346B2E17DE /* XCLocalSwiftPackageReference "Packages/TourCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/TourCore;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		515EAFEC0608031A68DA4D9D /* XCRemoteSwiftPackageReference "ios-maps-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/googlemaps/ios-maps-sdk";
+			requirement = {
+				kind = exactVersion;
+				version = 11.1.0;
+			};
+		};
+		9C59B03546631306E7C64C11 /* XCRemoteSwiftPackageReference "arcore-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google-ar/arcore-ios-sdk";
+			requirement = {
+				kind = upToNextMinorVersion;
+				minimumVersion = 1.56.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		1C37CD7C3C9244A24BAE246A /* TourCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TourCore;
+		};
+		7CC080AA31AA2B13BA07EFD2 /* ARCoreGeospatial */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9C59B03546631306E7C64C11 /* XCRemoteSwiftPackageReference "arcore-ios-sdk" */;
+			productName = ARCoreGeospatial;
+		};
+		A15A955AA7D82438AAD676FF /* TourCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TourCore;
+		};
+		F65571425EB2DA6D39C2C26D /* GoogleMaps */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 515EAFEC0608031A68DA4D9D /* XCRemoteSwiftPackageReference "ios-maps-sdk" */;
+			productName = GoogleMaps;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 7C22A9ECBF5685F909B09237 /* Project object */;
+}
