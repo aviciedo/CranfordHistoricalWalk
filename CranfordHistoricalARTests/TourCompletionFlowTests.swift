@@ -32,6 +32,8 @@ final class TourCompletionFlowTests: XCTestCase {
         try await waitUntil("sign presented on arrival") { self.tour.presentedSignStopID == self.stops[0].id }
 
         XCTAssertTrue(tour.isCompleted(stops[0]), "visited as soon as the sign has been displayed")
+        XCTAssertEqual(tour.proximityState, .signPresented, "arrival must retain the mutated proximity state")
+        XCTAssertTrue(tour.hasArrivedAtCurrentStop)
         XCTAssertEqual(tour.currentStop?.id, stops[0].id, "destination does not change while the sign is open")
         XCTAssertNil(tour.lastCompletedStop, "panel must not list the current stop as the previous one")
 
