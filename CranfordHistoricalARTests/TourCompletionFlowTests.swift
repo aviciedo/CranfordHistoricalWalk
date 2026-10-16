@@ -45,6 +45,33 @@ final class TourCompletionFlowTests: XCTestCase {
         try await waitUntil("new route requested for the next stop") { self.tour.currentRoute?.destination == self.stops[1].coordinate }
     }
 
+    func testManualOpenOutsideGeocodeDoesNotSkipStop() async throws {
+        let far = GeoMath.destination(from: stops[0].coordinate, bearing: 90, distance: 80)
+        simulator.teleport(to: far)
+        try await waitUntil("far location applied") {
+            guard let distance = self.tour.straightLineDistanceToCurrentStop else { return false }
+            return distance > 70 && distance < 90
+        }
+        XCTAssertFalse(tour.isSignPresented)
+
+        // Plaque recognition uses this entry point when the physical plate is in frame
+        // but the unverified geocode is still outside the departure radius.
+        tour.openSignManually()
+        XCTAssertEqual(tour.presentedSignStopID, stops[0].id)
+        XCTAssertTrue(tour.isCompleted(stops[0]))
+        XCTAssertEqual(tour.currentStop?.id, stops[0].id)
+
+        let stillFar = GeoMath.destination(from: stops[0].coordinate, bearing: 45, distance: 85)
+        simulator.teleport(to: stillFar)
+        try await waitUntil("second far sample applied") {
+            guard let distance = self.tour.straightLineDistanceToCurrentStop else { return false }
+            return distance > 82 && distance < 95
+        }
+        XCTAssertEqual(tour.presentedSignStopID, stops[0].id, "sign must stay up while GPS is still outside the geocode")
+        XCTAssertEqual(tour.currentStop?.id, stops[0].id, "the next GPS sample must not skip the stop")
+        XCTAssertEqual(tour.proximityState, .signPresented)
+    }
+
     func testWalkingAwayAfterSeeingSignAdvances() async throws {
         simulator.teleport(to: stops[0].coordinate)
         try await waitUntil("sign presented") { self.tour.isSignPresented }

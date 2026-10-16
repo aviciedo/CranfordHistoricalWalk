@@ -41,6 +41,11 @@ public struct StopProximityStateMachine: Sendable, Equatable {
     /// True once the sign has been presented at least once (used to decide "visited").
     public private(set) var hasPresentedSign: Bool
     public private(set) var lastDistance: Double?
+    /// Manual/plaque open happened outside the arrival radius (or before any fix).
+    /// Further "still outside" samples must not auto-dismiss until a fix is inside
+    /// the arrival radius. The next sample after that open is otherwise read as
+    /// "walked away", which dismisses the sign and advances the tour.
+    public private(set) var suppressesAutoDeparture: Bool
 
     public init(arrivalRadius: Double, departureRadius: Double, state: StopProximityState = .approaching) {
         precondition(departureRadius >= arrivalRadius, "departureRadius must be >= arrivalRadius for hysteresis")
@@ -50,6 +55,7 @@ public struct StopProximityStateMachine: Sendable, Equatable {
         self.hasManuallyDismissed = false
         self.hasPresentedSign = false
         self.lastDistance = nil
+        self.suppressesAutoDeparture = false
     }
 
     public init(stop: HistoricalStop, state: StopProximityState = .approaching) {
@@ -88,6 +94,11 @@ public struct StopProximityStateMachine: Sendable, Equatable {
             state = .signPresented
             hasPresentedSign = true
             hasManuallyDismissed = false
+            // Plaque recognition opens the sign even when the unverified geocode is
+            // still outside the arrival radius. Hold departure until a fix proves
+            // the user reached that geocode; otherwise the next GPS sample dismisses
+            // the sign and the tour skips the stop.
+            suppressesAutoDeparture = lastDistance.map { $0 > arrivalRadius } ?? true
             return [.presentSign]
 
         case (.signPresented, .userClosedSign):
@@ -129,6 +140,12 @@ public struct StopProximityStateMachine: Sendable, Equatable {
             return []
 
         case .signPresented:
+            if meters <= arrivalRadius {
+                suppressesAutoDeparture = false
+            }
+            if suppressesAutoDeparture {
+                return []
+            }
             if meters > departureRadius {
                 state = .signDismissed
                 return [.dismissSign]

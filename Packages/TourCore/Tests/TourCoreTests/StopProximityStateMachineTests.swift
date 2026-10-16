@@ -52,13 +52,34 @@ final class StopProximityStateMachineTests: XCTestCase {
         XCTAssertFalse(sm.hasManuallyDismissed)
     }
 
-    func testManualOpenFromFarAway() {
+    func testManualOpenFromFarAwayDoesNotDismissUntilArrivalThenLeave() {
         var sm = StopProximityStateMachine(arrivalRadius: 35, departureRadius: 50)
         sm.handle(.distanceUpdated(meters: 500))
         XCTAssertEqual(sm.handle(.userOpenedSign), [.presentSign])
         XCTAssertEqual(sm.state, .signPresented)
-        // Walking "away" while far away closes it via the departure rule.
-        XCTAssertEqual(sm.handle(.distanceUpdated(meters: 510)), [.dismissSign])
+        XCTAssertTrue(sm.suppressesAutoDeparture)
+        // Still outside (plaque vs an unverified geocode, or the same far fix again).
+        // This must not count as walking away.
+        XCTAssertEqual(sm.handle(.distanceUpdated(meters: 500)), [])
+        XCTAssertEqual(sm.handle(.distanceUpdated(meters: 80)), [])
+        XCTAssertEqual(sm.state, .signPresented)
+        // A fix inside the arrival radius arms normal hysteresis.
+        XCTAssertEqual(sm.handle(.distanceUpdated(meters: 20)), [])
+        XCTAssertFalse(sm.suppressesAutoDeparture)
+        XCTAssertEqual(sm.state, .signPresented)
+        XCTAssertEqual(sm.handle(.distanceUpdated(meters: 42)), [])
+        XCTAssertEqual(sm.handle(.distanceUpdated(meters: 60)), [.dismissSign])
+        XCTAssertEqual(sm.state, .signDismissed)
+    }
+
+    func testManualOpenBeforeAnyFixWaitsForArrival() {
+        var sm = StopProximityStateMachine(arrivalRadius: 35, departureRadius: 50)
+        XCTAssertEqual(sm.handle(.userOpenedSign), [.presentSign])
+        XCTAssertTrue(sm.suppressesAutoDeparture)
+        XCTAssertEqual(sm.handle(.distanceUpdated(meters: 120)), [])
+        XCTAssertEqual(sm.state, .signPresented)
+        XCTAssertEqual(sm.handle(.distanceUpdated(meters: 10)), [])
+        XCTAssertFalse(sm.suppressesAutoDeparture)
     }
 
     func testCompletionIsTerminal() {
