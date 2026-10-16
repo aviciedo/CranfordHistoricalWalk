@@ -65,7 +65,10 @@ final class GoogleRoutesAPITests: XCTestCase {
     func testDurationParsing() {
         XCTAssertEqual(GoogleRoutesAPI.seconds(fromDuration: "165s"), 165)
         XCTAssertEqual(GoogleRoutesAPI.seconds(fromDuration: "3.5s"), 3.5)
+        XCTAssertEqual(GoogleRoutesAPI.seconds(fromDuration: "165.25s"), 165.25)
         XCTAssertNil(GoogleRoutesAPI.seconds(fromDuration: nil))
+        XCTAssertNil(GoogleRoutesAPI.seconds(fromDuration: ""))
+        XCTAssertNil(GoogleRoutesAPI.seconds(fromDuration: "s"))
         XCTAssertNil(GoogleRoutesAPI.seconds(fromDuration: "abc"))
     }
 
@@ -103,6 +106,62 @@ final class GoogleRoutesAPITests: XCTestCase {
         XCTAssertThrowsError(try GoogleRoutesAPI.walkingRoute(from: empty, origin: origin, destination: destination))
     }
 
+    func testMissingDurationFallsBackWithoutInventingAZeroMinuteWalk() throws {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let polyline = "ipkcFfichVnP@j@B"
+        let staticOnly = """
+        {"routes":[{"distanceMeters":140,"staticDuration":"100s","polyline":{"encodedPolyline":"\(polyline)"}}]}
+        """.data(using: .utf8)!
+        let fromStatic = try GoogleRoutesAPI.walkingRoute(from: staticOnly, origin: origin, destination: destination, now: now)
+        XCTAssertEqual(fromStatic.durationSeconds, 100)
+        XCTAssertEqual(fromStatic.distanceMeters, 140)
+        XCTAssertEqual(fromStatic.computedAt, now)
+
+        let neither = """
+        {"routes":[{"distanceMeters":140,"polyline":{"encodedPolyline":"\(polyline)"}}]}
+        """.data(using: .utf8)!
+        let paced = try GoogleRoutesAPI.walkingRoute(from: neither, origin: origin, destination: destination, now: now)
+        XCTAssertEqual(paced.durationSeconds, 140 / WalkingRoute.defaultWalkingSpeed, accuracy: 0.001)
+
+        let zero = """
+        {"routes":[{"distanceMeters":140,"duration":"0s","polyline":{"encodedPolyline":"\(polyline)"}}]}
+        """.data(using: .utf8)!
+        let zeroDuration = try GoogleRoutesAPI.walkingRoute(from: zero, origin: origin, destination: destination, now: now)
+        XCTAssertEqual(zeroDuration.durationSeconds, 140 / WalkingRoute.defaultWalkingSpeed, accuracy: 0.001)
+    }
+
+    func testRouteWithoutUsableGeometryIsMissingGeometry() {
+        let onePoint = #"{"routes":[{"distanceMeters":10,"duration":"8s","polyline":{"encodedPolyline":"_p~iF~ps|U"}}]}"#.data(using: .utf8)!
+        XCTAssertThrowsError(try GoogleRoutesAPI.walkingRoute(from: onePoint, origin: origin, destination: destination)) { error in
+            XCTAssertEqual(error as? GoogleRoutesAPI.ParseError, .missingGeometry)
+        }
+        let stepWithoutLocations = #"{"routes":[{"legs":[{"steps":[{"distanceMeters":12,"staticDuration":"9s"}]}]}]}"#.data(using: .utf8)!
+        XCTAssertThrowsError(try GoogleRoutesAPI.walkingRoute(from: stepWithoutLocations, origin: origin, destination: destination)) { error in
+            XCTAssertEqual(error as? GoogleRoutesAPI.ParseError, .missingGeometry)
+        }
+    }
+
+    func testDistanceComesFromStepsWhenTheRouteOmitsIt() throws {
+        let json = """
+        {"routes":[{"duration":"86s","legs":[{"steps":[{"staticDuration":"86s","polyline":{"encodedPolyline":"ipkcFfichVnP@j@B"},"startLocation":{"latLng":{"latitude":37.42,"longitude":-122.08}},"endLocation":{"latLng":{"latitude":37.41,"longitude":-122.07}}}]}]}]}
+        """.data(using: .utf8)!
+        let route = try GoogleRoutesAPI.walkingRoute(from: json, origin: origin, destination: destination)
+        let expected = GeoMath.distance(
+            from: GeoCoordinate(latitude: 37.42, longitude: -122.08),
+            to: GeoCoordinate(latitude: 37.41, longitude: -122.07)
+        )
+        XCTAssertEqual(route.distanceMeters, expected, accuracy: 0.01)
+        XCTAssertEqual(route.durationSeconds, 86)
+        XCTAssertEqual(route.routeSteps.count, 1)
+        XCTAssertGreaterThanOrEqual(route.routeCoordinates.count, 2)
+    }
+
+    func testMalformedPayloadIsNotANoRoute() {
+        XCTAssertThrowsError(try GoogleRoutesAPI.walkingRoute(from: Data("not-json".utf8), origin: origin, destination: destination)) { error in
+            XCTAssertFalse(error is GoogleRoutesAPI.ParseError)
+        }
+    }
+
     func testFallsBackToStepGeometryWhenOverviewMissing() throws {
         let json = """
         {"routes":[{"distanceMeters":120,"duration":"86s","legs":[{"steps":[{"distanceMeters":120,"staticDuration":"86s","polyline":{"encodedPolyline":"ipkcFfichVnP@j@B"}}]}]}]}
@@ -123,9 +182,44 @@ final class GoogleRoutesAPITests: XCTestCase {
     }
 
     func testLegacyStatusErrors() {
-        let data = #"{"status":"REQUEST_DENIED","error_message":"This API project is not authorized","routes":[]}"#.data(using: .utf8)!
-        XCTAssertThrowsError(try GoogleDirectionsLegacyAPI.walkingRoute(from: data, origin: origin, destination: destination)) { error in
+        let denied = #"{"status":"REQUEST_DENIED","error_message":"This API project is not authorized","routes":[]}"#.data(using: .utf8)!
+        XCTAssertThrowsError(try GoogleDirectionsLegacyAPI.walkingRoute(from: denied, origin: origin, destination: destination)) { error in
             XCTAssertEqual(error as? GoogleDirectionsLegacyAPI.ParseError, .status("REQUEST_DENIED", message: "This API project is not authorized"))
         }
+        let none = #"{"status":"ZERO_RESULTS","routes":[]}"#.data(using: .utf8)!
+        XCTAssertThrowsError(try GoogleDirectionsLegacyAPI.walkingRoute(from: none, origin: origin, destination: destination)) { error in
+            XCTAssertEqual(error as? GoogleDirectionsLegacyAPI.ParseError, .status("ZERO_RESULTS", message: nil))
+        }
+    }
+
+    func testLegacyHTMLInstructionsDoNotLeakTags() {
+        XCTAssertEqual(
+            "Turn <b>left</b> onto <div style=\"font-size:0.9em\">Main St</div>".strippingHTMLTags(),
+            "Turn left onto Main St"
+        )
+        XCTAssertEqual("Head <b north".strippingHTMLTags(), "Head")
+        XCTAssertEqual("  Keep   straight  ".strippingHTMLTags(), "Keep straight")
+    }
+
+    func testRefusalWithoutAMessageNamesTheStatusAndBundle() {
+        let message = GoogleAPIClientIdentity.userFacingRoutesError(
+            code: 403,
+            status: "PERMISSION_DENIED",
+            message: nil,
+            bundleIdentifier: "  "
+        )
+        XCTAssertTrue(message.contains("HTTP 403"))
+        XCTAssertTrue(message.contains("PERMISSION_DENIED"))
+        XCTAssertTrue(message.contains("com.cranford.historicalar"))
+        XCTAssertFalse(message.contains("AIza"))
+
+        XCTAssertEqual(
+            GoogleAPIClientIdentity.userFacingRoutesError(code: 400, status: "INVALID_ARGUMENT", message: "Waypoint is invalid."),
+            "Waypoint is invalid."
+        )
+        let disabled = GoogleAPIClientIdentity.userFacingRoutesError(code: nil, status: "PERMISSION_DENIED", message: "SERVICE_DISABLED")
+        XCTAssertTrue(disabled.lowercased().contains("enable"))
+        XCTAssertFalse(GoogleAPIClientIdentity.isBlockedClientMessage(nil))
+        XCTAssertFalse(GoogleAPIClientIdentity.isBlockedClientMessage("quota exceeded"))
     }
 }
