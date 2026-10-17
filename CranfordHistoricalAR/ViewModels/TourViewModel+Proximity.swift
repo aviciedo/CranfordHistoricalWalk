@@ -33,7 +33,7 @@ extension TourViewModel {
     func handleLocationForProximity(_ sample: LocationSample) {
         guard progress.phase == .inProgress, let stop = currentStop, var machine = proximityMachine else { return }
         // Ignore wildly inaccurate fixes so a 200 m GPS jump cannot open/close the sign.
-        guard sample.horizontalAccuracy >= 0, sample.horizontalAccuracy <= 100 else { return }
+        guard LocationFixPolicy.acceptsProximityUpdate(horizontalAccuracy: sample.horizontalAccuracy) else { return }
         let distance = GeoMath.distance(from: sample.coordinate, to: stop.coordinate)
         let effects = machine.handle(.distanceUpdated(meters: distance))
         proximityMachine = machine

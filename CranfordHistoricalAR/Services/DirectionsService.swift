@@ -155,47 +155,32 @@ struct LegacyGoogleDirectionsService: DirectionsService {
 // MARK: - Small cache decorator (spec §22: do not continuously make network requests)
 
 /// Remembers routes for ~10 m origin/destination cells for a few minutes so re-requests while the
-/// user stands still (or reopening the AR view) cost nothing.
+/// user stands still (or reopening the AR view) cost nothing. The TTL, coalescing, and eviction
+/// live in `DirectionsRouteCache` so they can be unit-tested without Core Location.
 actor CachedDirectionsService: DirectionsService {
-    private struct Key: Hashable {
-        let olat: Int, olng: Int, dlat: Int, dlng: Int
-        init(_ o: CLLocationCoordinate2D, _ d: CLLocationCoordinate2D) {
-            // ~0.0001° ≈ 11 m latitude.
-            olat = Int((o.latitude * 10_000).rounded()); olng = Int((o.longitude * 10_000).rounded())
-            dlat = Int((d.latitude * 10_000).rounded()); dlng = Int((d.longitude * 10_000).rounded())
-        }
-    }
-
     private let upstream: any DirectionsService
-    private let ttl: TimeInterval
-    private var cache: [Key: WalkingRoute] = [:]
-    private var inFlight: [Key: Task<WalkingRoute, Error>] = [:]
+    private let cache: DirectionsRouteCache
 
-    init(upstream: any DirectionsService, ttl: TimeInterval = 300) {
+    init(upstream: any DirectionsService, ttl: TimeInterval = DirectionsRouteCache.defaultTTL) {
         self.upstream = upstream
-        self.ttl = ttl
+        self.cache = DirectionsRouteCache(ttl: ttl)
     }
 
     func walkingRoute(from origin: CLLocationCoordinate2D, to destination: CLLocationCoordinate2D) async throws -> WalkingRoute {
-        let key = Key(origin, destination)
-        if let cached = cache[key], Date().timeIntervalSince(cached.computedAt) < ttl {
-            return cached
-        }
-        if let task = inFlight[key] {
-            return try await task.value
-        }
         let upstream = self.upstream
-        let task = Task { try await upstream.walkingRoute(from: origin, to: destination) }
-        inFlight[key] = task
-        defer { inFlight[key] = nil }
-        let route = try await task.value
-        cache[key] = route
-        if cache.count > 64 {
-            // Drop the oldest entries; the tour has at most a handful of live legs.
-            let sorted = cache.sorted { $0.value.computedAt < $1.value.computedAt }
-            for (k, _) in sorted.prefix(cache.count - 48) { cache[k] = nil }
+        let originLatitude = origin.latitude
+        let originLongitude = origin.longitude
+        let destinationLatitude = destination.latitude
+        let destinationLongitude = destination.longitude
+        return try await cache.route(
+            from: GeoCoordinate(latitude: originLatitude, longitude: originLongitude),
+            to: GeoCoordinate(latitude: destinationLatitude, longitude: destinationLongitude)
+        ) {
+            try await upstream.walkingRoute(
+                from: CLLocationCoordinate2D(latitude: originLatitude, longitude: originLongitude),
+                to: CLLocationCoordinate2D(latitude: destinationLatitude, longitude: destinationLongitude)
+            )
         }
-        return route
     }
 }
 

@@ -232,7 +232,7 @@ final class NarrationPlayer: NSObject {
 
     func skip(by seconds: TimeInterval) {
         guard canSeek, let duration else { return }
-        seek(to: min(max(elapsed + seconds, 0), duration))
+        seek(to: NarrationSeek.position(afterSkipping: seconds, from: elapsed, duration: duration))
     }
 
     func seek(to seconds: TimeInterval) {
