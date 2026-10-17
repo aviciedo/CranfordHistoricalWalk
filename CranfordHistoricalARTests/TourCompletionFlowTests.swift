@@ -45,6 +45,38 @@ final class TourCompletionFlowTests: XCTestCase {
         try await waitUntil("new route requested for the next stop") { self.tour.currentRoute?.destination == self.stops[1].coordinate }
     }
 
+    func testUncertainGPSFixCannotOpenOrSkipTheStop() async throws {
+        simulator.horizontalAccuracy = 50
+        let near = GeoMath.destination(from: stops[0].coordinate, bearing: 90, distance: 20)
+        simulator.teleport(to: near)
+        try await waitUntil("sloppy near fix is on screen") {
+            guard let distance = self.tour.straightLineDistanceToCurrentStop else { return false }
+            return abs(distance - 20) < 3
+        }
+        XCTAssertFalse(tour.isSignPresented, "±50 m must not count as arrival inside a 35 m radius")
+        XCTAssertEqual(tour.currentStop?.id, stops[0].id)
+
+        simulator.horizontalAccuracy = 5
+        simulator.teleport(to: near)
+        try await waitUntil("confident arrival presents the sign") { self.tour.isSignPresented }
+        XCTAssertEqual(tour.currentStop?.id, stops[0].id)
+
+        simulator.horizontalAccuracy = 40
+        let outside = GeoMath.destination(from: stops[0].coordinate, bearing: 90, distance: 70)
+        simulator.teleport(to: outside)
+        try await waitUntil("sloppy far fix is on screen") {
+            guard let distance = self.tour.straightLineDistanceToCurrentStop else { return false }
+            return abs(distance - 70) < 3
+        }
+        XCTAssertTrue(tour.isSignPresented, "±40 m beyond 50 m must not count as walking away")
+        XCTAssertEqual(tour.currentStop?.id, stops[0].id, "an uncertain fix must not skip the stop")
+
+        simulator.horizontalAccuracy = 5
+        simulator.teleport(to: outside)
+        try await waitUntil("confident departure advances") { self.tour.currentStop?.id == self.stops[1].id }
+        XCTAssertFalse(tour.isSignPresented)
+    }
+
     func testWalkingAwayAfterSeeingSignAdvances() async throws {
         simulator.teleport(to: stops[0].coordinate)
         try await waitUntil("sign presented") { self.tour.isSignPresented }

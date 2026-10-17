@@ -247,6 +247,9 @@ final class TourViewModel {
             refreshLocationIssue()
 
         case .location(let sample):
+            // Cached or out-of-order fixes must not move the puck, inflate walked
+            // distance, or open/close the sign. Core Location delivers the cache first.
+            guard isAcceptableLocationSample(sample) else { return }
             if let previous = userLocation, progress.phase == .inProgress, sample.horizontalAccuracy <= TourViewModel.poorAccuracyThreshold {
                 let moved = GeoMath.distance(from: previous.coordinate, to: sample.coordinate)
                 // Ignore GPS jitter when accumulating walked distance.
@@ -270,6 +273,13 @@ final class TourViewModel {
     func didUpdateLocation(_ sample: LocationSample) {
         handleLocationForRouting(sample)
         handleLocationForProximity(sample)
+    }
+
+    /// Fresh, and not older than the fix already on screen.
+    private func isAcceptableLocationSample(_ sample: LocationSample) -> Bool {
+        guard ProximityFixFilter.isFresh(timestamp: sample.timestamp) else { return false }
+        if let previous = userLocation, sample.timestamp < previous.timestamp { return false }
+        return true
     }
 
     private func refreshLocationIssue() {
