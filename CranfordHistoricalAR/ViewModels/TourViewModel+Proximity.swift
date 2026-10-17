@@ -34,7 +34,17 @@ extension TourViewModel {
         guard progress.phase == .inProgress, let stop = currentStop, var machine = proximityMachine else { return }
         // Ignore wildly inaccurate fixes so a 200 m GPS jump cannot open/close the sign.
         guard sample.horizontalAccuracy >= 0, sample.horizontalAccuracy <= 100 else { return }
-        let distance = GeoMath.distance(from: sample.coordinate, to: stop.coordinate)
+        guard ProximityFixFilter.isFresh(timestamp: sample.timestamp) else { return }
+        let reported = GeoMath.distance(from: sample.coordinate, to: stop.coordinate)
+        // A fix whose error circle still crosses the geofence cannot prove arrival or departure.
+        // Acting on it marks the stop visited, and the next accurate fix then skips it.
+        guard let distance = ProximityFixFilter.distanceToApply(
+            reportedMeters: reported,
+            horizontalAccuracy: sample.horizontalAccuracy,
+            state: machine.state,
+            arrivalRadius: machine.arrivalRadius,
+            departureRadius: machine.departureRadius
+        ) else { return }
         let effects = machine.handle(.distanceUpdated(meters: distance))
         proximityMachine = machine
         apply(effects, for: stop, source: .automatic)
