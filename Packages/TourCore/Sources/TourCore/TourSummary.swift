@@ -51,3 +51,26 @@ public struct TourSummary: Sendable, Equatable {
         )
     }
 }
+
+/// Distance shown on the tour-complete screen.
+///
+/// Under 50 m of measured walking (a jump, a simulator teleport, or a tour that barely moved)
+/// the routed total is kept so the screen is not blank. A real walk shows the measured distance.
+public struct TourCompletionDistance: Equatable, Sendable {
+    public static let minimumMeasuredMeters: Double = 50
+
+    public var meters: Double
+    public var isMeasured: Bool
+
+    public init(meters: Double, isMeasured: Bool) {
+        self.meters = meters
+        self.isMeasured = isMeasured
+    }
+
+    public static func select(walkedMeters: Double, routedMeters: Double) -> TourCompletionDistance {
+        if walkedMeters >= minimumMeasuredMeters {
+            return TourCompletionDistance(meters: walkedMeters, isMeasured: true)
+        }
+        return TourCompletionDistance(meters: routedMeters, isMeasured: false)
+    }
+}

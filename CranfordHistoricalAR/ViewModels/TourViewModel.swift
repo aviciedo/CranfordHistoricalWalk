@@ -80,7 +80,7 @@ final class TourViewModel {
     private(set) var lastLocationFailure: LocationFailure?
 
     /// Accuracy worse than this is reported to the user as "weak GPS".
-    static let poorAccuracyThreshold: Double = 40
+    static let poorAccuracyThreshold: Double = LocationFixPolicy.poorAccuracyMeters
 
     // MARK: Routing (mutated by TourViewModel+Routing.swift)
     var currentRoute: WalkingRoute?
@@ -146,7 +146,10 @@ final class TourViewModel {
 
     var hasUsableLocation: Bool {
         guard let userLocation else { return false }
-        return userLocation.horizontalAccuracy >= 0 && Date().timeIntervalSince(userLocation.timestamp) < 60
+        return LocationFixPolicy.isUsable(
+            horizontalAccuracy: userLocation.horizontalAccuracy,
+            age: Date().timeIntervalSince(userLocation.timestamp)
+        )
     }
 
     // MARK: Loading
@@ -247,10 +250,11 @@ final class TourViewModel {
             refreshLocationIssue()
 
         case .location(let sample):
-            if let previous = userLocation, progress.phase == .inProgress, sample.horizontalAccuracy <= TourViewModel.poorAccuracyThreshold {
+            if let previous = userLocation, progress.phase == .inProgress {
                 let moved = GeoMath.distance(from: previous.coordinate, to: sample.coordinate)
-                // Ignore GPS jitter when accumulating walked distance.
-                if moved > max(2, sample.horizontalAccuracy * 0.5) { progress.recordWalked(meters: moved) }
+                if let accepted = LocationFixPolicy.walkedMeters(moved: moved, horizontalAccuracy: sample.horizontalAccuracy) {
+                    progress.recordWalked(meters: accepted)
+                }
             }
             userLocation = sample
             lastLocationFailure = nil

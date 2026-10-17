@@ -55,11 +55,10 @@ extension TourViewModel {
     /// (e.g. a simulated or jumped-through tour) so the screen is never blank.
     var completionFigures: TourCompletionFigures {
         let summary = tourSummary
-        let walked = progress.walkedMeters
-        let measured = walked >= 50
+        let distance = TourCompletionDistance.select(walkedMeters: progress.walkedMeters, routedMeters: summary.totalDistanceMeters)
         return TourCompletionFigures(
-            distanceMeters: measured ? walked : summary.totalDistanceMeters,
-            isDistanceMeasured: measured,
+            distanceMeters: distance.meters,
+            isDistanceMeasured: distance.isMeasured,
             walkingSeconds: summary.totalWalkingSeconds,
             elapsedSeconds: progress.elapsed,
             visitedCount: progress.completedCount,

@@ -82,7 +82,11 @@ final class DeveloperModeController {
         guard let stop = tour.currentStop else { return }
         // Land just inside the arrival radius rather than on the exact coordinate so the AR sign
         // still has somewhere to stand in front of the camera.
-        let landing = GeoMath.destination(from: stop.coordinate, bearing: 200, distance: min(8, stop.arrivalRadius / 3))
+        let landing = GeoMath.destination(
+            from: stop.coordinate,
+            bearing: SimulatedArrival.jumpBearing,
+            distance: SimulatedArrival.jumpLandingDistance(arrivalRadius: stop.arrivalRadius)
+        )
         simulator?.teleport(to: landing)
     }
 

@@ -70,3 +70,13 @@ public struct WalkSimulator: Sendable, Equatable {
         return Sample(coordinate: position, course: course, didArrive: GeoMath.distance(from: position, to: target) < 0.05)
     }
 }
+
+/// Where Developer Mode drops the walker for "jump to next stop".
+/// The landing stays inside the arrival radius so the production proximity machine opens the sign.
+public enum SimulatedArrival {
+    public static let jumpBearing: Double = 200
+
+    public static func jumpLandingDistance(arrivalRadius: Double) -> Double {
+        min(8, arrivalRadius / 3)
+    }
+}
