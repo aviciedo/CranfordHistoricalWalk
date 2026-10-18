@@ -122,15 +122,15 @@ voice, evaluate pronunciation, compile AVFoundation/SwiftUI, or verify this on a
 
 ## 7. Greystone content and slideshow
 
-The actual photo import is pending the original image files. Run the gallery steps below
-after the approved images have been added; the current stop has no substitute gallery assets.
+All five supplied photos are now bundled. Run these checks on the Mac/iPhone; Linux
+cannot verify native photo gestures or slideshow timing.
 
 1. Open stop 2 from **Stops** and confirm its name is **Greystone**, address is **600 Lincoln
    Park East**, and construction date begins in **1920**. Check the short map popup and AR card.
 2. Read the longer description and expand **Read narration**. Tap Play: expect the full
    **Greystone: The Castle on the River** story in the same on-device male voice as stop 1.
    It should replace the old recording. Check pronunciation and pause/resume; duration varies.
-3. After photo import, expect the image titled Greystone first. Watch for a page change after
+3. Expect the image titled Greystone first. Watch for a page change after
    six seconds. Swipe both ways; Previous/Next buttons pause rotation so you can read the caption.
    Pause/Play should work. Enlarge each image, pinch to zoom, then close with X. The gallery
    should return to the same image without advancing the tour or recording a visit.

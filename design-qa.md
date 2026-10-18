@@ -45,7 +45,6 @@ visual/audio QA pass is claimed.
 
 Greystone update: the second stop now uses the creator-supplied name, marker text, description
 and full on-device narration while retaining its stable tour ID. A shared multi-photo detail
-gallery supports rotation, manual paging, credits, pause and full-screen zoom. Original Greystone
-attachment files are not available in this workspace; their import remains pending and no
-substitute assets were added. Native gallery behavior, voice playback and build status still
+gallery supports rotation, manual paging, credits, pause and full-screen zoom. All five original photos from Greystone.zip
+are now bundled, with the selected cover and creator-supplied captions/bridge credit. Native gallery behavior, voice playback and build status still
 require Mac/iPhone verification using AR-FIELD-TEST.md.

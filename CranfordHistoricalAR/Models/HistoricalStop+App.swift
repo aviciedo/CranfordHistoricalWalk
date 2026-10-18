@@ -99,7 +99,14 @@ extension HistoricalStop {
 
                 Following Kaltenbach's death and the decline of his silk business, the property was acquired by Cranford Township. In 1939, it reopened as Cranford Hall, beginning its long history as a healthcare facility.
                 """,
-            historicalDate: "Built: Beginning in 1920",
+            historicalDate: "Built: Beginning in 1920", imageName: "greystone",
+            photos: [
+                HistoricalStopPhoto(imageName: "greystone", caption: "Greystone"),
+                HistoricalStopPhoto(imageName: "greystone-additional-view", caption: "Greystone — additional view"),
+                HistoricalStopPhoto(imageName: "greystone-footbridge-1912", caption: "Lincoln Park stone footbridge, 1912. The bridge remains today.", credit: "Cranford Historical Society, The Birth and Growth of Cranford, Part IV, PDF page 6."),
+                HistoricalStopPhoto(imageName: "greystone-gloria-swanson", caption: "Gloria Swanson"),
+                HistoricalStopPhoto(imageName: "greystone-william-randolph-hearst", caption: "William Randolph Hearst"),
+            ],
             narrationText: """
                 Greystone: The Castle on the River
 

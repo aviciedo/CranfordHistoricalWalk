@@ -451,12 +451,14 @@ when leaving the screen, or when the app becomes inactive. VoiceOver and Reduce 
 use manual paging. Tap any photo to enlarge it, pinch to zoom, and use X to return.
 Photo browsing never changes the walking destination or marks a stop visited.
 
-**Photo import pending:** The five Greystone attachments were visible in conversation but
-the original files were not available in the execution workspace. No substitute photos or
-broken asset names have been added to the tour JSON. Once the original files are available,
-use the file titled Greystone as the cover; include the other building photo, the two portraits
-(captioned Gloria Swanson and William Randolph Hearst), and the Lincoln Park stone footbridge
-(1912). For the bridge, retain the creator-supplied source credit: Cranford Historical Society,
-*The Birth and Growth of Cranford*, Part IV, PDF page 6. The supplied caption says the bridge
-remains today. This source was supplied by the creator, not independently verified here.
+The five original photos supplied in `Greystone.zip` are bundled in the asset catalog and
+available offline. The file titled **Greystone.jpg** is the cover, followed by the additional
+building view, the Lincoln Park stone footbridge (1912), Gloria Swanson, and William Randolph
+Hearst. Captions use the tour creator’s identifications. The additional building image’s filename
+is `1923-Greystone.jpg`; no capture date is asserted from that filename.
+
+The bridge retains the creator-supplied caption that it remains today, and this source credit:
+Cranford Historical Society, *The Birth and Growth of Cranford*, Part IV, PDF page 6.
+The identifications and source were supplied by the creator, not independently verified here.
+Original JPEG files were copied without image edits. No additional API key is needed for photos.
 Gallery photos do not enable ARKit recognition; Greystone retains its nearby-GPS AR activation.

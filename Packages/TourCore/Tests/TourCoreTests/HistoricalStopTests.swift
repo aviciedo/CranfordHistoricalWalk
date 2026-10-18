@@ -62,6 +62,14 @@ final class HistoricalStopTests: XCTestCase {
         XCTAssertNil(stop.audioURL, "The previous recording must not override the new script")
         XCTAssertEqual(stop.narrationSource, .synthesizedSpeech(text: script))
         XCTAssertEqual(stop.narrationVoicePreference, .warmMaleEnglish)
+        XCTAssertEqual(stop.imageName, "greystone")
+        XCTAssertEqual(stop.galleryPhotos.map(\.imageName), [
+            "greystone", "greystone-additional-view", "greystone-footbridge-1912",
+            "greystone-gloria-swanson", "greystone-william-randolph-hearst"
+        ])
+        XCTAssertEqual(stop.galleryPhotos[0].caption, "Greystone")
+        XCTAssertTrue(stop.galleryPhotos[2].caption.contains("1912"))
+        XCTAssertTrue(stop.galleryPhotos[2].credit?.contains("Part IV, PDF page 6") == true)
         XCTAssertFalse(stop.hasPlaqueReference, "Gallery photos do not become physical AR markers")
         XCTAssertEqual(try JSONDecoder().decode(HistoricalStop.self, from: JSONEncoder().encode(stop)), stop)
     }

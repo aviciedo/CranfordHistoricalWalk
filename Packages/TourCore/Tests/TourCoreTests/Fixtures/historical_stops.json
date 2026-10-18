@@ -41,7 +41,7 @@
       "shortDescription": "A grand 25-room mansion overlooking the Rahway River, later transformed into Cranford Hall.",
       "longDescription": "Built beginning in 1920, Greystone was an extraordinary 25-room, English castle-inspired mansion overlooking the Rahway River. Its 14-acre estate, with 600 feet of riverfront, belonged to wealthy silk manufacturer Charles E. Kaltenbach.\n\nConstructed on land once owned by Severin Droescher, the mansion replaced most of his planned Lincoln Park residential development. Hollywood stars like Gloria Swanson and newspaper magnate William Randolph Hearst were among Greystone’s distinguished guests.\n\nFollowing Kaltenbach's death and the decline of his silk business, the property was acquired by Cranford Township. In 1939, it reopened as Cranford Hall, beginning its long history as a healthcare facility.",
       "historicalDate": "Built: Beginning in 1920",
-      "imageName": null,
+      "imageName": "greystone",
       "imageURL": null,
       "illustrationURL": null,
       "audioURL": null,
@@ -52,7 +52,30 @@
       "isSample": false,
       "coordinatesUnverified": true,
       "narrationText": "Greystone: The Castle on the River\n\nAt our previous stop, Droescher’s Mill, we discovered how the Rahway River powered the industries that helped build early Cranford.\n\nBy the early 1900s as the town continued to grow, its scenic banks of the Rahway River had become desirable places for grand homes and landscaped estates. And few were more impressive than the mansion that once stood here, known as Greystone.\n\nConstruction began in 1920 for Charles E. Kaltenbach, a wealthy silk-ribbon manufacturer whose family business had prospered in New Jersey's textile industry.\n\nInspired by an English castle, the magnificent 25-room mansion featured castle-like towers and an elegant ballroom. Its sprawling 14-acre grounds included landscaped gardens and an extraordinary 600 feet of frontage along the Rahway River.\n\nInterestingly, this estate was built on land formerly owned by Severin Droescher, the businessman behind the nearby mill. Droescher had originally envisioned an exclusive neighborhood called Lincoln Park, but Kaltenbach acquired a large portion of the property for his private estate.\n\nGreystone soon became a setting for lavish and glamorous Hollywood entertainment. Hollywood stars like Gloria Swanson and newspaper magnate William Randolph Hearst were among its famous guests.\n\nBut the mansion's glamorous chapter was very short.\n\nIn 1930, Kaltenbach died suddenly of a heart attack at just 44 years old. Meanwhile, his family's silk business struggled as new synthetic fabrics, including rayon, transformed the textile industry.\n\nBy the late 1930s, the estate faced substantial unpaid taxes, and Cranford Township acquired the property.\n\nThen came an unexpected new beginning.\n\nIn October 1939, the former mansion reopened as Cranford Hall, a nursing and convalescent home. Over the following decades, much of the original estate was divided and developed, but the building continued serving the community.\n\nToday, the property remains a healthcare facility, known as Cranford Park Care.\n\nFrom a magnificent private residence to a place dedicated to caring for others, Greystone reflects Cranford's changing and dynamic history.\n\nAnd just as at Droescher’s Mill, the Rahway River remains a quiet witness to the continuous transformation of our town.",
-      "narrationVoicePreference": "warmMaleEnglish"
+      "narrationVoicePreference": "warmMaleEnglish",
+      "photos": [
+        {
+          "imageName": "greystone",
+          "caption": "Greystone"
+        },
+        {
+          "imageName": "greystone-additional-view",
+          "caption": "Greystone — additional view"
+        },
+        {
+          "imageName": "greystone-footbridge-1912",
+          "caption": "Lincoln Park stone footbridge, 1912. The bridge remains today.",
+          "credit": "Cranford Historical Society, The Birth and Growth of Cranford, Part IV, PDF page 6."
+        },
+        {
+          "imageName": "greystone-gloria-swanson",
+          "caption": "Gloria Swanson"
+        },
+        {
+          "imageName": "greystone-william-randolph-hearst",
+          "caption": "William Randolph Hearst"
+        }
+      ]
     },
     {
       "id": "hpab-003",
