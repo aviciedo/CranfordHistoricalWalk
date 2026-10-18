@@ -6,13 +6,13 @@ final class HistoricalStopTests: XCTestCase {
         let document = try HistoricalStopDecoder.decode(Fixtures.data("historical_stops"))
         XCTAssertEqual(document.schemaVersion, 1)
         XCTAssertEqual(document.stops.map(\.name), [
-            "Droescher's Mill", "Cranford Hall", "Rahway River", "First Baptist Church", "Cranford Hotel"
+            "Droescher’s Mill", "Cranford Hall", "Rahway River", "First Baptist Church", "Cranford Hotel"
         ])
         XCTAssertEqual(document.stops.map(\.order), [1, 2, 3, 4, 5])
         XCTAssertEqual(document.stops.map(\.id), ["hpab-001", "hpab-002", "hpab-003", "hpab-004", "hpab-005"])
         XCTAssertTrue(document.dataStatus?.contains("HPAB") == true)
         XCTAssertEqual(document.stops[0].imageName, "droeschers-mill")
-        XCTAssertEqual(document.stops[0].historicalDate, "c. 1737")
+        XCTAssertEqual(document.stops[0].historicalDate, "Construction: After 1821")
         XCTAssertEqual(document.stops[0].plaque?.transcription, "c. 1737")
         XCTAssertEqual(document.stops[0].plaque?.quoteLabel, "Door plaque")
         XCTAssertEqual(document.stops[0].plaque?.referenceImageName, SignPlacementPolicy.millReferenceImageName)
@@ -20,8 +20,8 @@ final class HistoricalStopTests: XCTestCase {
         XCTAssertTrue(document.stops[0].hasPlaqueReference)
         XCTAssertFalse((document.stops[0].plaque?.transcription ?? "").contains("1797"))
         XCTAssertNil(document.stops[1].plaque)
-        let audioFiles = ["Droescher Mill.mp3", "Greystone.mp3", "Rahway River.mp3", "First Baptist.mp3", "Cranford Hotel.mp3"]
-        for (stop, file) in zip(document.stops, audioFiles) {
+        let audioFiles = ["Greystone.mp3", "Rahway River.mp3", "First Baptist.mp3", "Cranford Hotel.mp3"]
+        for (stop, file) in zip(document.stops.dropFirst(), audioFiles) {
             XCTAssertFalse(stop.isSample)
             XCTAssertTrue(stop.coordinatesUnverified)
             XCTAssertEqual(stop.arrivalRadius, 35)
@@ -32,7 +32,46 @@ final class HistoricalStopTests: XCTestCase {
             XCTAssertEqual(url.scheme, "http")
             XCTAssertTrue(url.host?.contains("preservecranford.com") == true)
             XCTAssertEqual(url.lastPathComponent, file)
+            XCTAssertNil(stop.narrationText)
+            XCTAssertEqual(stop.narrationVoicePreference, .systemDefault)
         }
+    }
+
+    func testMillUsesTheFullCreatorScriptAndKeepsItsPhysicalPlaqueReference() throws {
+        let mill = try HistoricalStopDecoder.decode(Fixtures.data("historical_stops")).stops[0]
+        XCTAssertEqual(mill.address, "347 Lincoln Avenue East, Cranford, NJ")
+        XCTAssertTrue(mill.markerInformation.contains("After 1821"))
+        XCTAssertTrue(mill.markerInformation.contains("at least 1779"))
+        XCTAssertTrue(mill.markerInformation.contains("Last surviving historic mill on the Rahway River."))
+        XCTAssertFalse(mill.markerInformation.contains("1737"), "The plaque inscription is not the current building's construction date")
+        XCTAssertTrue(mill.longDescription.contains("Severin Droescher"))
+        XCTAssertTrue(mill.longDescription.contains("pipe organs"))
+        XCTAssertNil(mill.audioURL, "The old recording must not take precedence over the new script")
+        let script = try XCTUnwrap(mill.narrationText)
+        XCTAssertTrue(script.hasPrefix("Droescher’s Mill: A River That Built a Town"))
+        XCTAssertTrue(script.contains("Alleum Yoga"))
+        XCTAssertTrue(script.contains("healthcare sector"))
+        XCTAssertTrue(script.contains("National Register of Historic Places in 1974"))
+        XCTAssertTrue(script.contains("Cranford historic landmark in 2014"))
+        XCTAssertTrue(script.hasSuffix("this is the last survivor."))
+        XCTAssertGreaterThan(script.split(whereSeparator: \.isWhitespace).count, 330)
+        XCTAssertEqual(mill.narrationSource, .synthesizedSpeech(text: script))
+        XCTAssertEqual(mill.narrationVoicePreference, .warmMaleEnglish)
+        XCTAssertEqual(mill.plaque?.transcription, "c. 1737")
+        XCTAssertEqual(mill.plaque?.referenceImageName, SignPlacementPolicy.millReferenceImageName)
+        XCTAssertEqual(try JSONDecoder().decode(HistoricalStop.self, from: JSONEncoder().encode(mill)), mill)
+    }
+
+    func testDedicatedNarrationIsSeparateFromTheScreenDescription() throws {
+        var stop = makeStop()
+        stop.longDescription = "Short screen description."
+        stop.narrationText = "  Full story for the listener.\n\nA second paragraph.  "
+        XCTAssertEqual(stop.narrationSource, .synthesizedSpeech(text: "Full story for the listener.\n\nA second paragraph."))
+        stop.audioURL = URL(string: "https://example.org/a-future-recording.m4a")
+        XCTAssertEqual(stop.narrationSource, .remoteAudio(stop.audioURL!), "A real recording can be added later while retaining its transcript")
+        stop.audioURL = nil
+        stop.narrationText = " \n "
+        XCTAssertEqual(stop.narrationSource, .synthesizedSpeech(text: stop.longDescription))
     }
 
     func testSampleDataIsHonestlyLabeled() throws {
@@ -83,6 +122,8 @@ final class HistoricalStopTests: XCTestCase {
         XCTAssertFalse(stop.hasAnyImage)
         XCTAssertFalse(stop.isSample)
         XCTAssertFalse(stop.coordinatesUnverified)
+        XCTAssertNil(stop.narrationText)
+        XCTAssertEqual(stop.narrationVoicePreference, .systemDefault)
         XCTAssertEqual(stop.narrationSource, nil)
     }
 

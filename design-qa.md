@@ -36,3 +36,9 @@ An isolated Foundation host also checks the production proximity extension and v
 checks do not render SwiftUI or RealityKit, recognize the plaque, or compile the iOS application.
 On-device arrow alignment, marker taps, audio startup, sign readability and saved visit dates still
 need the Mac/iPhone field test. The visual/native QA result above remains blocked.
+
+Mill content update: marker/AR copy, full-address detail page, separate expandable narration,
+and spoken-versus-recorded player controls now share the updated stop data. Physical plaque
+recognition assets remain unchanged. The on-device male voice, pronunciation, read-aloud progress,
+short AR card fit and map popups need the additional checks in AR-FIELD-TEST.md. No new native
+visual/audio QA pass is claimed.

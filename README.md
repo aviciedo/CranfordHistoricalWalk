@@ -25,9 +25,10 @@ A SwiftUI + ARKit/RealityKit + Core Location + Google Maps walking-tour MVP for 
 Follow AR walking arrows, activate a stop marker on site, and discover its historical sign and narration.
 
 > The bundled walking tour is **five** HPAB audio-tour stops (Droescher's Mill, Cranford Hall, Rahway River,
-> First Baptist Church, Cranford Hotel). Names, addresses, and recordings come from the HPAB May 2020 brochure.
-> Coordinates are **unverified geocodes**, not surveyed site positions. No historical narrative is invented —
-> play the recording for each stop from anywhere; you do not need to be at the GPS location.
+> First Baptist Church, Cranford Hotel). The tour began with the HPAB May 2020 brochure; stop 1 now uses
+> the tour creator’s supplied descriptions and narration script. Stops 2–5 keep their HPAB recordings.
+> Coordinates are **unverified geocodes**, not surveyed site positions. Read or listen to any stop from
+> anywhere; AR visit recording has separate on-site checks.
 
 ## Field Guide interface
 
@@ -95,13 +96,19 @@ to Cranford Hall, then onward through the remaining stops. Stay in AR or tap **M
 **Directions** action opens Google Maps walking directions in the installed app or browser;
 embedded Google Maps/Routes still require their existing API-key configuration.
 
-Linux validation for this update: **109 XCTest tests passed**, plus 21 isolated checks executing the
+Validation for the earlier AR-guidance update: **109 XCTest tests passed**, plus 21 isolated checks executing the
 production proximity extension and visit store in a Foundation-only host. Debug/Release source
 syntax and all 48 app source references in the saved Xcode project were checked. The isolated host
 does not validate iOS location delivery, route services, RealityKit, camera recognition, audio, or
 SwiftUI rendering. Host-app XCTest changes are supplied but require Xcode to run. A full iOS build
 and physical-device AR test have **not** succeeded here. Follow [AR-FIELD-TEST.md](AR-FIELD-TEST.md)
 on the Mac/iPhone for those checks.
+
+Current mill-content validation: **118 TourCore XCTest tests passed**, including the dedicated
+script, backward-compatible JSON and voice-selection policy. Xcode-only tests also cover the
+preview/bundle content match and AVFoundation voice settings; they have not been executed here.
+The iOS build, actual voice sound/pronunciation, map popup rendering and AR card layout still
+require the Mac/iPhone checks in [AR-FIELD-TEST.md](AR-FIELD-TEST.md).
 
 ## Requirements
 
@@ -148,14 +155,36 @@ walking simulator.
 
 ## Narration and historical photographs
 
-Each stop can play narration from `audioURL` (remote HTTP(S) or a bundled file name) or, if none is
-set, from speech synthesis of `longDescription` / `shortDescription`. `NarrationPlayer` is created
-once in `AppDependencies` so home, the stop list, the map sheet, and AR share one player.
+Each stop resolves narration in this order: `audioURL` (remote HTTP(S) or a bundled file),
+`narrationText` (a dedicated on-device script), then `longDescription` / `shortDescription` as a
+fallback. `NarrationPlayer` is created once in `AppDependencies`; Home, Stops, Map and AR share it.
+Playback is available anywhere. Playing or reading a stop does not record a visit or retarget the walk.
 
-The in-stop control is a Spotify-like bar: play/pause, skip back/forward 15 seconds, a scrubber
-with elapsed/remaining time, and the stop title. Playback is **not** gated on GPS — open **Listen
-to a stop** on the home screen, tap a home-map marker, open **Stops** during the walk, or tap a
-tour-map pin. You can start and stop any of the five recordings from the living room.
+Droescher’s Mill now uses the creator’s supplied short marker copy, 95-word expanded description,
+and full 361-word narration, including the supplied healthcare/Alleum Yoga paragraph. Changes to
+the script are limited to light punctuation/typography. The name/address are shared across map
+markers, AR, photos, details, Stops and the player. The expanded page has an optional **Read narration**
+section, so the long script does not crowd the short AR card.
+
+The current building is labeled **Construction: After 1821**, and the short copy dates the mill site
+to at least 1779. The physical plaque still reads **c. 1737**. Its image, transcription, assumed scale
+and AR recognition name are retained; the inscription appears under **About this stop**, separate
+from the supplied construction history. This is user-supplied historical copy, not independently
+verified research. Stop IDs, coordinates and visit records are unchanged.
+
+The mill’s `audioURL` is unset so the older HPAB recording does not override the new script.
+`narrationVoicePreference: "warmMaleEnglish"` chooses a runtime English male voice, preferring enhanced
+or premium quality and US English at equal quality. System novelty/personal voices are excluded.
+Speech uses a slightly gentler pace and pitch. Voice sound, pronunciation and exact duration depend
+on the iPhone; **2:35 is an editorial target, not a measured recording duration**. No external speech
+API or API key is needed. If no suitable voice is available, the app explains how to download an
+English male voice in iPhone Settings and keeps the script readable. Tap Play again after download;
+failed playback is retried. The app does not silently substitute a female voice.
+
+Read-aloud narration uses play/pause and a progress bar. File recordings retain 15-second skipping
+and scrubbing. Speech progress uses UTF-16 ranges and ignores callbacks from a previous utterance
+when playback changes. The final read-aloud duration is measured when speech finishes. It is not
+preset to 2:35. Stops 2–5 keep their original recorded audio and controls.
 
 The Droescher's Mill photograph lives in `Assets.xcassets/droeschers-mill` (`imageName: "droeschers-mill"`
 on stop 1). Stop 1 also has an ARKit image-tracking reference (`Assets.xcassets/PlaqueAnchors.arresourcegroup`)
@@ -184,12 +213,13 @@ still required; Linux tests cannot validate ARKit recognition quality.
 
 `Resources/historical_stops.json` is the five-stop walking tour the app loads: HPAB brochure stops 1–5
 (Droescher's Mill, Cranford Hall, Rahway River, First Baptist Church, Cranford Hotel). `audioURL`
-values are the QR destinations (probed `HTTP 200` / `audio/mpeg`). First Baptist uses the QR file
+values for stops 2–5 remain the QR destinations. Stop 1 uses the supplied on-device narration above.
+First Baptist uses the QR file
 `First Baptist.mp3` (not `First Baptist Church.mp3`). Cranford Hall uses `Greystone.mp3`. Coordinates
 are **unverified Nominatim geocodes** (`coordinatesUnverified: true`). A three-stop SAMPLE fixture
 remains in TourCore tests only (`sample_historical_stops.json`).
 
-The HPAB QR codes use `http://` (the host's HTTPS certificate is self-signed). `Info.plist` allows
+The retained HPAB audio links use `http://` (the host's HTTPS certificate is self-signed). `Info.plist` allows
 insecure HTTP only for `preservecranford.com`.
 
 ## API keys (never committed)

@@ -140,7 +140,7 @@ struct GoogleMapView: UIViewRepresentable {
 
         private func applyAppearance(_ marker: GMSMarker, model: StopMarkerModel, isSelected: Bool) {
             marker.title = model.name
-            marker.snippet = nil
+            marker.snippet = model.information
             marker.isTappable = true
             marker.groundAnchor = groundAnchor
             marker.zIndex = zIndex(for: model.state, isSelected: isSelected)
@@ -403,7 +403,7 @@ struct GoogleMapView: UIViewRepresentable {
             MainActor.assumeIsolated {
                 let title = marker.title ?? ""
                 guard !title.isEmpty else { return nil }
-                return StopNameInfoWindow(title: title)
+                return StopNameInfoWindow(title: title, details: marker.snippet)
             }
         }
 
@@ -419,14 +419,17 @@ struct GoogleMapView: UIViewRepresentable {
 
 /// In-map popup for a tapped stop; the shared details sheet supplies the full content.
 final class StopNameInfoWindow: UIView {
-    init(title: String) {
+    init(title: String, details: String? = nil) {
         let label = UILabel()
-        label.text = title
-        label.font = .systemFont(ofSize: 15, weight: .semibold)
+        let text = NSMutableAttributedString(string: title, attributes: [.font: UIFont.systemFont(ofSize: 15, weight: .semibold)])
+        if let details, !details.isEmpty {
+            text.append(NSAttributedString(string: "\n\n" + details, attributes: [.font: UIFont.systemFont(ofSize: 13)]))
+        }
+        label.attributedText = text
         label.textColor = .label
-        label.numberOfLines = 2
+        label.numberOfLines = 0
         label.lineBreakMode = .byTruncatingTail
-        let fitting = label.sizeThatFits(CGSize(width: 220, height: 80))
+        let fitting = label.sizeThatFits(CGSize(width: 220, height: .greatestFiniteMagnitude))
         let width = min(220, max(96, ceil(fitting.width)))
         let height = max(22, ceil(fitting.height))
         super.init(frame: CGRect(x: 0, y: 0, width: width + 24, height: height + 16))
@@ -441,7 +444,7 @@ final class StopNameInfoWindow: UIView {
         label.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         addSubview(label)
         isUserInteractionEnabled = false
-        accessibilityLabel = title
+        accessibilityLabel = [title, details].compactMap { $0 }.joined(separator: ". ")
     }
 
     required init?(coder: NSCoder) { nil }

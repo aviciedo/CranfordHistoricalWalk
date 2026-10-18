@@ -53,12 +53,12 @@ struct StopDetailView: View {
                     } else if !stop.shortDescription.hasPrefix("HPAB audio-tour stop.") {
                         Text(stop.shortDescription).font(.body).lineSpacing(5)
                     }
-                    if let plaque = stop.plaque, plaque.isUsable {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(plaque.quoteLabel).font(.subheadline.weight(.medium))
-                            Text("“\(plaque.transcription)”")
-                                .font(.system(.title2, design: .serif))
+                    if let script = stop.narrationText, !script.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        DisclosureGroup("Read narration") {
+                            Text(script).font(.body).lineSpacing(5)
+                                .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 12)
                         }
+                        .font(.subheadline.weight(.medium))
                     }
                     if let visit = tour.lastRecordedVisit(for: stop) {
                         Label {
@@ -80,6 +80,10 @@ struct StopDetailView: View {
                     }
                     DisclosureGroup("About this stop") {
                         VStack(alignment: .leading, spacing: 10) {
+                            if let plaque = stop.plaque, plaque.isUsable {
+                                Text("\(plaque.quoteLabel): “\(plaque.transcription)”")
+                                Text("The plaque inscription is separate from the building’s construction history above.")
+                            }
                             if stop.coordinatesUnverified {
                                 Text("The map position is approximate and has not been checked on site.")
                             }

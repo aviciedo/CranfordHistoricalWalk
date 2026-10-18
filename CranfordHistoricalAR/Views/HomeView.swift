@@ -185,10 +185,10 @@ struct StylizedCranfordMapView: View {
             )
             .shadow(color: .black.opacity(0.08), radius: 20, y: 10)
         }
-        .alert("Historical stop", isPresented: $isShowingStopName) {
+        .alert(selectedStop?.name ?? "Historical stop", isPresented: $isShowingStopName) {
             Button("OK", role: .cancel) {}
         } message: {
-            Text(selectedStop?.name ?? "")
+            Text(selectedStop?.markerInformation ?? "")
         }
     }
 

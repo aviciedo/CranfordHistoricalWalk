@@ -21,6 +21,14 @@ extension CLLocationCoordinate2D {
 extension HistoricalStop {
     var clLocationCoordinate: CLLocationCoordinate2D { coordinate.clLocationCoordinate }
 
+    var hasRecordedNarration: Bool {
+        guard let source = narrationSource else { return false }
+        switch source {
+        case .remoteAudio, .bundledAudio: return true
+        case .synthesizedSpeech: return false
+        }
+    }
+
     /// Date line for the sign; sample stops never show a fabricated date.
     var displayDate: String? {
         guard let historicalDate, !historicalDate.isEmpty else { return nil }
@@ -30,12 +38,49 @@ extension HistoricalStop {
     /// Same five stops as the bundled walking tour (previews and host-app tests).
     static let previewStops: [HistoricalStop] = [
         HistoricalStop(
-            id: "hpab-001", name: "Droescher's Mill", latitude: 40.6551018, longitude: -74.2925808,
-            address: "347 Lincoln Ave East, Cranford, NJ",
-            shortDescription: "HPAB audio-tour stop. Play the recording for the site description. No transcript is bundled.",
-            longDescription: "", historicalDate: "c. 1737", imageName: "droeschers-mill",
-            audioURL: URL(string: "http://preservecranford.com/Audio/Droescher%20Mill.mp3"),
-            order: 1, isSample: false, coordinatesUnverified: true,
+            id: "hpab-001", name: "Droescher’s Mill", latitude: 40.6551018, longitude: -74.2925808,
+            address: "347 Lincoln Avenue East, Cranford, NJ",
+            shortDescription: """
+                The mill site dates to at least 1779.
+                Last surviving historic mill on the Rahway River.
+                """,
+            longDescription: """
+                Standing along the Rahway River, Droescher’s Mill is the last surviving historic mill of the eleven that once operated along the river.
+
+                The site dates to at least 1779, although the existing wooden structure was built after an earlier mill burned in 1821. Over generations, the mill adapted to changing industries, producing lumber, woolen goods, sharpening stones, and even pipe organs.
+
+                Named for businessman Severin Droescher, who operated a sharpening-stone business here in the early 1900s, the mill is a rare surviving connection to Cranford’s industrial beginnings and the river that helped shape the community.
+                """,
+            historicalDate: "Construction: After 1821", imageName: "droeschers-mill",
+            narrationText: """
+                Droescher’s Mill: A River That Built a Town
+
+                Imagine Cranford more than two hundred years ago. Before the railroad, before the busy downtown and modern neighborhoods we know today, the Rahway River was the heart of our community.
+
+                The river’s flowing waters provided the power that helped early settlers build homes, produce goods, and establish businesses.
+
+                In fact, early Cranford was once known as “Crane’s Mills”, a reflection of how important milling was to our town’s development.
+
+                Here at Droescher’s Mill, that history survives.
+
+                Historical records confirm a mill on this site as early as 1779. The original building was destroyed by fire in 1821, and the wooden structure you see today was built afterward. Its substantial fieldstone foundation, approximately two feet thick in places, and heavy oak timbers reflect the durable construction of early industrial buildings.
+
+                Over the next century, the mill changed with the needs of the community.
+
+                Water-powered machinery helped transform raw materials into useful products. The site operated as a sawmill, later became associated with wool manufacturing, and eventually supported woodworking and other industries.
+
+                By the early 1900s, businessman Severin Droescher was using the mill to manufacture sharpening stones for razors and other cutting tools. He also improved the surrounding riverfront, rebuilding the dam and adding stone walls, a footbridge, and landscaped features connected to his nearby Lincoln Park residential development.
+
+                In the twentieth century, its workshops were adapted for pipe-organ manufacturing, before eventually being converted into offices and commercial spaces we know today. The mill is now home to commercial offices with many of the tenants in the healthcare sector. The site also houses a popular local yoga studio, Alleum Yoga, which serves the Cranford community as a welcoming and inclusive wellness space.
+
+                Today, the building no longer operates as a water-powered mill. Yet the Rahway River still flows beside it, and the dam remains part of Cranford’s river-management infrastructure.
+
+                Recognized on the National Register of Historic Places in 1974 and designated a Cranford historic landmark in 2014, Droescher’s Mill stands as a tangible reminder of the community’s industrial origins.
+
+                Of the eleven historic mills that once lined the Rahway River, this is the last survivor.
+                """,
+            narrationVoicePreference: .warmMaleEnglish,
+            order: 1, estimatedVisitDuration: 155, isSample: false, coordinatesUnverified: true,
             plaque: StopPlaque(
                 transcription: "c. 1737",
                 quoteLabel: "Door plaque",

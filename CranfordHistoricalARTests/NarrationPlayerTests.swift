@@ -1,0 +1,39 @@
+import AVFoundation
+import TourCore
+import XCTest
+@testable import CranfordHistoricalAR
+
+@MainActor
+final class NarrationPlayerTests: XCTestCase {
+    func testPreviewMillMatchesTheBundledContent() async throws {
+        let document = try await BundledJSONHistoricalStopService().loadTour()
+        let mill = try XCTUnwrap(document.stops.first { $0.id == "hpab-001" })
+        var preview = try XCTUnwrap(HistoricalStop.previewStops.first { $0.id == mill.id })
+        // Previews use the equivalent derived departure radius; JSON supplies it explicitly.
+        preview.departureRadius = mill.departureRadius
+        XCTAssertEqual(preview, mill)
+    }
+
+    func testRequestedMaleVoiceDoesNotSilentlyFallBackWhenMissing() {
+        XCTAssertNil(NarrationPlayer.selectSpeechVoice(preference: .warmMaleEnglish, from: []))
+        XCTAssertNil(NarrationPlayer.makeSpeechUtterance(text: "The mill story.", voice: nil, preference: .warmMaleEnglish))
+        XCTAssertNotNil(NarrationPlayer.makeSpeechUtterance(text: "A default story.", voice: nil, preference: .systemDefault))
+    }
+
+    func testAvailableVoiceIsMaleEnglishAndUsesGentlePacing() throws {
+        guard let voice = NarrationPlayer.selectSpeechVoice(preference: .warmMaleEnglish, from: AVSpeechSynthesisVoice.speechVoices()) else {
+            throw XCTSkip("Download an English male voice on this test device to exercise its speech settings.")
+        }
+        XCTAssertEqual(voice.gender, .male)
+        XCTAssertTrue(voice.language.lowercased().hasPrefix("en"))
+        XCTAssertFalse(voice.voiceTraits.contains(.isNoveltyVoice))
+        XCTAssertFalse(voice.voiceTraits.contains(.isPersonalVoice))
+        let script = "Droescher’s Mill: A River That Built a Town."
+        let utterance = try XCTUnwrap(NarrationPlayer.makeSpeechUtterance(text: script, voice: voice, preference: .warmMaleEnglish))
+        XCTAssertEqual(utterance.speechString, script)
+        XCTAssertEqual(utterance.voice?.identifier, voice.identifier)
+        XCTAssertLessThan(utterance.rate, AVSpeechUtteranceDefaultSpeechRate)
+        XCTAssertGreaterThan(utterance.rate, AVSpeechUtteranceMinimumSpeechRate)
+        XCTAssertEqual(utterance.pitchMultiplier, 0.98, accuracy: 0.001)
+    }
+}

@@ -4,11 +4,10 @@ import Observation
 import TourCore
 
 /// Plays a stop's narration: a recorded file (remote or bundled) through `AVPlayer`, or — when no
-/// recording exists — the stop's description read by `AVSpeechSynthesizer`. One instance is shared
+/// recording exists — its dedicated script/description read by `AVSpeechSynthesizer`. One instance is shared
 /// app-wide (see `AppDependencies`) so the map sheet and the AR screen can never talk over each other.
 ///
-/// Owns the audio session and interruption handling. Views never touch this directly; they go
-/// through `NarrationViewModel`.
+/// Owns the audio session and interruption handling for the shared narration controls.
 @MainActor
 @Observable
 final class NarrationPlayer: NSObject {
@@ -45,6 +44,9 @@ final class NarrationPlayer: NSObject {
     // Speech
     @ObservationIgnored private let synthesizer = AVSpeechSynthesizer()
     @ObservationIgnored private var speechText: String = ""
+    @ObservationIgnored private var speechVoice: AVSpeechSynthesisVoice?
+    @ObservationIgnored private var speechPreference: NarrationVoicePreference = .systemDefault
+    @ObservationIgnored private var activeUtterance: AVSpeechUtterance?
     @ObservationIgnored private var speechStartedAt: Date?
     @ObservationIgnored private var speechElapsedBeforePause: TimeInterval = 0
     @ObservationIgnored private var speechTicker: Task<Void, Never>?
@@ -74,10 +76,13 @@ final class NarrationPlayer: NSObject {
     // MARK: Loading
 
     /// Prepares narration for `stop`. Re-preparing the same stop is a no-op; a different stop
-    /// stops whatever was playing. Returns false when the stop has nothing to narrate.
+    /// stops whatever was playing. Returns false when narration or its required voice is unavailable.
     @discardableResult
     func prepare(_ stop: HistoricalStop) -> Bool {
-        if stopID == stop.id, kind != nil { return true }
+        if stopID == stop.id, kind != nil {
+            // Retry refreshes downloaded voices / failed recordings instead of keeping a failure.
+            guard case .failed = status else { return true }
+        }
         tearDown()
         stopID = stop.id
         title = stop.name
@@ -101,6 +106,12 @@ final class NarrationPlayer: NSObject {
         case .synthesizedSpeech(let text):
             kind = .synthesizedSpeech
             speechText = text
+            speechPreference = stop.narrationVoicePreference
+            speechVoice = Self.selectSpeechVoice(preference: speechPreference, from: AVSpeechSynthesisVoice.speechVoices())
+            if speechPreference == .warmMaleEnglish, speechVoice == nil {
+                status = .failed(Self.maleVoiceUnavailableMessage)
+                return false
+            }
             status = .idle
             duration = nil
             progress = 0
@@ -175,15 +186,18 @@ final class NarrationPlayer: NSObject {
                     speechElapsedBeforePause = 0
                     progress = 0
                     elapsed = 0
-                    let utterance = AVSpeechUtterance(string: speechText)
-                    utterance.rate = AVSpeechUtteranceDefaultSpeechRate * 0.95
-                    utterance.prefersAssistiveTechnologySettings = false
+                    guard let utterance = Self.makeSpeechUtterance(text: speechText, voice: speechVoice, preference: speechPreference) else {
+                        status = .failed(Self.maleVoiceUnavailableMessage)
+                        deactivateSession()
+                        return
+                    }
+                    activeUtterance = utterance
                     synthesizer.speak(utterance)
                 }
             }
             speechStartedAt = Date()
-            startSpeechTicker()
             status = .playing
+            startSpeechTicker()
         case nil:
             break
         }
@@ -218,6 +232,7 @@ final class NarrationPlayer: NSObject {
             player?.seek(to: .zero)
             pendingPlayWhenReady = false
         case .synthesizedSpeech:
+            activeUtterance = nil // Invalidate queued callbacks before another stop starts speaking.
             synthesizer.stopSpeaking(at: .immediate)
             speechTicker?.cancel()
         case nil:
@@ -247,6 +262,38 @@ final class NarrationPlayer: NSObject {
     // MARK: Internals
 
     @ObservationIgnored private var pendingPlayWhenReady = false
+
+    static let maleVoiceUnavailableMessage = "Download an English male voice in iPhone Settings → Accessibility → Read & Speak (or Spoken Content) → Voices → English, then tap Play again. You can read the narration below."
+
+    static func selectSpeechVoice(preference: NarrationVoicePreference, from voices: [AVSpeechSynthesisVoice]) -> AVSpeechSynthesisVoice? {
+        guard preference == .warmMaleEnglish else { return nil }
+        let options = voices.map { voice in
+            let quality: SpeechVoiceOption.Quality
+            switch voice.quality {
+            case .premium: quality = .premium
+            case .enhanced: quality = .enhanced
+            default: quality = .standard
+            }
+            return SpeechVoiceOption(identifier: voice.identifier, language: voice.language,
+                                     isMale: voice.gender == .male, quality: quality,
+                                     isNovelty: voice.voiceTraits.contains(.isNoveltyVoice),
+                                     isPersonal: voice.voiceTraits.contains(.isPersonalVoice))
+        }
+        guard let selected = NarrationVoiceSelection.maleEnglishVoice(from: options) else { return nil }
+        return voices.first { $0.identifier == selected.identifier }
+    }
+
+    static func makeSpeechUtterance(text: String, voice: AVSpeechSynthesisVoice?, preference: NarrationVoicePreference) -> AVSpeechUtterance? {
+        if preference == .warmMaleEnglish, voice == nil { return nil }
+        let utterance = AVSpeechUtterance(string: text)
+        utterance.voice = voice
+        utterance.rate = AVSpeechUtteranceDefaultSpeechRate * (preference == .warmMaleEnglish ? 0.92 : 0.95)
+        utterance.pitchMultiplier = preference == .warmMaleEnglish ? 0.98 : 1
+        utterance.preUtteranceDelay = preference == .warmMaleEnglish ? 0.15 : 0
+        utterance.postUtteranceDelay = preference == .warmMaleEnglish ? 0.25 : 0
+        utterance.prefersAssistiveTechnologySettings = false
+        return utterance
+    }
 
     private func recordingTimeDidChange(_ seconds: Double) {
         guard seconds.isFinite else { return }
@@ -280,22 +327,26 @@ final class NarrationPlayer: NSObject {
         elapsed = speechElapsedBeforePause
     }
 
-    fileprivate func speechDidProgress(characterLocation: Int) {
-        guard kind == .synthesizedSpeech, !speechText.isEmpty else { return }
-        progress = min(Double(characterLocation) / Double(speechText.count), 1)
+    fileprivate func speechDidProgress(characterEnd: Int, utterance: AVSpeechUtterance) {
+        guard kind == .synthesizedSpeech, activeUtterance === utterance, !speechText.isEmpty else { return }
+        // AVFoundation ranges use UTF-16, not Swift's grapheme-cluster count.
+        progress = min(Double(characterEnd) / Double(speechText.utf16.count), 1)
     }
 
-    fileprivate func speechDidFinish() {
-        guard kind == .synthesizedSpeech else { return }
+    fileprivate func speechDidFinish(utterance: AVSpeechUtterance) {
+        guard kind == .synthesizedSpeech, activeUtterance === utterance else { return }
         accumulateSpeechElapsed()
         speechTicker?.cancel()
+        activeUtterance = nil
         progress = 1
+        duration = elapsed
         status = .finished
         deactivateSession()
     }
 
-    fileprivate func speechDidCancel() {
-        guard kind == .synthesizedSpeech, status != .idle else { return }
+    fileprivate func speechDidCancel(utterance: AVSpeechUtterance) {
+        guard kind == .synthesizedSpeech, activeUtterance === utterance, status != .idle else { return }
+        activeUtterance = nil
         speechTicker?.cancel()
         status = .idle
     }
@@ -335,6 +386,8 @@ final class NarrationPlayer: NSObject {
         itemObservers.removeAll()
         player = nil
         kind = nil
+        speechVoice = nil
+        speechPreference = .systemDefault
         duration = nil
         progress = 0
         elapsed = 0
@@ -344,15 +397,15 @@ final class NarrationPlayer: NSObject {
 
 extension NarrationPlayer: AVSpeechSynthesizerDelegate {
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, willSpeakRangeOfSpeechString characterRange: NSRange, utterance: AVSpeechUtterance) {
-        let location = characterRange.location
-        Task { @MainActor in self.speechDidProgress(characterLocation: location) }
+        let end = characterRange.location + characterRange.length
+        Task { @MainActor in self.speechDidProgress(characterEnd: end, utterance: utterance) }
     }
 
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
-        Task { @MainActor in self.speechDidFinish() }
+        Task { @MainActor in self.speechDidFinish(utterance: utterance) }
     }
 
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
-        Task { @MainActor in self.speechDidCancel() }
+        Task { @MainActor in self.speechDidCancel(utterance: utterance) }
     }
 }

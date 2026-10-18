@@ -90,3 +90,33 @@ The bundled coordinates are still unverified geocodes. In particular, a misplace
 can block its GPS activation even when you are at the real building; report that discrepancy rather
 than weakening the visit rule. The mill plaque's assumed 18 cm width is also unmeasured. Please
 measure its outer width next visit so its AR scale can be calibrated. No need to share API keys.
+
+
+## 6. Check the updated mill story and voice
+
+1. Open the mill from **Home**, a map marker and **Stops**. Confirm the same name and full address:
+   **Droescher’s Mill — 347 Lincoln Avenue East, Cranford, NJ**.
+2. The short AR/location card should say **Construction: After 1821**, date the mill site to at least
+   1779 and describe it as the last surviving historic mill on the Rahway River. The physical plaque
+   still reads **c. 1737**; that inscription is now under **About this stop**, separate from construction.
+3. Tap the photo/stop details. Read the expanded history, then expand **Read narration**. Confirm
+   the full supplied story includes the healthcare tenants, **Alleum Yoga**, 1974 listing and 2014
+   landmark designation. Close the enlarged photo with X; browsing must not record a visit.
+4. Tap Play. Expect an English male voice with a gentle pace reading **Droescher’s Mill: A River
+   That Built a Town** and the full supplied script. Listen for natural pronunciation of Droescher,
+   Severin, Cranford, Rahway and Alleum Yoga. Exact duration varies with the installed voice; the
+   app does not claim a measured 2:35 duration in advance.
+5. If no suitable male voice is available, the app should explain what is missing. On the iPhone,
+   open **Settings > Accessibility > Read & Speak** (called **Spoken Content** on some iOS versions),
+   then **Voices > English**. Choose/download an English male voice, return to the app and tap Play
+   again. Enhanced/premium voices are preferred when available. No API key or voice subscription
+   is needed. Voice inventory and Settings wording vary by iOS version.
+6. Pause and resume, change tabs, then play Cranford Hall while the mill is speaking. Expect only
+   one narrator at a time. Return to the mill and retry its narration. Speech has a progress bar;
+   recorded audio retains its scrubbing and skip controls.
+7. In AR, activate the mill marker. Expect this same new voice and script to start, with the short
+   historical card. **Stop details** opens the longer description/transcript. Continue to Cranford
+   Hall and confirm its original recording remains available.
+
+The Linux tests check script selection and male-voice metadata policy. They cannot listen to the
+voice, evaluate pronunciation, compile AVFoundation/SwiftUI, or verify this on a real iPhone.

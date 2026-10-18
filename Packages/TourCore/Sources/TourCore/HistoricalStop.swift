@@ -25,6 +25,10 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
     public var illustrationURL: URL?
     /// Optional narration.
     public var audioURL: URL?
+    /// Dedicated narration/transcript. Kept separate from the concise screen description.
+    public var narrationText: String?
+    /// Applies only when narration is read on device; recorded audio keeps its original voice.
+    public var narrationVoicePreference: NarrationVoicePreference
     /// Meters. The AR sign opens when the user is within this radius.
     public var arrivalRadius: Double
     /// Meters. The AR sign closes only once the user is beyond this radius (hysteresis).
@@ -57,6 +61,8 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
         imageURL: URL? = nil,
         illustrationURL: URL? = nil,
         audioURL: URL? = nil,
+        narrationText: String? = nil,
+        narrationVoicePreference: NarrationVoicePreference = .systemDefault,
         arrivalRadius: Double = 35,
         departureRadius: Double? = nil,
         order: Int,
@@ -78,6 +84,8 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
         self.imageURL = imageURL
         self.illustrationURL = illustrationURL
         self.audioURL = audioURL
+        self.narrationText = narrationText
+        self.narrationVoicePreference = narrationVoicePreference
         self.arrivalRadius = arrivalRadius
         self.departureRadius = departureRadius
         self.order = order
@@ -104,13 +112,21 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
         imageName != nil || imageURL != nil || illustrationURL != nil
     }
 
+    /// Short location popup. The longer description and narration stay in the detail screen.
+    public var markerInformation: String {
+        [address, historicalDate, shortDescription].compactMap { value in
+            guard let text = value?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty else { return nil }
+            return text
+        }.joined(separator: "\n\n")
+    }
+
     /// True when this stop can be locked to a physical plate via ARKit image tracking.
     public var hasPlaqueReference: Bool {
         plaque?.isUsable == true
     }
 
     /// Where narration for this stop comes from, in order of preference:
-    /// a remote/bundled audio file (`audioURL`), else the description read aloud by speech synthesis.
+    /// a recording, else the dedicated script, else the description read aloud on device.
     public enum NarrationSource: Equatable, Sendable {
         /// `audioURL` with an `http(s)` or `file` scheme.
         case remoteAudio(URL)
@@ -132,6 +148,9 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
                 break
             }
         }
+        if let script = narrationText?.trimmingCharacters(in: .whitespacesAndNewlines), !script.isEmpty {
+            return .synthesizedSpeech(text: script)
+        }
         let text = longDescription.trimmingCharacters(in: .whitespacesAndNewlines)
         if !text.isEmpty { return .synthesizedSpeech(text: text) }
         let short = shortDescription.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -141,6 +160,7 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case id, name, latitude, longitude, altitude, address, shortDescription, longDescription
         case historicalDate, imageName, imageURL, illustrationURL, audioURL
+        case narrationText, narrationVoicePreference
         case arrivalRadius, departureRadius, order, estimatedVisitDuration, isSample
         case coordinatesUnverified, plaque
     }
@@ -160,6 +180,8 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
         imageURL = try c.decodeIfPresent(URL.self, forKey: .imageURL)
         illustrationURL = try c.decodeIfPresent(URL.self, forKey: .illustrationURL)
         audioURL = try c.decodeIfPresent(URL.self, forKey: .audioURL)
+        narrationText = try c.decodeIfPresent(String.self, forKey: .narrationText)
+        narrationVoicePreference = try c.decodeIfPresent(NarrationVoicePreference.self, forKey: .narrationVoicePreference) ?? .systemDefault
         arrivalRadius = try c.decodeIfPresent(Double.self, forKey: .arrivalRadius) ?? 35
         departureRadius = try c.decodeIfPresent(Double.self, forKey: .departureRadius)
         order = try c.decode(Int.self, forKey: .order)

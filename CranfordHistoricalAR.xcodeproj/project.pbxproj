@@ -70,6 +70,7 @@
 		DF54B06C3961D5A842D18240 /* StopDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B30FD1A69BDAC8F5309FD15 /* StopDetailView.swift */; };
 		8C5E205C91B0E4E4F44F6B47 /* StopsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDC2903451606F4F4717257E /* StopsView.swift */; };
 		68CDDC14800B0BCDD181E9D9 /* StopVisitStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16AAEC54E173B9370438E362 /* StopVisitStore.swift */; };
+		DA4733EA4FDD7D0604AA419A /* NarrationPlayerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 622C536D43B1884F8AABC0C0 /* NarrationPlayerTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -147,6 +148,7 @@
 		9B30FD1A69BDAC8F5309FD15 /* StopDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StopDetailView.swift; sourceTree = "<group>"; };
 		DDC2903451606F4F4717257E /* StopsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StopsView.swift; sourceTree = "<group>"; };
 		16AAEC54E173B9370438E362 /* StopVisitStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StopVisitStore.swift; sourceTree = "<group>"; };
+		622C536D43B1884F8AABC0C0 /* NarrationPlayerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NarrationPlayerTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -264,6 +266,7 @@
 		56A0AA3281284734EABB51D5 /* CranfordHistoricalARTests */ = {
 			isa = PBXGroup;
 			children = (
+				622C536D43B1884F8AABC0C0 /* NarrationPlayerTests.swift */,
 				5D64B11B4B6F8F30D321E49A /* AppConfigurationTests.swift */,
 				8755E00CB32C4C55BD08EA81 /* GeoSpatialProviderFactoryTests.swift */,
 				89C955DD23B2078E6AD73003 /* MapViewModelTests.swift */,
@@ -522,6 +525,7 @@
 				E3C344F724AFBFE043CA5419 /* GeoSpatialProviderFactoryTests.swift in Sources */,
 				D4421705AE10F142ABE77DA3 /* MapViewModelTests.swift in Sources */,
 				BF7A705160B85A488DD2C169 /* TourCompletionFlowTests.swift in Sources */,
+				DA4733EA4FDD7D0604AA419A /* NarrationPlayerTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

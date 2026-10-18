@@ -71,6 +71,12 @@ struct HistoricalSignView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.bottom, 14)
 
+            Text(stop.address)
+                .font(.system(size: 22))
+                .foregroundStyle(SignPalette.inkMuted)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.bottom, 16)
+
             Rectangle().fill(SignPalette.brass).frame(height: 3).padding(.bottom, 18)
 
             Text(stop.shortDescription)
@@ -78,11 +84,6 @@ struct HistoricalSignView: View {
                 .foregroundStyle(SignPalette.ink)
                 .lineSpacing(5)
                 .fixedSize(horizontal: false, vertical: true)
-
-            if let plaque = stop.plaque, plaque.isUsable {
-                plaqueQuote(plaque, labelSize: 18, quoteSize: 26)
-                    .padding(.top, 20)
-            }
 
             // No empty image frame when there is no image (spec §10).
             if let image {
@@ -152,6 +153,12 @@ struct HistoricalSignView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.bottom, 12)
 
+            Text(stop.address)
+                .font(.system(size: 20))
+                .foregroundStyle(SignPalette.inkMuted)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.bottom, 14)
+
             Rectangle().fill(SignPalette.brass).frame(height: 3).padding(.bottom, 16)
 
             Text(stop.shortDescription)
@@ -160,19 +167,10 @@ struct HistoricalSignView: View {
                 .lineSpacing(4)
                 .fixedSize(horizontal: false, vertical: true)
 
-            if !stop.longDescription.isEmpty {
-                Text(stop.longDescription)
-                    .font(.system(size: 22, weight: .regular, design: .serif))
-                    .foregroundStyle(SignPalette.ink)
-                    .lineSpacing(4)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, 12)
-            }
-
-            if let plaque = stop.plaque, plaque.isUsable {
-                plaqueQuote(plaque, labelSize: 16, quoteSize: 28)
-                    .padding(.top, 18)
-            }
+            Text("Tap to read more")
+                .font(.system(size: 18, weight: .medium))
+                .foregroundStyle(SignPalette.inkMuted)
+                .padding(.top, 20)
         }
         .padding(36)
         .frame(width: HistoricalSignView.textureWidth, alignment: .leading)
@@ -190,22 +188,6 @@ struct HistoricalSignView: View {
                 .strokeBorder(SignPalette.ink.opacity(0.35), lineWidth: 2)
         )
         .environment(\.colorScheme, .light)
-    }
-
-    private func plaqueQuote(_ plaque: StopPlaque, labelSize: CGFloat, quoteSize: CGFloat) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(plaque.quoteLabel.uppercased())
-                .font(.system(size: labelSize, weight: .semibold))
-                .tracking(2)
-                .foregroundStyle(SignPalette.inkMuted)
-            Text("“\(plaque.transcription)”")
-                .font(.system(size: quoteSize, weight: .regular, design: .serif).italic())
-                .foregroundStyle(SignPalette.ink)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(SignPalette.brass.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
 }

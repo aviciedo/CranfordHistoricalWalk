@@ -14,8 +14,10 @@ struct NarrationControls: View {
                     NarrationPlayButton(stop: stop)
                     Text("Listen to the story").font(.body.weight(.medium))
                     Spacer()
-                    skip(-15, symbol: "gobackward.15", label: "Skip back 15 seconds")
-                    skip(15, symbol: "goforward.15", label: "Skip forward 15 seconds")
+                    if stop.hasRecordedNarration {
+                        skip(-15, symbol: "gobackward.15", label: "Skip back 15 seconds")
+                        skip(15, symbol: "goforward.15", label: "Skip forward 15 seconds")
+                    }
                 }
                 NarrationTimeline(stop: stop)
                 if player.stopID == stop.id, case .failed(let message) = player.status {

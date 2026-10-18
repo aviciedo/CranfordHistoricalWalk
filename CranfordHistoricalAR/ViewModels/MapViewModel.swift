@@ -12,9 +12,10 @@ struct StopMarkerModel: Identifiable, Equatable {
     var order: Int
     var name: String
     var state: State
+    var information: String? = nil
 
     static func == (lhs: StopMarkerModel, rhs: StopMarkerModel) -> Bool {
-        lhs.id == rhs.id && lhs.order == rhs.order && lhs.name == rhs.name && lhs.state == rhs.state
+        lhs.id == rhs.id && lhs.order == rhs.order && lhs.name == rhs.name && lhs.state == rhs.state && lhs.information == rhs.information
             && lhs.coordinate.latitude == rhs.coordinate.latitude && lhs.coordinate.longitude == rhs.coordinate.longitude
     }
 }
@@ -98,7 +99,8 @@ final class MapViewModel {
             } else {
                 state = .upcoming
             }
-            return StopMarkerModel(id: stop.id, coordinate: stop.clLocationCoordinate, order: stop.order, name: stop.name, state: state)
+            return StopMarkerModel(id: stop.id, coordinate: stop.clLocationCoordinate, order: stop.order, name: stop.name,
+                                   state: state, information: stop.markerInformation)
         }
     }
 

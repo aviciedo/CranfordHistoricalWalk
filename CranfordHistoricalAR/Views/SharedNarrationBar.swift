@@ -43,7 +43,6 @@ struct NarrationPlayButton: View {
         let player = dependencies.narrationPlayer
         let isCurrent = player.stopID == stop.id
         Button {
-            if player.stopID == stop.id, case .failed = player.status { player.stop() }
             guard player.prepare(stop) else { return }
             player.togglePlayPause()
         } label: {
@@ -75,20 +74,26 @@ struct NarrationTimeline: View {
         let isCurrent = player.stopID == stop.id
         let canSeek = isCurrent && player.canSeek
         VStack(spacing: 0) {
-            Slider(value: Binding(
-                get: { scrubProgress ?? (isCurrent ? player.progress : 0) },
-                set: { scrubProgress = $0 }
-            ), in: 0...1, onEditingChanged: { editing in
-                if !editing {
-                    if let progress = scrubProgress, let duration = player.duration, canSeek {
-                        player.seek(to: progress * duration)
+            if stop.hasRecordedNarration {
+                Slider(value: Binding(
+                    get: { scrubProgress ?? (isCurrent ? player.progress : 0) },
+                    set: { scrubProgress = $0 }
+                ), in: 0...1, onEditingChanged: { editing in
+                    if !editing {
+                        if let progress = scrubProgress, let duration = player.duration, canSeek {
+                            player.seek(to: progress * duration)
+                        }
+                        scrubProgress = nil
                     }
-                    scrubProgress = nil
-                }
-            })
-            .tint(AppTheme.terracotta)
-            .disabled(!canSeek)
-            .accessibilityLabel("Narration position for \(stop.name)")
+                })
+                .tint(AppTheme.terracotta)
+                .disabled(!canSeek)
+                .accessibilityLabel("Narration position for \(stop.name)")
+            } else {
+                ProgressView(value: isCurrent ? player.progress : 0)
+                    .tint(AppTheme.terracotta).padding(.vertical, 6)
+                    .accessibilityLabel("Narration progress for \(stop.name)")
+            }
             HStack {
                 Text(time(isCurrent ? (scrubProgress.map { $0 * (player.duration ?? 0) } ?? player.elapsed) : 0))
                 Spacer()
