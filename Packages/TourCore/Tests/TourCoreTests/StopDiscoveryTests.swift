@@ -2,6 +2,28 @@ import XCTest
 @testable import TourCore
 
 final class StopDiscoveryTests: XCTestCase {
+    func testPlaqueReferencesCannotUnlockEachOthersStops() {
+        let mill = SignPlacementPolicy.millReferenceImageName
+        let park = SignPlacementPolicy.parkReferenceImageName
+        XCTAssertTrue(SignPlacementPolicy.matchesReference(park, expectedName: park))
+        XCTAssertFalse(SignPlacementPolicy.matchesReference(mill, expectedName: park))
+        XCTAssertFalse(SignPlacementPolicy.matchesReference(park, expectedName: mill))
+        XCTAssertFalse(SignPlacementPolicy.matchesReference(nil, expectedName: park))
+        XCTAssertFalse(SignPlacementPolicy.matchesReference(park, expectedName: nil))
+        XCTAssertFalse(SignPlacementPolicy.matchesReference("", expectedName: ""))
+        XCTAssertTrue(SignPlacementPolicy.discoveryHint(referenceImageName: park).contains("Cranford Park"))
+        XCTAssertFalse(SignPlacementPolicy.discoveryHint(referenceImageName: park).contains("doors"))
+    }
+
+    func testGreystoneBonusIsAbovePlaqueRatherThanAtMillWindows() throws {
+        let layout = WindowBonusLayout.abovePlaque
+        let offset = try XCTUnwrap(layout.translation(plaqueWidthMeters: SignPlacementPolicy.assumedParkReferenceWidthMeters))
+        XCTAssertEqual(offset.x, 0)
+        XCTAssertLessThan(offset.z, 0, "Negative image Z places the extra above the plaque")
+        XCTAssertGreaterThan(offset.y, 0, "Card sits off the wall")
+        XCTAssertNotEqual(layout, WindowBonusLayout())
+    }
+
     func testArrivalOffersStoryOnceWithoutRecordingOrStartingNarration() {
         var discovery = StopDiscovery()
         XCTAssertTrue(discovery.arrive())

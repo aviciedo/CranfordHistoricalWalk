@@ -238,8 +238,8 @@ struct ARHUDView: View {
                     Text("Point at the plaque to view your on-site extra.").font(.subheadline)
                 }
             } else if model.tour.discovery.stage == .searching {
-                Text("Find the plaque beside the red double doors.").font(.headline)
-                Text("Point your camera at it. The bonus will appear over the two glass panes.")
+                Text(model.discoverySearchHint).font(.headline)
+                Text(model.discoveryPlacementInstruction)
                     .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
             } else if model.tour.discovery.hasFinishedStory {
                 primaryButton("Find the plaque in AR", symbol: "viewfinder", action: model.startPlaqueDiscovery)
@@ -257,7 +257,9 @@ struct ARHUDView: View {
                 Button("Story") { model.isShowingSignDetails = true }.frame(minHeight: 44)
                 #if DEVELOPER_MENU
                 Spacer()
-                Button("Align bonus") { isShowingCalibration = true }.frame(minHeight: 44)
+                if model.tour.isMillDiscoveryStop {
+                    Button("Align bonus") { isShowingCalibration = true }.frame(minHeight: 44)
+                }
                 #endif
             }
             .font(.footnote.weight(.medium)).buttonStyle(.plain)

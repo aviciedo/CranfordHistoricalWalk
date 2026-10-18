@@ -68,6 +68,9 @@ public struct StopDiscovery: Equatable, Sendable {
 /// This is a plaque-relative placement, not independent window recognition or surveyed geometry.
 /// Developer calibration refines the four ratios on site; the actual plaque width is unmeasured.
 public struct WindowBonusLayout: Equatable, Sendable {
+    /// Greystone's extra floats above the reference plaque, without using the mill's door offsets.
+    public static let abovePlaque = WindowBonusLayout(right: 0, up: 0.85, width: 1.4, height: 0.9)
+
     public var right: Double
     public var up: Double
     public var width: Double

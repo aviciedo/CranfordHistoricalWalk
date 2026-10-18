@@ -74,8 +74,7 @@ final class PlaqueAnchorController {
     }
 
     func matches(_ imageAnchor: ARImageAnchor, expectedName: String?) -> Bool {
-        guard let expectedName, !expectedName.isEmpty else { return false }
-        return imageAnchor.referenceImage.name == expectedName
+        SignPlacementPolicy.matchesReference(imageAnchor.referenceImage.name, expectedName: expectedName)
     }
 
     func unbind(sign: ARHistoricalSignEntity? = nil, returningTo worldParent: Entity? = nil) {

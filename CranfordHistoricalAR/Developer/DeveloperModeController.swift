@@ -49,7 +49,7 @@ final class DeveloperModeController {
         guard !isSimulating, let sample = tour.userLocation, !sample.isSimulated,
               StopActivationPolicy.isFresh(sample.timestamp), sample.coordinate.isValid,
               sample.horizontalAccuracy.isFinite, sample.horizontalAccuracy >= 0, sample.horizontalAccuracy <= 25,
-              let mill = tour.stops.first(where: \.hasPlaqueReference),
+              let mill = tour.stops.first(where: { $0.plaque?.referenceImageName == SignPlacementPolicy.millReferenceImageName }),
               GeoMath.distance(from: sample.coordinate, to: mill.coordinate) <= 200 else {
             viewingPointMessage = "Stand at the mill's permitted viewing point with simulation off. Wait for a fresh device location accurate to 25 m or better."
             return false

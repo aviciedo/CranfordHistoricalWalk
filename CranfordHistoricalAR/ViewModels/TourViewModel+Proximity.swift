@@ -63,7 +63,9 @@ extension TourViewModel {
         if stop.hasPlaqueReference {
             var viewingPoint = stop.coordinate
             #if DEVELOPER_MENU
-            viewingPoint = viewingPointOverride ?? viewingPoint
+            if stop.plaque?.referenceImageName == SignPlacementPolicy.millReferenceImageName {
+                viewingPoint = viewingPointOverride ?? viewingPoint
+            }
             #endif
             let viewingDistance = GeoMath.distance(from: sample.coordinate, to: viewingPoint)
             if sample.horizontalAccuracy <= StopActivationPolicy.maximumAccuracyMeters,
@@ -149,6 +151,8 @@ extension TourViewModel {
     }
 
     var isPlaqueDiscoveryStop: Bool { currentStop?.hasPlaqueReference == true }
+    var isMillDiscoveryStop: Bool { currentStop?.plaque?.referenceImageName == SignPlacementPolicy.millReferenceImageName }
+    var currentBonusLayout: WindowBonusLayout { isMillDiscoveryStop ? windowBonusLayout : .abovePlaque }
     var canContinueCurrentStop: Bool { isCurrentStopVisited || (isPlaqueDiscoveryStop && discovery.canContinue) }
 
     func openStory(for stopID: String) {

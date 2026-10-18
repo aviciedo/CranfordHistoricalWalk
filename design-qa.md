@@ -183,3 +183,18 @@ the detailed photographs remain in the stop detail slideshow with enlargement co
 Decorations are hidden from VoiceOver so each row remains one details action. The row can grow
 vertically for wrapped text. Project/source and syntax checks passed; native screenshots,
 small-screen and larger-text layout checks still require Xcode/iPhone testing.
+
+## Greystone on-site plaque discovery
+
+The supplied black Cranford Park plaque is registered as a distinct ARKit reference at stop 2.
+Its original photo, including stone surround, is preserved byte for byte; the full-frame 0.75 m
+width is explicitly an unmeasured estimate. Discovery copy identifies this plaque, and a bonus
+placeholder is placed above it after a current matching image and normal AR tracking. Reading
+or listening permits optional continuation; GPS alone does not unlock. Mill-only viewing-point
+and window calibration are isolated. The same one-time confirmation and local visit recording
+apply, with no remote unlock from stored history.
+
+Core and production tour-logic checks cover reference mismatch, bonus placement, GPS rejection,
+optional continuation, calibration isolation, duplicate activation and advancing to stop 3.
+Native reference-image validation, recognition quality, estimated scale and physical overlay
+placement remain blocked here pending Xcode/iPhone field testing. Overall visual QA remains blocked.

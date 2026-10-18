@@ -19,7 +19,7 @@ final class HistoricalStopTests: XCTestCase {
         XCTAssertEqual(document.stops[0].plaque?.physicalWidthMeters, SignPlacementPolicy.assumedPlaqueWidthMeters)
         XCTAssertTrue(document.stops[0].hasPlaqueReference)
         XCTAssertFalse((document.stops[0].plaque?.transcription ?? "").contains("1797"))
-        XCTAssertNil(document.stops[1].plaque)
+        XCTAssertEqual(document.stops[1].plaque?.referenceImageName, SignPlacementPolicy.parkReferenceImageName)
         let audioFiles = ["Rahway River.mp3", "First Baptist.mp3", "Cranford Hotel.mp3"]
         for (stop, file) in zip(document.stops.dropFirst(2), audioFiles) {
             XCTAssertFalse(stop.isSample)
@@ -64,13 +64,16 @@ final class HistoricalStopTests: XCTestCase {
         XCTAssertEqual(stop.narrationVoicePreference, .warmMaleEnglish)
         XCTAssertEqual(stop.imageName, "greystone")
         XCTAssertEqual(stop.galleryPhotos.map(\.imageName), [
-            "greystone", "greystone-additional-view", "greystone-footbridge-1912",
+            "greystone", "greystone-additional-view", "greystone-tower", "greystone-stonework", "greystone-footbridge-1912",
             "greystone-gloria-swanson", "greystone-william-randolph-hearst"
         ])
         XCTAssertEqual(stop.galleryPhotos[0].caption, "Greystone")
-        XCTAssertTrue(stop.galleryPhotos[2].caption.contains("1912"))
-        XCTAssertTrue(stop.galleryPhotos[2].credit?.contains("Part IV, PDF page 6") == true)
-        XCTAssertFalse(stop.hasPlaqueReference, "Gallery photos do not become physical AR markers")
+        XCTAssertTrue(stop.galleryPhotos[4].caption.contains("1912"))
+        XCTAssertTrue(stop.galleryPhotos[4].credit?.contains("Part IV, PDF page 6") == true)
+        XCTAssertTrue(stop.hasPlaqueReference)
+        XCTAssertEqual(stop.plaque?.transcription, "Cranford Park")
+        XCTAssertEqual(stop.plaque?.referenceImageName, SignPlacementPolicy.parkReferenceImageName)
+        XCTAssertEqual(stop.plaque?.physicalWidthMeters, SignPlacementPolicy.assumedParkReferenceWidthMeters)
         XCTAssertEqual(try JSONDecoder().decode(HistoricalStop.self, from: JSONEncoder().encode(stop)), stop)
     }
 

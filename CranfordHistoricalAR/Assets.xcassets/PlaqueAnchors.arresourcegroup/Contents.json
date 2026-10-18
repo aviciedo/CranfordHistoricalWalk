@@ -1,11 +1,14 @@
 {
-  "info" : {
-    "author" : "xcode",
-    "version" : 1
+  "info": {
+    "author": "xcode",
+    "version": 1
   },
-  "resources" : [
+  "resources": [
     {
-      "filename" : "droeschers-mill-plaque.arreferenceimage"
+      "filename": "droeschers-mill-plaque.arreferenceimage"
+    },
+    {
+      "filename": "greystone-cranford-park-plaque.arreferenceimage"
     }
   ]
 }

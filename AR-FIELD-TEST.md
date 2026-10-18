@@ -84,3 +84,21 @@ the overlay uses a plaque-derived world pose with calibrated bounds, not separat
 Latest portable verification: 151 core tests and 20 production tour-logic integration tests
 passed. Both Debug/Release Swift syntax and saved project/asset checks passed. These do not
 substitute for an Xcode iPhone build or the physical-device checks above.
+
+## Greystone Cranford Park discovery
+
+1. Continue to Greystone. Confirm its story opens on arrival, or open it from Map/Stops. Read or
+   listen, then choose **Find the plaque in AR**. Also test Continue without scanning: this must
+   advance to the Rahway River without recording a plaque-verified visit or unlocking an extra.
+2. Aim at the black **Cranford Park** sign. Include the stone surround shown in the reference
+   photograph, keep the camera steady and use good light. The mill plaque must not unlock this stop.
+3. A currently tracked match with normal AR tracking should show one translucent confirmation,
+   record one Greystone plaque verification (unless saving is off/simulated), and display the
+   translucent placeholder above the plaque. It must not use the mill's door-pane position.
+4. Tap the placeholder/Open on-site extra, close it, pan away, interrupt AR, restart AR and move
+   more than 12 meters away. The session/distance restrictions must match the mill's bonus.
+5. Verify mill viewing-point capture and door alignment do not alter Greystone's arrival/overlay.
+   GPS arrival, a nonmatching plaque, saved visits alone and interrupted tracking must not unlock.
+6. Reference scale is unmeasured: 0.75 m describes the entire supplied image frame including stone,
+   not just the black plaque. Report recognition failures, screenshots and the measured sign width
+   when available. Validate ARKit reference-image quality during the Xcode asset build.

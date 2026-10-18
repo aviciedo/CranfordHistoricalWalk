@@ -159,7 +159,10 @@ extension HistoricalStop {
                 And just as at Droescher’s Mill, the Rahway River remains a quiet witness to the continuous transformation of our town.
                 """,
             narrationVoicePreference: .warmMaleEnglish,
-            order: 2, estimatedVisitDuration: 160, isSample: false, coordinatesUnverified: true
+            order: 2, estimatedVisitDuration: 160, isSample: false, coordinatesUnverified: true,
+            plaque: StopPlaque(transcription: "Cranford Park", quoteLabel: "On-site discovery plaque",
+                              referenceImageName: SignPlacementPolicy.parkReferenceImageName,
+                              physicalWidthMeters: SignPlacementPolicy.assumedParkReferenceWidthMeters)
         ),
         HistoricalStop(
             id: "hpab-003", name: "Rahway River", latitude: 40.6659731, longitude: -74.3108614,

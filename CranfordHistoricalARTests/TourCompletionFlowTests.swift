@@ -85,9 +85,11 @@ final class TourCompletionFlowTests: XCTestCase {
         try await waitUntil("walking route to second stop") { self.tour.currentRoute?.destination == self.stops[1].coordinate }
 
         try await arrive(at: 1)
-        XCTAssertFalse(stops[1].hasPlaqueReference)
+        XCTAssertTrue(stops[1].hasPlaqueReference)
         XCTAssertFalse(tour.isCurrentStopVisited)
-        XCTAssertEqual(activateCurrent(), .allow(.simulation), "Second stop uses on-site marker without a plaque")
+        XCTAssertEqual(activateCurrent(), .deny(.markerNotReady), "GPS alone cannot unlock the Greystone extra")
+        preparePlaqueDiscovery()
+        XCTAssertEqual(activateCurrent(plaqueIsTracked: true), .allow(.simulation))
         tour.completeCurrentStopAndAdvance()
         XCTAssertEqual(tour.currentStop?.id, stops[2].id)
     }
@@ -113,8 +115,8 @@ final class TourCompletionFlowTests: XCTestCase {
             XCTAssertEqual(marker.coordinate.longitude, puck.coordinate.longitude)
             XCTAssertEqual(try XCTUnwrap(tour.straightLineDistanceToCurrentStop), 0, accuracy: 0.1)
             XCTAssertFalse(tour.isCurrentStopVisited, "A GPS arrival alone cannot record a visit")
-            if index == 0 { preparePlaqueDiscovery() }
-            XCTAssertEqual(activateCurrent(plaqueIsTracked: index == 0), .allow(.simulation))
+            if stops[index].hasPlaqueReference { preparePlaqueDiscovery() }
+            XCTAssertEqual(activateCurrent(plaqueIsTracked: stops[index].hasPlaqueReference), .allow(.simulation))
             if index == 0 {
                 tour.completeCurrentStopAndAdvance()
                 try await waitUntil("walking route targets the supplied Greystone coordinate") {
@@ -179,8 +181,8 @@ final class TourCompletionFlowTests: XCTestCase {
     func testFullWalkWithOptionalMillDiscoveryAndOtherMarkerActivations() async throws {
         for index in stops.indices {
             try await arrive(at: index)
-            if index == 0 { preparePlaqueDiscovery() }
-            XCTAssertEqual(activateCurrent(plaqueIsTracked: index == 0), .allow(.simulation))
+            if stops[index].hasPlaqueReference { preparePlaqueDiscovery() }
+            XCTAssertEqual(activateCurrent(plaqueIsTracked: stops[index].hasPlaqueReference), .allow(.simulation))
             tour.completeCurrentStopAndAdvance()
         }
         XCTAssertEqual(tour.phase, .complete)
@@ -192,6 +194,50 @@ final class TourCompletionFlowTests: XCTestCase {
         tour.resetTour()
         XCTAssertEqual(tour.currentStop?.id, stops[0].id)
         XCTAssertEqual(tour.progress.completedCount, 0)
+    }
+
+    func testGreystoneRequiresItsOwnPlaqueAndIgnoresMillCalibration() async throws {
+        try await arrive(at: 0)
+        tour.finishStory(for: stops[0].id)
+        tour.completeCurrentStopAndAdvance()
+        #if DEVELOPER_MENU
+        tour.viewingPointOverride = stops[0].coordinate
+        #endif
+        tour.windowBonusLayout = WindowBonusLayout(right: 8, up: 5, width: 9, height: 7)
+        try await arrive(at: 1)
+        XCTAssertTrue(tour.discovery.hasArrived, "Mill viewing-point override must not affect Greystone arrival")
+        XCTAssertEqual(tour.arrivalStoryStopID, stops[1].id)
+        XCTAssertEqual(tour.currentBonusLayout, .abovePlaque)
+        XCTAssertFalse(tour.isMillDiscoveryStop)
+        XCTAssertEqual(stops[1].plaque?.referenceImageName, SignPlacementPolicy.parkReferenceImageName)
+        XCTAssertEqual(activateCurrent(), .deny(.markerNotReady))
+        tour.finishStory(for: stops[1].id)
+        XCTAssertTrue(tour.beginPlaqueDiscovery())
+        tour.confirmPlaqueArrival(for: stops[0].id)
+        XCTAssertFalse(tour.hasPlaqueConfirmedArrival)
+        XCTAssertEqual(activateCurrent(plaqueIsTracked: true), .deny(.markerNotReady))
+        tour.confirmPlaqueArrival(for: stops[1].id)
+        XCTAssertEqual(activateCurrent(plaqueIsTracked: true), .allow(.simulation))
+        XCTAssertTrue(tour.discovery.hasVerifiedPlaque)
+        XCTAssertTrue(tour.discovery.isPracticeUnlock)
+        XCTAssertEqual(activateCurrent(plaqueIsTracked: true), .alreadyActivated)
+        XCTAssertTrue(tour.visitRecords.isEmpty, "Practice discovery must not persist a real visit")
+        tour.completeCurrentStopAndAdvance()
+        XCTAssertEqual(tour.currentStop?.id, stops[2].id)
+        XCTAssertFalse(tour.discovery.hasVerifiedPlaque)
+    }
+
+    func testGreystoneCanContinueAfterReadingWithoutPlaqueVerification() async throws {
+        try await arrive(at: 0)
+        tour.finishStory(for: stops[0].id)
+        tour.completeCurrentStopAndAdvance()
+        try await arrive(at: 1)
+        tour.finishStory(for: stops[1].id)
+        XCTAssertTrue(tour.canContinueCurrentStop)
+        XCTAssertFalse(tour.discovery.hasVerifiedPlaque)
+        tour.completeCurrentStopAndAdvance()
+        XCTAssertEqual(tour.currentStop?.id, stops[2].id)
+        XCTAssertNil(tour.lastRecordedVisit(for: stops[1]))
     }
 
     private func arrive(at index: Int) async throws {

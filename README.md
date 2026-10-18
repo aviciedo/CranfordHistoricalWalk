@@ -292,7 +292,7 @@ failed playback is retried. The app does not silently substitute a female voice.
 Read-aloud narration uses play/pause and a progress bar. File recordings retain 15-second skipping
 and scrubbing. Speech progress uses UTF-16 ranges and ignores callbacks from a previous utterance
 when playback changes. The final read-aloud duration is measured when speech finishes. It is not
-preset to 2:35. Stops 2–5 keep their original recorded audio and controls.
+preset to 2:35. Stop 2 also uses its supplied script; stops 3–5 keep their original recorded audio and controls.
 
 The Droescher's Mill photograph lives in `Assets.xcassets/droeschers-mill` (`imageName: "droeschers-mill"`
 on stop 1). Stop 1 also has an ARKit image-tracking reference (`Assets.xcassets/PlaqueAnchors.arresourcegroup`)
@@ -306,18 +306,14 @@ estimation. The physical width is still **unmeasured**: the legacy 18 cm referen
 initial scale, not a verified measurement. Measure the plaque's outer width on the next site visit
 before treating the placement scale as calibrated.
 
-The recognized card is 45 cm wide, positioned 25 cm above the reference-image center and 8 cm off
-the wall, rather than 3.8 m above the plaque. A recognition banner and "At plaque / Arrived" HUD
-confirm visual arrival. Tap its AR marker to activate the story and record the visit. Once the matching plaque is recognized, erroneous GPS/geocode distances
-cannot immediately dismiss the sign or point arrows away; the visitor uses **Continue** to advance.
-GPS-only arrivals keep the existing 35 m / 50 m hysteresis. Tracking loss can return placement to the
-existing geo fallback without marking a different stop visited.
+For stops 1 and 2, arrival offers the normal detail screen without automatic narration or saved
+verification. After listening or reading, **Find the plaque in AR** starts optional discovery.
+A matching tracked plaque with normal AR tracking records verification once and unlocks the
+translucent bonus placeholder. The mill uses its calibrated two-door-pane placement; Greystone
+uses a separate layout above the Cranford Park plaque. GPS-only arrival cannot unlock either
+bonus. Visitors can continue without scanning after reading/listening. On-site ARKit recognition
+and Xcode asset compilation remain required checks; Linux tests cannot validate image tracking.
 
-To retest: install the new build on a physical iPhone, start the tour, enter AR at the mill,
-and hold the whole plaque in view with good light. Move the phone slowly to give ARKit parallax
-for scale estimation. Look for **Plaque recognized**, then slightly tilt up to see the card;
-**Read** opens its 2D contents. A real on-site recognition test and Xcode asset compilation are
-still required; Linux tests cannot validate ARKit recognition quality.
 
 `Resources/historical_stops.json` is the five-stop walking tour the app loads: HPAB brochure stops 1–5
 (Droescher's Mill, Greystone, Rahway River, First Baptist Church, Cranford Hotel). `audioURL`
@@ -574,17 +570,18 @@ when leaving the screen, or when the app becomes inactive. VoiceOver and Reduce 
 use manual paging. Tap any photo to enlarge it, pinch to zoom, and use X to return.
 Photo browsing never changes the walking destination or marks a stop visited.
 
-The five original photos supplied in `Greystone.zip` are bundled in the asset catalog and
-available offline. The file titled **Greystone.jpg** is the cover, followed by the additional
-building view, the Lincoln Park stone footbridge (1912), Gloria Swanson, and William Randolph
-Hearst. Captions use the tour creator’s identifications. The additional building image’s filename
-is `1923-Greystone.jpg`; no capture date is asserted from that filename.
+Greystone's current seven-photo gallery starts with the creator's newer entrance photograph,
+followed by the additional building view, tower close-up (photo 3), stonework close-up (photo 4),
+the Lincoln Park stone footbridge (1912), Gloria Swanson and William Randolph Hearst. Captions
+use the tour creator's identifications. The additional building image's filename is
+`1923-Greystone.jpg`; no capture date is asserted from that filename.
 
 The bridge retains the creator-supplied caption that it remains today, and this source credit:
 Cranford Historical Society, *The Birth and Growth of Cranford*, Part IV, PDF page 6.
 The identifications and source were supplied by the creator, not independently verified here.
 Original JPEG files were copied without image edits. No additional API key is needed for photos.
-Gallery photos do not enable ARKit recognition; Greystone retains its nearby-GPS AR activation.
+Gallery photos do not enable recognition. Greystone now has a separate Cranford Park plaque
+reference in the ARKit resource group for optional on-site bonus discovery.
 
 ## Stop 1 and 2 on-site coordinate correction
 
@@ -630,3 +627,24 @@ and the additional native AR/no-auto-play test require the Apple SDK and were no
 Debug/Release syntax and project source references pass. Native compilation, sheet transitions,
 audio completion, recognition, window fit and AR anchoring still require the Mac/iPhone checks
 in [AR-FIELD-TEST.md](AR-FIELD-TEST.md) and [design-qa.md](design-qa.md).
+
+## Greystone Cranford Park plaque discovery
+
+Stop 2 uses the creator-supplied black **Cranford Park** plaque photograph as a separate ARKit
+image reference. It is copied unchanged, including surrounding stone; no generated plaque or
+retouched image is used for recognition. Aim at the sign and include the stone surround. The
+**0.75 m reference width covers the whole photograph** and is an unmeasured testing estimate,
+not the measured width of the black sign. Automatic scale estimation is enabled; actual
+recognition, scale and placement need physical-device testing.
+
+Greystone follows the story-first optional discovery flow. Recognition must match its reference,
+not the mill's, and occur with current tracking during discovery. The one-time confirmation,
+plaque-verified record and tappable bonus placeholder use the existing shared mechanism. Its
+extra is centered above the plaque; the mill's viewing-point override and door calibration do
+not affect Greystone. The extra remains available only in the current AR session with normal
+tracking and within 12 meters of its established pose. Leaving AR requires recognizing the plaque
+again to restore the bonus pose. No remote unlock follows from saved visit history alone.
+
+Verified here: 153 core tests, 22 production tour-logic integration tests with offline directions,
+Debug/Release syntax and resource/source checks. Native build, ARKit reference-image validation
+and real recognition remain to be checked on the Mac/iPhone.

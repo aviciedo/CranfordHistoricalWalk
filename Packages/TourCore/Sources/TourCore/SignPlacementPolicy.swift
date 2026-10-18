@@ -61,6 +61,24 @@ public enum SignPlacementPolicy {
     public static let resourceGroupName = "PlaqueAnchors"
     public static let millReferenceImageName = "droeschers-mill-plaque"
 
+    public static let parkReferenceImageName = "greystone-cranford-park-plaque"
+    /// The original photograph includes stone around the plaque. This is the estimated
+    /// width of that entire reference frame, NOT a measured plaque width.
+    public static let assumedParkReferenceWidthMeters: Double = 0.75
+
+    public static func discoveryHint(referenceImageName: String?) -> String {
+        switch referenceImageName {
+        case millReferenceImageName: return "Find the plaque beside the red double doors"
+        case parkReferenceImageName: return "Find the black Cranford Park plaque on the stone wall"
+        default: return "Find this stop’s plaque"
+        }
+    }
+
+    public static func matchesReference(_ detectedName: String?, expectedName: String?) -> Bool {
+        guard let expectedName, !expectedName.isEmpty else { return false }
+        return detectedName == expectedName
+    }
+
     public static func mode(_ input: SignPlacementInput) -> SignPlacementMode {
         // Dismissed this visit: do not re-show from a later image-track. Leave and
         // re-enter the 50 m departure radius (existing hysteresis) to re-arm.

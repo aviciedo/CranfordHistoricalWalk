@@ -290,6 +290,16 @@ final class ARViewModel {
 
     // MARK: Plaque discovery and bonus placement
 
+    var discoverySearchHint: String {
+        SignPlacementPolicy.discoveryHint(referenceImageName: tour.currentStop?.plaque?.referenceImageName)
+    }
+
+    var discoveryPlacementInstruction: String {
+        tour.isMillDiscoveryStop
+            ? "Point your camera at it. The bonus will appear over the two glass panes."
+            : "Include the plaque and its stone surround in view. Your on-site extra will appear above it."
+    }
+
     private func applySignPlacement() {
         if tour.isPlaqueDiscoveryStop {
             // Story is read outside AR. Only the verified window bonus enters the scene.
@@ -297,7 +307,7 @@ final class ARViewModel {
             if placementMode != .hidden { placementMode = .hidden }
             if geoAnchors.placementMode != .hidden { geoAnchors.placementMode = .hidden }
             let hint: String? = tour.discovery.stage == .searching
-                ? (imageTrackingAvailable ? "Find the plaque beside the red double doors"
+                ? (imageTrackingAvailable ? discoverySearchHint
                    : "Plaque recognition is unavailable. You can continue without the bonus.") : nil
             if plaqueHint != hint { plaqueHint = hint }
             return
@@ -374,7 +384,7 @@ final class ARViewModel {
             }
             if !geoAnchors.hasActivatedStop { geoAnchors.hasActivatedStop = true }
             geoAnchors.presentWindowBonus(for: stop, imageAnchor: imageAnchor,
-                                          layout: tour.windowBonusLayout, displayScale: displayScale)
+                                          layout: tour.currentBonusLayout, displayScale: displayScale)
             applySignPlacement()
             return
         }
