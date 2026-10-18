@@ -14,7 +14,7 @@ final class ARHistoricalSignEntity: Entity {
     static let signWidth: Float = 1.6
     static let postHeight: Float = 1.1
 
-    enum Appearance: String {
+    enum Appearance: String, Equatable {
         /// Existing geo-placed sign on a slim post.
         case geoPost
         /// Popup locked to a detected door plate; no post, centered on the offset.
@@ -26,6 +26,7 @@ final class ARHistoricalSignEntity: Entity {
     private var plane: ModelEntity?
     private var post: ModelEntity?
     private var closeControl: ModelEntity?
+    private var closeControlSize: Float?
     private(set) var stopID: String?
     private(set) var appearance: Appearance = .geoPost
     private struct Configuration: Equatable {
@@ -117,17 +118,24 @@ final class ARHistoricalSignEntity: Entity {
     }
 
     private func layoutCloseControl(cardWidth: Float, cardHeight: Float, planeY: Float) {
-        let size: Float = 0.22
-        if closeControl == nil {
+        let layout = SignCloseControlLayout.make(
+            cardWidth: cardWidth,
+            cardHeight: cardHeight,
+            planeY: planeY,
+            forPlaqueCard: appearance == .plaqueCard
+        )
+        if closeControl == nil || closeControlSize != layout.size {
             var material = UnlitMaterial(color: UIColor.clear)
             material.blending = .transparent(opacity: .init(floatLiteral: 0.02))
-            let button = ModelEntity(mesh: .generatePlane(width: size, height: size), materials: [material])
+            let button = ModelEntity(mesh: .generatePlane(width: layout.size, height: layout.size), materials: [material])
             button.name = "sign-close"
-            button.collision = CollisionComponent(shapes: [.generateBox(width: size, height: size, depth: 0.06)])
+            button.collision = CollisionComponent(shapes: [.generateBox(width: layout.size, height: layout.size, depth: 0.06)])
+            closeControl?.removeFromParent()
             floatCarrier.addChild(button)
             closeControl = button
+            closeControlSize = layout.size
         }
-        closeControl?.position = SIMD3<Float>(cardWidth / 2 - 0.16, planeY + cardHeight / 2 - 0.16, 0.03)
+        closeControl?.position = SIMD3<Float>(layout.centerX, layout.centerY, 0.03)
         closeControl?.isEnabled = true
     }
 
