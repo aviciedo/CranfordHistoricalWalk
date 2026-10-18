@@ -56,7 +56,7 @@ that follows the device setting. The native bottom tabs are **Home**, **Map** an
 A single compact audio player remains above the tabs after starting a walk or playing a stop.
 The Map tab has one destination panel; the arrival state replaces its heading rather than
 adding a second card. Tap the count beside **Your walk** for the tour summary and whole-route view.
-Long-press the home title or **Your walk** in Debug builds for Developer Controls.
+Tap **Developer** on Home (or long-press the home title or **Your walk**) in Debug builds for Developer Controls.
 
 Browse any stop and play its recording without changing the guided tour order. **Show on map**
 centers that stop without changing the walking destination. **View in AR** is offered for the
@@ -300,7 +300,7 @@ Each newly downloaded ZIP excludes `Secrets.xcconfig`. Copy your private setting
 project's **Config** folder into the new project's **Config** folder before rebuilding; do not
 overwrite an already configured file. Without that step, a new download returns to the preview map.
 
-In a Debug build, long-press the home title to open **Developer Controls**. **Configuration** shows
+In a Debug build, tap **Developer** on Home to open **Developer Controls**. **Configuration** shows
 whether the Maps SDK key is present, whether SDK registration succeeded, and the bundle identifier.
 Registration success does not verify Google authorization: blank/missing map tiles with a present
 key still require checking billing, enabled APIs, key restrictions, connectivity, and the Xcode console.
@@ -380,7 +380,22 @@ packages, run on a device, and confirm Earth tracking in Cranford before treatin
 Debug builds define `DEVELOPER_MENU` (see `project.yml`), which compiles in **Developer Controls** (spec §19):
 
 - On the tour screen: `⋯` menu → **Developer Controls**.
-- On the first screen: long-press the *CRANFORD / HISTORICAL AR* title for about a second.
+- On Home: tap the visible **Developer** button. The title's long-press shortcut also works.
+
+For on-site repeat testing:
+
+- Turn **Save visit history** off to avoid saving new visits on this device. AR activation,
+  narration, visited status for the current walk, and Continue still work. Existing history is
+  unchanged. Saving defaults to on each time the app launches; simulated visits are never saved.
+- Tap **Clear visits & restart at stop 1** to delete saved visit history and reset the current
+  walk to no stops visited. This also pauses simulated walking and stops narration. It leaves
+  the visit-saving switch and location source as selected and does not erase other settings.
+  The existing **Reset tour** button restarts only the current walk and keeps saved history.
+- **Live coordinates** displays the same latitude/longitude as the map and AR, with six decimal
+  places, reported accuracy in meters, fix age updated once per second, and Precise Location
+  permission. Old fixes are labeled out of date. The source is explicitly labeled **Device GPS**
+  or **Simulated location**. Leave simulation off for field testing. More decimal places do not
+  make GPS more accurate. Coordinates are selectable for copying and are not stored as a trail.
 
 Controls: toggle a **simulated location** (replaces Core Location through the same single `LocationService`
 the app uses in production), **walk toward the next stop** along the live walking route at 1×/3×/10× pace,

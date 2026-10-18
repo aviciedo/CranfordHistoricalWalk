@@ -101,7 +101,13 @@ extension TourViewModel {
         guard case .allow(let evidence) = decision else { return decision }
         progress.markCurrentStopVisited()
         activeVisitEvidence = evidence
+        #if DEVELOPER_MENU
+        if isVisitRecordingEnabled {
+            visitStore.record(StopVisitRecord(stopID: stop.id, activatedAt: now, evidence: evidence))
+        }
+        #else
         visitStore.record(StopVisitRecord(stopID: stop.id, activatedAt: now, evidence: evidence))
+        #endif
         visitRecords = visitStore.records()
         return decision
     }

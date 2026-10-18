@@ -231,6 +231,95 @@ final class TourCompletionFlowTests: XCTestCase {
 
 @MainActor
 final class StopVisitStoreTests: XCTestCase {
+    #if DEVELOPER_MENU
+    func testClearingVisitsSurvivesReloadAndPreservesOtherSettings() throws {
+        let suite = "cranford.tests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(true, forKey: "unrelated-test-setting")
+        let store = LocalStopVisitStore(defaults: defaults)
+        store.record(StopVisitRecord(stopID: "hpab-001", activatedAt: Date(), evidence: .recognizedPlaque))
+        store.record(StopVisitRecord(stopID: "hpab-002", activatedAt: Date(), evidence: .onSiteARMarker))
+        XCTAssertEqual(store.records().count, 2)
+
+        store.removeAll()
+        XCTAssertTrue(store.records().isEmpty)
+        XCTAssertTrue(LocalStopVisitStore(defaults: defaults).records().isEmpty)
+        XCTAssertTrue(defaults.bool(forKey: "unrelated-test-setting"))
+
+        let memory = InMemoryStopVisitStore()
+        memory.record(StopVisitRecord(stopID: "hpab-001", activatedAt: Date(), evidence: .recognizedPlaque))
+        XCTAssertEqual(memory.records().count, 1)
+        memory.removeAll()
+        XCTAssertTrue(memory.records().isEmpty)
+    }
+
+    func testSavingOffPreservesHistoryAndAllowsActivationAndContinueThenSavingCanResume() async throws {
+        let store = InMemoryStopVisitStore()
+        let oldVisit = StopVisitRecord(stopID: "hpab-002", activatedAt: Date(), evidence: .onSiteARMarker)
+        store.record(oldVisit)
+        let service = DeveloperTestLocationService()
+        let tour = TourViewModel(stopService: InMemoryHistoricalStopService(stops: HistoricalStop.previewStops),
+                                 locationService: service, directionsService: PreviewDirectionsService(), visitStore: store)
+        await tour.loadStopsIfNeeded()
+        tour.startTour()
+        defer { tour.stopLocation(); tour.cancelRouting() }
+        let developer = DeveloperModeController(tour: tour, realLocationService: service)
+        XCTAssertTrue(developer.isVisitRecordingEnabled)
+        developer.isVisitRecordingEnabled = false
+
+        let firstID = try XCTUnwrap(tour.currentStop?.id)
+        tour.confirmPlaqueArrival(for: firstID)
+        XCTAssertEqual(tour.activateCurrentStop(stopID: firstID, trackingReady: true, plaqueIsTracked: true), .allow(.recognizedPlaque))
+        XCTAssertTrue(tour.isCurrentStopVisited)
+        XCTAssertEqual(tour.progress.completedCount, 1)
+        XCTAssertEqual(store.records(), [oldVisit])
+        XCTAssertEqual(tour.visitRecords, [oldVisit])
+        tour.completeCurrentStopAndAdvance()
+        XCTAssertEqual(tour.currentStop?.id, "hpab-002")
+
+        developer.isVisitRecordingEnabled = true
+        developer.resetTour()
+        tour.confirmPlaqueArrival(for: firstID)
+        XCTAssertEqual(tour.activateCurrentStop(stopID: firstID, trackingReady: true, plaqueIsTracked: true), .allow(.recognizedPlaque))
+        XCTAssertEqual(Set(store.records().map(\.stopID)), [firstID, oldVisit.stopID])
+        XCTAssertEqual(tour.visitRecords.count, 2)
+    }
+
+    func testDeveloperClearResetsSavedVisitsAndProgressAndPausesSimulator() async throws {
+        let store = InMemoryStopVisitStore()
+        store.record(StopVisitRecord(stopID: "hpab-001", activatedAt: Date(), evidence: .recognizedPlaque))
+        let service = DeveloperTestLocationService()
+        let tour = TourViewModel(stopService: InMemoryHistoricalStopService(stops: HistoricalStop.previewStops),
+                                 locationService: service, directionsService: PreviewDirectionsService(), visitStore: store)
+        await tour.loadStopsIfNeeded()
+        tour.startTour()
+        defer { tour.stopLocation(); tour.cancelRouting() }
+        let developer = DeveloperModeController(tour: tour, realLocationService: service)
+        tour.confirmPlaqueArrival(for: "hpab-001")
+        XCTAssertEqual(tour.activateCurrentStop(stopID: "hpab-001", trackingReady: true, plaqueIsTracked: true), .allow(.recognizedPlaque))
+        tour.completeCurrentStopAndAdvance()
+        tour.progress.recordWalked(meters: 100)
+        developer.isVisitRecordingEnabled = false
+        developer.walkTowardNextStop()
+        XCTAssertTrue(developer.isWalking)
+        XCTAssertEqual(tour.currentStop?.id, "hpab-002")
+
+        developer.clearVisitsAndResetTour()
+        XCTAssertTrue(store.records().isEmpty)
+        XCTAssertTrue(tour.visitRecords.isEmpty)
+        XCTAssertEqual(tour.currentStop?.id, "hpab-001")
+        XCTAssertEqual(tour.progress.completedCount, 0)
+        XCTAssertEqual(tour.progress.walkedMeters, 0)
+        XCTAssertFalse(tour.isCurrentStopVisited)
+        XCTAssertNil(tour.lastCompletedStop)
+        XCTAssertNil(tour.activeVisitEvidence)
+        XCTAssertFalse(developer.isWalking)
+        XCTAssertTrue(developer.isSimulating, "Clearing visits must not change the chosen location source")
+        XCTAssertFalse(developer.isVisitRecordingEnabled, "Repeat test walks must keep the selected saving setting")
+    }
+    #endif
+
     func testRealVisitSurvivesAStoreReloadAndPracticeCannotReplaceIt() throws {
         let suite = "cranford.tests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
@@ -267,3 +356,19 @@ final class StopVisitStoreTests: XCTestCase {
         XCTAssertTrue(store.records().isEmpty)
     }
 }
+
+#if DEVELOPER_MENU
+/// An authorized device source with no GPS fix, so these tests exercise real plaque evidence
+/// rather than the simulator's intentionally non-persistent practice evidence.
+@MainActor
+private final class DeveloperTestLocationService: LocationService {
+    var authorization: LocationAuthorization { .authorized }
+    var isPreciseLocationAuthorized: Bool { true }
+    var isHeadingAvailable: Bool { false }
+    func events() -> AsyncStream<LocationEvent> { AsyncStream { $0.finish() } }
+    func requestWhenInUseAuthorization() {}
+    func requestTemporaryPreciseLocationIfNeeded() {}
+    func start() {}
+    func stop() {}
+}
+#endif

@@ -104,6 +104,10 @@ final class TourViewModel {
     var visitRecords: [StopVisitRecord]
     var activeVisitEvidence: StopVisitEvidence?
     let visitStore: any StopVisitStore
+    #if DEVELOPER_MENU
+    /// Testing only. Defaults to recording on each launch; does not affect this walk's progress.
+    var isVisitRecordingEnabled = true
+    #endif
 
     // MARK: Navigation
     private(set) var isShowingTour = false

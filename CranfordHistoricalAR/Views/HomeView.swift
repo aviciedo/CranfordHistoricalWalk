@@ -18,6 +18,17 @@ struct HomeView: View {
                         .font(.body).foregroundStyle(AppTheme.secondaryInk)
                 }
                 .modifier(DebugMenuGesture(isPresented: $isShowingDeveloperControls))
+                #if DEVELOPER_MENU
+                Button {
+                    isShowingDeveloperControls = true
+                } label: {
+                    Label("Developer", systemImage: "wrench.and.screwdriver")
+                        .frame(minHeight: 44)
+                }
+                .buttonStyle(.plain)
+                .font(.subheadline.weight(.medium))
+                .accessibilityHint("Opens testing tools and live GPS coordinates")
+                #endif
                 HomeMapView().frame(height: 290)
                 HStack {
                     Label("\(tour.stops.count) stops", systemImage: "mappin.and.ellipse")

@@ -25,6 +25,7 @@ struct DeveloperControlsView: View {
                 }
             }
         }
+        .task { tour.startLocationIfPossible() }
     }
 
     @ViewBuilder
@@ -32,6 +33,55 @@ struct DeveloperControlsView: View {
         @Bindable var developer = developer
         let diagnostics = developer.diagnostics
         Form {
+            Section {
+                Toggle("Save visit history", isOn: $developer.isVisitRecordingEnabled)
+                row("Saved stops", "\(tour.visitRecords.count)")
+                Button(role: .destructive) {
+                    dependencies.narrationPlayer.stop()
+                    developer.clearVisitsAndResetTour()
+                } label: {
+                    Label("Clear visits & restart at stop 1", systemImage: "arrow.counterclockwise")
+                }
+                .disabled(tour.loadState != .loaded)
+            } header: {
+                Text("Visit testing")
+            } footer: {
+                Text("Turn saving off for test walks. AR cards, narration and Continue still work. Existing saved visits stay until you clear them. Saving turns on again when you reopen the app. Clearing also resets this walk to no stops visited.")
+            }
+
+            Section {
+                TimelineView(.periodic(from: .now, by: 1)) { context in
+                    VStack(spacing: 12) {
+                        if let sample = tour.userLocation {
+                            row("Source", sample.isSimulated || developer.isSimulating ? "Simulated location" : "Device GPS")
+                            row("Latitude", String(format: "%.6f", locale: Locale(identifier: "en_US_POSIX"), sample.coordinate.latitude))
+                            row("Longitude", String(format: "%.6f", locale: Locale(identifier: "en_US_POSIX"), sample.coordinate.longitude))
+                            row("Reported accuracy", sample.horizontalAccuracy >= 0 && sample.horizontalAccuracy.isFinite
+                                ? String(format: "± %.1f m", sample.horizontalAccuracy) : "Unavailable")
+                            row("Fix age", String(format: "%.0f seconds", max(0, context.date.timeIntervalSince(sample.timestamp))))
+                            if !StopActivationPolicy.isFresh(sample.timestamp, now: context.date) {
+                                Text("This location is out of date. Wait for a fresh GPS fix.")
+                                    .font(.footnote).foregroundStyle(AppTheme.warning)
+                            }
+                        } else {
+                            Text("Waiting for a location fix…")
+                                .font(.subheadline).foregroundStyle(.secondary)
+                        }
+                        row("Precise Location permission", tour.locationAuthorization == .authorized
+                            ? (tour.isPreciseLocation ? "On" : "Off") : "Not granted")
+                    }
+                    .monospacedDigit()
+                    .textSelection(.enabled)
+                }
+                if let issue = diagnostics.locationIssue {
+                    Text(issue).font(.footnote).foregroundStyle(AppTheme.warning)
+                }
+            } header: {
+                Text("Live coordinates")
+            } footer: {
+                Text("Uses the same location as the map and AR. Six decimal places show the reported coordinates; they do not increase GPS accuracy. For on-site testing, leave Simulated location off.")
+            }
+
             Section {
                 Toggle("Simulated location", isOn: Binding(
                     get: { developer.isSimulating },

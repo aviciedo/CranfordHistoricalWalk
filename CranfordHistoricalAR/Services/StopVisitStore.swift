@@ -5,6 +5,9 @@ import TourCore
 protocol StopVisitStore: AnyObject {
     func records() -> [StopVisitRecord]
     func record(_ visit: StopVisitRecord)
+    #if DEVELOPER_MENU
+    func removeAll()
+    #endif
 }
 
 /// Latest real activation per stop, stored only on this device. No location trail or photos.
@@ -28,6 +31,12 @@ final class LocalStopVisitStore: StopVisitStore {
         guard let data = try? JSONEncoder().encode(visits) else { return }
         defaults.set(data, forKey: key)
     }
+
+    #if DEVELOPER_MENU
+    func removeAll() {
+        defaults.removeObject(forKey: key)
+    }
+    #endif
 }
 
 @MainActor
@@ -39,4 +48,8 @@ final class InMemoryStopVisitStore: StopVisitStore {
         visits.removeAll { $0.stopID == visit.stopID }
         visits.append(visit)
     }
+
+    #if DEVELOPER_MENU
+    func removeAll() { visits.removeAll() }
+    #endif
 }

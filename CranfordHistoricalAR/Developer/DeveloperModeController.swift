@@ -116,8 +116,20 @@ final class DeveloperModeController {
     }
 
     func resetTour() {
-        tour.resetTour()
         simulator?.stopWalking()
+        tour.resetTour()
+    }
+
+    /// Suppresses saved history only; marker activation and Continue still exercise the real flow.
+    var isVisitRecordingEnabled: Bool {
+        get { tour.isVisitRecordingEnabled }
+        set { tour.isVisitRecordingEnabled = newValue }
+    }
+
+    func clearVisitsAndResetTour() {
+        tour.visitStore.removeAll()
+        tour.visitRecords = tour.visitStore.records()
+        resetTour()
     }
 
     // MARK: Diagnostics
