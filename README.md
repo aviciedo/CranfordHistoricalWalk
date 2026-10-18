@@ -67,6 +67,10 @@ Tap a stop photograph on the map panel, stop list or details page to enlarge it.
 drag while zoomed, double-tap or use **Reset zoom**, and tap the visible **X** to return. Closing
 a photograph does not mark a stop visited or advance the tour.
 
+The Stops list places a transparent illustration to the left of every stop name. It reuses the
+mill and Greystone artwork; the river, church and hotel use symbolic drawings pending their own
+reference photographs. Tapping any part of a row opens its details and photo slideshow.
+
 The mill and Greystone landmark illustrations are decorative artwork based on their photographs.
 They are noninteractive overlays beside stops 1 and 2 on the live Google map at neighborhood zoom,
 and also appear in the offline illustrated overview. It does not supply street data, route geometry,

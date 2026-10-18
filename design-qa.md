@@ -171,3 +171,15 @@ when their stop is absent. Artwork preserves its aspect ratio inside the live-ma
 The asset is decorative; it is not a new navigation coordinate or AR recognition reference.
 PNG alpha and manifests, source references and Swift syntax checked. Native map screenshots
 and visual overlap checks still require Xcode/iPhone testing.
+
+## Stops list transparent illustrations
+
+The supplied Stops screenshot requests illustrations left of each stop name. Every row now
+has a transparent 82 × 76-point decorative illustration inside the same details button. Stops
+1 and 2 reuse their detailed landmark PNGs; river, church and hotel use symbolic native Canvas
+drawings, not claimed reconstructions of unprovided building photographs. Existing name,
+visit status, narration access and chevron remain. No opaque thumbnail background is added;
+the detailed photographs remain in the stop detail slideshow with enlargement controls.
+Decorations are hidden from VoiceOver so each row remains one details action. The row can grow
+vertically for wrapped text. Project/source and syntax checks passed; native screenshots,
+small-screen and larger-text layout checks still require Xcode/iPhone testing.
