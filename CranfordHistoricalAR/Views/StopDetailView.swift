@@ -5,9 +5,11 @@ import TourCore
 struct StopDetailView: View {
     @Environment(TourViewModel.self) private var tour
     @Environment(AppNavigation.self) private var navigation
+    @Environment(AppDependencies.self) private var dependencies
     @Environment(\.dismiss) private var dismiss
     let stop: HistoricalStop
     var onContinue: (() -> Void)? = nil
+    var onStartDiscovery: (() -> Void)? = nil
     @State private var isShowingAR = false
 
     private var isCurrent: Bool { tour.phase == .inProgress && tour.currentStop?.id == stop.id }
@@ -27,6 +29,10 @@ struct StopDetailView: View {
                         Label(stop.address, systemImage: "mappin.and.ellipse")
                             .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
                     }
+                    if isCurrent && stop.hasPlaqueReference && tour.discovery.hasArrived {
+                        Text("Pause in a permitted viewing area before listening. The arrival location is approximate until it is confirmed on site.")
+                            .font(.footnote).foregroundStyle(AppTheme.secondaryInk)
+                    }
                     HStack(spacing: 12) {
                         Button {
                             navigation.showOnMap(stopID: stop.id)
@@ -37,7 +43,7 @@ struct StopDetailView: View {
                         }
                         .buttonStyle(.plain)
                         .background(AppTheme.playerSurface, in: RoundedRectangle(cornerRadius: 12))
-                        if isCurrent {
+                        if isCurrent && !stop.hasPlaqueReference {
                             Button { isShowingAR = true } label: {
                                 Label("View in AR", systemImage: "camera.viewfinder")
                                     .frame(maxWidth: .infinity, minHeight: 52)
@@ -64,6 +70,27 @@ struct StopDetailView: View {
                             .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
                     }
                     NarrationControls(stop: stop)
+                    if isCurrent && stop.hasPlaqueReference {
+                        if tour.discovery.hasFinishedStory {
+                            if !tour.discovery.hasVerifiedPlaque {
+                                Button {
+                                    if dependencies.narrationPlayer.stopID == stop.id { dependencies.narrationPlayer.pause() }
+                                    if let onStartDiscovery { onStartDiscovery(); dismiss() }
+                                    else if tour.beginPlaqueDiscovery() { isShowingAR = true }
+                                } label: {
+                                    Label("Find the plaque in AR", systemImage: "viewfinder")
+                                        .font(.headline).frame(maxWidth: .infinity, minHeight: 54)
+                                }
+                                .buttonStyle(.plain).foregroundStyle(AppTheme.ivory)
+                                .background(AppTheme.forest, in: RoundedRectangle(cornerRadius: 14))
+                                Text("An optional extra: find the plaque from a permitted viewing spot to unlock a little more history. Stay outside and keep the entrance clear.")
+                                    .font(.footnote).foregroundStyle(AppTheme.secondaryInk)
+                            }
+                        } else {
+                            Text("Start the narration, or read the story below. Afterwards, discover an optional on-site AR bonus.")
+                                .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
+                        }
+                    }
                     if !stop.longDescription.isEmpty {
                         Text(stop.longDescription).font(.body).lineSpacing(5)
                     } else if !stop.shortDescription.hasPrefix("HPAB audio-tour stop.") {
@@ -78,13 +105,18 @@ struct StopDetailView: View {
                     }
                     if let visit = tour.lastRecordedVisit(for: stop) {
                         Label {
-                            Text("Visited \(visit.activatedAt.formatted(date: .abbreviated, time: .omitted))")
+                            Text("\(visit.evidence == .recognizedPlaque ? "Plaque verified" : "Visited") \(visit.activatedAt.formatted(date: .abbreviated, time: .omitted))")
                         } icon: { Image(systemName: "checkmark.circle.fill") }
                         .font(.subheadline).foregroundStyle(AppTheme.visited)
                     }
-                    if isCurrent && tour.isCurrentStopVisited {
+                    if isCurrent && stop.hasPlaqueReference && !tour.discovery.hasFinishedStory {
+                        Button("I've read the story") { tour.finishStory(for: stop.id) }
+                            .font(.body.weight(.medium)).frame(minHeight: 44)
+                    }
+                    if isCurrent && tour.canContinueCurrentStop {
                         Button {
                             tour.completeCurrentStopAndAdvance()
+                            navigation.selectedTab = .map
                             dismiss()
                             onContinue?()
                         } label: {
@@ -125,6 +157,12 @@ struct StopDetailView: View {
                 }
             }
             .fullScreenCover(isPresented: $isShowingAR, onDismiss: { dismiss() }) { ARTourView() }
+            .onAppear { if isCurrent { tour.openStory(for: stop.id) } }
+            .onChange(of: dependencies.narrationPlayer.status) { _, status in
+                if dependencies.narrationPlayer.stopID == stop.id && status == .finished {
+                    tour.finishStory(for: stop.id)
+                }
+            }
         }
     }
 }

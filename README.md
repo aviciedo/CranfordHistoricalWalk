@@ -104,7 +104,7 @@ See [design-qa.md](design-qa.md) for the pending Mac/iPhone comparison checklist
 
 ## Guided AR walk and recorded visits
 
-**Start walking tour → View in AR → activate stop marker → listen/read → Continue to next stop.**
+**Walk to the mill → read/listen → optional plaque discovery → Continue to Greystone.**
 The guided order stays fixed while visitors browse or listen to other stops.
 
 AR walking uses one broad **semi-transparent ivory ground arrow**, with a fine forest edge,
@@ -141,11 +141,43 @@ do not build the iOS application or verify RealityKit rendering, outdoor surface
 intersection alignment, native animation or Google authorization. Those require the Mac/iPhone
 checks in [design-qa.md](design-qa.md); rendered visual QA remains pending.
 
-Arrival reveals a marker; it does **not** record a visit. Tap the AR marker or **Activate stop marker**
-to show the historical information card in AR and start the shared narration player. Repeated taps
-do not restart playback or duplicate the visit. Stop 1 can use its currently tracked physical plaque
-even if the bundled geocode is wrong. Greystone and other stops without a reference photograph
-use an on-site GPS marker, as selected for this MVP.
+At Droescher’s Mill, arrival offers the **normal detail screen** with its photograph and story.
+Narration starts only when the visitor presses Play. When the shared player finishes, the detail
+screen offers **Find the plaque in AR**. **I've read the story** offers an equivalent accessible
+path. Discovery is optional: Continue works after reading/listening without saving a verified
+visit or unlocking the extra. Completion in the walking tour is distinct from plaque verification.
+
+Choosing discovery starts the search. A currently tracked, matching plaque with normal AR world
+tracking records the visit once and displays a brief translucent confirmation. No extra activation
+tap is needed. GPS arrival, the Play button, story completion and an old visit record cannot unlock
+the bonus. The generic marker above the plaque and the mill's large AR playback panel are removed.
+
+The **test bonus placeholder** covers the **two glass panes in the red double doors**, immediately
+right of the plaque. Its pose comes from the plaque plus configurable relative bounds, then stays
+in the AR world when the camera turns toward the glass. It is not independent window recognition.
+The initial ratios and 18 cm plaque width are unmeasured estimates; exact pane alignment is not
+claimed. The placeholder is translucent and tappable, with an X to close; it opens a clearly labeled
+placeholder for future photographs, video or extra narration. It remains accessible only in the
+active AR session, within 12 meters of its established pose and while world tracking is normal.
+Leaving/restarting AR requires seeing the plaque again to re-establish the pose; saved plaque
+verification remains on the device. A previously saved record alone never exposes the extra remotely.
+
+The current site coordinate came from the user's Google search; it is **not a surveyed public viewing
+point or evidence of access permission**. Until field capture, arrival uses that approximate site
+coordinate with fresh GPS, accuracy ≤25 m and distance plus uncertainty within the arrival radius.
+In Debug **Developer → Mill viewing point → Save this location as the viewing point** captures a
+fresh, real-device fix at the mill (simulated/stale/poor fixes are rejected). It stores coordinates
+and reported accuracy locally and changes the story-arrival test only; it does not silently move
+the building marker or Google route. Send the readout back for a subsequent verified catalog update.
+
+For placement testing, use **Align bonus** inside the AR camera, or **Developer → Mill window bonus
+alignment**. Keep the plaque in view while changing right/up/width/height, then close the page to
+inspect the overlay on both panes. Values are multiples of the assumed plaque width and persist
+locally; resetting visits preserves them. **Mark story read for testing** bypasses audio playback
+without pretending a plaque was found. Reset tour re-arms the story and clears the session unlock.
+
+Greystone and other stops without a plaque retain their GPS marker activation and narration flow.
+Their repeated activation taps do not duplicate visits or restart playback.
 
 GPS activation requires a fresh location (under 30 seconds old), reported accuracy of 25 m or better,
 and distance plus that uncertainty inside the stop's arrival radius (35 m by default). AR world
@@ -161,7 +193,7 @@ relaunch. Starting a fresh walk still begins at stop 1. Developer walking and Xc
 activations are practice and never overwrite real visit records.
 
 Closing a card, viewing a photo, browsing a stop or walking away never advances the destination.
-After activation, **Continue to next stop** updates the route and AR target from Droescher's Mill
+After the mill story (with or without discovery), **Continue to next stop** updates the route and AR target from Droescher's Mill
 to Greystone, then onward through the remaining stops. Stay in AR or tap **Map**. The map's
 **Directions** action opens Google Maps walking directions in the installed app or browser;
 embedded Google Maps/Routes still require their existing API-key configuration.
@@ -579,3 +611,16 @@ points, marker availability, on-site activation, cross-stop separation and local
 after correction. The native host-app regression additionally checks map marker/user position
 agreement and the first-to-second-stop handoff; it must be run in Xcode. A live Google walking
 route, physical GPS accuracy and real AR alignment still require an on-site iPhone test.
+
+## Mill story/discovery validation
+
+**147 TourCore tests** passed, including story/discovery separation, optional continuation,
+one-time unlock, practice/reset behavior and plaque-relative window layout. **20 isolated app
+logic tests** passed using the production tour, proximity, visit-store, developer and routing
+logic with an offline directions fixture and Foundation location values. These cover the current
+stop changing to Greystone without a verified visit, real plaque evidence, save/reset behavior,
+local viewing-point capture, simulation rejection and calibration persistence. Two map-model tests
+and the additional native AR/no-auto-play test require the Apple SDK and were not run here.
+Debug/Release syntax and project source references pass. Native compilation, sheet transitions,
+audio completion, recognition, window fit and AR anchoring still require the Mac/iPhone checks
+in [AR-FIELD-TEST.md](AR-FIELD-TEST.md) and [design-qa.md](design-qa.md).

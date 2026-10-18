@@ -75,10 +75,14 @@ struct ARTourView: View {
         }
         .sheet(isPresented: Binding(get: { model.isShowingSignDetails }, set: { model.isShowingSignDetails = $0 })) {
             if let stop = tour.presentedSignStop ?? tour.currentStop {
-                HistoricalSignSheet(stop: stop)
-                    .presentationDetents([.medium, .large])
+                HistoricalSignSheet(stop: stop, onContinue: { model.isShowingSignDetails = false },
+                                    onStartDiscovery: model.startPlaqueDiscovery)
+                    .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
             }
+        }
+        .sheet(isPresented: Binding(get: { model.isShowingBonusPreview }, set: { model.isShowingBonusPreview = $0 })) {
+            if let stop = tour.currentStop { OnSiteBonusPreview(stop: stop).presentationDetents([.large]) }
         }
     }
 }
@@ -88,6 +92,9 @@ struct ARHUDView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let model: ARViewModel
     var onClose: () -> Void
+    #if DEVELOPER_MENU
+    @State private var isShowingCalibration = false
+    #endif
 
     var body: some View {
         GeometryReader { geometry in
@@ -99,7 +106,8 @@ struct ARHUDView: View {
                 }
                 Spacer(minLength: 8)
                 if model.availability == .ready, model.isShowingWalkingOrientation,
-                   !model.isMarkerAvailable, !model.tour.isCurrentStopVisited, model.tour.phase == .inProgress {
+                   !model.isMarkerAvailable, !model.tour.isCurrentStopVisited, model.tour.phase == .inProgress,
+                   !(model.tour.isPlaqueDiscoveryStop && model.tour.discovery.hasArrived) {
                     ARWalkingOrientationView(relativeBearing: model.relativeBearingToWaypoint,
                                              street: model.orientationStreet,
                                              distance: model.walkingCue?.distanceText,
@@ -118,7 +126,26 @@ struct ARHUDView: View {
             }
             .padding(.horizontal, 16).padding(.top, 8).padding(.bottom, 12)
             .animation(reduceMotion ? nil : .easeInOut(duration: 0.3), value: model.isShowingWalkingOrientation)
+            .overlay {
+                if model.isShowingDiscoveryConfirmation {
+                    VStack(spacing: 12) {
+                        Image(systemName: "checkmark.circle.fill").font(.system(size: 54, weight: .light))
+                        Text(model.visitConfirmation).font(.headline)
+                        Text("On-site extra unlocked").font(.subheadline)
+                    }
+                    .foregroundStyle(AppTheme.forest).padding(24)
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24))
+                    .padding(24)
+                    .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.96)))
+                    .allowsHitTesting(false)
+                    .accessibilityElement(children: .combine)
+                }
+            }
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: model.isShowingDiscoveryConfirmation)
         }
+        #if DEVELOPER_MENU
+        .sheet(isPresented: $isShowingCalibration) { DeveloperControlsView() }
+        #endif
     }
 
     private var topBar: some View {
@@ -134,11 +161,12 @@ struct ARHUDView: View {
             Spacer(minLength: 0)
             if let name = model.destinationName {
                 VStack(alignment: .trailing, spacing: 5) {
-                    Text(model.tour.isCurrentStopVisited ? "Discovered" : "Next stop")
+                    Text(model.tour.isCurrentStopVisited ? "Discovered" :
+                         (model.tour.isPlaqueDiscoveryStop && model.tour.discovery.hasArrived ? "At this stop" : "Next stop"))
                         .font(.caption.weight(.medium))
                     Text(name).font(.system(.headline, design: .serif))
                         .multilineTextAlignment(.trailing).fixedSize(horizontal: false, vertical: true)
-                    if !model.tour.isCurrentStopVisited {
+                    if !model.tour.isCurrentStopVisited && !(model.tour.isPlaqueDiscoveryStop && model.tour.discovery.hasArrived) {
                         HStack(spacing: 10) {
                             Label(model.distanceText, systemImage: "figure.walk")
                             Label(model.timeText, systemImage: "clock")
@@ -177,6 +205,8 @@ struct ARHUDView: View {
             }
             .foregroundStyle(AppTheme.forest).padding(18)
             .background(AppTheme.ivory, in: RoundedRectangle(cornerRadius: 20))
+        } else if model.tour.isPlaqueDiscoveryStop && (model.tour.discovery.hasArrived || model.tour.discovery.hasVerifiedPlaque) {
+            discoveryControls
         } else if model.tour.isCurrentStopVisited {
             storyControls
         } else {
@@ -193,6 +223,47 @@ struct ARHUDView: View {
                 }
             }
         }
+    }
+
+    private var discoveryControls: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if model.tour.discovery.hasVerifiedPlaque {
+                if model.geoAnchors.isWindowBonusAccessible {
+                    Button(action: model.openBonus) {
+                        Label("Open on-site extra", systemImage: "photo.on.rectangle.angled")
+                            .font(.headline).frame(maxWidth: .infinity, minHeight: 48)
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    Text("Point at the plaque to view your on-site extra.").font(.subheadline)
+                }
+            } else if model.tour.discovery.stage == .searching {
+                Text("Find the plaque beside the red double doors.").font(.headline)
+                Text("Point your camera at it. The bonus will appear over the two glass panes.")
+                    .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
+            } else if model.tour.discovery.hasFinishedStory {
+                primaryButton("Find the plaque in AR", symbol: "viewfinder", action: model.startPlaqueDiscovery)
+            } else {
+                primaryButton("Read or listen to the story", symbol: "book", action: { model.isShowingSignDetails = true })
+            }
+            if model.tour.canContinueCurrentStop {
+                Button(action: model.continueToNextStop) {
+                    Label(model.tour.nextStop.map { "Continue to \($0.name)" } ?? "Finish walk", systemImage: "arrow.right")
+                        .font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.plain)
+            }
+            HStack {
+                Button("Story") { model.isShowingSignDetails = true }.frame(minHeight: 44)
+                #if DEVELOPER_MENU
+                Spacer()
+                Button("Align bonus") { isShowingCalibration = true }.frame(minHeight: 44)
+                #endif
+            }
+            .font(.footnote.weight(.medium)).buttonStyle(.plain)
+        }
+        .foregroundStyle(AppTheme.forest).padding(16)
+        .background(AppTheme.ivory.opacity(0.93), in: RoundedRectangle(cornerRadius: 18))
     }
 
     private var storyControls: some View {

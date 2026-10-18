@@ -24,10 +24,19 @@ struct NextStopCard: View {
                     }
                 }
                 if let onEnterAR {
-                    Button(action: onEnterAR) {
+                    let isAtMill = current.hasPlaqueReference && tour.discovery.hasArrived
+                    let shouldRead = isAtMill && !tour.discovery.hasFinishedStory
+                    Button {
+                        if shouldRead { onDetails?() }
+                        else {
+                            if isAtMill && !tour.discovery.hasVerifiedPlaque { tour.beginPlaqueDiscovery() }
+                            onEnterAR()
+                        }
+                    } label: {
                         HStack {
                             Spacer()
-                            Label("View in AR", systemImage: "camera")
+                            Label(shouldRead ? "Read or listen" : (isAtMill ? "Discover in AR" : "View in AR"),
+                                  systemImage: shouldRead ? "book" : "camera")
                             Spacer()
                             Image(systemName: "chevron.right").font(.subheadline)
                         }
@@ -52,7 +61,7 @@ struct NextStopCard: View {
                     .font(.body.weight(.medium)).buttonStyle(.plain)
                     Divider()
                 }
-                if tour.isCurrentStopVisited {
+                if tour.canContinueCurrentStop {
                     Button {
                         tour.completeCurrentStopAndAdvance()
                     } label: {
@@ -78,7 +87,8 @@ struct NextStopCard: View {
 
     private func stopInformation(_ stop: HistoricalStop) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(tour.isCurrentStopVisited ? "DISCOVERED" : (tour.isSignPresented ? "READY TO DISCOVER" : "NEXT STOP"))
+            Text(tour.isCurrentStopVisited ? "DISCOVERED" :
+                 (stop.hasPlaqueReference && tour.discovery.hasArrived ? "AT THE MILL" : (tour.isSignPresented ? "READY TO DISCOVER" : "NEXT STOP")))
                 .font(.caption.weight(.medium)).tracking(0.8)
                 .foregroundStyle(AppTheme.secondaryInk)
             Text(stop.name)

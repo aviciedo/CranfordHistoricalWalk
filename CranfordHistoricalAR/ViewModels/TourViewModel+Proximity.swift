@@ -37,6 +37,8 @@ extension TourViewModel {
     func resetProximityForCurrentStop() {
         plaqueConfirmedStopID = nil
         activeVisitEvidence = nil
+        discovery = StopDiscovery()
+        arrivalStoryStopID = nil
         presentedSignStopID = nil
         signPresentationSource = nil
         guard let stop = currentStop else { proximityMachine = nil; return }
@@ -58,6 +60,16 @@ extension TourViewModel {
         let effects = machine.handle(.distanceUpdated(meters: distance))
         proximityMachine = machine
         apply(effects, for: stop, source: .automatic)
+        if stop.hasPlaqueReference {
+            var viewingPoint = stop.coordinate
+            #if DEVELOPER_MENU
+            viewingPoint = viewingPointOverride ?? viewingPoint
+            #endif
+            let viewingDistance = GeoMath.distance(from: sample.coordinate, to: viewingPoint)
+            if sample.horizontalAccuracy <= StopActivationPolicy.maximumAccuracyMeters,
+               viewingDistance + sample.horizontalAccuracy <= stop.arrivalRadius,
+               discovery.arrive() { arrivalStoryStopID = stop.id }
+        }
     }
 
     /// User tapped the stop / "Show sign" while the sign is closed.
@@ -85,6 +97,10 @@ extension TourViewModel {
         guard progress.phase == .inProgress, let stop = currentStop, stop.id == stopID else { return .deny(.wrongStop) }
         if isCurrentStopVisited { return .alreadyActivated }
         guard isSignPresented else { return .deny(.markerNotReady) }
+        if stop.hasPlaqueReference,
+           discovery.stage != .searching || !plaqueIsTracked || !hasPlaqueConfirmedArrival {
+            return .deny(.markerNotReady)
+        }
         let sample = userLocation
         let matchingPlaque = plaqueIsTracked && stop.hasPlaqueReference && hasPlaqueConfirmedArrival
         let distance = sample.map { GeoMath.distance(from: $0.coordinate, to: stop.coordinate) }
@@ -101,6 +117,9 @@ extension TourViewModel {
         guard case .allow(let evidence) = decision else { return decision }
         progress.markCurrentStopVisited()
         activeVisitEvidence = evidence
+        if stop.hasPlaqueReference {
+            discovery.recognizePlaque(isMatching: true, trackingReady: trackingReady, isSimulated: evidence == .simulation)
+        }
         #if DEVELOPER_MENU
         if isVisitRecordingEnabled {
             visitStore.record(StopVisitRecord(stopID: stop.id, activatedAt: now, evidence: evidence))
@@ -120,12 +139,38 @@ extension TourViewModel {
 
     /// Continue is explicit: closing a card or receiving another GPS fix never skips a stop.
     func completeCurrentStopAndAdvance() {
-        guard progress.phase == .inProgress, currentStop != nil, isCurrentStopVisited else { return }
+        guard progress.phase == .inProgress, let stop = currentStop,
+              isCurrentStopVisited || (stop.hasPlaqueReference && discovery.canContinue) else { return }
         proximityMachine?.handle(.markCompleted)
         presentedSignStopID = nil
         signPresentationSource = nil
         progress.completeCurrentStop()
         destinationDidChange()
+    }
+
+    var isPlaqueDiscoveryStop: Bool { currentStop?.hasPlaqueReference == true }
+    var canContinueCurrentStop: Bool { isCurrentStopVisited || (isPlaqueDiscoveryStop && discovery.canContinue) }
+
+    func openStory(for stopID: String) {
+        guard currentStop?.id == stopID, isPlaqueDiscoveryStop else { return }
+        arrivalStoryStopID = nil
+        discovery.openStory()
+    }
+
+    func finishStory(for stopID: String) {
+        guard currentStop?.id == stopID, isPlaqueDiscoveryStop else { return }
+        discovery.finishStory()
+    }
+
+    @discardableResult
+    func beginPlaqueDiscovery() -> Bool {
+        guard isPlaqueDiscoveryStop, discovery.beginDiscovery() else { return false }
+        if discovery.hasVerifiedPlaque { return true }
+        arrivalStoryStopID = nil
+        // Re-arm a dismissed generic marker; the discovery camera will not show that marker.
+        proximityMachine = currentStop.map { StopProximityStateMachine(stop: $0) }
+        if let userLocation { handleLocationForProximity(userLocation) }
+        return true
     }
 
     private func apply(_ effects: [StopProximityEffect], for stop: HistoricalStop, source: SignPresentationSource) {

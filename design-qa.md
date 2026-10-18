@@ -117,3 +117,33 @@ Additional physical-device checks:
 
 No screenshot fidelity, outdoor ground-lock result, native build or on-device animation pass
 is claimed by the source-level and portable logic checks.
+
+## Mill story-first discovery and door-pane bonus
+
+The latest supplied field screenshots show the old card above the plaque, premature activation,
+auto-started narration and a large playback panel. The confirmed target for the new bonus is the
+TWO glass panes in the red double doors immediately to the plaque's right. Discovery is optional;
+only recognition earns plaque verification and access to the extra. The supplied site coordinate
+came from a Google search; the public viewing point will be captured during future field testing.
+
+Implemented source behavior: one arrival offer of the normal detail screen; manual Play or an
+explicit read-complete action; optional Find the plaque in AR; a matching tracked plaque records
+once and shows a 1.6-second translucent confirmation; a translucent, tappable placeholder over
+calibrated pane bounds; compact camera actions without the mill's old playback panel. Continue
+works after the story without recording a plaque verification. Non-plaque stops keep their marker
+flow. The placeholder is a test for future media, not fabricated historical content.
+
+The window pose is derived from the plaque and held in AR world space when the plaque leaves the
+camera. It is not independent window recognition. The initial relative bounds and 18 cm plaque
+width are unmeasured. Developer controls capture a fresh real viewing-point fix with accuracy,
+and adjust pane right/up/width/height while the plaque remains visible. Settings persist locally.
+The extra is accessible only during the AR session, within 12 meters of the established window
+pose and with normal tracking. Re-entering AR requires re-establishing that pose from the plaque.
+
+Portable validation: 147 core tests and 20 isolated app-logic tests passed. The latter run actual
+tour/proximity/developer/visit-store/routing source with an offline directions fixture and
+Foundation location values. Native map-model tests and the AR/no-auto-play case require iOS.
+Debug/Release syntax and saved Xcode source references pass. Native compilation, modal sequencing,
+narration completion callbacks, recognition, facade fit, animation and outdoor tracking remain
+unverified. Follow AR-FIELD-TEST.md for the specific phone checks. No rendered result is marked
+passed; `final result: blocked` remains the visual-QA status at the top of this document.

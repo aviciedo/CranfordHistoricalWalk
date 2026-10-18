@@ -104,9 +104,13 @@ final class TourViewModel {
     var visitRecords: [StopVisitRecord]
     var activeVisitEvidence: StopVisitEvidence?
     let visitStore: any StopVisitStore
+    var discovery = StopDiscovery()
+    var arrivalStoryStopID: String?
+    var windowBonusLayout = WindowBonusLayout()
     #if DEVELOPER_MENU
     /// Testing only. Defaults to recording on each launch; does not affect this walk's progress.
     var isVisitRecordingEnabled = true
+    var viewingPointOverride: GeoCoordinate?
     #endif
 
     // MARK: Navigation

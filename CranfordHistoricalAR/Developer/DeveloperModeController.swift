@@ -15,6 +15,12 @@ final class DeveloperModeController {
     private let tour: TourViewModel
     private let realLocationService: any LocationService
     private(set) var simulator: SimulatedLocationService?
+    private let defaults: UserDefaults
+    private static let viewingKey = "cranford.developer.mill-viewing-point.v1"
+    private static let windowKey = "cranford.developer.mill-window-layout.v1"
+    private(set) var viewingPointMessage: String?
+    private(set) var savedViewingAccuracy: Double?
+    var savedViewingPoint: GeoCoordinate? { tour.viewingPointOverride }
 
     var isSimulating: Bool { simulator != nil }
     var isWalking: Bool { simulator?.isWalking ?? false }
@@ -23,9 +29,74 @@ final class DeveloperModeController {
     static let defaultStartOffsetMeters: Double = 350
     static let defaultStartBearing: Double = 225
 
-    init(tour: TourViewModel, realLocationService: any LocationService) {
+    init(tour: TourViewModel, realLocationService: any LocationService, defaults: UserDefaults = .standard) {
         self.tour = tour
         self.realLocationService = realLocationService
+        self.defaults = defaults
+        if let values = defaults.array(forKey: Self.viewingKey) as? [Double], values.count == 3,
+           values.allSatisfy(\.isFinite), values[2] >= 0, values[2] <= 25 {
+            let point = GeoCoordinate(latitude: values[0], longitude: values[1])
+            if point.isValid { tour.viewingPointOverride = point; savedViewingAccuracy = values[2] }
+        }
+        if let values = defaults.array(forKey: Self.windowKey) as? [Double], values.count == 4 {
+            let layout = WindowBonusLayout(right: values[0], up: values[1], width: values[2], height: values[3])
+            if layout.dimensions(plaqueWidthMeters: 0.18) != nil { tour.windowBonusLayout = layout }
+        }
+    }
+
+    @discardableResult
+    func saveViewingPoint() -> Bool {
+        guard !isSimulating, let sample = tour.userLocation, !sample.isSimulated,
+              StopActivationPolicy.isFresh(sample.timestamp), sample.coordinate.isValid,
+              sample.horizontalAccuracy.isFinite, sample.horizontalAccuracy >= 0, sample.horizontalAccuracy <= 25,
+              let mill = tour.stops.first(where: \.hasPlaqueReference),
+              GeoMath.distance(from: sample.coordinate, to: mill.coordinate) <= 200 else {
+            viewingPointMessage = "Stand at the mill's permitted viewing point with simulation off. Wait for a fresh device location accurate to 25 m or better."
+            return false
+        }
+        tour.viewingPointOverride = sample.coordinate
+        savedViewingAccuracy = sample.horizontalAccuracy
+        defaults.set([sample.coordinate.latitude, sample.coordinate.longitude, sample.horizontalAccuracy], forKey: Self.viewingKey)
+        viewingPointMessage = "Viewing point saved on this device. It adjusts story arrival, not the building's map marker or Google route."
+        return true
+    }
+
+    func clearViewingPoint() {
+        tour.viewingPointOverride = nil
+        savedViewingAccuracy = nil
+        defaults.removeObject(forKey: Self.viewingKey)
+        viewingPointMessage = "Using the approximate site coordinates again."
+    }
+
+    var bonusRight: Double {
+        get { tour.windowBonusLayout.right }
+        set { var layout = tour.windowBonusLayout; layout.right = newValue; saveLayout(layout) }
+    }
+    var bonusUp: Double {
+        get { tour.windowBonusLayout.up }
+        set { var layout = tour.windowBonusLayout; layout.up = newValue; saveLayout(layout) }
+    }
+    var bonusWidth: Double {
+        get { tour.windowBonusLayout.width }
+        set { var layout = tour.windowBonusLayout; layout.width = newValue; saveLayout(layout) }
+    }
+    var bonusHeight: Double {
+        get { tour.windowBonusLayout.height }
+        set { var layout = tour.windowBonusLayout; layout.height = newValue; saveLayout(layout) }
+    }
+    private func saveLayout(_ layout: WindowBonusLayout) {
+        guard layout.dimensions(plaqueWidthMeters: 0.18) != nil else { return }
+        tour.windowBonusLayout = layout
+        defaults.set([layout.right, layout.up, layout.width, layout.height], forKey: Self.windowKey)
+    }
+    func resetWindowLayout() {
+        tour.windowBonusLayout = WindowBonusLayout()
+        defaults.removeObject(forKey: Self.windowKey)
+    }
+
+    func markStoryRead() {
+        if tour.phase == .notStarted { tour.startTour() }
+        if let stop = tour.currentStop { tour.finishStory(for: stop.id) }
     }
 
     // MARK: Simulation lifecycle
@@ -105,6 +176,11 @@ final class DeveloperModeController {
 
     func triggerHistoricalSign() {
         if tour.phase == .notStarted { tour.startTour() }
+        if tour.isPlaqueDiscoveryStop, let stop = tour.currentStop {
+            tour.discovery.arrive()
+            tour.arrivalStoryStopID = stop.id
+            return
+        }
         tour.openSignManually()
     }
 

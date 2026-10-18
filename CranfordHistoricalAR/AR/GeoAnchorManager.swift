@@ -49,6 +49,7 @@ final class GeoAnchorManager {
     var placementMode: SignPlacementMode = .hidden
     var hasActivatedStop = false
     private(set) var navigationBearing: Double?
+    private(set) var isWindowBonusAccessible = false
 
     var isTrackingReady: Bool {
         guard cameraTransform != nil, !isInterrupted, case .normal = trackingState else { return false }
@@ -83,6 +84,10 @@ final class GeoAnchorManager {
     @ObservationIgnored private var isInterrupted = false
     @ObservationIgnored private var groundHeight: Float?
     @ObservationIgnored private var lastGuidanceTime: TimeInterval?
+    @ObservationIgnored private var windowStopID: String?
+    @ObservationIgnored private var windowLayout: WindowBonusLayout?
+    @ObservationIgnored private var windowPosition: SIMD3<Float>?
+    @ObservationIgnored private var windowWasClosed = false
 
     /// Called when Geospatial cannot be used and Core Location should take over.
     var onNeedsFallback: ((GeoSpatialFallbackReason) -> Void)?
@@ -122,6 +127,7 @@ final class GeoAnchorManager {
     // MARK: Session lifecycle
 
     func sessionDidStart(_ session: ARSession, arView: ARView) {
+        clearWindowBonus()
         cameraTransform = nil
         trackingState = .notAvailable
         navigationBearing = nil
@@ -137,6 +143,7 @@ final class GeoAnchorManager {
     }
 
     func sessionDidStop() {
+        clearWindowBonus()
         provider.detach()
         plaqueAnchors.unbind(sign: anchors.sign, returningTo: anchors.worldRoot)
         anchors.hideAll()
@@ -147,6 +154,7 @@ final class GeoAnchorManager {
     }
 
     func sessionWasInterrupted() {
+        isWindowBonusAccessible = false
         isInterrupted = true
         navigationBearing = nil
         plaqueAnchors.unbind(sign: anchors.sign, returningTo: anchors.worldRoot)
@@ -161,6 +169,8 @@ final class GeoAnchorManager {
     }
 
     func sessionDidFail(_ message: String) {
+        isWindowBonusAccessible = false
+        anchors.windowBonus.isEnabled = false
         anchors.hideNavigation()
         navigationBearing = nil
         localizationState = .failed(message)
@@ -189,6 +199,59 @@ final class GeoAnchorManager {
         considerGeospatialFallback()
         placeContent(now: timestamp)
         placeSign(now: timestamp)
+        refreshWindowBonusAccess()
+    }
+
+    /// Capture a facade pose from the plaque, then keep a WORLD anchor over the panes when
+    /// the camera moves off the plaque. This does not claim independent window recognition.
+    func presentWindowBonus(for stop: HistoricalStop, imageAnchor: ARImageAnchor, layout: WindowBonusLayout, displayScale: CGFloat) {
+        if windowStopID != stop.id { clearWindowBonus(); windowStopID = stop.id }
+        guard !windowWasClosed else { return }
+        guard windowPosition == nil || windowLayout != layout else { refreshWindowBonusAccess(); return }
+        let plaqueWidth = Double(imageAnchor.referenceImage.physicalSize.width)
+        guard let size = layout.dimensions(plaqueWidthMeters: plaqueWidth),
+              let offset = layout.translation(plaqueWidthMeters: plaqueWidth),
+              anchors.windowBonus.configure(stop: stop, image: nil, scale: displayScale, appearance: .windowBonus) else { return }
+        var translation = matrix_identity_float4x4
+        translation.columns.3 = SIMD4<Float>(Float(offset.x), Float(offset.y), Float(offset.z), 1)
+        let faceOut = simd_float4x4(simd_quatf(angle: -.pi / 2, axis: [1, 0, 0]))
+        let world = imageAnchor.transform * translation * faceOut
+        anchors.windowBonus.transform = Transform(matrix: world)
+        anchors.windowBonus.setWindowSize(width: Float(size.width), height: Float(size.height))
+        if !anchors.windowBonus.isPresented { anchors.windowBonus.presentOnPlaque() }
+        windowPosition = world.translation
+        windowLayout = layout
+        refreshWindowBonusAccess()
+    }
+
+    func closeWindowBonus() {
+        windowWasClosed = true
+        anchors.windowBonus.dismiss()
+    }
+
+    func reopenWindowBonus() {
+        guard isWindowBonusAccessible else { return }
+        windowWasClosed = false
+        if !anchors.windowBonus.isPresented { anchors.windowBonus.presentOnPlaque() }
+    }
+
+    func clearWindowBonus() {
+        guard windowStopID != nil || windowPosition != nil || anchors.windowBonus.isPresented else { return }
+        anchors.windowBonus.dismiss()
+        windowStopID = nil
+        windowPosition = nil
+        windowLayout = nil
+        windowWasClosed = false
+        isWindowBonusAccessible = false
+    }
+
+    private func refreshWindowBonusAccess() {
+        let accessible = windowPosition.map { point in
+            guard let camera = cameraTransform?.translation else { return false }
+            return isTrackingReady && simd_distance(camera, point) <= 12
+        } ?? false
+        if isWindowBonusAccessible != accessible { isWindowBonusAccessible = accessible }
+        if anchors.windowBonus.isPresented { anchors.windowBonus.isEnabled = accessible && !windowWasClosed }
     }
 
     // MARK: Sign

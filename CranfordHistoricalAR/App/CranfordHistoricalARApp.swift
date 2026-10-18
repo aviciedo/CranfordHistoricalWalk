@@ -22,6 +22,7 @@ struct CranfordHistoricalARApp: App {
 /// Native tabs retain one tour and one audio player across every screen.
 struct RootView: View {
     @Environment(TourViewModel.self) private var tour
+    @Environment(AppDependencies.self) private var dependencies
     @State private var navigation = AppNavigation()
 
     var body: some View {
@@ -53,5 +54,11 @@ struct RootView: View {
             navigation.selectedTab = showing ? .map : .home
         }
         .task { await tour.loadStopsIfNeeded() }
+        .onChange(of: dependencies.narrationPlayer.status) { _, status in
+            guard let id = dependencies.narrationPlayer.stopID,
+                  tour.currentStop?.id == id, tour.isPlaqueDiscoveryStop else { return }
+            if status == .playing { tour.discovery.narrationStarted() }
+            if status == .finished { tour.finishStory(for: id) }
+        }
     }
 }

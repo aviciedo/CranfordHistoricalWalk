@@ -40,6 +40,11 @@ final class PlaqueAnchorController {
         self.arView = arView
     }
 
+    func observe(_ imageAnchor: ARImageAnchor) {
+        trackedAnchor = imageAnchor
+        trackedImageName = imageAnchor.referenceImage.name
+    }
+
     func detach() {
         unbind()
         arView = nil

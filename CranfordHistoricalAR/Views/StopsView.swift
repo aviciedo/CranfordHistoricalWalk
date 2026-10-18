@@ -30,10 +30,10 @@ struct StopsContent: View {
                                     Text("Stop \(stop.order)").font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
                                     Text(stop.name).font(.system(.title3, design: .serif).weight(.semibold))
                                     if let visit = tour.lastRecordedVisit(for: stop) {
-                                        Label("Visited \(visit.activatedAt.formatted(date: .abbreviated, time: .omitted))", systemImage: "checkmark.circle.fill")
+                                        Label("\(visit.evidence == .recognizedPlaque ? "Plaque verified" : "Visited") \(visit.activatedAt.formatted(date: .abbreviated, time: .omitted))", systemImage: "checkmark.circle.fill")
                                             .font(.caption).foregroundStyle(AppTheme.visited)
                                     } else if tour.isCompleted(stop) {
-                                        Label("Practice visit", systemImage: "checkmark.circle")
+                                        Label(stop.hasPlaqueReference ? "Story completed · No saved plaque verification" : "Practice visit", systemImage: "checkmark.circle")
                                             .font(.caption).foregroundStyle(AppTheme.secondaryInk)
                                     } else if stop.id == tour.currentStop?.id {
                                         Text("Next on your walk").font(.caption).foregroundStyle(AppTheme.secondaryInk)

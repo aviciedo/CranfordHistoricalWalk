@@ -34,6 +34,37 @@ struct DeveloperControlsView: View {
         let diagnostics = developer.diagnostics
         Form {
             Section {
+                Button("Save this location as the viewing point") { developer.saveViewingPoint() }
+                    .frame(minHeight: 44)
+                if let point = developer.savedViewingPoint {
+                    row("Viewing latitude", String(format: "%.6f", point.latitude))
+                    row("Viewing longitude", String(format: "%.6f", point.longitude))
+                    if let accuracy = developer.savedViewingAccuracy { row("Recorded accuracy", String(format: "± %.1f m", accuracy)) }
+                    Button("Clear saved viewing point", role: .destructive) { developer.clearViewingPoint() }
+                }
+                if let message = developer.viewingPointMessage {
+                    Text(message).font(.footnote).foregroundStyle(.secondary)
+                }
+            } header: {
+                Text("Mill viewing point")
+            } footer: {
+                Text("Capture from the permitted public viewing area. This local test setting survives relaunch. Copy these coordinates and accuracy for the next app update; it does not certify public access.")
+            }
+            .textSelection(.enabled)
+
+            Section {
+                calibrationSlider("Move right", value: $developer.bonusRight, range: -2...9)
+                calibrationSlider("Move up", value: $developer.bonusUp, range: -3...6)
+                calibrationSlider("Width", value: $developer.bonusWidth, range: 1...10)
+                calibrationSlider("Height", value: $developer.bonusHeight, range: 1...8)
+                Button("Reset approximate placement") { developer.resetWindowLayout() }
+            } header: {
+                Text("Mill window bonus alignment")
+            } footer: {
+                Text("Keep the plaque in the camera view while adjusting. Fit the overlay to BOTH glass panes in the red doors, then close this page to inspect it. Values are multiples of plaque width and are saved only on this device. The initial layout and plaque width are unmeasured estimates.")
+            }
+
+            Section {
                 Toggle("Save visit history", isOn: $developer.isVisitRecordingEnabled)
                 row("Saved stops", "\(tour.visitRecords.count)")
                 Button(role: .destructive) {
@@ -136,6 +167,9 @@ struct DeveloperControlsView: View {
             }
 
             Section("Tour") {
+                if tour.isPlaqueDiscoveryStop {
+                    Button("Mark story read for testing") { developer.markStoryRead() }
+                }
                 if tour.phase == .notStarted {
                     Button {
                         tour.startTour()
@@ -157,6 +191,7 @@ struct DeveloperControlsView: View {
                 }
                 .disabled(tour.currentStop == nil)
                 Button(role: .destructive) {
+                    dependencies.narrationPlayer.stop()
                     developer.resetTour()
                 } label: {
                     Label("Reset tour", systemImage: "arrow.counterclockwise")
@@ -208,6 +243,14 @@ struct DeveloperControlsView: View {
             Text(value).foregroundStyle(.secondary).multilineTextAlignment(.trailing)
         }
         .font(.subheadline)
+    }
+
+    private func calibrationSlider(_ title: String, value: Binding<Double>, range: ClosedRange<Double>) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            row(title, String(format: "%.1f × plaque width", value.wrappedValue))
+            Slider(value: value, in: range, step: 0.1)
+                .accessibilityLabel(title)
+        }
     }
 }
 #endif
