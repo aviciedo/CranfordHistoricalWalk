@@ -69,6 +69,7 @@
 		4BF62AB25E0B69874D9B4001 /* SharedNarrationBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CB802D81112E6B2459FCE66 /* SharedNarrationBar.swift */; };
 		DF54B06C3961D5A842D18240 /* StopDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B30FD1A69BDAC8F5309FD15 /* StopDetailView.swift */; };
 		8C5E205C91B0E4E4F44F6B47 /* StopsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDC2903451606F4F4717257E /* StopsView.swift */; };
+		68CDDC14800B0BCDD181E9D9 /* StopVisitStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16AAEC54E173B9370438E362 /* StopVisitStore.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -145,6 +146,7 @@
 		3CB802D81112E6B2459FCE66 /* SharedNarrationBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedNarrationBar.swift; sourceTree = "<group>"; };
 		9B30FD1A69BDAC8F5309FD15 /* StopDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StopDetailView.swift; sourceTree = "<group>"; };
 		DDC2903451606F4F4717257E /* StopsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StopsView.swift; sourceTree = "<group>"; };
+		16AAEC54E173B9370438E362 /* StopVisitStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StopVisitStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -185,6 +187,7 @@
 		0E8F25461D7DAC467CA8D338 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				16AAEC54E173B9370438E362 /* StopVisitStore.swift */,
 				FBE7FD3191F06CF47BE56E97 /* ARCoreConsentStore.swift */,
 				6D6B98AD9D1811ED29AD8E30 /* DirectionsService.swift */,
 				EA595C01936F3A49F21DDF82 /* GeoSpatialProvider.swift */,
@@ -478,6 +481,7 @@
 				F7A79CDC031255D87431EDB0 /* AppDependencies.swift in Sources */,
 				1D07F01BE18F8634CFFEB457 /* AppTheme.swift in Sources */,
 				865BEEEB388A50BFBABC9F54 /* CranfordHistoricalARApp.swift in Sources */,
+				68CDDC14800B0BCDD181E9D9 /* StopVisitStore.swift in Sources */,
 				BB36F634411FB64E70D33407 /* DeveloperControlsView.swift in Sources */,
 				49B1EA182AADFD5E5002E505 /* DeveloperModeController.swift in Sources */,
 				133ADE3C26D4C44B39E287EE /* DirectionsService.swift in Sources */,

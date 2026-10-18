@@ -1,7 +1,7 @@
 import Foundation
 
-/// Where the AR historical card should live. Image tracking is placement only;
-/// tour progress still goes through `StopProximityStateMachine` (35 m / 50 m).
+/// Where the AR marker/story card should live. Arrival uses the proximity state machine;
+/// recorded visits require the separate `StopActivationPolicy` and an explicit activation.
 public enum SignPlacementMode: String, Sendable, Equatable {
     /// No card. Arrows/HUD stay as they are.
     case hidden

@@ -4,7 +4,7 @@ import TourCore
 /// The rasterized RealityKit sign, in post and plaque-card forms. The interactive
 /// reading and photo experience is shared by maps, stop lists and AR via StopDetailView.
 struct HistoricalSignView: View {
-    enum Style { case arTexture, arPlaqueCard }
+    enum Style { case arTexture, arPlaqueCard, activationMarker }
 
     let stop: HistoricalStop
     var image: LoadedImage?
@@ -17,7 +17,28 @@ struct HistoricalSignView: View {
         switch style {
         case .arTexture: textureBody
         case .arPlaqueCard: plaqueCardBody
+        case .activationMarker: activationMarkerBody
         }
+    }
+
+    /// This is the tappable RealityKit marker, not a button that can fake a visit from home.
+    private var activationMarkerBody: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "viewfinder.circle.fill")
+                .font(.system(size: 92, weight: .light))
+                .foregroundStyle(AppTheme.terracotta)
+            Text("Stop \(stop.order)")
+                .font(.system(size: 28, weight: .medium))
+            Text(stop.name)
+                .font(.system(size: 48, weight: .semibold, design: .serif))
+                .multilineTextAlignment(.center)
+            Text("Tap to discover")
+                .font(.system(size: 34, weight: .semibold))
+        }
+        .foregroundStyle(AppTheme.forest)
+        .padding(44).frame(width: Self.textureWidth)
+        .background(AppTheme.ivory, in: RoundedRectangle(cornerRadius: 36))
+        .environment(\.colorScheme, .light)
     }
 
     // MARK: AR texture layout

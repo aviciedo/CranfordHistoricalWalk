@@ -19,6 +19,8 @@ final class ARHistoricalSignEntity: Entity {
         case geoPost
         /// Popup locked to a detected door plate; no post, centered on the offset.
         case plaqueCard
+        /// On-site activation target before the visitor starts the story.
+        case visitMarker
     }
 
     private let pivot = Entity()
@@ -80,14 +82,14 @@ final class ARHistoricalSignEntity: Entity {
         self.appearance = appearance
 
         let (texture, aspect) = textureAndAspect
-        let width: Float = appearance == .plaqueCard ? 0.45 : ARHistoricalSignEntity.signWidth
+        let width: Float = appearance == .visitMarker ? 0.7 : (appearance == .plaqueCard ? 0.45 : Self.signWidth)
         let height = width * Float(aspect)
 
         var material = UnlitMaterial()
         material.color = .init(tint: .white, texture: .init(texture))
         material.blending = .transparent(opacity: .init(floatLiteral: 1.0))
 
-        let planeY: Float = appearance == .plaqueCard ? 0 : height / 2
+        let planeY: Float = appearance == .geoPost ? height / 2 : 0
         if let plane {
             plane.model?.mesh = .generatePlane(width: width, height: height)
             plane.model?.materials = [material]
@@ -111,13 +113,18 @@ final class ARHistoricalSignEntity: Entity {
             self.post = post
         }
         post?.isEnabled = appearance == .geoPost
-        layoutCloseControl(cardWidth: width, cardHeight: height, planeY: planeY)
+        if appearance == .visitMarker {
+            closeControl?.isEnabled = false
+        } else {
+            layoutCloseControl(cardWidth: width, cardHeight: height, planeY: planeY)
+        }
         self.configuration = configuration
         return true
     }
 
     private func layoutCloseControl(cardWidth: Float, cardHeight: Float, planeY: Float) {
-        let size: Float = 0.22
+        let size: Float = appearance == .plaqueCard ? 0.09 : 0.22
+        let inset: Float = appearance == .plaqueCard ? cardWidth * (54 / 720) : 0.16
         if closeControl == nil {
             var material = UnlitMaterial(color: UIColor.clear)
             material.blending = .transparent(opacity: .init(floatLiteral: 0.02))
@@ -127,12 +134,14 @@ final class ARHistoricalSignEntity: Entity {
             floatCarrier.addChild(button)
             closeControl = button
         }
-        closeControl?.position = SIMD3<Float>(cardWidth / 2 - 0.16, planeY + cardHeight / 2 - 0.16, 0.03)
+        closeControl?.model?.mesh = .generatePlane(width: size, height: size)
+        closeControl?.collision = CollisionComponent(shapes: [.generateBox(width: size, height: size, depth: 0.06)])
+        closeControl?.position = SIMD3<Float>(cardWidth / 2 - inset, planeY + cardHeight / 2 - inset, 0.03)
         closeControl?.isEnabled = true
     }
 
     private static func renderTexture(for stop: HistoricalStop, image: LoadedImage?, scale: CGFloat, appearance: Appearance) -> (TextureResource, CGFloat)? {
-        let style: HistoricalSignView.Style = appearance == .plaqueCard ? .arPlaqueCard : .arTexture
+        let style: HistoricalSignView.Style = appearance == .visitMarker ? .activationMarker : (appearance == .plaqueCard ? .arPlaqueCard : .arTexture)
         let view = HistoricalSignView(stop: stop, image: image, style: style)
         let renderer = ImageRenderer(content: view)
         renderer.scale = min(scale, 2) // 2x of 720 pt = 1440 px wide: sharp, still cheap on GPU memory

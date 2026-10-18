@@ -97,10 +97,13 @@ final class TourViewModel {
 
     // MARK: Proximity / AR sign (mutated by TourViewModel+Proximity.swift)
     var proximityMachine: StopProximityStateMachine?
-    /// Visual confirmation overrides an unverified geocode until the visitor closes the sign.
+    /// Visual confirmation overrides an unverified geocode until the visitor continues.
     var plaqueConfirmedStopID: String?
     var presentedSignStopID: String?
     var signPresentationSource: SignPresentationSource?
+    var visitRecords: [StopVisitRecord]
+    var activeVisitEvidence: StopVisitEvidence?
+    let visitStore: any StopVisitStore
 
     // MARK: Navigation
     private(set) var isShowingTour = false
@@ -110,7 +113,10 @@ final class TourViewModel {
     private(set) var locationService: any LocationService
     private var locationTask: Task<Void, Never>?
 
-    init(stopService: any HistoricalStopService, locationService: any LocationService, directionsService: any DirectionsService) {
+    init(stopService: any HistoricalStopService, locationService: any LocationService, directionsService: any DirectionsService, visitStore: (any StopVisitStore)? = nil) {
+        let store = visitStore ?? InMemoryStopVisitStore()
+        self.visitStore = store
+        self.visitRecords = store.records()
         self.stopService = stopService
         self.locationService = locationService
         self.directionsService = directionsService
@@ -134,7 +140,7 @@ final class TourViewModel {
     var displayHeading: Double? {
         if let heading, heading.isReliable { return heading.bestHeading }
         if let userLocation, let course = userLocation.course, (userLocation.speed ?? 0) > 0.5 { return course }
-        return heading?.bestHeading
+        return nil
     }
 
     var hasReliableHeading: Bool { displayHeading != nil }
@@ -249,7 +255,11 @@ final class TourViewModel {
             refreshLocationIssue()
 
         case .location(let sample):
-            if let previous = userLocation, progress.phase == .inProgress, sample.horizontalAccuracy <= TourViewModel.poorAccuracyThreshold {
+            guard sample.coordinate.isValid, StopActivationPolicy.isFresh(sample.timestamp),
+                  userLocation.map({ sample.timestamp >= $0.timestamp }) ?? true else { return }
+            if let previous = userLocation, progress.phase == .inProgress,
+               sample.horizontalAccuracy >= 0, sample.horizontalAccuracy <= TourViewModel.poorAccuracyThreshold,
+               previous.horizontalAccuracy >= 0, previous.horizontalAccuracy <= TourViewModel.poorAccuracyThreshold {
                 let moved = GeoMath.distance(from: previous.coordinate, to: sample.coordinate)
                 // Ignore GPS jitter when accumulating walked distance.
                 if moved > max(2, sample.horizontalAccuracy * 0.5) { progress.recordWalked(meters: moved) }

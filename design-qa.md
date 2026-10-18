@@ -25,8 +25,14 @@ Required Mac/iPhone checks:
 6. Open the photo from the map panel, Stops and details. Zoom, pan, reset and close with X. Confirm no tour advance.
 7. In light/dark appearance, check essential labels, selected tabs, controls and visited markers for contrast.
 8. Verify Show on map centers a browsed stop without changing the guided destination.
-9. Enter AR, return to the map, trigger arrival and Continue; confirm one destination panel and correct next stop.
+9. Follow [AR-FIELD-TEST.md](AR-FIELD-TEST.md): arrival reveals a marker without a visit; activation starts the story and records a visit; only Continue changes the destination. Confirm the second-stop map/AR handoff.
 10. Test missing Maps/Routes configuration: clearly labeled illustrated/estimated fallback, no developer setup prose in the main flow.
 
 The host-app navigation regression test must be run through Xcode Product > Test. Linux TourCore
 checks do not execute it. On-device visual review and any resulting fixes remain a required follow-up.
+
+AR guidance update: the camera-relative bearing and activation policy have portable XCTest coverage.
+An isolated Foundation host also checks the production proximity extension and visit store. These
+checks do not render SwiftUI or RealityKit, recognize the plaque, or compile the iOS application.
+On-device arrow alignment, marker taps, audio startup, sign readability and saved visit dates still
+need the Mac/iPhone field test. The visual/native QA result above remains blocked.

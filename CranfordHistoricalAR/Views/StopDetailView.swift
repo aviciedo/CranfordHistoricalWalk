@@ -60,13 +60,19 @@ struct StopDetailView: View {
                                 .font(.system(.title2, design: .serif))
                         }
                     }
-                    if isCurrent {
+                    if let visit = tour.lastRecordedVisit(for: stop) {
+                        Label {
+                            Text("Visited \(visit.activatedAt.formatted(date: .abbreviated, time: .omitted))")
+                        } icon: { Image(systemName: "checkmark.circle.fill") }
+                        .font(.subheadline).foregroundStyle(AppTheme.visited)
+                    }
+                    if isCurrent && tour.isCurrentStopVisited {
                         Button {
                             tour.completeCurrentStopAndAdvance()
                             dismiss()
                             onContinue?()
                         } label: {
-                            Label(tour.isCompleted(stop) ? (tour.nextStop == nil ? "Finish tour" : "Continue to next stop") : "Mark as visited", systemImage: "checkmark.circle")
+                            Label(tour.nextStop == nil ? "Finish tour" : "Continue to next stop", systemImage: "arrow.right")
                                 .frame(maxWidth: .infinity, minHeight: 48)
                         }
                         .buttonStyle(.plain).font(.body.weight(.medium))
@@ -98,7 +104,7 @@ struct StopDetailView: View {
                     .accessibilityLabel("Close stop details")
                 }
             }
-            .fullScreenCover(isPresented: $isShowingAR) { ARTourView() }
+            .fullScreenCover(isPresented: $isShowingAR, onDismiss: { dismiss() }) { ARTourView() }
         }
     }
 }

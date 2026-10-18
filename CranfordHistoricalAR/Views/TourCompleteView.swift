@@ -127,6 +127,9 @@ struct TourCompleteView: View {
         .task {
             await deps.tourViewModel.loadStopsIfNeeded()
             deps.tourViewModel.startTour()
-            while deps.tourViewModel.phase == .inProgress { deps.tourViewModel.completeCurrentStopAndAdvance() }
+            while deps.tourViewModel.phase == .inProgress {
+                deps.tourViewModel.progress.markCurrentStopVisited()
+                deps.tourViewModel.completeCurrentStopAndAdvance()
+            }
         }
 }

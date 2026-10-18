@@ -28,23 +28,29 @@ final class ARNavigationArrowEntity: Entity {
     private func buildArrows() {
         guard let mesh = ARNavigationArrowEntity.makeArrowMesh() else { return }
         for index in 0..<ARNavigationArrowEntity.arrowCount {
-            var material = UnlitMaterial(color: UIColor(red: 0.98, green: 0.84, blue: 0.45, alpha: 1))
-            material.blending = .transparent(opacity: .init(floatLiteral: 0.92 - Float(index) * 0.12))
-            let mesh = ModelEntity(mesh: mesh, materials: [material])
-            mesh.name = "arrow-mesh-\(index)"
+            // Ivory with a forest rim stays legible on both dark asphalt and pale paths.
+            var material = UnlitMaterial(color: UIColor(red: 248 / 255, green: 246 / 255, blue: 238 / 255, alpha: 1))
+            material.blending = .transparent(opacity: .init(floatLiteral: 0.98 - Float(index) * 0.08))
+            let arrow = ModelEntity(mesh: mesh, materials: [material])
+            arrow.name = "arrow-mesh-\(index)"
+            let rim = ModelEntity(mesh: mesh, materials: [UnlitMaterial(color: UIColor(red: 46 / 255, green: 58 / 255, blue: 47 / 255, alpha: 1))])
+            rim.scale = SIMD3<Float>(1.16, 1, 1.16)
+            rim.position.y = -0.006
+            arrow.addChild(rim)
             let holder = Entity()
             holder.name = "arrow-\(index)"
-            holder.addChild(mesh)
+            holder.addChild(arrow)
             holder.isEnabled = false
             addChild(holder)
             holders.append(holder)
-            startPulse(on: mesh, phase: index)
+            startPulse(on: arrow, phase: index)
         }
     }
 
     /// Gentle breathing so arrows read as live guidance without being distracting (spec §8 restraint).
     /// The animation binds the child's full transform, which is why position/rotation live on the holder.
     private func startPulse(on mesh: ModelEntity, phase: Int) {
+        guard !UIAccessibility.isReduceMotionEnabled else { return }
         let from = Transform(scale: SIMD3<Float>(repeating: 0.96), rotation: simd_quatf(angle: 0, axis: [0, 1, 0]), translation: .zero)
         let to = Transform(scale: SIMD3<Float>(repeating: 1.04), rotation: simd_quatf(angle: 0, axis: [0, 1, 0]), translation: .zero)
         let pulse = FromToByAnimation<Transform>(
@@ -66,9 +72,15 @@ final class ARNavigationArrowEntity: Entity {
     /// Lays the arrows from `base` (the user's current ground position) along `direction` (unit, XZ).
     /// Arrows stay fixed in the world until the user walks past the first one or the direction
     /// changes meaningfully, so they feel anchored rather than glued to the screen.
-    func update(base: SIMD3<Float>, direction: SIMD3<Float>, now: TimeInterval, force: Bool = false) {
+    func update(base: SIMD3<Float>, direction: SIMD3<Float>, now: TimeInterval, force: Bool = false, maximumDistance: Float? = nil) {
         let dir = normalizedXZ(direction)
         guard dir != .zero else { return }
+
+        // The trail ends at a visible marker instead of pointing through its wall/door.
+        for (index, holder) in holders.enumerated() {
+            let distance = Self.firstArrowDistance + Float(index) * Self.arrowSpacing
+            holder.isEnabled = isShowing && (maximumDistance.map { distance < $0 - 0.25 } ?? true)
+        }
 
         var needsLayout = force || lastBase == nil || lastDirection == nil
         if !needsLayout, let lastBase, let lastDirection {

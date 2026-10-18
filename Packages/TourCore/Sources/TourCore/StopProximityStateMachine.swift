@@ -38,7 +38,7 @@ public struct StopProximityStateMachine: Sendable, Equatable {
     public let departureRadius: Double
     /// Set once the user explicitly dismissed; prevents auto-reopen until they leave the departure radius.
     public private(set) var hasManuallyDismissed: Bool
-    /// True once the sign has been presented at least once (used to decide "visited").
+    /// Arrival/presentation history only. A recorded visit requires separate marker activation.
     public private(set) var hasPresentedSign: Bool
     public private(set) var lastDistance: Double?
 

@@ -47,14 +47,19 @@ final class GeoAnchorManager {
     let plaqueAnchors = PlaqueAnchorController()
     /// Placement decided by `SignPlacementPolicy` (image vs geo). Not tour progress.
     var placementMode: SignPlacementMode = .hidden
+    var hasActivatedStop = false
+    private(set) var navigationBearing: Double?
 
-    /// Navigation target (next waypoint on the route) and destination (the stop itself).
+    var isTrackingReady: Bool {
+        guard cameraTransform != nil, !isInterrupted, case .normal = trackingState else { return false }
+        if case .failed = localizationState { return false }
+        return true
+    }
+
+    /// Route-aware direction and destination identity (forces a fresh layout on Continue).
     struct NavigationTarget: Equatable {
-        var waypoint: GeoCoordinate
         var destination: GeoCoordinate
         var bearingToWaypoint: Double
-        var distanceToDestination: Double
-        var arrivalRadius: Double
     }
 
     /// Sign content requested by the view model; placed as soon as the camera is tracking.
@@ -114,6 +119,10 @@ final class GeoAnchorManager {
     // MARK: Session lifecycle
 
     func sessionDidStart(_ session: ARSession, arView: ARView) {
+        cameraTransform = nil
+        trackingState = .notAvailable
+        navigationBearing = nil
+        lastFrameTime = 0
         anchors.attach(to: arView)
         plaqueAnchors.attach(to: arView)
         provider.attach(session: session)
@@ -128,11 +137,13 @@ final class GeoAnchorManager {
         anchors.hideAll()
         signAnchoredPosition = nil
         localizationState = .notStarted
+        navigationBearing = nil
         cameraTransform = nil
     }
 
     func sessionWasInterrupted() {
         isInterrupted = true
+        navigationBearing = nil
         plaqueAnchors.unbind(sign: anchors.sign, returningTo: anchors.worldRoot)
         anchors.hideAll()
         signAnchoredPosition = nil
@@ -146,6 +157,7 @@ final class GeoAnchorManager {
 
     func sessionDidFail(_ message: String) {
         anchors.hideNavigation()
+        navigationBearing = nil
         localizationState = .failed(message)
     }
 
@@ -180,22 +192,26 @@ final class GeoAnchorManager {
         presentSign(for: stop, image: image, displayScale: displayScale, appearance: .geoPost)
     }
 
-    func presentSign(for stop: HistoricalStop, image: LoadedImage?, displayScale: CGFloat, appearance: ARHistoricalSignEntity.Appearance) {
+    func presentSign(for stop: HistoricalStop, image: LoadedImage?, displayScale: CGFloat, appearance: ARHistoricalSignEntity.Appearance, anchorToPlaque: Bool = false) {
         let request = SignRequest(stop: stop, image: image, displayScale: displayScale)
         let sameStop = signRequest?.stop.id == stop.id
-        let wasPlaqueCard = anchors.sign.appearance == .plaqueCard
+        let wasOnPlaque = anchors.sign.parent !== anchors.worldRoot
+        let previousAppearance = anchors.sign.appearance
+        guard anchors.sign.configure(stop: stop, image: image, scale: displayScale, appearance: appearance) else {
+            dismissSign()
+            return
+        }
         signRequest = request
-        anchors.sign.configure(stop: stop, image: image, scale: displayScale, appearance: appearance)
-        if appearance == .plaqueCard {
+        if anchorToPlaque || appearance == .plaqueCard {
             if let imageAnchor = plaqueAnchors.trackedAnchor {
                 plaqueAnchors.bind(imageAnchor: imageAnchor, sign: anchors.sign, offset: .abovePlaque)
             }
-            if !wasPlaqueCard || !anchors.sign.isPresented {
+            if !wasOnPlaque || previousAppearance != appearance || !anchors.sign.isPresented {
                 anchors.sign.presentOnPlaque()
             }
             return
         }
-        let switchingFromPlaque = wasPlaqueCard || anchors.sign.parent !== anchors.worldRoot
+        let switchingFromPlaque = wasOnPlaque
         plaqueAnchors.unbind(sign: anchors.sign, returningTo: anchors.worldRoot)
         if switchingFromPlaque {
             signAnchoredPosition = nil
@@ -205,7 +221,7 @@ final class GeoAnchorManager {
         }
         // Artwork arriving for the sign already on display swaps the texture in place; a new stop
         // replays the entrance at a fresh position.
-        guard !(sameStop && anchors.sign.isPresented) else { return }
+        guard !(sameStop && previousAppearance == appearance && anchors.sign.isPresented) else { return }
         signAnchoredPosition = nil
         if anchors.sign.isPresented { anchors.sign.dismiss() }
         placeSign(now: lastFrameTime)
@@ -295,30 +311,51 @@ final class GeoAnchorManager {
     }
 
     private func placeContent(now: TimeInterval, forceLayout: Bool = false) {
-        guard localizationState.isUsable, let target, let base = cameraGroundPosition else {
+        guard !hasActivatedStop, isTrackingReady, let base = cameraGroundPosition else {
             anchors.arrows.setVisible(false)
+            navigationBearing = nil
             return
         }
-        // Inside the arrival radius the sign takes over (Stage 5); arrows would only clutter.
-        // Keep them while we are still hunting for the mill plaque.
-        let insideArrival = target.distanceToDestination <= target.arrivalRadius
-        guard SignPlacementPolicy.shouldKeepNavigationArrows(mode: placementMode, insideArrivalRadius: insideArrival) else {
-            anchors.arrows.setVisible(false)
-            return
-        }
-        // Point at the next route vertex unless the destination is close, then point straight at it.
-        let bearing: Double
-        if target.distanceToDestination < 20, let pose = provider.pose {
-            bearing = GeoMath.bearing(from: pose.coordinate, to: target.destination)
+        let direction: SIMD3<Float>
+        let markerDistance: Float?
+        if anchors.sign.isPresented,
+           placementMode == .plaqueAnchored || (placementMode == .geoFallback && localizationState.isUsable) {
+            // A real image anchor is stronger than the bundled geocode. Point to the
+            // actual marker, not back toward a potentially incorrect GPS destination.
+            let marker = anchors.sign.position(relativeTo: anchors.worldRoot)
+            direction = SIMD3(marker.x - base.x, 0, marker.z - base.z)
+            markerDistance = simd_length(direction)
         } else {
-            bearing = target.bearingToWaypoint
+            guard localizationState.isUsable, let target,
+                  let worldDirection = provider.worldDirection(forBearing: target.bearingToWaypoint) else {
+                anchors.arrows.setVisible(false)
+                navigationBearing = nil
+                return
+            }
+            direction = worldDirection
+            markerDistance = nil
         }
-        guard let direction = provider.worldDirection(forBearing: bearing) else {
+        guard simd_length(direction) > 0.05 else {
             anchors.arrows.setVisible(false)
+            navigationBearing = nil
             return
         }
+        updateCameraGuidance(direction: direction)
         anchors.arrows.setVisible(true)
-        anchors.arrows.update(base: base, direction: direction, now: now, force: forceLayout)
+        // Keep arrows until activation, including inside the GPS arrival radius.
+        anchors.arrows.update(base: base, direction: direction, now: now, force: forceLayout, maximumDistance: markerDistance)
+    }
+
+    private func updateCameraGuidance(direction: SIMD3<Float>) {
+        guard let cameraTransform else { navigationBearing = nil; return }
+        let next = ARWalkingGuidance.relativeBearing(
+            directionX: Double(direction.x), directionZ: Double(direction.z),
+            cameraForwardX: Double(-cameraTransform.columns.2.x),
+            cameraForwardZ: Double(-cameraTransform.columns.2.z)
+        )
+        if let previous = navigationBearing, let next,
+           abs(GeoMath.relativeBearing(heading: previous, bearing: next)) < 2 { return }
+        navigationBearing = next
     }
 
     /// World position for a stop, used by the sign (Stage 5) and by debugging overlays.

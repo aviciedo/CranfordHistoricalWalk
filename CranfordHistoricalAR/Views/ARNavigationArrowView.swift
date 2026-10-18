@@ -1,60 +1,41 @@
 import SwiftUI
+import TourCore
 
-/// 2D direction indicator shown in the AR HUD (spec §7). It is the graceful fallback when the
-/// 3D arrows cannot be trusted (no compass, poor tracking) and a quiet confirmation otherwise.
-/// Later versions can replace this with richer guidance without touching the AR scene code.
+/// Remains readable even when the world-space arrows are beside or behind the camera.
 struct ARNavigationArrowView: View {
-    /// Degrees; positive = target is to the right. `nil` when heading is unknown.
+    /// Degrees from the camera's horizontal facing; positive means turn right.
     var relativeBearing: Double?
-    var distanceText: String
-    var isProminent: Bool
+    var detail: String
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 16) {
             ZStack {
-                Circle()
-                    .fill(.regularMaterial)
-                    .frame(width: isProminent ? 64 : 44, height: isProminent ? 64 : 44)
+                Circle().fill(AppTheme.forest).frame(width: 64, height: 64)
                 if let relativeBearing {
                     Image(systemName: "location.north.fill")
-                        .font(.system(size: isProminent ? 30 : 20, weight: .semibold))
-                        .foregroundStyle(AppTheme.brass)
+                        .font(.system(size: 29, weight: .semibold))
+                        .foregroundStyle(AppTheme.ivory)
                         .rotationEffect(.degrees(relativeBearing))
-                        .animation(.interactiveSpring(response: 0.35, dampingFraction: 0.8), value: relativeBearing)
-                        .accessibilityLabel(accessibilityDirection(relativeBearing))
                 } else {
-                    Image(systemName: "questionmark")
-                        .font(.system(size: isProminent ? 24 : 16, weight: .semibold))
-                        .foregroundStyle(.secondary)
+                    Image(systemName: "viewfinder")
+                        .font(.system(size: 28, weight: .medium))
+                        .foregroundStyle(AppTheme.ivory)
                 }
             }
-            if isProminent {
-                VStack(alignment: .leading, spacing: 2) {
-                    if let relativeBearing {
-                        Text(hint(for: relativeBearing)).font(.subheadline.weight(.semibold))
-                        Text("\(distanceText) to go").font(.footnote).foregroundStyle(.secondary)
-                    } else {
-                        Text("Heading unavailable").font(.subheadline.weight(.semibold))
-                        Text("Walk a few steps so GPS can tell which way you're facing.").font(.footnote).foregroundStyle(.secondary)
-                    }
-                }
-                .padding(.trailing, 6)
+            .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 5) {
+                Text(ARWalkingGuidance.instruction(for: relativeBearing))
+                    .font(.headline)
+                Text(detail).font(.subheadline)
+                    .foregroundStyle(AppTheme.forest.opacity(0.8))
+                    .fixedSize(horizontal: false, vertical: true)
             }
+            Spacer(minLength: 0)
         }
-        .padding(isProminent ? 10 : 0)
-        .background(isProminent ? AnyShapeStyle(.regularMaterial) : AnyShapeStyle(.clear), in: Capsule())
-    }
-
-    private func hint(for bearing: Double) -> String {
-        switch abs(bearing) {
-        case ..<20: return "Straight ahead"
-        case ..<70: return bearing > 0 ? "Bear right" : "Bear left"
-        case ..<135: return bearing > 0 ? "Turn right" : "Turn left"
-        default: return "Turn around"
-        }
-    }
-
-    private func accessibilityDirection(_ bearing: Double) -> String {
-        "\(hint(for: bearing)), \(distanceText)"
+        .foregroundStyle(AppTheme.forest)
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(AppTheme.ivory, in: RoundedRectangle(cornerRadius: 20))
+        .accessibilityElement(children: .combine)
     }
 }

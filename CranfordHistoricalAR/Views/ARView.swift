@@ -6,6 +6,7 @@ import TourCore
 struct ARTourView: View {
     @Environment(TourViewModel.self) private var tour
     @Environment(AppDependencies.self) private var dependencies
+    @Environment(AppNavigation.self) private var navigation
     @Environment(\.dismiss) private var dismiss
     @State private var model: ARViewModel?
     @State private var awaitingGeospatialConsent = false
@@ -44,7 +45,7 @@ struct ARTourView: View {
 
     private func startAR() {
         if model == nil {
-            model = ARViewModel(tour: tour, provider: dependencies.makeGeoSpatialProvider(), imageLoader: dependencies.imageLoader)
+            model = ARViewModel(tour: tour, provider: dependencies.makeGeoSpatialProvider(), imageLoader: dependencies.imageLoader, narrationPlayer: dependencies.narrationPlayer)
         }
         Task { await model?.requestCameraAccessIfNeeded() }
     }
@@ -66,7 +67,11 @@ struct ARTourView: View {
                 CameraExplanationView(state: .unsupported)
             }
 
-            ARHUDView(model: model, onClose: { dismiss() })
+            ARHUDView(model: model, onClose: {
+                if let stop = tour.currentStop { navigation.showOnMap(stopID: stop.id) }
+                else { navigation.selectedTab = .map }
+                dismiss()
+            })
         }
         .sheet(isPresented: Binding(get: { model.isShowingSignDetails }, set: { model.isShowingSignDetails = $0 })) {
             if let stop = tour.presentedSignStop ?? tour.currentStop {
@@ -78,191 +83,140 @@ struct ARTourView: View {
     }
 }
 
-/// Everything drawn over the camera. Kept as plain SwiftUI so it stays legible in sunlight.
+/// A quiet camera frame with one direction surface and one on-site action.
 struct ARHUDView: View {
     let model: ARViewModel
     var onClose: () -> Void
 
     var body: some View {
-        VStack(spacing: 12) {
-            topBar
-            if let message = model.statusMessage {
-                statusBanner(message)
+        GeometryReader { geometry in
+            VStack(spacing: 10) {
+                topBar
+                if let message = model.statusMessage { notice(message, symbol: "viewfinder") }
+                if let hint = model.plaqueHint, !model.tour.isCurrentStopVisited {
+                    notice(hint, symbol: "viewfinder.circle")
+                }
+                Spacer(minLength: 8)
+                if model.availability == .ready {
+                    ViewThatFits(in: .vertical) {
+                        bottomPanel.fixedSize(horizontal: false, vertical: true)
+                        ScrollView { bottomPanel }
+                            .scrollBounceBehavior(.basedOnSize)
+                    }
+                    .frame(maxHeight: geometry.size.height * 0.58, alignment: .bottom)
+                }
             }
-            if let hint = model.plaqueHint {
-                plaqueHintBanner(hint)
-            }
-            Spacer()
-            if model.availability == .ready {
-                bottomPanel
-            }
+            .padding(.horizontal, 16).padding(.top, 8).padding(.bottom, 12)
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 8)
-        .padding(.bottom, 16)
-        .animation(.easeInOut(duration: 0.25), value: model.statusMessage)
-        .animation(.easeInOut(duration: 0.25), value: model.plaqueHint)
     }
 
     private var topBar: some View {
-        HStack(alignment: .top) {
+        HStack(alignment: .top, spacing: 12) {
             Button(action: onClose) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 17, weight: .semibold))
-                    .frame(width: 44, height: 44)
-                    .background(.regularMaterial, in: Circle())
-            }
-            .accessibilityLabel("Close AR view")
-
-            Spacer()
-
-            if let name = model.destinationName {
-                VStack(alignment: .trailing, spacing: 4) {
-                    EyebrowText("Next stop", color: .secondary)
-                    Text(name)
-                        .font(.system(.headline, design: .serif))
-                        .multilineTextAlignment(.trailing)
-                        .lineLimit(2)
-                    HStack(spacing: 12) {
-                        Label(model.distanceText, systemImage: "figure.walk")
-                        Label(model.timeText, systemImage: "clock")
-                    }
+                Label("Map", systemImage: "chevron.left")
                     .font(.subheadline.weight(.semibold))
-                    .monospacedDigit()
-                    .contentTransition(.numericText())
-                    Text(model.placementMode == .plaqueAnchored ? "Plaque recognized" : "Walking guidance")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
+                    .padding(.horizontal, 14).frame(minHeight: 48)
+                    .background(AppTheme.ivory, in: Capsule())
+            }
+            .buttonStyle(.plain).foregroundStyle(AppTheme.forest)
+            .accessibilityLabel("Return to walking map")
+            Spacer(minLength: 0)
+            if let name = model.destinationName {
+                VStack(alignment: .trailing, spacing: 5) {
+                    Text(model.tour.isCurrentStopVisited ? "Discovered" : "Next stop")
+                        .font(.caption.weight(.medium))
+                    Text(name).font(.system(.headline, design: .serif))
+                        .multilineTextAlignment(.trailing).fixedSize(horizontal: false, vertical: true)
+                    if !model.tour.isCurrentStopVisited {
+                        HStack(spacing: 10) {
+                            Label(model.distanceText, systemImage: "figure.walk")
+                            Label(model.timeText, systemImage: "clock")
+                        }
+                        .font(.subheadline.weight(.medium)).monospacedDigit()
+                        .contentTransition(.numericText())
+                    }
                 }
-                .padding(12)
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .frame(maxWidth: 260, alignment: .trailing)
+                .foregroundStyle(AppTheme.forest).padding(14)
+                .background(AppTheme.ivory, in: RoundedRectangle(cornerRadius: 18))
             }
         }
     }
 
-    private func statusBanner(_ message: String) -> some View {
+    private func notice(_ message: String, symbol: String) -> some View {
         HStack(spacing: 10) {
-            Image(systemName: "viewfinder")
-                .foregroundStyle(AppTheme.brass)
-            Text(message)
-                .font(.footnote.weight(.medium))
+            Image(systemName: symbol).foregroundStyle(AppTheme.ivory)
+            Text(message).font(.footnote.weight(.medium))
                 .fixedSize(horizontal: false, vertical: true)
             if case .failed = model.localizationState {
-                Button("Retry") { model.retrySession() }
-                    .font(.footnote.weight(.semibold))
+                Button("Retry") { model.retrySession() }.font(.footnote.weight(.semibold))
             }
         }
-        .padding(12)
+        .foregroundStyle(AppTheme.ivory).padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .transition(.move(edge: .top).combined(with: .opacity))
-    }
-
-    private func plaqueHintBanner(_ message: String) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: "door.left.hand.closed")
-                .font(.footnote)
-                .foregroundStyle(AppTheme.brass)
-            Text(message)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .transition(.opacity)
+        .background(AppTheme.forest.opacity(0.94), in: RoundedRectangle(cornerRadius: 14))
     }
 
     @ViewBuilder
     private var bottomPanel: some View {
         if model.tour.phase == .complete {
-            tourCompletePanel
-        } else if model.tour.isSignPresented, model.placementMode == .plaqueAnchored || model.placementMode == .geoFallback {
-            signControls
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Walk complete").font(.system(.title2, design: .serif).weight(.semibold))
+                Text("You've discovered every stop on this walk.").font(.subheadline)
+                primaryButton("See your summary", symbol: "checkmark.circle", action: onClose)
+            }
+            .foregroundStyle(AppTheme.forest).padding(18)
+            .background(AppTheme.ivory, in: RoundedRectangle(cornerRadius: 20))
+        } else if model.tour.isCurrentStopVisited {
+            storyControls
         } else {
-            HStack(alignment: .bottom) {
-                ARNavigationArrowView(
-                    relativeBearing: model.relativeBearingToWaypoint,
-                    distanceText: model.distanceText,
-                    isProminent: model.shouldShowFallbackIndicator
-                )
-                Spacer()
-                if model.canShowSignManually {
-                    Button {
-                        model.showSign()
-                    } label: {
-                        Label("Show sign", systemImage: "signpost.right")
-                            .font(.subheadline.weight(.semibold))
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 10)
-                            .background(.regularMaterial, in: Capsule())
-                    }
-                } else if let instruction = model.tour.currentInstruction, !model.tour.isRouteAnEstimate {
-                    Text(instruction)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.trailing)
-                        .padding(10)
-                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        .frame(maxWidth: 200, alignment: .trailing)
+            VStack(spacing: 10) {
+                ARNavigationArrowView(relativeBearing: model.relativeBearingToWaypoint, detail: model.guidanceDetail)
+                if let message = model.activationMessage { notice(message, symbol: "location.circle") }
+                if model.isMarkerAvailable {
+                    primaryButton("Activate stop marker", symbol: "viewfinder.circle", action: model.activateMarker)
+                        .accessibilityHint("Opens the historical sign, starts narration and records an on-site visit when your position is accurate enough.")
+                } else if model.canShowSignManually {
+                    primaryButton("Show stop marker", symbol: "viewfinder", action: model.showSign)
                 }
             }
         }
     }
 
-    /// The last sign was put away while in AR: hand off to the summary screen (spec §12).
-    private var tourCompletePanel: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            EyebrowText("Tour complete", color: AppTheme.brass)
-            Text("You've visited every stop on the walk.")
-                .font(.system(.headline, design: .serif))
-            Button(action: onClose) {
-                Label("See your summary", systemImage: "list.bullet.rectangle")
-                    .font(.subheadline.weight(.semibold))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(AppTheme.heritageGreen, in: Capsule())
-                    .foregroundStyle(.white)
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .transition(.move(edge: .bottom).combined(with: .opacity))
-    }
-
-    /// Shown while the historical sign is up: read the full text, or close it (spec §9 manual close).
-    private var signControls: some View {
-        VStack(spacing: 10) {
-            if let stop = model.tour.presentedSignStop ?? model.tour.currentStop {
-                NarrationControls(stop: stop)
-            }
+    private var storyControls: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label(model.visitConfirmation, systemImage: "checkmark.circle.fill")
+                .font(.subheadline.weight(.semibold)).foregroundStyle(AppTheme.forest)
+            if let stop = model.tour.currentStop { NarrationControls(stop: stop) }
             HStack(spacing: 12) {
-                Button {
-                    model.isShowingSignDetails = true
-                } label: {
-                    Label("Stop details", systemImage: "doc.text")
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(.regularMaterial, in: Capsule())
+                Button { model.isShowingSignDetails = true } label: {
+                    Label("Stop details", systemImage: "doc.text").frame(maxWidth: .infinity, minHeight: 44)
                 }
                 Button {
-                    model.closeSign()
+                    model.tour.isSignPresented ? model.closeSign() : model.showSign()
                 } label: {
-                    Label(model.closeSignTitle, systemImage: model.tour.isCurrentStopVisited ? "arrow.right" : "xmark")
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(.regularMaterial, in: Capsule())
+                    Text(model.tour.isSignPresented ? "Hide AR card" : "Show AR card")
+                        .frame(maxWidth: .infinity, minHeight: 44)
                 }
             }
-            .font(.subheadline.weight(.semibold))
+            .buttonStyle(.plain).font(.subheadline.weight(.medium)).foregroundStyle(AppTheme.forest)
+            if let next = model.tour.nextStop {
+                Text("Next: \(next.name)").font(.subheadline).foregroundStyle(AppTheme.forest.opacity(0.8))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            primaryButton(model.tour.nextStop == nil ? "Finish walk" : "Continue to next stop",
+                          symbol: "arrow.right", action: model.continueToNextStop)
         }
-        .transition(.move(edge: .bottom).combined(with: .opacity))
+        .padding(16).background(AppTheme.ivory, in: RoundedRectangle(cornerRadius: 20))
+        .environment(\.colorScheme, .light)
+    }
+
+    private func primaryButton(_ title: String, symbol: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: symbol).font(.headline)
+                .frame(maxWidth: .infinity, minHeight: 54).padding(.horizontal, 12)
+        }
+        .buttonStyle(.plain).foregroundStyle(AppTheme.ivory)
+        .background(AppTheme.forest, in: RoundedRectangle(cornerRadius: 14))
     }
 }
 

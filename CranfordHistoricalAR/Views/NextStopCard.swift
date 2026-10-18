@@ -15,7 +15,7 @@ struct NextStopCard: View {
                         StopPhoto(stop: current, height: 88, cornerRadius: 12, width: 88)
                     }
                     VStack(alignment: .leading, spacing: 7) {
-                        Text(tour.isSignPresented ? "You've arrived" : "Next stop")
+                        Text(tour.isCurrentStopVisited ? "Discovered" : (tour.isSignPresented ? "Ready to discover" : "Next stop"))
                             .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
                         Text(current.name)
                             .font(.system(.title2, design: .serif).weight(.semibold))
@@ -46,20 +46,26 @@ struct NextStopCard: View {
                     .buttonStyle(.plain).foregroundStyle(AppTheme.ivory)
                     .background(AppTheme.forest, in: RoundedRectangle(cornerRadius: 14))
                 }
-                if let onDetails {
-                    Button(action: onDetails) {
-                        HStack {
+                HStack(spacing: 16) {
+                    if let onDetails {
+                        Button(action: onDetails) {
                             Label("Stop details", systemImage: "doc.text")
-                            Spacer()
-                            Image(systemName: "chevron.right")
+                                .frame(maxWidth: .infinity, minHeight: 44)
                         }
-                        .font(.body.weight(.medium)).frame(minHeight: 44)
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
+                    if let directionsURL = googleWalkingURL(to: current.coordinate) {
+                        Link(destination: directionsURL) {
+                            Label("Directions", systemImage: "arrow.triangle.turn.up.right.diamond")
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                        }
+                        .accessibilityLabel("Open walking directions to \(current.name) in Google Maps")
+                    }
                 }
-                if tour.isSignPresented {
+                .font(.subheadline.weight(.medium))
+                if tour.isCurrentStopVisited {
                     Button {
-                        tour.closeSign()
+                        tour.completeCurrentStopAndAdvance()
                     } label: {
                         Label(tour.nextStop == nil ? "Finish tour" : "Continue to next stop", systemImage: "arrow.right")
                             .font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 44)
@@ -72,6 +78,15 @@ struct NextStopCard: View {
             .padding(.horizontal, 20).padding(.top, 16).padding(.bottom, 8)
             .background(AppTheme.parchment)
         }
+    }
+
+    private func googleWalkingURL(to coordinate: GeoCoordinate) -> URL? {
+        guard coordinate.isValid else { return nil }
+        var url = URLComponents(string: "https://www.google.com/maps/dir/")
+        url?.queryItems = [URLQueryItem(name: "api", value: "1"),
+                           URLQueryItem(name: "destination", value: "\(coordinate.latitude),\(coordinate.longitude)"),
+                           URLQueryItem(name: "travelmode", value: "walking")]
+        return url?.url
     }
 
     @ViewBuilder

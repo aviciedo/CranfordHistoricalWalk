@@ -91,6 +91,11 @@ final class CoreLocationGeoSpatialProvider: GeoSpatialProvider {
     func attach(session: ARSession) {
         self.session = session
         reference = nil
+        cameraTransform = nil
+        trackingState = .notAvailable
+        yawToNorth = nil
+        pose = nil
+        pendingLocation = nil
         recomputeQuality()
     }
 
@@ -98,6 +103,9 @@ final class CoreLocationGeoSpatialProvider: GeoSpatialProvider {
         session = nil
         cameraTransform = nil
         reference = nil
+        pose = nil
+        pendingLocation = nil
+        yawToNorth = nil
         quality = .unavailable
     }
 
@@ -106,7 +114,7 @@ final class CoreLocationGeoSpatialProvider: GeoSpatialProvider {
     func update(cameraTransform: simd_float4x4, trackingState: ARCamera.TrackingState, timestamp: TimeInterval) {
         self.cameraTransform = cameraTransform
         self.trackingState = trackingState
-        if let location = pendingLocation {
+        if case .normal = trackingState, let location = pendingLocation {
             pendingLocation = nil
             bind(location: location, cameraPosition: cameraTransform.translation)
         }
@@ -124,10 +132,14 @@ final class CoreLocationGeoSpatialProvider: GeoSpatialProvider {
     func update(location: LocationSample?, heading: HeadingSample?) {
         latestHeading = heading
         guard let location, location.horizontalAccuracy >= 0 else { return }
-        if let cameraTransform, case .normal = trackingState {
-            bind(location: location, cameraPosition: cameraTransform.translation)
-        } else {
-            pendingLocation = location
+        // Heading and tour-state updates can replay the same GPS sample. Rebinding
+        // that old coordinate to a new camera position makes world content drift.
+        if pose?.timestamp != location.timestamp || pose?.coordinate != location.coordinate {
+            if let cameraTransform, case .normal = trackingState {
+                bind(location: location, cameraPosition: cameraTransform.translation)
+            } else {
+                pendingLocation = location
+            }
         }
         pose = GeoPose(
             coordinate: location.coordinate,
@@ -178,6 +190,11 @@ final class CoreLocationGeoSpatialProvider: GeoSpatialProvider {
 
     private func recomputeQuality() {
         guard session != nil, let pose else { quality = .unavailable; return }
+        guard StopActivationPolicy.isFresh(pose.timestamp), pose.coordinate.isValid,
+              pose.horizontalAccuracy.isFinite, latestHeading?.isReliable == true else {
+            quality = .unavailable
+            return
+        }
         guard case .normal = trackingState, reference != nil else { quality = .unavailable; return }
         if preferredWorldAlignment == .gravity && yawToNorth == nil { quality = .unavailable; return }
         quality = GeoSpatialSelector.quality(horizontalAccuracy: pose.horizontalAccuracy, yawAccuracy: pose.headingAccuracy ?? -1)

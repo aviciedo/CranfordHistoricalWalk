@@ -14,7 +14,7 @@ extension TourViewModel {
 
     var proximityState: StopProximityState? { proximityMachine?.state }
 
-    /// True once the user has been inside the arrival radius of the current stop (sign shown at least once).
+    /// True once arrival has made the marker available; activation is tracked separately.
     var hasArrivedAtCurrentStop: Bool { proximityMachine?.hasPresentedSign ?? false }
 
     var isWithinArrivalRadius: Bool { proximityMachine?.isWithinArrivalRadius ?? false }
@@ -36,6 +36,7 @@ extension TourViewModel {
     /// Builds a fresh state machine for the current stop. Called whenever the destination changes.
     func resetProximityForCurrentStop() {
         plaqueConfirmedStopID = nil
+        activeVisitEvidence = nil
         presentedSignStopID = nil
         signPresentationSource = nil
         guard let stop = currentStop else { proximityMachine = nil; return }
@@ -48,10 +49,11 @@ extension TourViewModel {
     func handleLocationForProximity(_ sample: LocationSample) {
         guard progress.phase == .inProgress, let stop = currentStop, var machine = proximityMachine else { return }
         // Do not immediately dismiss a visually confirmed stop because its bundled geocode is wrong.
-        // Closing/continuing the sign still advances normally and clears this confirmation.
-        guard !hasPlaqueConfirmedArrival else { return }
+        // Continuing clears this confirmation; simply closing the card never advances.
+        guard !hasPlaqueConfirmedArrival, !isCurrentStopVisited else { return }
         // Ignore wildly inaccurate fixes so a 200 m GPS jump cannot open/close the sign.
-        guard sample.horizontalAccuracy >= 0, sample.horizontalAccuracy <= 100 else { return }
+        guard sample.coordinate.isValid, StopActivationPolicy.isFresh(sample.timestamp),
+              sample.horizontalAccuracy >= 0, sample.horizontalAccuracy <= 100 else { return }
         let distance = GeoMath.distance(from: sample.coordinate, to: stop.coordinate)
         let effects = machine.handle(.distanceUpdated(meters: distance))
         proximityMachine = machine
@@ -74,47 +76,66 @@ extension TourViewModel {
         apply(effects, for: stop, source: .manual)
     }
 
-    // MARK: Completion (spec §11)
+    // MARK: Marker activation / visits
 
-    /// True once the current stop counts as visited (its sign has been displayed).
+    /// A marker becoming visible is arrival, not a visit. Only an explicit on-site
+    /// activation from the running AR session can mark the current stop visited.
+    @discardableResult
+    func activateCurrentStop(stopID: String, trackingReady: Bool, plaqueIsTracked: Bool, now: Date = Date()) -> StopActivationDecision {
+        guard progress.phase == .inProgress, let stop = currentStop, stop.id == stopID else { return .deny(.wrongStop) }
+        if isCurrentStopVisited { return .alreadyActivated }
+        guard isSignPresented else { return .deny(.markerNotReady) }
+        let sample = userLocation
+        let matchingPlaque = plaqueIsTracked && stop.hasPlaqueReference && hasPlaqueConfirmedArrival
+        let distance = sample.map { GeoMath.distance(from: $0.coordinate, to: stop.coordinate) }
+        let decision = StopActivationPolicy.decide(
+            trackingReady: trackingReady,
+            plaqueIsTracked: matchingPlaque,
+            isSimulated: sample?.isSimulated == true || locationService is SimulatedLocationService,
+            distanceMeters: distance,
+            horizontalAccuracy: sample?.horizontalAccuracy,
+            locationTimestamp: sample?.timestamp,
+            arrivalRadius: stop.arrivalRadius,
+            now: now
+        )
+        guard case .allow(let evidence) = decision else { return decision }
+        progress.markCurrentStopVisited()
+        activeVisitEvidence = evidence
+        visitStore.record(StopVisitRecord(stopID: stop.id, activatedAt: now, evidence: evidence))
+        visitRecords = visitStore.records()
+        return decision
+    }
+
+    func lastRecordedVisit(for stop: HistoricalStop) -> StopVisitRecord? {
+        visitRecords.filter { $0.stopID == stop.id }.max { $0.activatedAt < $1.activatedAt }
+    }
+
     var isCurrentStopVisited: Bool { progress.isCurrentStopVisited }
 
-    /// Explicit "Mark as visited" / "Continue": completes the current stop and moves the tour on.
-    /// Route, panel, AR arrows and destination all follow from `destinationDidChange()`.
+    /// Continue is explicit: closing a card or receiving another GPS fix never skips a stop.
     func completeCurrentStopAndAdvance() {
-        guard progress.phase == .inProgress, currentStop != nil else { return }
+        guard progress.phase == .inProgress, currentStop != nil, isCurrentStopVisited else { return }
         proximityMachine?.handle(.markCompleted)
         presentedSignStopID = nil
         signPresentationSource = nil
         progress.completeCurrentStop()
-        // When this was the last stop, `currentStop` is nil: routing stops, the proximity machine
-        // is dropped and the "TOUR COMPLETE" screen takes over. Summary legs are kept for its totals.
         destinationDidChange()
     }
 
     private func apply(_ effects: [StopProximityEffect], for stop: HistoricalStop, source: SignPresentationSource) {
-        var shouldAdvance = false
         for effect in effects {
             switch effect {
             case .presentSign:
                 presentedSignStopID = stop.id
                 signPresentationSource = source
-                // Reaching the site and seeing the sign is what "visited" means (spec §11).
-                // The marker changes now; the destination advances once the sign is put away.
-                if stop.id == currentStop?.id { progress.markCurrentStopVisited() }
             case .dismissSign:
                 if presentedSignStopID == stop.id {
                     presentedSignStopID = nil
                     signPresentationSource = nil
                 }
-                // Closing the sign (by hand or by walking off) at a visited stop moves the tour on.
-                shouldAdvance = stop.id == currentStop?.id && progress.isCompleted(stop.id)
             case .stopCompleted:
                 break
             }
-        }
-        if shouldAdvance {
-            completeCurrentStopAndAdvance()
         }
     }
 }

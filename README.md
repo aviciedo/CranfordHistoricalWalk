@@ -1,7 +1,7 @@
 # Ready-to-open Xcode project download
 
 This branch includes the generated `CranfordHistoricalAR.xcodeproj` together with the app source.
-It includes the current Field Guide interface update and the existing build fixes.
+It includes the Field Guide interface, guided AR marker activation and the existing build fixes.
 
 On a Mac with Xcode installed:
 
@@ -12,7 +12,7 @@ On a Mac with Xcode installed:
 
 Keep all extracted folders together. Homebrew and XcodeGen are not required to open this snapshot.
 The source includes a subfolder also named CranfordHistoricalAR; the project file is beside that subfolder.
-Project generation succeeded on Linux; a full iOS build and device installation have not been verified.
+The saved project structure and source syntax were checked on Linux; a full iOS build and device installation have not been verified.
 Use Xcode's **Product > Build** directly; the optional verification script still requires XcodeGen.
 
 The original project documentation follows.
@@ -22,7 +22,7 @@ The original project documentation follows.
 # Cranford Historical AR
 
 A SwiftUI + ARKit/RealityKit + Core Location + Google Maps walking-tour MVP for Cranford, New Jersey.
-Walk toward a historical site, follow AR arrows, and a large AR historical sign appears when you arrive.
+Follow AR walking arrows, activate a stop marker on site, and discover its historical sign and narration.
 
 > The bundled walking tour is **five** HPAB audio-tour stops (Droescher's Mill, Cranford Hall, Rahway River,
 > First Baptist Church, Cranford Hotel). Names, addresses, and recordings come from the HPAB May 2020 brochure.
@@ -57,6 +57,51 @@ Validation in Linux: TourCore build/tests and Swift syntax checks are available.
 project includes the new files. SwiftUI rendering, image-viewer gestures, tab/player placement,
 Google Maps overlays, dark mode and AR still require Xcode and a physical iPhone. See
 [design-qa.md](design-qa.md) for the remaining device checks; no iOS build success is claimed.
+
+## Guided AR walk and recorded visits
+
+**Start walking tour → View in AR → activate stop marker → listen/read → Continue to next stop.**
+The guided order stays fixed while visitors browse or listen to other stops.
+
+The reused RealityKit arrows follow the next walking-route vertex, then point to the visible marker
+on arrival. A camera-relative arrow with plain instructions remains visible when the 3D arrows are
+outside the camera view. Ivory arrows with forest rims match the Field Guide interface. They stop
+at the marker and disappear while its story is active. GPS movement direction is not treated as
+the direction the camera is facing. When tracking/heading is unusable, guidance becomes unavailable
+and the **Map** control remains available.
+
+Arrival reveals a marker; it does **not** record a visit. Tap the AR marker or **Activate stop marker**
+to show the historical information card in AR and start the shared narration player. Repeated taps
+do not restart playback or duplicate the visit. Stop 1 can use its currently tracked physical plaque
+even if the bundled geocode is wrong. Cranford Hall and other stops without a reference photograph
+use an on-site GPS marker, as selected for this MVP.
+
+GPS activation requires a fresh location (under 30 seconds old), reported accuracy of 25 m or better,
+and distance plus that uncertainty inside the stop's arrival radius (35 m by default). AR world
+tracking must also be normal. This is an **on-site estimate**, not visual proof or an anti-fraud
+system. A previously seen plaque is insufficient to override poor GPS after image tracking is lost.
+The AR session must currently track the matching plaque for that override. Unverified stop
+coordinates and the unmeasured plaque width remain field-test limitations.
+
+Only real activations are saved locally on the iPhone, with stop ID, date and activation method.
+The app keeps the latest real activation per stop; no location trail, camera photo, account or
+cloud synchronization is added. Visit dates appear in **Stops** and stop details and remain after
+relaunch. Starting a fresh walk still begins at stop 1. Developer walking and Xcode-simulated GPS
+activations are practice and never overwrite real visit records.
+
+Closing a card, viewing a photo, browsing a stop or walking away never advances the destination.
+After activation, **Continue to next stop** updates the route and AR target from Droescher's Mill
+to Cranford Hall, then onward through the remaining stops. Stay in AR or tap **Map**. The map's
+**Directions** action opens Google Maps walking directions in the installed app or browser;
+embedded Google Maps/Routes still require their existing API-key configuration.
+
+Linux validation for this update: **109 XCTest tests passed**, plus 21 isolated checks executing the
+production proximity extension and visit store in a Foundation-only host. Debug/Release source
+syntax and all 48 app source references in the saved Xcode project were checked. The isolated host
+does not validate iOS location delivery, route services, RealityKit, camera recognition, audio, or
+SwiftUI rendering. Host-app XCTest changes are supplied but require Xcode to run. A full iOS build
+and physical-device AR test have **not** succeeded here. Follow [AR-FIELD-TEST.md](AR-FIELD-TEST.md)
+on the Mac/iPhone for those checks.
 
 ## Requirements
 
@@ -126,7 +171,7 @@ before treating the placement scale as calibrated.
 
 The recognized card is 45 cm wide, positioned 25 cm above the reference-image center and 8 cm off
 the wall, rather than 3.8 m above the plaque. A recognition banner and "At plaque / Arrived" HUD
-confirm visual arrival. Once the matching plaque is recognized, erroneous GPS/geocode distances
+confirm visual arrival. Tap its AR marker to activate the story and record the visit. Once the matching plaque is recognized, erroneous GPS/geocode distances
 cannot immediately dismiss the sign or point arrows away; the visitor uses **Continue** to advance.
 GPS-only arrivals keep the existing 35 m / 50 m hysteresis. Tracking loss can return placement to the
 existing geo fallback without marking a different stop visited.
@@ -312,7 +357,7 @@ Developer Controls).
 | Where | What | How |
 | --- | --- | --- |
 | `Packages/TourCore` | XCTest: models/JSON (including HPAB catalog + narration source), geo math, polyline, Routes API decoding, route progress, refresh policy, proximity hysteresis, tour progress, summary, formatting, walk simulator | `cd Packages/TourCore && swift test` (macOS or Linux) |
-| `CranfordHistoricalARTests` | Host-app flows: arrival → visited → close → advance, hysteresis via the simulated walker, tour completion figures, configuration fallbacks | Xcode **Product ▸ Test** (iOS Simulator is fine) |
+| `CranfordHistoricalARTests` | Host-app flows: arrival → marker activation → visit → explicit Continue, practice isolation, saved visits, hysteresis, configuration fallbacks | Xcode **Product ▸ Test** (iOS Simulator is fine) |
 
 ## Project layout
 
@@ -345,9 +390,9 @@ CranfordHistoricalARTests/  Host-app unit tests (Mac/Xcode)
   `travelMode: WALK`), refreshed on a policy (moved ≥ 25 m, off-route > 30 m, stale > 90 s, destination
   change, ≥ 8 s apart) and interpolated locally between refreshes. If routing fails the last known route is
   kept; with no route at all a clearly labeled straight-line estimate is shown.
-- **Arrival** opens the sign at 35 m and closes it only beyond 50 m (hysteresis), or when the user closes it.
-  A stop counts as **visited** once its sign has been displayed; putting the sign away (close, walk away,
-  "Continue") advances the tour — route, panel, AR arrows and destination update together.
+- **Arrival** reveals the marker at 35 m and hides an unactivated marker beyond 50 m (hysteresis).
+  Only an explicit AR activation with the location/tracking checks above counts as a visit.
+  **Continue** then advances the tour; hiding the story card or walking away does not skip stops.
 - **AR placement** uses ARCore Geospatial when it is requested and actually localizing; otherwise ARKit
   `gravityAndHeading` plus GPS/compass. Distances to the sign are clamped (2.4–9 m). The HUD says
   "AR positioning is temporarily unavailable…" when tracking is poor, and names GPS/compass when Geospatial

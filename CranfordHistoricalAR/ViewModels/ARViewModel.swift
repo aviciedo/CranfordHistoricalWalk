@@ -27,6 +27,8 @@ final class ARViewModel {
     let geoAnchors: GeoAnchorManager
     let tour: TourViewModel
     let imageLoader: any ImageLoader
+    let narrationPlayer: NarrationPlayer
+    private(set) var activationMessage: String?
 
     @ObservationIgnored private weak var arView: ARView?
     @ObservationIgnored private var observationTask: Task<Void, Never>?
@@ -34,6 +36,7 @@ final class ARViewModel {
     @ObservationIgnored private var imageRequestedForStopID: String?
     @ObservationIgnored private var isSessionRunning = false
     @ObservationIgnored private var plaqueSearchStartedAt: Date?
+    @ObservationIgnored private var observedStopID: String?
     /// True when world tracking accepted a non-empty `PlaqueAnchors` group. Simulator / missing
     /// assets stay false and the geo sign is used.
     private(set) var imageTrackingAvailable = false
@@ -41,10 +44,11 @@ final class ARViewModel {
     /// Restrained HUD line while looking for the mill plate.
     private(set) var plaqueHint: String?
 
-    init(tour: TourViewModel, provider: any GeoSpatialProvider, imageLoader: any ImageLoader) {
+    init(tour: TourViewModel, provider: any GeoSpatialProvider, imageLoader: any ImageLoader, narrationPlayer: NarrationPlayer) {
         self.tour = tour
         self.geoAnchors = GeoAnchorManager(provider: provider)
         self.imageLoader = imageLoader
+        self.narrationPlayer = narrationPlayer
         // Compute into locals first: @Observable turns stored properties into accessors on self,
         // which may not be read before all stored properties are initialized.
         let permission = ARViewModel.permission(from: AVCaptureDevice.authorizationStatus(for: .video))
@@ -55,21 +59,36 @@ final class ARViewModel {
     // MARK: Derived HUD values
 
     var localizationState: ARLocalizationState { geoAnchors.localizationState }
-    var statusMessage: String? { geoAnchors.userFacingNotice }
-    var geoBackendName: String { placementMode == .plaqueAnchored ? "Plaque image tracking" : geoAnchors.provider.displayName }
+    var statusMessage: String? {
+        if placementMode == .plaqueAnchored, geoAnchors.isTrackingReady { return nil }
+        if localizationState.isUsable, geoAnchors.provider.backend == .coreLocation {
+            return "GPS guidance is approximate. Use the map if needed."
+        }
+        return geoAnchors.userFacingNotice
+    }
     var destinationName: String? { tour.currentStop?.name }
     var distanceText: String { tour.hasPlaqueConfirmedArrival ? "At plaque" : tour.remainingDistanceText }
     var timeText: String { tour.hasPlaqueConfirmedArrival ? "Arrived" : tour.remainingTimeText }
 
-    /// Relative bearing (−180…180) from the device heading to the next waypoint, for the 2D indicator.
+    /// Uses the actual camera facing, including when the phone is turned away from the walk.
+    /// GPS course describes movement, so it must not be used as the camera's heading.
     var relativeBearingToWaypoint: Double? {
-        guard let heading = tour.displayHeading, let bearing = tour.bearingToNextWaypoint else { return nil }
-        return GeoMath.relativeBearing(heading: heading, bearing: bearing)
+        geoAnchors.navigationBearing
     }
 
-    /// True when the 3D arrows cannot be trusted and the 2D indicator should lead (spec §7 fallback).
-    var shouldShowFallbackIndicator: Bool {
-        !geoAnchors.localizationState.isUsable || !tour.hasReliableHeading
+    var isMarkerAvailable: Bool {
+        tour.isSignPresented && (placementMode == .plaqueAnchored || placementMode == .geoFallback)
+    }
+
+    var guidanceDetail: String {
+        if isMarkerAvailable { return "Look for the stop marker · Tap to discover" }
+        if tour.currentRoute == nil { return "Finding your walking route" }
+        if tour.isRouteAnEstimate { return "Approximate direction · Use the map for streets" }
+        return tour.currentInstruction ?? "Follow the walking route"
+    }
+
+    var visitConfirmation: String {
+        tour.activeVisitEvidence == .simulation ? "Practice visit · Not saved" : "Visit recorded on this iPhone"
     }
 
     // MARK: Permissions
@@ -173,6 +192,13 @@ final class ARViewModel {
 
     private func pushTourStateToAnchors() {
         // Reads tracked properties: userLocation, heading, currentStop, routeProgress, presentedSignStopID.
+        if observedStopID != tour.currentStop?.id {
+            observedStopID = tour.currentStop?.id
+            activationMessage = nil
+            isShowingSignDetails = false
+            plaqueSearchStartedAt = nil
+        }
+        geoAnchors.hasActivatedStop = tour.isCurrentStopVisited
         geoAnchors.locationDidUpdate(tour.userLocation, heading: tour.heading)
         applySignPlacement()
         if tour.presentedSignStop == nil {
@@ -187,11 +213,8 @@ final class ARViewModel {
         imageLoader.prefetch([stop])
         let waypoint = tour.nextWaypointCoordinate ?? stop.coordinate
         geoAnchors.setNavigationTarget(GeoAnchorManager.NavigationTarget(
-            waypoint: waypoint,
             destination: stop.coordinate,
-            bearingToWaypoint: GeoMath.bearing(from: user.coordinate, to: waypoint),
-            distanceToDestination: GeoMath.distance(from: user.coordinate, to: stop.coordinate),
-            arrivalRadius: stop.arrivalRadius
+            bearingToWaypoint: GeoMath.bearing(from: user.coordinate, to: waypoint)
         ))
     }
 
@@ -212,12 +235,10 @@ final class ARViewModel {
     // MARK: Plaque image tracking (placement only)
 
     private func applySignPlacement() {
-        if tour.currentStop?.hasPlaqueReference == true {
-            // Keep the hunt clock at zero while still approaching so a return after the
-            // 50 m hysteresis gets a fresh 8 s, not an immediate geo fallback.
-            if tour.proximityState == .approaching || plaqueSearchStartedAt == nil {
-                plaqueSearchStartedAt = Date()
-            }
+        if tour.currentStop?.hasPlaqueReference == true, tour.isSignPresented {
+            // Start the search when arrival requests a marker, including after a long
+            // stationary approach. A hidden/closed marker gets a fresh search next time.
+            if plaqueSearchStartedAt == nil { plaqueSearchStartedAt = Date() }
         } else {
             plaqueSearchStartedAt = nil
         }
@@ -240,19 +261,25 @@ final class ARViewModel {
             stopHasPlaqueReference: input.stopHasPlaqueReference,
             proximity: input.proximity
         )
+        if mode == .plaqueAnchored, !tour.isCurrentStopVisited {
+            plaqueHint = "Plaque found — tap the marker above it"
+        }
 
         guard let signStop = tour.presentedSignStop else {
             geoAnchors.dismissSign()
             return
         }
-        let image = imageLoader.cachedImage(for: signStop)
+        let image = tour.isCurrentStopVisited ? imageLoader.cachedImage(for: signStop) : nil
         switch mode {
         case .hidden, .searchingForPlaque:
             geoAnchors.dismissSign()
         case .plaqueAnchored:
-            geoAnchors.presentSign(for: signStop, image: image, displayScale: displayScale, appearance: .plaqueCard)
+            geoAnchors.presentSign(for: signStop, image: image, displayScale: displayScale,
+                                   appearance: tour.isCurrentStopVisited ? .plaqueCard : .visitMarker,
+                                   anchorToPlaque: true)
         case .geoFallback:
-            geoAnchors.presentSign(for: signStop, image: image, displayScale: displayScale, appearance: .geoPost)
+            geoAnchors.presentSign(for: signStop, image: image, displayScale: displayScale,
+                                   appearance: tour.isCurrentStopVisited ? .geoPost : .visitMarker)
         }
     }
 
@@ -364,27 +391,62 @@ final class ARViewModel {
             return
         }
         guard geoAnchors.isSignEntity(entity), tour.isSignPresented else { return }
-        isShowingSignDetails = true
+        if tour.isCurrentStopVisited {
+            isShowingSignDetails = true
+        } else {
+            activateMarker()
+        }
     }
 
-    /// Puts the sign away. At a visited stop this also advances the tour (spec §11).
+    /// The on-screen accessibility button and a tap on the 3D marker use the same checks.
+    func activateMarker() {
+        guard let stop = tour.currentStop else { return }
+        guard isMarkerAvailable, geoAnchors.anchors.sign.isPresented else {
+            activationMessage = StopActivationIssue.markerNotReady.message
+            return
+        }
+        let plaqueIsTracked = geoAnchors.plaqueAnchors.trackedAnchor?.isTracked == true
+            && geoAnchors.plaqueAnchors.trackedImageName == stop.plaque?.referenceImageName
+        let decision = tour.activateCurrentStop(
+            stopID: stop.id,
+            trackingReady: isSessionRunning && geoAnchors.isTrackingReady,
+            plaqueIsTracked: plaqueIsTracked
+        )
+        switch decision {
+        case .allow:
+            activationMessage = nil
+            geoAnchors.hasActivatedStop = true
+            applySignPlacement()
+            if narrationPlayer.prepare(stop) { narrationPlayer.play() }
+        case .deny(let issue):
+            activationMessage = issue.message
+        case .alreadyActivated:
+            break // Repeated taps must not restart narration or create duplicate visits.
+        }
+    }
+
+    /// Closing only hides the card. Continuing to another destination is a separate action.
     func closeSign() {
         isShowingSignDetails = false
         tour.closeSign()
     }
 
-    /// Label for the close control: closing a visited stop's sign moves the tour on.
-    var closeSignTitle: String {
-        guard tour.isCurrentStopVisited else { return "Close sign" }
-        return tour.nextStop == nil ? "Finish tour" : "Continue"
+    func continueToNextStop() {
+        guard tour.isCurrentStopVisited else { return }
+        isShowingSignDetails = false
+        activationMessage = nil
+        tour.completeCurrentStopAndAdvance()
+        pushTourStateToAnchors()
     }
 
     func showSign() {
+        activationMessage = nil
         tour.openSignManually()
     }
 
     var canShowSignManually: Bool {
         guard let state = tour.proximityState else { return false }
-        return state == .signDismissed || state == .nearby || (state == .approaching && tour.isWithinArrivalRadius)
+        return tour.isCurrentStopVisited || state == .signDismissed || state == .nearby
+            || (state == .approaching && tour.isWithinArrivalRadius)
     }
 }

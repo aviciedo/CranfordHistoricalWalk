@@ -23,7 +23,7 @@ struct LocationSample: Sendable, Equatable {
         speed = location.speed >= 0 ? location.speed : nil
         altitude = location.verticalAccuracy >= 0 ? location.altitude : nil
         timestamp = location.timestamp
-        isSimulated = false
+        isSimulated = location.sourceInformation?.isSimulatedBySoftware == true
     }
 
     init(coordinate: GeoCoordinate, horizontalAccuracy: Double = 5, course: Double? = nil, speed: Double? = nil, altitude: Double? = nil, timestamp: Date = Date(), isSimulated: Bool = false) {
@@ -66,7 +66,7 @@ struct HeadingSample: Sendable, Equatable {
 
     /// Best available heading: true north when valid, else magnetic.
     var bestHeading: Double { trueHeading ?? magneticHeading }
-    var isReliable: Bool { accuracy >= 0 && accuracy <= 25 }
+    var isReliable: Bool { accuracy.isFinite && accuracy >= 0 && accuracy <= 25 && bestHeading.isFinite }
 }
 
 enum LocationAuthorization: Sendable, Equatable {

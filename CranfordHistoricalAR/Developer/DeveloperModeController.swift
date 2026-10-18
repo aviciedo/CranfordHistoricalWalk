@@ -110,6 +110,8 @@ final class DeveloperModeController {
 
     func skipToNextStop() {
         if tour.phase == .notStarted { tour.startTour() }
+        tour.progress.markCurrentStopVisited()
+        tour.activeVisitEvidence = .simulation
         tour.completeCurrentStopAndAdvance()
     }
 
