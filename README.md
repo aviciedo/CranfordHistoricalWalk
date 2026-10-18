@@ -45,7 +45,8 @@ Follow AR walking arrows, activate a stop marker on site, and discover its histo
 > The bundled walking tour is **five** HPAB audio-tour stops (Droescher's Mill, Greystone, Rahway River,
 > First Baptist Church, Cranford Hotel). The tour began with the HPAB May 2020 brochure; stop 1 now uses
 > the tour creator’s supplied descriptions and narration script. Stops 2–5 keep their HPAB recordings.
-> Coordinates are **unverified geocodes**, not surveyed site positions. Read or listen to any stop from
+> Stops 1 and 2 use creator-supplied on-site coordinates; stops 3–5 retain unverified geocodes.
+> None of these positions is surveyed. Read or listen to any stop from
 > anywhere; AR visit recording has separate on-site checks.
 
 ## Field Guide interface
@@ -257,8 +258,8 @@ still required; Linux tests cannot validate ARKit recognition quality.
 (Droescher's Mill, Greystone, Rahway River, First Baptist Church, Cranford Hotel). `audioURL`
 values for stops 3–5 remain the QR destinations. Stops 1 and 2 use the creator-supplied on-device narration.
 First Baptist uses the QR file
-`First Baptist.mp3` (not `First Baptist Church.mp3`). Greystone no longer plays the earlier `Greystone.mp3` recording. Coordinates
-are **unverified Nominatim geocodes** (`coordinatesUnverified: true`). A three-stop SAMPLE fixture
+`First Baptist.mp3` (not `First Baptist Church.mp3`). Greystone no longer plays the earlier `Greystone.mp3` recording. Stops 1 and 2 use the creator-supplied on-site coordinates documented below; stops 3–5 remain
+**unverified Nominatim geocodes**. All retain `coordinatesUnverified: true` because they are not surveyed positions. A three-stop SAMPLE fixture
 remains in TourCore tests only (`sample_historical_stops.json`).
 
 The retained HPAB audio links use `http://` (the host's HTTPS certificate is self-signed). `Info.plist` allows
@@ -504,3 +505,35 @@ Cranford Historical Society, *The Birth and Growth of Cranford*, Part IV, PDF pa
 The identifications and source were supplied by the creator, not independently verified here.
 Original JPEG files were copied without image edits. No additional API key is needed for photos.
 Gallery photos do not enable ARKit recognition; Greystone retains its nearby-GPS AR activation.
+
+## Stop 1 and 2 on-site coordinate correction
+
+After on-site testing, the tour creator supplied these replacement coordinates on October 18, 2026:
+
+| Stop | Latitude | Longitude |
+| --- | --- | --- |
+| Droescher’s Mill (`hpab-001`) | 40.6503 | -74.3012 |
+| Greystone (`hpab-002`) | 40.6524 | -74.2990 |
+
+The previous mill geocode was about 902 m from the supplied mill position; Greystone’s was
+about 66 m from its supplied position. These replacements are in the bundled catalog, its
+portable test fixture and the preview catalog. Stable stop IDs, visit history, arrival radii,
+content, gallery photos and plaque recognition resources are unchanged.
+
+Map markers, the mill illustration, proximity detection, walking route requests, external
+Google walking directions and AR geographic targets already read the shared stop coordinate.
+The blue dot continues to use the phone’s accepted location fix; it is never snapped to a
+stop to conceal a discrepancy. No global GPS offset or larger arrival radius was introduced.
+The app loads the catalog from its bundle on launch; the routing cache is in-memory, so
+installing and launching this new build does not reuse a route to the previous bundled point.
+
+The two supplied points are about **298 m (979 ft) apart in a straight line**. The actual
+street route can be longer; neither distance nor a two-to-three-minute ETA is hard-coded.
+The supplied positions are approximate, not independently surveyed, so the coordinate warning
+remains. Correct data does not remove ordinary GPS/compass uncertainty or prove AR placement.
+
+Regression checks reproduce arrival rejection with the old catalog, then check the supplied
+points, marker availability, on-site activation, cross-stop separation and local route progress
+after correction. The native host-app regression additionally checks map marker/user position
+agreement and the first-to-second-stop handoff; it must be run in Xcode. A live Google walking
+route, physical GPS accuracy and real AR alignment still require an on-site iPhone test.

@@ -91,6 +91,37 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertEqual(tour.currentStop?.id, stops[2].id)
     }
 
+    func testSuppliedFieldPositionsAgreeWithMapMarkersAndFirstToSecondStopRouting() async throws {
+        let fieldPositions = [
+            GeoCoordinate(latitude: 40.6503, longitude: -74.3012),
+            GeoCoordinate(latitude: 40.6524, longitude: -74.2990)
+        ]
+        let map = MapViewModel()
+        for (index, fieldPosition) in fieldPositions.enumerated() {
+            XCTAssertEqual(tour.currentStop?.id, stops[index].id)
+            simulator.teleport(to: fieldPosition)
+            try await waitUntil("field location reveals stop \(index + 1)") {
+                self.tour.userLocation?.coordinate == fieldPosition
+                    && self.tour.presentedSignStopID == self.stops[index].id
+            }
+            let marker = try XCTUnwrap(map.markers(for: tour).first { $0.id == stops[index].id })
+            let puck = try XCTUnwrap(map.userPuck(for: tour))
+            XCTAssertEqual(puck.coordinate.latitude, fieldPosition.latitude)
+            XCTAssertEqual(puck.coordinate.longitude, fieldPosition.longitude)
+            XCTAssertEqual(marker.coordinate.latitude, puck.coordinate.latitude)
+            XCTAssertEqual(marker.coordinate.longitude, puck.coordinate.longitude)
+            XCTAssertEqual(try XCTUnwrap(tour.straightLineDistanceToCurrentStop), 0, accuracy: 0.1)
+            XCTAssertFalse(tour.isCurrentStopVisited, "A GPS arrival alone cannot record a visit")
+            XCTAssertEqual(activateCurrent(), .allow(.simulation))
+            if index == 0 {
+                tour.completeCurrentStopAndAdvance()
+                try await waitUntil("walking route targets the supplied Greystone coordinate") {
+                    self.tour.currentRoute?.destination == fieldPositions[1]
+                }
+            }
+        }
+    }
+
     func testRecognizedPlaqueRevealsMarkerButRequiresATap() {
         let mill = stops[0]
         tour.confirmPlaqueArrival(for: mill.id)

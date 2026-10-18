@@ -47,7 +47,7 @@ extension HistoricalStop {
     /// Same five stops as the bundled walking tour (previews and host-app tests).
     static let previewStops: [HistoricalStop] = [
         HistoricalStop(
-            id: "hpab-001", name: "Droescher’s Mill", latitude: 40.6551018, longitude: -74.2925808,
+            id: "hpab-001", name: "Droescher’s Mill", latitude: 40.6503, longitude: -74.3012,
             address: "347 Lincoln Avenue East, Cranford, NJ",
             shortDescription: """
                 The mill site dates to at least 1779.
@@ -98,7 +98,7 @@ extension HistoricalStop {
             )
         ),
         HistoricalStop(
-            id: "hpab-002", name: "Greystone", latitude: 40.6522522, longitude: -74.2997607,
+            id: "hpab-002", name: "Greystone", latitude: 40.6524, longitude: -74.2990,
             address: "600 Lincoln Park East, Cranford, NJ",
             shortDescription: "A grand 25-room mansion overlooking the Rahway River, later transformed into Cranford Hall.",
             longDescription: """

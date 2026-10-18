@@ -2,13 +2,13 @@
   "schemaVersion": 1,
   "tourName": "HPAB Historic Cranford Audio Tour",
   "tourSubtitle": "Names, addresses, and recordings from the Cranford Historic Preservation Advisory Board",
-  "dataStatus": "Tour stops are based on the HPAB Historic Cranford QR Code Audio Tour brochure (May 2020), www.preservecranford.com. The tour creator supplied the updated Droescher’s Mill and Greystone marker text, descriptions and narration scripts. Both scripts are read on device; stops 3–5 retain their HPAB recordings by Bernie Wagenblast. Greystone was later known as Cranford Hall. Coordinates remain unverified OpenStreetMap Nominatim geocodes, not surveyed site positions. The mill’s physical door plaque reads “c. 1737”; that inscription is retained as a marker reference and is separate from the supplied construction history (after 1821; mill site documented by 1779).",
+  "dataStatus": "Tour stops are based on the HPAB Historic Cranford QR Code Audio Tour brochure (May 2020), www.preservecranford.com. The tour creator supplied the updated Droescher’s Mill and Greystone marker text, descriptions and narration scripts. Both scripts are read on device; stops 3–5 retain their HPAB recordings by Bernie Wagenblast. Greystone was later known as Cranford Hall. Stops 1 and 2 use coordinates supplied by the tour creator on October 18, 2026 after on-site testing (mill: 40.6503, -74.3012; Greystone: 40.6524, -74.2990). These are approximate, not surveyed positions. Stops 3–5 retain unverified OpenStreetMap Nominatim geocodes. GPS accuracy varies on site. The mill’s physical door plaque reads “c. 1737”; that inscription is retained as a marker reference and is separate from the supplied construction history (after 1821; mill site documented by 1779).",
   "stops": [
     {
       "id": "hpab-001",
       "name": "Droescher’s Mill",
-      "latitude": 40.6551018,
-      "longitude": -74.2925808,
+      "latitude": 40.6503,
+      "longitude": -74.3012,
       "address": "347 Lincoln Avenue East, Cranford, NJ",
       "shortDescription": "The mill site dates to at least 1779.\nLast surviving historic mill on the Rahway River.",
       "longDescription": "Standing along the Rahway River, Droescher’s Mill is the last surviving historic mill of the eleven that once operated along the river.\n\nThe site dates to at least 1779, although the existing wooden structure was built after an earlier mill burned in 1821. Over generations, the mill adapted to changing industries, producing lumber, woolen goods, sharpening stones, and even pipe organs.\n\nNamed for businessman Severin Droescher, who operated a sharpening-stone business here in the early 1900s, the mill is a rare surviving connection to Cranford’s industrial beginnings and the river that helped shape the community.",
@@ -35,8 +35,8 @@
     {
       "id": "hpab-002",
       "name": "Greystone",
-      "latitude": 40.6522522,
-      "longitude": -74.2997607,
+      "latitude": 40.6524,
+      "longitude": -74.299,
       "address": "600 Lincoln Park East, Cranford, NJ",
       "shortDescription": "A grand 25-room mansion overlooking the Rahway River, later transformed into Cranford Hall.",
       "longDescription": "Built beginning in 1920, Greystone was an extraordinary 25-room, English castle-inspired mansion overlooking the Rahway River. Its 14-acre estate, with 600 feet of riverfront, belonged to wealthy silk manufacturer Charles E. Kaltenbach.\n\nConstructed on land once owned by Severin Droescher, the mansion replaced most of his planned Lincoln Park residential development. Hollywood stars like Gloria Swanson and newspaper magnate William Randolph Hearst were among Greystone’s distinguished guests.\n\nFollowing Kaltenbach's death and the decline of his silk business, the property was acquired by Cranford Township. In 1939, it reopened as Cranford Hall, beginning its long history as a healthcare facility.",

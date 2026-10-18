@@ -101,7 +101,7 @@ struct StopDetailView: View {
                                 Text("The plaque inscription is separate from the building’s construction history above.")
                             }
                             if stop.coordinatesUnverified {
-                                Text("The map position is approximate and has not been checked on site.")
+                                Text("The map position is approximate. GPS accuracy can vary at the site.")
                             }
                             if stop.isSample { Text("Sample content — not verified history.") }
                             if let status = tour.dataStatus { Text(status) }

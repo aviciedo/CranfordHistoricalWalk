@@ -143,3 +143,34 @@ cannot verify native photo gestures or slideshow timing.
    or swiping gallery photos alone must not record a visit. Continue should move to stop 3.
 
 These native interactions and the iOS build remain unverified on Linux.
+
+## 8. Retest the supplied stop coordinates
+
+This revision uses the tour creator’s supplied points: mill **40.6503, -74.3012** and Greystone
+**40.6524, -74.2990**. These are approximate coordinates, not surveyed plaque/entrance positions.
+The first point replaces a mill geocode about 902 m away; the second moves Greystone about 66 m.
+The supplied points are 298 m apart in a straight line; Google determines street distance and ETA.
+
+1. Install and launch this revision over the existing app, using the same bundle ID to preserve
+   visit history. Copy the Mac’s working Secrets.xcconfig into the new download before building.
+2. Enable Precise Location for Cranford Historical AR in the iPhone’s Location Services settings.
+   If Developer Controls was used, ensure Simulated location is off for the real field walk.
+3. Start the tour at the mill. Once GPS settles, expect the blue dot close to the stop 1 marker
+   and its illustration, within the phone’s reported accuracy. There should no longer be a
+   route roughly half a mile to the former geocode. The artwork is offset around its stop pin;
+   the numbered pin represents the stop coordinate.
+4. Enter AR. At a sufficiently accurate/fresh fix near the supplied point, expect the marker to
+   become available. Confirm no visit is recorded until marker activation. The mill plaque
+   recognition remains an alternative; its real-world size still needs measurement.
+5. Activate the mill marker, then Continue. Expect Greystone to become the map/AR destination
+   and a fresh route to stop 2. Time/distance should reflect Google’s actual walking route,
+   rather than a hard-coded two-to-three-minute promise.
+6. Walk to Greystone, compare the dot with stop 2, then activate its on-site AR marker. Check
+   that the first stop is not activated again simply because it is nearby.
+7. If a position still disagrees, capture the map and AR screens plus an Apple Maps dropped-pin
+   link or original geotagged photo in a ZIP for the exact standing position. Poor GPS can
+   produce residual offsets even with corrected destination data.
+
+Portable tests pass for catalog consistency, arrival/activation, separation and local route
+progress. The added native map/first-to-second-stop regression must run through Xcode Product >
+Test. No live GPS, Google-route response or physical AR validation is claimed by the Linux checks.
