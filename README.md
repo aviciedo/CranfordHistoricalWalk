@@ -104,9 +104,12 @@ insecure HTTP only for `preservecranford.com`.
 
 ### Home screen shows an illustrated map instead of Google Maps
 
-The beige illustration is a static fallback, not a Google map. It appears when a Maps SDK key
-is missing/placeholder or SDK registration fails. The real Google map already enables pinch,
-double-tap zoom, and dragging. Moving outdoors or allowing GPS does not activate it.
+The beige illustration is an offline fallback, not a Google map. It appears when a Maps SDK key
+is missing/placeholder or SDK registration fails. It supports pinch zoom (1–4×), dragging while
+zoomed, a reset button, and numbered buttons that display the stop name. Its streets and sepia
+landmark sketches are decorative and schematic, not surveyed street or architectural data.
+The real Google map enables pinch, double-tap zoom, and dragging. Moving outdoors or allowing GPS
+does not switch the illustration to Google Maps.
 
 On the Mac:
 

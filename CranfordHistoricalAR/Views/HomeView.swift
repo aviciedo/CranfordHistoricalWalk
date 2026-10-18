@@ -126,111 +126,285 @@ private struct DebugMenuGesture: ViewModifier {
     }
 }
 
-/// An abstract, hand-drawn-feeling map: a river ribbon, a few street strokes and the stops
-/// laid out by their real relative coordinates. It is a stylization, not a surveyed map.
+/// Offline illustrated map. Streets and landmark drawings are decorative, not navigation data.
 struct StylizedCranfordMapView: View {
     let stops: [HistoricalStop]
-    static let maxNumberedStops = 12
+    @State private var zoom: CGFloat = 1
+    @State private var pan = CGSize.zero
+    @GestureState private var pinch: CGFloat = 1
+    @GestureState private var drag = CGSize.zero
+    @State private var selectedStop: HistoricalStop?
+    @State private var isShowingStopName = false
+
+    private let ink = Color(red: 0.29, green: 0.25, blue: 0.18)
+    private let paper = Color(red: 0.94, green: 0.90, blue: 0.79)
 
     var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(
-                    LinearGradient(colors: [Color(red: 0.93, green: 0.90, blue: 0.83), Color(red: 0.87, green: 0.83, blue: 0.74)], startPoint: .topLeading, endPoint: .bottomTrailing)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .strokeBorder(AppTheme.brass.opacity(0.35), lineWidth: 1)
-                )
-                .shadow(color: .black.opacity(0.08), radius: 20, y: 10)
-
-            Canvas { context, size in
-                drawStreets(in: &context, size: size)
-                drawRiver(in: &context, size: size)
-                drawStops(in: &context, size: size)
-            }
-            .padding(18)
-
-            VStack {
-                Spacer()
-                HStack {
-                    EyebrowText("Cranford, New Jersey", color: AppTheme.ink.opacity(0.6))
-                    Spacer()
-                    EyebrowText("\(stops.count) stops", color: AppTheme.ink.opacity(0.6))
+        GeometryReader { proxy in
+            let transform = IllustratedMapTransform(
+                scale: zoom * pinch,
+                offset: CGSize(width: pan.width + drag.width, height: pan.height + drag.height),
+                size: proxy.size
+            )
+            ZStack {
+                paper
+                Canvas { context, size in
+                    context.translateBy(x: size.width / 2 + transform.offset.width, y: size.height / 2 + transform.offset.height)
+                    context.scaleBy(x: transform.scale, y: transform.scale)
+                    context.translateBy(x: -size.width / 2, y: -size.height / 2)
+                    drawStreets(in: &context, size: size)
+                    drawRiver(in: &context, size: size)
+                    drawTour(in: &context, size: size)
+                    for stop in stops {
+                        drawLandmark(for: stop, in: &context, size: size)
+                    }
                 }
-                .padding(18)
+                .allowsHitTesting(false)
+
+                ForEach(stops.sorted { $0.order < $1.order }) { stop in
+                    Button {
+                        selectedStop = stop
+                        isShowingStopName = true
+                    } label: {
+                        Text("\(stop.order)")
+                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white)
+                            .frame(width: 27, height: 27)
+                            .background(AppTheme.heritageGreen, in: Circle())
+                            .overlay(Circle().strokeBorder(.white, lineWidth: 2))
+                            .padding(5)
+                            .background(AppTheme.brass.opacity(0.25), in: Circle())
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Stop \(stop.order), \(stop.name)")
+                    .accessibilityHint("Shows the stop name")
+                    .position(transform.project(point(for: stop, size: proxy.size), in: proxy.size))
+                }
             }
+            .contentShape(Rectangle())
+            .simultaneousGesture(
+                MagnificationGesture()
+                    .updating($pinch) { value, state, _ in state = value }
+                    .onEnded { value in
+                        let next = IllustratedMapTransform(scale: zoom * value, offset: pan, size: proxy.size)
+                        zoom = next.scale
+                        pan = next.offset
+                    }
+                    .simultaneously(with:
+                        DragGesture(minimumDistance: 8)
+                            .updating($drag) { value, state, _ in state = value.translation }
+                            .onEnded { value in
+                                let next = IllustratedMapTransform(
+                                    scale: zoom,
+                                    offset: CGSize(width: pan.width + value.translation.width, height: pan.height + value.translation.height),
+                                    size: proxy.size
+                                )
+                                pan = next.offset
+                            }
+                    )
+            )
+            .overlay(alignment: .topTrailing) {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) { zoom = 1; pan = .zero }
+                } label: {
+                    Image(systemName: "arrow.counterclockwise")
+                        .font(.system(size: 15, weight: .semibold))
+                        .frame(width: 44, height: 44)
+                        .foregroundStyle(ink)
+                        .background(.regularMaterial, in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Reset illustrated map zoom")
+                .padding(10)
+            }
+            .overlay(alignment: .bottom) {
+                Text("Schematic streets · Pinch to zoom · Tap a number")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(ink)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(paper.opacity(0.94), in: Capsule())
+                    .padding(8)
+                    .allowsHitTesting(false)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .strokeBorder(AppTheme.brass.opacity(0.4), lineWidth: 1)
+                    .allowsHitTesting(false)
+            )
+            .shadow(color: .black.opacity(0.08), radius: 20, y: 10)
+        }
+        .alert("Historical stop", isPresented: $isShowingStopName) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(selectedStop?.name ?? "")
         }
     }
 
+    private func point(for stop: HistoricalStop, size: CGSize) -> CGPoint {
+        IllustratedMapProjection.point(for: stop.coordinate, among: stops.map(\.coordinate), size: size)
+    }
+
     private func drawStreets(in context: inout GraphicsContext, size: CGSize) {
-        var path = Path()
-        let rows = 5, cols = 6
-        for r in 1..<rows {
-            let y = size.height * CGFloat(r) / CGFloat(rows)
-            path.move(to: CGPoint(x: 0, y: y + sin(CGFloat(r)) * 6))
-            path.addLine(to: CGPoint(x: size.width, y: y - cos(CGFloat(r)) * 6))
+        // An engraving-style street grid, deliberately schematic rather than a surveyed street map.
+        for column in 0..<6 {
+            for row in 0..<6 {
+                let block = CGRect(x: CGFloat(column) * size.width / 5 + 9,
+                                   y: CGFloat(row) * size.height / 5 + 9,
+                                   width: size.width / 5 - 18, height: size.height / 5 - 18)
+                guard block.width > 0, block.height > 0 else { continue }
+                let shape = Path(roundedRect: block, cornerRadius: 5)
+                context.fill(shape, with: .color(Color(red: 0.64, green: 0.67, blue: 0.46).opacity(0.12)))
+                context.stroke(shape, with: .color(ink.opacity(0.06)), lineWidth: 1)
+            }
         }
-        for c in 1..<cols {
-            let x = size.width * CGFloat(c) / CGFloat(cols)
-            path.move(to: CGPoint(x: x + cos(CGFloat(c)) * 5, y: 0))
-            path.addLine(to: CGPoint(x: x - sin(CGFloat(c)) * 5, y: size.height))
+        var streets = Path()
+        for index in 0...5 {
+            let x = CGFloat(index) * size.width / 5
+            streets.move(to: CGPoint(x: x - 10, y: 0))
+            streets.addLine(to: CGPoint(x: x + 10, y: size.height))
+            let y = CGFloat(index) * size.height / 5
+            streets.move(to: CGPoint(x: 0, y: y + 8))
+            streets.addLine(to: CGPoint(x: size.width, y: y - 8))
         }
-        context.stroke(path, with: .color(AppTheme.ink.opacity(0.08)), lineWidth: 1)
+        streets.move(to: CGPoint(x: 0, y: size.height * 0.8))
+        streets.addLine(to: CGPoint(x: size.width, y: size.height * 0.25))
+        context.stroke(streets, with: .color(ink.opacity(0.18)), style: StrokeStyle(lineWidth: 7, lineCap: .round))
+        context.stroke(streets, with: .color(Color(red: 0.99, green: 0.96, blue: 0.86)), style: StrokeStyle(lineWidth: 4.5, lineCap: .round))
     }
 
     private func drawRiver(in context: inout GraphicsContext, size: CGSize) {
         var river = Path()
-        river.move(to: CGPoint(x: size.width * 0.05, y: size.height * 0.15))
-        river.addCurve(
-            to: CGPoint(x: size.width * 0.95, y: size.height * 0.85),
-            control1: CGPoint(x: size.width * 0.45, y: size.height * -0.05),
-            control2: CGPoint(x: size.width * 0.55, y: size.height * 1.05)
-        )
-        context.stroke(river, with: .color(Color(red: 0.55, green: 0.66, blue: 0.70).opacity(0.55)), style: StrokeStyle(lineWidth: 10, lineCap: .round))
+        river.move(to: CGPoint(x: size.width * 0.06, y: -10))
+        river.addCurve(to: CGPoint(x: size.width * 0.96, y: size.height + 10),
+                       control1: CGPoint(x: size.width * 0.65, y: size.height * 0.18),
+                       control2: CGPoint(x: size.width * 0.25, y: size.height * 0.82))
+        context.stroke(river, with: .color(Color(red: 0.44, green: 0.60, blue: 0.62).opacity(0.55)), style: StrokeStyle(lineWidth: 12, lineCap: .round))
+        context.stroke(river, with: .color(.white.opacity(0.2)), style: StrokeStyle(lineWidth: 3, lineCap: .round))
     }
 
-    private func drawStops(in context: inout GraphicsContext, size: CGSize) {
-        guard !stops.isEmpty else { return }
-        let lats = stops.map(\.latitude), lngs = stops.map(\.longitude)
-        let minLat = lats.min()!, maxLat = lats.max()!, minLng = lngs.min()!, maxLng = lngs.max()!
-        let latSpan = max(maxLat - minLat, 0.002), lngSpan = max(maxLng - minLng, 0.002)
-        let inset: CGFloat = 26
-
-        func point(for stop: HistoricalStop) -> CGPoint {
-            let x = inset + (CGFloat((stop.longitude - minLng) / lngSpan)) * (size.width - inset * 2)
-            let y = inset + (1 - CGFloat((stop.latitude - minLat) / latSpan)) * (size.height - inset * 2)
-            return CGPoint(x: x, y: y)
-        }
-
-        let ordered = stops.sorted { $0.order < $1.order }
+    private func drawTour(in context: inout GraphicsContext, size: CGSize) {
         var route = Path()
-        for (i, stop) in ordered.enumerated() {
-            if i == 0 {
-                route.move(to: point(for: stop))
-            } else {
-                route.addLine(to: point(for: stop))
-            }
+        for (index, stop) in stops.sorted(by: { $0.order < $1.order }).enumerated() {
+            if index == 0 { route.move(to: point(for: stop, size: size)) }
+            else { route.addLine(to: point(for: stop, size: size)) }
         }
-        context.stroke(route, with: .color(AppTheme.heritageGreen.opacity(0.5)), style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round, dash: [6, 6]))
+        context.stroke(route, with: .color(AppTheme.heritageGreen.opacity(0.5)), style: StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [4, 5]))
+    }
 
-        // Numbers only while they stay legible; with many stops the dots alone read better.
-        let showsNumbers = ordered.count <= StylizedCranfordMapView.maxNumberedStops
-        let radius: CGFloat = showsNumbers ? 7 : 5
-        for stop in ordered {
-            let p = point(for: stop)
-            let halo = Path(ellipseIn: CGRect(x: p.x - radius - 6, y: p.y - radius - 6, width: (radius + 6) * 2, height: (radius + 6) * 2))
-            context.fill(halo, with: .color(AppTheme.brass.opacity(0.22)))
-            let dot = Path(ellipseIn: CGRect(x: p.x - radius, y: p.y - radius, width: radius * 2, height: radius * 2))
-            context.fill(dot, with: .color(AppTheme.heritageGreen))
-            context.stroke(dot, with: .color(.white), lineWidth: 2)
-            if showsNumbers {
-                context.draw(
-                    Text("\(stop.order)").font(.system(size: 9, weight: .bold, design: .rounded)).foregroundColor(.white),
-                    at: p
-                )
+    private func drawLandmark(for stop: HistoricalStop, in context: inout GraphicsContext, size: CGSize) {
+        // Decorative architectural sketches, not reconstructions of the historic buildings.
+        let location = point(for: stop, size: size)
+        var sketch = context
+        sketch.translateBy(x: location.x + (stop.order.isMultiple(of: 2) ? -22 : 22), y: location.y - 30)
+        sketch.scaleBy(x: 0.62, y: 0.62)
+        let color = ink.opacity(0.8)
+        var outline = Path()
+        if stop.id == "hpab-003" {
+            // River bridge with stone piers and an arch.
+            outline.move(to: CGPoint(x: -30, y: 0))
+            outline.addLine(to: CGPoint(x: 30, y: 0))
+            outline.move(to: CGPoint(x: -30, y: 6))
+            outline.addLine(to: CGPoint(x: 30, y: 6))
+            outline.addLine(to: CGPoint(x: 30, y: 25))
+            outline.addLine(to: CGPoint(x: 17, y: 25))
+            outline.addQuadCurve(to: CGPoint(x: -17, y: 25), control: CGPoint(x: 0, y: -7))
+            outline.addLine(to: CGPoint(x: -30, y: 25))
+            outline.closeSubpath()
+            for x in stride(from: -24, through: 24, by: 12) {
+                    outline.move(to: CGPoint(x: CGFloat(x), y: -7))
+                    outline.addLine(to: CGPoint(x: CGFloat(x), y: 0))
+            }
+        } else {
+            let width: CGFloat = stop.id == "hpab-004" ? 30 : 48
+            outline.addRect(CGRect(x: -width / 2, y: -4, width: width, height: 30))
+            outline.move(to: CGPoint(x: -width / 2 - 5, y: -4))
+            outline.addLine(to: CGPoint(x: 0, y: -24))
+            outline.addLine(to: CGPoint(x: width / 2 + 5, y: -4))
+            outline.closeSubpath()
+            outline.addRect(CGRect(x: -4, y: 12, width: 8, height: 14))
+            for x in [CGFloat(-14), CGFloat(10)] {
+                outline.addRect(CGRect(x: x, y: 2, width: 5, height: 6))
+            }
+            if stop.id == "hpab-001" {
+                // Mill waterwheel and spokes.
+                outline.addEllipse(in: CGRect(x: 16, y: 4, width: 26, height: 26))
+                outline.addEllipse(in: CGRect(x: 20, y: 8, width: 18, height: 18))
+                for index in 0..<8 {
+                    let angle = Double(index) * .pi / 4
+                    outline.move(to: CGPoint(x: 29, y: 17))
+                    outline.addLine(to: CGPoint(x: 29 + cos(angle) * 12, y: 17 + sin(angle) * 12))
+                }
+            } else if stop.id == "hpab-004" {
+                // Church steeple and cross.
+                outline.addRect(CGRect(x: -5, y: -31, width: 10, height: 17))
+                outline.move(to: CGPoint(x: -7, y: -31))
+                outline.addLine(to: CGPoint(x: 0, y: -44))
+                outline.addLine(to: CGPoint(x: 7, y: -31))
+                outline.closeSubpath()
+                outline.move(to: CGPoint(x: 0, y: -53))
+                outline.addLine(to: CGPoint(x: 0, y: -43))
+                outline.move(to: CGPoint(x: -4, y: -49))
+                outline.addLine(to: CGPoint(x: 4, y: -49))
+            } else if stop.id == "hpab-002" {
+                // Manor chimneys.
+                outline.addRect(CGRect(x: -17, y: -25, width: 5, height: 12))
+                outline.addRect(CGRect(x: 12, y: -25, width: 5, height: 12))
+            } else {
+                // Hotel balcony and upper-floor windows.
+                outline.move(to: CGPoint(x: -25, y: 11))
+                outline.addLine(to: CGPoint(x: 25, y: 11))
+                for x in stride(from: -20, through: 20, by: 10) {
+                    outline.move(to: CGPoint(x: CGFloat(x), y: 8))
+                    outline.addLine(to: CGPoint(x: CGFloat(x), y: 14))
+                }
             }
         }
+        sketch.fill(outline, with: .color(paper.opacity(0.7)))
+        sketch.stroke(outline, with: .color(color), style: StrokeStyle(lineWidth: 1.4, lineCap: .round, lineJoin: .round))
+        var ground = Path()
+        ground.move(to: CGPoint(x: -34, y: 29))
+        ground.addLine(to: CGPoint(x: 37, y: 29))
+        sketch.stroke(ground, with: .color(ink.opacity(0.35)), lineWidth: 1)
+    }
+}
+
+/// Keeps pinch zoom and pan within the map's bounds. Shared by drawing and real marker buttons.
+struct IllustratedMapTransform {
+    let scale: CGFloat
+    let offset: CGSize
+
+    init(scale: CGFloat, offset: CGSize, size: CGSize) {
+        let scale = min(max(scale.isFinite ? scale : 1, 1), 4)
+        self.scale = scale
+        let limitX = max(size.width, 0) * (scale - 1) / 2
+        let limitY = max(size.height, 0) * (scale - 1) / 2
+        self.offset = CGSize(width: min(max(offset.width.isFinite ? offset.width : 0, -limitX), limitX),
+                             height: min(max(offset.height.isFinite ? offset.height : 0, -limitY), limitY))
+    }
+
+    func project(_ point: CGPoint, in size: CGSize) -> CGPoint {
+        CGPoint(x: (point.x - size.width / 2) * scale + size.width / 2 + offset.width,
+                y: (point.y - size.height / 2) * scale + size.height / 2 + offset.height)
+    }
+}
+
+/// Fits the stop coordinates in the illustration without claiming the decorative streets are geographic.
+enum IllustratedMapProjection {
+    static func point(for coordinate: GeoCoordinate, among coordinates: [GeoCoordinate], size: CGSize) -> CGPoint {
+        guard let minLat = coordinates.map(\.latitude).min(), let maxLat = coordinates.map(\.latitude).max(),
+              let minLng = coordinates.map(\.longitude).min(), let maxLng = coordinates.map(\.longitude).max() else {
+            return CGPoint(x: size.width / 2, y: size.height / 2)
+        }
+        let longitudeSpan = max(maxLng - minLng, 0.002)
+        let latitudeSpan = max(maxLat - minLat, 0.002)
+        let width = max(size.width - 88, 0)
+        let height = max(size.height - 128, 0)
+        return CGPoint(x: size.width / 2 + CGFloat((coordinate.longitude - (minLng + maxLng) / 2) / longitudeSpan) * width,
+                       y: size.height / 2 - CGFloat((coordinate.latitude - (minLat + maxLat) / 2) / latitudeSpan) * height)
     }
 }
 

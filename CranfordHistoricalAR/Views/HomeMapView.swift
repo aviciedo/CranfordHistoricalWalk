@@ -17,7 +17,7 @@ struct HomeMapView: View {
         } else {
             StylizedCranfordMapView(stops: tour.stops)
                 .overlay(alignment: .topLeading) {
-                    Label("Preview map · Live map unavailable", systemImage: "map")
+                    Label("Illustrated street map", systemImage: "map")
                         .font(.caption)
                         .foregroundStyle(AppTheme.ink)
                         .padding(10)
@@ -25,7 +25,9 @@ struct HomeMapView: View {
                         .padding(12)
                         .allowsHitTesting(false)
                 }
-                .accessibilityLabel("Illustrated preview of Cranford. Live Google Maps is unavailable; this preview cannot be zoomed.")
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel("Illustrated street map of Cranford")
+                .accessibilityHint("Pinch to zoom, drag to pan, or tap a numbered stop to show its name.")
         }
     }
 
