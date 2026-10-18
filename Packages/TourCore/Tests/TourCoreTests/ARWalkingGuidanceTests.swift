@@ -15,6 +15,48 @@ final class ARWalkingGuidanceTests: XCTestCase {
                             ], source: .googleRoutesAPI)
     }
 
+    func testWalkingBearingDoesNotReverseAtVertexWithGPSDrift() throws {
+        let route = turnRoute()
+        let corner = route.routeCoordinates[1]
+        let fix = GeoMath.destination(from: corner, bearing: 0, distance: 1)
+        let progress = RouteProgressCalculator.progress(along: route, userLocation: fix)
+        let bearing = try XCTUnwrap(ARWalkingGuidance.walkingBearing(route: route, progress: progress, user: fix))
+        // The next segment is east. The noisy fix must not send the visitor south.
+        XCTAssertEqual(bearing, 90, accuracy: 1)
+    }
+
+    func testWalkingBearingKeepsApproachDirectionUntilCorner() throws {
+        let route = turnRoute()
+        let fix = GeoMath.destination(from: route.origin, bearing: 0, distance: 98)
+        let progress = RouteProgressCalculator.progress(along: route, userLocation: fix)
+        let bearing = try XCTUnwrap(ARWalkingGuidance.walkingBearing(route: route, progress: progress, user: fix))
+        XCTAssertEqual(bearing, 0, accuracy: 1)
+    }
+
+    func testWalkingBearingFollowsNewLegAfterTurn() throws {
+        let route = turnRoute()
+        let fix = GeoMath.destination(from: route.routeCoordinates[1], bearing: 90, distance: 15)
+        let progress = RouteProgressCalculator.progress(along: route, userLocation: fix)
+        let bearing = try XCTUnwrap(ARWalkingGuidance.walkingBearing(route: route, progress: progress, user: fix))
+        XCTAssertEqual(bearing, 90, accuracy: 1)
+    }
+
+    func testWalkingBearingRejectsOffRouteEstimateAndInvalidGeometry() {
+        var route = turnRoute()
+        var progress = RouteProgressCalculator.progress(along: route, userLocation: route.origin)
+        progress.distanceFromRoute = 36
+        XCTAssertNil(ARWalkingGuidance.walkingBearing(route: route, progress: progress, user: route.origin))
+        progress.distanceFromRoute = 0
+        route.source = .straightLineEstimate
+        XCTAssertNil(ARWalkingGuidance.walkingBearing(route: route, progress: progress, user: route.origin))
+        route.source = .googleRoutesAPI
+        progress.segmentIndex = -1
+        XCTAssertNil(ARWalkingGuidance.walkingBearing(route: route, progress: progress, user: route.origin))
+        progress.segmentIndex = 0
+        route.routeCoordinates[1] = route.origin
+        XCTAssertNil(ARWalkingGuidance.walkingBearing(route: route, progress: progress, user: route.origin))
+    }
+
     func testPreviewsNextTurnWithStreetAndDistanceAlongRoute() throws {
         let route = turnRoute()
         let position = GeoMath.destination(from: route.origin, bearing: 0, distance: 70)

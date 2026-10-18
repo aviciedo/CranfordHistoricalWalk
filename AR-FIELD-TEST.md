@@ -66,3 +66,21 @@ window anchoring still need Xcode/iPhone testing. Use a Debug build to access De
 
 Exact alignment cannot be certified by a photograph alone. The plaque width is still unmeasured;
 the overlay uses a plaque-derived world pose with calibrated bounds, not separate window tracking.
+
+## Walking arrows and street turns
+
+- Enter AR facing left, right and backward relative to the route. Check the large initial
+  direction cue, route street name and feet distance; face the route and let the cue settle.
+- Walk toward an actual left/right turn. Check the translucent ground arrow and floating
+  street sign; after turning, the ground arrow must follow the new leg, without pointing back
+  at the corner. Stand near a corner for several GPS updates to check stability.
+- Leave the route by more than 35 meters. Old walking arrows must disappear while a fresh
+  route is requested. Use Map until routing and heading are available again.
+- Interrupt/resume AR near a turn several times, including with Reduce Motion enabled.
+  The floating sign must return visibly rather than remain transparent after a canceled fade.
+- Repeat after Continue to Greystone. The mill arrival/story flow must still stop walking
+  guidance and must not record plaque verification from GPS alone.
+
+Latest portable verification: 151 core tests and 20 production tour-logic integration tests
+passed. Both Debug/Release Swift syntax and saved project/asset checks passed. These do not
+substitute for an Xcode iPhone build or the physical-device checks above.

@@ -108,7 +108,8 @@ See [design-qa.md](design-qa.md) for the pending Mac/iPhone comparison checklist
 The guided order stays fixed while visitors browse or listen to other stops.
 
 AR walking uses one broad **semi-transparent ivory ground arrow**, with a fine forest edge,
-instead of four opaque breadcrumbs. It follows the next walking-route vertex, then points to
+instead of four opaque breadcrumbs. It follows the next walking-route vertex, retaining the approach direction within 3 meters
+to avoid reversals from a noisy GPS fix, then points to
 the visible stop marker on arrival. Horizontal plane detection refines its height when a nearby
 ground surface is available; otherwise it uses a stable height estimate beneath the camera.
 
@@ -134,9 +135,10 @@ than claiming surveyed intersection alignment. Ground arrows stop before the mar
 while its story is active. GPS movement direction is not treated as the camera's facing.
 When tracking/heading is unusable, arrows hide and the **Map** control remains available.
 
-AR walking refresh validation: **141 TourCore XCTest tests passed**, including upcoming-turn
+AR walking refresh validation: **151 TourCore XCTest tests passed**, including upcoming-turn
 selection, route-based feet distances, street parsing, entry/orientation hysteresis and angular
-smoothing. Debug/Release source syntax and saved Xcode source references also passed. These checks
+smoothing, near-corner GPS drift and suppression of off-route arrows. **20 production tour-logic
+integration tests passed** using an offline directions fixture. Debug/Release source syntax and saved Xcode source references also passed. These checks
 do not build the iOS application or verify RealityKit rendering, outdoor surface detection,
 intersection alignment, native animation or Google authorization. Those require the Mac/iPhone
 checks in [design-qa.md](design-qa.md); rendered visual QA remains pending.

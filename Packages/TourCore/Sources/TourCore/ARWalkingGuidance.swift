@@ -130,6 +130,24 @@ public enum ARWalkingGuidance {
         return GeoMath.relativeBearing(heading: 0, bearing: previous + change * alpha)
     }
 
+    /// Near a route vertex, use the approach segment's direction instead of a tiny
+    /// GPS-to-vertex vector that can reverse as the fix drifts across the corner.
+    /// Off-route fixes need a refreshed walking route, not a direct shortcut to the stop.
+    public static func walkingBearing(route: WalkingRoute, progress: RouteProgress, user: GeoCoordinate) -> Double? {
+        guard route.source != .straightLineEstimate, user.isValid,
+              progress.distanceFromRoute.isFinite, progress.distanceFromRoute <= 35,
+              progress.distanceFromRoute >= 0,
+              route.routeCoordinates.indices.contains(progress.segmentIndex),
+              route.routeCoordinates.indices.contains(progress.segmentIndex + 1) else { return nil }
+        let start = route.routeCoordinates[progress.segmentIndex]
+        let end = route.routeCoordinates[progress.segmentIndex + 1]
+        guard start.isValid, end.isValid, GeoMath.distance(from: start, to: end) > 0.1 else { return nil }
+        if GeoMath.distance(from: progress.snappedCoordinate, to: end) <= 3 {
+            return GeoMath.bearing(from: start, to: end)
+        }
+        return GeoMath.bearing(from: user, to: end)
+    }
+
     public static func routeCue(route: WalkingRoute, progress: RouteProgress) -> RouteCue? {
         guard route.source != .straightLineEstimate, progress.distanceFromRoute.isFinite,
               progress.distanceFromRoute <= 35, progress.fractionComplete.isFinite,

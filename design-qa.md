@@ -147,3 +147,16 @@ Debug/Release syntax and saved Xcode source references pass. Native compilation,
 narration completion callbacks, recognition, facade fit, animation and outdoor tracking remain
 unverified. Follow AR-FIELD-TEST.md for the specific phone checks. No rendered result is marked
 passed; `final result: blocked` remains the visual-QA status at the top of this document.
+
+## AR walking completion review
+
+Corrected the route-bearing calculation near polyline vertices so a small GPS overshoot does
+not reverse the ground arrow. Walking arrows are withheld beyond 35 meters off route instead
+of directing the visitor along a stale route. The footer asks the visitor to use Map while
+routing updates. Turn-sign reappearance resets opacity and cancels pending hide tasks, including
+when Reduce Motion changes during a fade. The mill story/plaque flow remains intact.
+
+Verification: 151 core XCTest tests (including four new route-bearing regressions), 20
+production tour-logic integration tests with offline directions, Debug/Release syntax,
+project source registration and asset manifests passed. Native compilation, visual comparison,
+Google services and outdoor AR remain unverified here; the overall visual QA result is blocked.

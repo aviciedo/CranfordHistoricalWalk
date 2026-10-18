@@ -88,7 +88,8 @@ final class ARViewModel {
     }
 
     var orientationStreet: String {
-        guard let route = tour.currentRoute, let progress = tour.routeProgress else { return guidanceDetail }
+        guard let route = tour.currentRoute, let progress = tour.routeProgress,
+              progress.distanceFromRoute <= 35 else { return guidanceDetail }
         if let street = ARWalkingGuidance.currentStreetLabel(route: route, progress: progress) { return street }
         if let street = walkingCue?.streetName { return "Toward \(street)" }
         return guidanceDetail
@@ -102,6 +103,9 @@ final class ARViewModel {
     var guidanceDetail: String {
         if isMarkerAvailable { return "Look for the stop marker · Tap to discover" }
         if tour.currentRoute == nil { return "Finding your walking route" }
+        if let progress = tour.routeProgress, progress.distanceFromRoute > 35 {
+            return "Updating your walking route · Use the map"
+        }
         if tour.isRouteAnEstimate { return "Approximate direction · Use the map for streets" }
         return tour.currentInstruction ?? "Follow the walking route"
     }
@@ -257,10 +261,14 @@ final class ARViewModel {
             return
         }
         imageLoader.prefetch([stop])
-        let waypoint = tour.nextWaypointCoordinate ?? stop.coordinate
+        guard let route = tour.currentRoute, let progress = tour.routeProgress,
+              let bearing = ARWalkingGuidance.walkingBearing(route: route, progress: progress, user: user.coordinate) else {
+            geoAnchors.setNavigationTarget(nil)
+            return
+        }
         geoAnchors.setNavigationTarget(GeoAnchorManager.NavigationTarget(
             destination: stop.coordinate,
-            bearingToWaypoint: GeoMath.bearing(from: user.coordinate, to: waypoint),
+            bearingToWaypoint: bearing,
             turnCue: isShowingWalkingOrientation ? nil : walkingCue
         ))
     }

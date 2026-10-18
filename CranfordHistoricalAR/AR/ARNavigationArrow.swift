@@ -119,6 +119,7 @@ final class ARTurnSignEntity: Entity {
     private var signature: String?
     private var lastPosition: SIMD3<Float>?
     private var lastRotation: simd_quatf?
+    private var hideTask: Task<Void, Never>?
     private(set) var isShowing = false
 
     required init() {
@@ -155,6 +156,12 @@ final class ARTurnSignEntity: Entity {
         let size = max(0.85, min(2.3, simd_length(SIMD2(offset.x, offset.z)) / 9))
         let target = Transform(scale: SIMD3<Float>(repeating: size), rotation: rotation, translation: position)
         let appearing = !isShowing
+        hideTask?.cancel()
+        hideTask = nil
+        if appearing {
+            stopAllAnimations()
+            if #available(iOS 18.0, *) { components.set(OpacityComponent(opacity: 1)) }
+        }
         isShowing = true
         isEnabled = true
         if !appearing, let lastPosition, let lastRotation,
@@ -179,6 +186,10 @@ final class ARTurnSignEntity: Entity {
     }
 
     func hide(animated: Bool = false) {
+        if !animated {
+            hideTask?.cancel()
+            hideTask = nil
+        }
         guard isShowing else {
             if !animated { isEnabled = false; stopAllAnimations() }
             return
@@ -195,8 +206,8 @@ final class ARTurnSignEntity: Entity {
                                                timing: .easeInOut, bindTarget: .opacity)
             if let animation = try? AnimationResource.generate(with: fade) { playAnimation(animation) }
         }
-        Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .milliseconds(220))
+        hideTask = Task { @MainActor [weak self] in
+            do { try await Task.sleep(for: .milliseconds(220)) } catch { return }
             guard let self, !self.isShowing else { return }
             self.isEnabled = false
         }
