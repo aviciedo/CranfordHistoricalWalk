@@ -65,6 +65,9 @@ extension HistoricalStop {
                 HistoricalStopPhoto(imageName: "droeschers-mill", caption: "Droescher’s Mill"),
                 HistoricalStopPhoto(imageName: "droeschers-mill-foundation", caption: "Stone foundation beside the Rahway River dam"),
                 HistoricalStopPhoto(imageName: "droeschers-mill-upper-doors", caption: "Upper doors and pulley at Droescher’s Mill"),
+                HistoricalStopPhoto(imageName: "droeschers-mill-stonework", caption: "Close-up of the mill’s stone foundation"),
+                HistoricalStopPhoto(imageName: "droeschers-mill-front", caption: "Front of Droescher’s Mill"),
+                HistoricalStopPhoto(imageName: "droeschers-mill-river-view", caption: "Droescher’s Mill and the Rahway River dam"),
             ],
             narrationText: """
                 Droescher’s Mill: A River That Built a Town

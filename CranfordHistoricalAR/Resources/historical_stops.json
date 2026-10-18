@@ -26,6 +26,18 @@
         {
           "imageName": "droeschers-mill-upper-doors",
           "caption": "Upper doors and pulley at Droescher’s Mill"
+        },
+        {
+          "imageName": "droeschers-mill-stonework",
+          "caption": "Close-up of the mill’s stone foundation"
+        },
+        {
+          "imageName": "droeschers-mill-front",
+          "caption": "Front of Droescher’s Mill"
+        },
+        {
+          "imageName": "droeschers-mill-river-view",
+          "caption": "Droescher’s Mill and the Rahway River dam"
         }
       ],
       "imageURL": null,
