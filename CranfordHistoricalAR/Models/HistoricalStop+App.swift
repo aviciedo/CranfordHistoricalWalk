@@ -21,6 +21,15 @@ extension CLLocationCoordinate2D {
 extension HistoricalStop {
     var clLocationCoordinate: CLLocationCoordinate2D { coordinate.clLocationCoordinate }
 
+    var googleWalkingDirectionsURL: URL? {
+        guard coordinate.isValid else { return nil }
+        var url = URLComponents(string: "https://www.google.com/maps/dir/")
+        url?.queryItems = [URLQueryItem(name: "api", value: "1"),
+                           URLQueryItem(name: "destination", value: "\(latitude),\(longitude)"),
+                           URLQueryItem(name: "travelmode", value: "walking")]
+        return url?.url
+    }
+
     var hasRecordedNarration: Bool {
         guard let source = narrationSource else { return false }
         switch source {

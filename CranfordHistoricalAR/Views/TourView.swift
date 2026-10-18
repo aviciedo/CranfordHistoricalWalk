@@ -89,7 +89,7 @@ struct TourView: View {
             .buttonStyle(.plain).foregroundStyle(AppTheme.secondaryInk)
             .accessibilityLabel("Tour summary")
         }
-        .padding(.horizontal, 24).padding(.vertical, 12)
+        .padding(.horizontal, 22).padding(.vertical, 12)
     }
 
     private var map: some View {

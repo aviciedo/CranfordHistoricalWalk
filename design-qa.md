@@ -1,50 +1,84 @@
-# Field Guide native iOS design review
+# Walking screen reference review
 
 final result: blocked
 
-The selected visual target is the first displayed Field Guide concept, reattached by the user.
-The approved additions are tap-to-enlarge photos with an X, and the mill map illustration.
-This is the actual SwiftUI app, not a web prototype. Linux cannot render SwiftUI, compile against
-Apple SDKs, launch Xcode, or exercise the iPhone camera. Visual comparison and native interaction
-verification remain blocked by that platform limitation. No design QA pass or iOS build is claimed.
+Source visual truth: [docs/design/walk-reference.jpg](docs/design/walk-reference.jpg), the exact
+592 × 1280 JPEG reattached by the user for this update. It shows the active Map tab, stop 1 of 5,
+a warm-white full-width navigation bar, next-stop panel and a playing narration strip.
+The image has no device bezel or status-bar content to reproduce.
 
-Implemented source scope:
-- Native Home / Map / Stops tabs, one shared audio service and player strip.
-- Ivory/forest/sage/sand/terracotta roles with a device-following dark palette.
-- One map destination panel; details and AR actions for the guided stop.
-- Shared stop details, available photos, recording controls, source notes.
-- Full-screen photo viewer with X, pinch zoom, bounded pan and reset.
-- Generated mill landmark illustration on live/illustrated maps; original photo and plaque unchanged.
+Implementation screenshot: unavailable. This environment is Linux; it cannot build with Xcode,
+render SwiftUI, launch an iPhone simulator or capture the actual native app. There is no
+browser-based replacement of the app. No pixel-for-pixel fidelity, iOS build, gesture test or
+visual QA pass is claimed. Source capture is available; implementation capture/comparison is blocked.
 
-Required Mac/iPhone checks:
-1. Build the included CranfordHistoricalAR.xcodeproj with Xcode 16+ and run the app on an iPhone.
-2. Compare the active Map tab with the selected reference at a normal iPhone size.
-3. Confirm the map remains pannable/zoomable and its attribution is not covered.
-4. Confirm the bottom tabs, player and destination panel fit on a smaller screen and at larger text sizes.
-5. Play the mill recording, switch all tabs, inspect a different stop, and confirm the guided stop is unchanged.
-6. Open the photo from the map panel, Stops and details. Zoom, pan, reset and close with X. Confirm no tour advance.
-7. In light/dark appearance, check essential labels, selected tabs, controls and visited markers for contrast.
-8. Verify Show on map centers a browsed stop without changing the guided destination.
-9. Follow [AR-FIELD-TEST.md](AR-FIELD-TEST.md): arrival reveals a marker without a visit; activation starts the story and records a visit; only Continue changes the destination. Confirm the second-stop map/AR handoff.
-10. Test missing Maps/Routes configuration: clearly labeled illustrated/estimated fallback, no developer setup prose in the main flow.
+Target viewport: an iPhone in portrait, including a 393 × 852-point layout and smaller phones.
+Reference pixels: 592 × 1280; implementation pixels/points: not captured. Source-to-point scale
+is approximately 1.506, not a known device screenshot density. No density-normalized rendered
+comparison has been performed. System safe areas and home indicator remain system-owned.
 
-The host-app navigation regression test must be run through Xcode Product > Test. Linux TourCore
-checks do not execute it. On-device visual review and any resulting fixes remain a required follow-up.
+## Implemented reference specifications
 
-AR guidance update: the camera-relative bearing and activation policy have portable XCTest coverage.
-An isolated Foundation host also checks the production proximity extension and visit store. These
-checks do not render SwiftUI or RealityKit, recognize the plaque, or compile the iOS application.
-On-device arrow alignment, marker taps, audio startup, sign readability and saved visit dates still
-need the Mac/iPhone field test. The visual/native QA result above remains blocked.
+- A full-width SwiftUI bottom bar visually replaces the OS tab bar. Home, Map and Stops have
+  equally spaced native SF Symbols, labels underneath, forest selection and neutral inactive
+  labels. The Map icon fills when selected. There is no floating capsule, material blur or
+  selected-tab pill. A single root safe-area inset contains the shared player and bottom bar.
+- The navigation surface remains warm white in dark appearance, with fixed readable foregrounds.
+  Reference surface sampled at RGB 247/244/239, primary button at 48/70/57, player at 236/229/219.
+  Inactive text is slightly darker than the reference to reach 4.53:1 contrast against that
+  navigation surface; selected labels have 9.29:1 contrast. These are token calculations, not
+  screenshots or a complete accessibility audit.
+- Larger 132 × 106-point tappable stop photo, serif title, uppercase NEXT STOP label, coral
+  walking icon, distance/time divider, 54-point minimum-height AR button and Stop details row.
+  Accessibility text sizes stack the stop information and permit the walking screen to scroll.
+- Two separate white circular map buttons at the lower right, with 46-point hit areas and
+  bottom spacing intended to clear the provider attribution. Real map content and gestures remain.
+- Compact shared audio transport with a 46-point terracotta button and thin progress rail.
+  Tap the title/rail to open full controls; recorded audio seeking remains in stop details.
+- External Google walking directions and the current written turn instruction are available
+  in Stop details. Route failure/estimate and location-permission states remain visible.
 
-Mill content update: marker/AR copy, full-address detail page, separate expandable narration,
-and spoken-versus-recorded player controls now share the updated stop data. Physical plaque
-recognition assets remain unchanged. The on-device male voice, pronunciation, read-aloud progress,
-short AR card fit and map popups need the additional checks in AR-FIELD-TEST.md. No new native
-visual/audio QA pass is claimed.
+## Required fidelity surfaces
 
-Greystone update: the second stop now uses the creator-supplied name, marker text, description
-and full on-device narration while retaining its stable tour ID. A shared multi-photo detail
-gallery supports rotation, manual paging, credits, pause and full-screen zoom. All five original photos from Greystone.zip
-are now bundled, with the selected cover and creator-supplied captions/bridge credit. Native gallery behavior, voice playback and build status still
-require Mac/iPhone verification using AR-FIELD-TEST.md.
+Fonts/typography: native serif display titles, native sans-serif labels and SF Symbols were
+selected from the reference. Actual line wrapping, optical sizes and truncation require capture.
+
+Spacing/layout: source proportions informed panel insets, photo size, button height, player
+density and tab spacing. Actual safe-area layout and small-phone fit are unverified.
+
+Colors/tokens: reference colors sampled above; native light/dark rendering still needs comparison.
+The navigation deliberately stays light, matching the user's explicit priority.
+
+Image quality/assets: the existing real mill photograph, landmark illustration and all Greystone
+gallery images are reused. No mockup is rendered as the application. Live Google cartography
+and route geometry cannot be identical to the illustrated OpenStreetMap reference; attribution
+continues to identify the actual provider. The existing Google route line is retained.
+
+Copy/content: Your walk, Home, Map, Stops, NEXT STOP, View in AR and Stop details match the
+reference roles. Stop count, distance, ETA, visited state and playback times are live values;
+the reference's 0.2 mi, 5 min and 02:40 are not hard-coded.
+
+## Comparison history
+
+No rendered implementation comparison has been possible. Code/specification changes above are
+not substitutes for a visual comparison. No visual P0/P1/P2 findings are marked resolved and no
+post-fix screenshot evidence is available. Full-view and focused comparisons remain pending.
+
+## Mac/iPhone verification checklist
+
+1. Build the included project with the Mac's existing private settings and Apple signing team.
+2. Start a walk, select Map, play narration and capture the actual screen. Compare the full
+   viewport and focused crops of the navigation, destination panel and player with the reference.
+3. Confirm only one bottom bar/player appears; no system floating tab bar or empty tab-bar gap.
+   Check Home, Map and Stops before, during and after playback, and after closing AR/details.
+4. Verify each tab preserves the tour destination, map focus, playback and current stop progress.
+5. Inspect standard and larger text sizes, a smaller iPhone, portrait safe areas, and dark mode.
+   Confirm the light navigation has readable labels and controls stay visible and tappable.
+6. Pan and pinch the live map; test follow/route-fit buttons and confirm provider attribution
+   stays visible. Check location denial, missing-key and routing-failure states.
+7. Enlarge a stop photo, close it, open Stop details, seek recorded audio, open Google walking
+   directions, enter AR, activate a marker and Continue to the next stop.
+8. Test VoiceOver: selected navigation buttons, current playback value, photo expansion and AR
+   controls. Run Product > Test for the native regression suite.
+
+The remaining blocker is native rendering, interaction and build evidence from macOS/iPhone.

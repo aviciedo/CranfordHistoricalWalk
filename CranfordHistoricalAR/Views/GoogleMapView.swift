@@ -593,16 +593,16 @@ enum MapStyle {
 
     private static let lightJSON = """
     [
-      {"elementType":"geometry","stylers":[{"color":"#F8F6EE"}]},
-      {"elementType":"labels.text.fill","stylers":[{"color":"#2E3A2F"}]},
-      {"elementType":"labels.text.stroke","stylers":[{"color":"#F8F6EE"}]},
+      {"elementType":"geometry","stylers":[{"color":"#ECE8DF"}]},
+      {"elementType":"labels.text.fill","stylers":[{"color":"#304639"}]},
+      {"elementType":"labels.text.stroke","stylers":[{"color":"#F7F4EF"}]},
       {"featureType":"poi","stylers":[{"visibility":"off"}]},
-      {"featureType":"poi.park","elementType":"geometry","stylers":[{"color":"#dce3d5"},{"visibility":"on"}]},
+      {"featureType":"poi.park","elementType":"geometry","stylers":[{"color":"#CCD7BF"},{"visibility":"on"}]},
       {"featureType":"road","elementType":"geometry","stylers":[{"color":"#ffffff"}]},
-      {"featureType":"road","elementType":"geometry.stroke","stylers":[{"color":"#D9C9B2"}]},
-      {"featureType":"road.arterial","elementType":"geometry","stylers":[{"color":"#F8F6EE"}]},
+      {"featureType":"road","elementType":"geometry.stroke","stylers":[{"color":"#E2DDD3"}]},
+      {"featureType":"road.arterial","elementType":"geometry","stylers":[{"color":"#ffffff"}]},
       {"featureType":"transit","stylers":[{"visibility":"simplified"}]},
-      {"featureType":"water","elementType":"geometry","stylers":[{"color":"#aecbd0"}]}
+      {"featureType":"water","elementType":"geometry","stylers":[{"color":"#A5CBDA"}]}
     ]
     """
 

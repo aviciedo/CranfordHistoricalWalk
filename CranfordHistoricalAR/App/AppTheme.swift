@@ -1,17 +1,20 @@
 import SwiftUI
 
-/// Restrained palette: archival paper, ink, and a single brass accent (spec §13).
+/// Warm-white surfaces, forest ink and terracotta transport from the selected walking-screen reference.
 enum AppTheme {
     static let accent = Color("AccentColor")
-    static let forest = Color(red: 46 / 255, green: 58 / 255, blue: 47 / 255)
-    static let ivory = Color(red: 248 / 255, green: 246 / 255, blue: 238 / 255)
+    static let forest = Color(red: 48 / 255, green: 70 / 255, blue: 57 / 255)
+    static let ivory = Color(red: 247 / 255, green: 244 / 255, blue: 239 / 255)
     static let sage = Color(red: 107 / 255, green: 127 / 255, blue: 91 / 255)
     static let sand = Color(red: 217 / 255, green: 201 / 255, blue: 178 / 255)
     static let terracotta = Color(red: 201 / 255, green: 111 / 255, blue: 79 / 255)
     static let ink = Color(light: forest, dark: ivory)
     static let parchment = Color(light: ivory, dark: Color(red: 0.09, green: 0.12, blue: 0.10))
     static let surface = Color(light: .white.opacity(0.65), dark: forest)
-    static let playerSurface = Color(light: sand.opacity(0.32), dark: forest)
+    static let playerSurface = Color(light: Color(red: 236 / 255, green: 229 / 255, blue: 219 / 255), dark: forest)
+    /// Navigation stays warm white with fixed high-contrast labels, including in dark appearance.
+    static let navigationBackground = ivory
+    static let navigationInactive = Color(red: 110 / 255, green: 113 / 255, blue: 105 / 255)
     static let secondaryInk = Color(light: Color(red: 0.34, green: 0.37, blue: 0.33), dark: sand)
     // Semantic aliases keep the existing AR and developer screens on the same palette.
     static let brass = Color(light: forest, dark: sand)

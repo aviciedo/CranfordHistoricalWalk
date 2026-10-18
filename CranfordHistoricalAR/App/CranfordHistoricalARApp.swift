@@ -27,22 +27,28 @@ struct RootView: View {
     var body: some View {
         TabView(selection: $navigation.selectedTab) {
             HomeView()
-                .safeAreaInset(edge: .bottom, spacing: 0) { SharedNarrationBar() }
                 .tabItem { Label("Home", systemImage: "house") }
                 .tag(AppNavigation.Tab.home)
+                .toolbar(.hidden, for: .tabBar)
             TourView()
-                .safeAreaInset(edge: .bottom, spacing: 0) { SharedNarrationBar() }
                 .tabItem { Label("Map", systemImage: "map") }
                 .tag(AppNavigation.Tab.map)
+                .toolbar(.hidden, for: .tabBar)
             StopsView()
-                .safeAreaInset(edge: .bottom, spacing: 0) { SharedNarrationBar() }
-                .tabItem { Label("Stops", systemImage: "mappin.and.ellipse") }
+                .tabItem { Label("Stops", systemImage: "mappin") }
                 .tag(AppNavigation.Tab.stops)
+                .toolbar(.hidden, for: .tabBar)
+        }
+        .toolbar(.hidden, for: .tabBar)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            VStack(spacing: 0) {
+                SharedNarrationBar()
+                BottomNavigationBar(selection: $navigation.selectedTab)
+            }
+            .background(AppTheme.navigationBackground.ignoresSafeArea(edges: .bottom))
         }
         .environment(navigation)
         .tint(AppTheme.accent)
-        .toolbarBackground(AppTheme.parchment, for: .tabBar)
-        .toolbarBackground(.visible, for: .tabBar)
         .onChange(of: tour.isShowingTour) { _, showing in
             navigation.selectedTab = showing ? .map : .home
         }

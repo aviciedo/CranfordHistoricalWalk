@@ -77,6 +77,30 @@ project includes the new files. SwiftUI rendering, image-viewer gestures, tab/pl
 Google Maps overlays, dark mode and AR still require Xcode and a physical iPhone. See
 [design-qa.md](design-qa.md) for the remaining device checks; no iOS build success is claimed.
 
+## Selected walking-screen reference
+
+The app-owned walking interface follows [the selected reference](docs/design/walk-reference.jpg).
+A custom SwiftUI Home / Map / Stops bar replaces the system bar visually so its full-width
+warm-white surface, evenly spaced icons and labels remain consistent across iOS versions.
+The selected icon/label is forest green; inactive labels use a darker neutral gray for legibility.
+The bar stays light in dark appearance; other content keeps its earthy dark appearance.
+The native TabView retains screen state, one tour and one shared narration player.
+
+The destination panel uses a larger landscape photo, serif stop title, coral walking icon,
+distance/time divider, a full-width View in AR button and a Stop details disclosure row.
+The map's two circular white controls sit at its lower right. Google Maps street/park/water
+colors are muted to match the reference palette, while live cartography and routes remain real.
+Google attribution remains the map provider's attribution; the mockup's OpenStreetMap footer
+is not copied into the Google map. The existing mill illustration and real photographs are reused.
+
+The audio strip has a terracotta play/pause circle and thin progress rail. Tap its title/progress
+area to open stop details and the full player; recorded audio retains its seek slider there.
+**Walking directions in Google Maps** and the current written turn instruction are in Stop details.
+Route failures, estimated distances, permission notices, AR activation and Continue remain available.
+
+Linux checks cannot render this native interface or prove an exact visual match.
+See [design-qa.md](design-qa.md) for the pending Mac/iPhone comparison checklist.
+
 ## Guided AR walk and recorded visits
 
 **Start walking tour → View in AR → activate stop marker → listen/read → Continue to next stop.**

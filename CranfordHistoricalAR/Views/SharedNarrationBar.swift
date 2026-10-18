@@ -15,29 +15,43 @@ struct SharedNarrationBar: View {
     var body: some View {
         if let stop, stop.narrationSource != nil {
             HStack(spacing: 14) {
-                NarrationPlayButton(stop: stop)
-                VStack(alignment: .leading, spacing: 2) {
-                    Button { detailStop = stop } label: {
+                NarrationPlayButton(stop: stop, diameter: 46)
+                Button { detailStop = stop } label: {
+                    VStack(alignment: .leading, spacing: 6) {
                         Text(stop.name).font(.subheadline.weight(.semibold))
-                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                             .lineLimit(1)
+                        NarrationTimeline(stop: stop, compact: true)
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Open details for \(stop.name)")
-                    NarrationTimeline(stop: stop)
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Open details and narration controls for \(stop.name)")
+                .accessibilityValue(playbackValue(for: stop))
+                .accessibilityHint("Opens the full player, playback times, and stop information")
             }
-            .padding(.horizontal, 20).padding(.vertical, 10)
+            .padding(.horizontal, 22).padding(.vertical, 10)
             .background(AppTheme.playerSurface)
             .foregroundStyle(AppTheme.ink)
             .sheet(item: $detailStop) { HistoricalSignSheet(stop: $0) }
         }
+    }
+
+    private func playbackValue(for stop: HistoricalStop) -> String {
+        let player = dependencies.narrationPlayer
+        guard player.stopID == stop.id else { return "Not started" }
+        if case .failed = player.status { return "Unable to play" }
+        if player.status == .loading { return "Loading" }
+        let progress = player.progress.isFinite ? min(1, max(0, player.progress)) : 0
+        return "\(Int(progress * 100)) percent played"
     }
 }
 
 struct NarrationPlayButton: View {
     @Environment(AppDependencies.self) private var dependencies
     let stop: HistoricalStop
+    var diameter: CGFloat = 50
 
     var body: some View {
         let player = dependencies.narrationPlayer
@@ -54,7 +68,7 @@ struct NarrationPlayButton: View {
                         .font(.title3.weight(.semibold))
                 }
             }
-            .frame(width: 50, height: 50)
+            .frame(width: diameter, height: diameter)
             .foregroundStyle(AppTheme.ivory)
             .background(AppTheme.terracotta, in: Circle())
         }
@@ -67,6 +81,8 @@ struct NarrationPlayButton: View {
 struct NarrationTimeline: View {
     @Environment(AppDependencies.self) private var dependencies
     let stop: HistoricalStop
+    /// The persistent strip uses a thin progress rail; expanded recorded-audio controls retain seeking.
+    var compact = false
     @State private var scrubProgress: Double?
 
     var body: some View {
@@ -74,7 +90,7 @@ struct NarrationTimeline: View {
         let isCurrent = player.stopID == stop.id
         let canSeek = isCurrent && player.canSeek
         VStack(spacing: 0) {
-            if stop.hasRecordedNarration {
+            if stop.hasRecordedNarration && !compact {
                 Slider(value: Binding(
                     get: { scrubProgress ?? (isCurrent ? player.progress : 0) },
                     set: { scrubProgress = $0 }
@@ -91,7 +107,7 @@ struct NarrationTimeline: View {
                 .accessibilityLabel("Narration position for \(stop.name)")
             } else {
                 ProgressView(value: isCurrent ? player.progress : 0)
-                    .tint(AppTheme.terracotta).padding(.vertical, 6)
+                    .tint(AppTheme.terracotta).padding(.vertical, compact ? 4 : 6)
                     .accessibilityLabel("Narration progress for \(stop.name)")
             }
             HStack {

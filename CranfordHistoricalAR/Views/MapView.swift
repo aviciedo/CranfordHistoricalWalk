@@ -9,7 +9,7 @@ struct TourMapView: View {
     var bottomInset: CGFloat
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
+        ZStack(alignment: .top) {
             if GoogleMapsBootstrap.isConfigured {
                 GoogleMapView(
                     markers: mapModel.markers(for: tour),
@@ -20,7 +20,9 @@ struct TourMapView: View {
                     onUserGesture: { mapModel.userDidMoveCamera() },
                     onMarkerTap: { mapModel.select(stopID: $0) },
                     markerStyle: .numberedDot,
-                    selectedStopID: mapModel.selectedStopID
+                    selectedStopID: mapModel.selectedStopID,
+                    showsCompass: false,
+                    fitInsets: UIEdgeInsets(top: 28, left: 30, bottom: 30, right: 74)
                 )
                 .onChange(of: tour.userLocation) { _, _ in
                     mapModel.followIfNeeded(tour: tour)
@@ -39,19 +41,19 @@ struct TourMapView: View {
                 MapUnavailableView(stops: tour.stops)
             }
 
-            VStack(alignment: .trailing, spacing: 12) {
-                if let issue = tour.locationIssue {
-                    LocationIssueBanner(issue: issue)
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                }
-                if GoogleMapsBootstrap.isConfigured {
-                    MapControlStack(mapModel: mapModel)
-                }
+            if let issue = tour.locationIssue {
+                LocationIssueBanner(issue: issue)
+                    .padding(.top, 8).padding(.trailing, 12)
+                    .transition(.move(edge: .top).combined(with: .opacity))
             }
-            .padding(.top, 8)
-            .padding(.trailing, 12)
-            .animation(.easeInOut(duration: 0.25), value: tour.locationIssue)
         }
+        .overlay(alignment: .bottomTrailing) {
+            if GoogleMapsBootstrap.isConfigured {
+                MapControlStack(mapModel: mapModel)
+                    .padding(.trailing, 16).padding(.bottom, 20)
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: tour.locationIssue)
     }
 }
 
@@ -61,30 +63,32 @@ struct MapControlStack: View {
     var mapModel: MapViewModel
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: 10) {
             Button {
                 mapModel.requestFollow(tour: tour)
             } label: {
-                Image(systemName: mapModel.cameraMode == .follow ? "location.fill" : "location")
-                    .frame(width: 44, height: 44)
+                Image(systemName: "location.fill")
+                    .frame(width: 46, height: 46)
+                    .background(.white, in: Circle())
+                    .shadow(color: .black.opacity(0.12), radius: 5, y: 3)
             }
             .disabled(tour.userLocation == nil)
+            .opacity(tour.userLocation == nil ? 0.45 : 1)
             .accessibilityLabel("Center on my location")
-
-            Divider().frame(width: 28)
 
             Button {
                 mapModel.showUserAndDestination(tour: tour)
             } label: {
-                Image(systemName: "point.topleft.down.to.point.bottomright.curvepath")
-                    .frame(width: 44, height: 44)
+                Image(systemName: "scope")
+                    .frame(width: 46, height: 46)
+                    .background(.white, in: Circle())
+                    .shadow(color: .black.opacity(0.12), radius: 5, y: 3)
             }
             .accessibilityLabel("Show route to next stop")
         }
-        .font(.system(size: 17, weight: .medium))
-        .foregroundStyle(.primary)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .shadow(color: .black.opacity(0.12), radius: 10, y: 4)
+        .font(.system(size: 19, weight: .medium))
+        .buttonStyle(.plain)
+        .foregroundStyle(AppTheme.forest)
     }
 }
 

@@ -47,6 +47,22 @@ struct StopDetailView: View {
                         }
                     }
                     .font(.subheadline.weight(.semibold))
+                    if let directionsURL = stop.googleWalkingDirectionsURL {
+                        Link(destination: directionsURL) {
+                            HStack(spacing: 12) {
+                                Label("Walking directions in Google Maps", systemImage: "figure.walk")
+                                Spacer(minLength: 0)
+                                Image(systemName: "arrow.up.right").font(.subheadline)
+                            }
+                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                        }
+                        .font(.subheadline.weight(.medium))
+                        .accessibilityLabel("Open walking directions to \(stop.name) in Google Maps")
+                    }
+                    if isCurrent, let instruction = tour.currentInstruction {
+                        Label(instruction, systemImage: "arrow.turn.up.right")
+                            .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
+                    }
                     NarrationControls(stop: stop)
                     if !stop.longDescription.isEmpty {
                         Text(stop.longDescription).font(.body).lineSpacing(5)
