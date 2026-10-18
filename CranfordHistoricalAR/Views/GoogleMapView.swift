@@ -258,9 +258,7 @@ struct GoogleMapView: UIViewRepresentable {
         // MARK: Route
 
         static func routesMatch(_ lhs: [CLLocationCoordinate2D], _ rhs: [CLLocationCoordinate2D]) -> Bool {
-            lhs.count == rhs.count && zip(lhs, rhs).allSatisfy {
-                $0.latitude == $1.latitude && $0.longitude == $1.longitude
-            }
+            RouteGeometry.coordinatesMatch(lhs.map(\.geoCoordinate), rhs.map(\.geoCoordinate))
         }
 
         func render(route: [CLLocationCoordinate2D]) {

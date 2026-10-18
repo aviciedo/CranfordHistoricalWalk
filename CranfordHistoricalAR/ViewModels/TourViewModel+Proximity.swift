@@ -26,11 +26,20 @@ extension TourViewModel {
 
     /// A matching physical plaque is stronger arrival evidence than the unverified GPS geocode.
     func confirmPlaqueArrival(for stopID: String) {
-        guard progress.phase == .inProgress, let stop = currentStop,
-              stop.id == stopID, stop.hasPlaqueReference,
-              proximityMachine?.hasManuallyDismissed == false else { return }
-        plaqueConfirmedStopID = stopID
-        if !isSignPresented { openSignManually() }
+        switch PlaqueArrivalPolicy.confirmation(
+            tourInProgress: progress.phase == .inProgress,
+            currentStopID: currentStop?.id,
+            requestedStopID: stopID,
+            stopHasPlaqueReference: currentStop?.hasPlaqueReference == true,
+            hasManuallyDismissed: proximityMachine?.hasManuallyDismissed,
+            isSignPresented: isSignPresented
+        ) {
+        case .ignore:
+            return
+        case .confirm(let openSign):
+            plaqueConfirmedStopID = stopID
+            if openSign { openSignManually() }
+        }
     }
 
     /// Builds a fresh state machine for the current stop. Called whenever the destination changes.
@@ -47,11 +56,12 @@ extension TourViewModel {
 
     func handleLocationForProximity(_ sample: LocationSample) {
         guard progress.phase == .inProgress, let stop = currentStop, var machine = proximityMachine else { return }
-        // Do not immediately dismiss a visually confirmed stop because its bundled geocode is wrong.
-        // Closing/continuing the sign still advances normally and clears this confirmation.
-        guard !hasPlaqueConfirmedArrival else { return }
-        // Ignore wildly inaccurate fixes so a 200 m GPS jump cannot open/close the sign.
-        guard sample.horizontalAccuracy >= 0, sample.horizontalAccuracy <= 100 else { return }
+        // A recognized plaque holds the stop against a bad geocode. Other fixes still
+        // have to be accurate enough that a 200 m GPS jump cannot open or close the sign.
+        guard PlaqueArrivalPolicy.shouldApplyLocationSample(
+            plaqueConfirmedForCurrentStop: hasPlaqueConfirmedArrival,
+            horizontalAccuracy: sample.horizontalAccuracy
+        ) else { return }
         let distance = GeoMath.distance(from: sample.coordinate, to: stop.coordinate)
         let effects = machine.handle(.distanceUpdated(meters: distance))
         proximityMachine = machine
