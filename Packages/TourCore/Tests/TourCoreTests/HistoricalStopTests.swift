@@ -86,6 +86,23 @@ final class HistoricalStopTests: XCTestCase {
         XCTAssertEqual(stop.narrationSource, nil)
     }
 
+    func testUnusablePlaqueCannotConfirmImageTracking() {
+        func plaque(_ transcription: String, name: String, width: Double) -> StopPlaque {
+            StopPlaque(transcription: transcription, referenceImageName: name, physicalWidthMeters: width)
+        }
+        XCTAssertFalse(plaque("  \n", name: "droeschers-mill-plaque", width: 0.18).isUsable)
+        XCTAssertFalse(plaque("c. 1737", name: "", width: 0.18).isUsable)
+        XCTAssertFalse(plaque("c. 1737", name: "droeschers-mill-plaque", width: 0).isUsable)
+        XCTAssertFalse(plaque("c. 1737", name: "droeschers-mill-plaque", width: -0.1).isUsable)
+        let usable = plaque("c. 1737", name: "droeschers-mill-plaque", width: 0.18)
+        XCTAssertTrue(usable.isUsable)
+        var stop = makeStop()
+        stop.plaque = plaque("   ", name: "droeschers-mill-plaque", width: 0.18)
+        XCTAssertFalse(stop.hasPlaqueReference)
+        stop.plaque = usable
+        XCTAssertTrue(stop.hasPlaqueReference)
+    }
+
     func testDepartureRadiusNeverBelowArrival() {
         let stop = makeStop(arrival: 40, departure: 20)
         XCTAssertEqual(stop.effectiveDepartureRadius, 56, accuracy: 0.001) // max(40+15, 40*1.4)
