@@ -183,18 +183,19 @@ final class GeoAnchorManager {
     func presentSign(for stop: HistoricalStop, image: LoadedImage?, displayScale: CGFloat, appearance: ARHistoricalSignEntity.Appearance) {
         let request = SignRequest(stop: stop, image: image, displayScale: displayScale)
         let sameStop = signRequest?.stop.id == stop.id
+        let wasPlaqueCard = anchors.sign.appearance == .plaqueCard
         signRequest = request
         anchors.sign.configure(stop: stop, image: image, scale: displayScale, appearance: appearance)
         if appearance == .plaqueCard {
             if let imageAnchor = plaqueAnchors.trackedAnchor {
-                plaqueAnchors.bind(imageAnchor: imageAnchor, sign: anchors.sign, offset: .aboveFacade)
+                plaqueAnchors.bind(imageAnchor: imageAnchor, sign: anchors.sign, offset: .abovePlaque)
             }
-            if !anchors.sign.isPresented {
+            if !wasPlaqueCard || !anchors.sign.isPresented {
                 anchors.sign.presentOnPlaque()
             }
             return
         }
-        let switchingFromPlaque = anchors.sign.parent !== anchors.worldRoot
+        let switchingFromPlaque = wasPlaqueCard || anchors.sign.parent !== anchors.worldRoot
         plaqueAnchors.unbind(sign: anchors.sign, returningTo: anchors.worldRoot)
         if switchingFromPlaque {
             signAnchoredPosition = nil

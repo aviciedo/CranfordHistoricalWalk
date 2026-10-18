@@ -32,6 +32,7 @@ final class PlaqueAnchorController {
         guard !images.isEmpty else { return false }
         configuration.detectionImages = images
         configuration.maximumNumberOfTrackedImages = 1
+        configuration.automaticImageScaleEstimationEnabled = true
         return true
     }
 
@@ -47,7 +48,7 @@ final class PlaqueAnchorController {
     /// Parents `sign` to the image so the card rides with the physical plate.
     func bind(imageAnchor: ARImageAnchor, sign: ARHistoricalSignEntity, offset: PlaqueCardOffset) {
         guard let arView else { return }
-        if trackedAnchor !== imageAnchor || imageAnchorEntity == nil {
+        if trackedAnchor?.identifier != imageAnchor.identifier || imageAnchorEntity == nil {
             imageAnchorEntity?.removeFromParent()
             let entity = AnchorEntity(anchor: imageAnchor)
             entity.name = "plaque-image-anchor"

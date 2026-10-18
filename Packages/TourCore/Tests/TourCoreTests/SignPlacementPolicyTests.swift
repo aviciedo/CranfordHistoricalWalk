@@ -21,7 +21,24 @@ final class SignPlacementPolicyTests: XCTestCase {
         var input = presentedMill()
         input.plaqueDetected = true
         XCTAssertEqual(SignPlacementPolicy.mode(input), .plaqueAnchored)
-        XCTAssertNil(SignPlacementPolicy.plaqueHint(mode: .plaqueAnchored, stopHasPlaqueReference: true, proximity: .signPresented))
+        XCTAssertEqual(SignPlacementPolicy.plaqueHint(mode: .plaqueAnchored, stopHasPlaqueReference: true, proximity: .signPresented),
+                       "Plaque recognized — the historical sign is just above it")
+    }
+
+    func testRecognizedPlaqueAnchorsEvenWhenGPSIsStillApproaching() {
+        var input = presentedMill()
+        input.proximity = .approaching
+        input.plaqueDetected = true
+        XCTAssertEqual(SignPlacementPolicy.mode(input), .plaqueAnchored)
+    }
+
+    func testLostPlaqueTrackingReturnsToFallbackAfterTimeout() {
+        var input = presentedMill()
+        input.plaqueDetected = true
+        XCTAssertEqual(SignPlacementPolicy.mode(input), .plaqueAnchored)
+        input.plaqueDetected = false
+        input.searchElapsed = SignPlacementPolicy.searchTimeout
+        XCTAssertEqual(SignPlacementPolicy.mode(input), .geoFallback)
     }
 
     func testDismissedThisVisitDoesNotReshowOnRetrack() {
@@ -71,16 +88,16 @@ final class SignPlacementPolicyTests: XCTestCase {
         XCTAssertEqual(SignPlacementPolicy.mode(input), .hidden)
     }
 
-    func testAssumedWidthAndAboveFacadeOffset() {
+    func testInitialWidthAndVisibleAbovePlaqueOffset() {
         XCTAssertEqual(SignPlacementPolicy.assumedPlaqueWidthMeters, 0.18, accuracy: 0.0001)
         XCTAssertEqual(SignPlacementPolicy.millReferenceImageName, "droeschers-mill-plaque")
-        let offset = PlaqueCardOffset.aboveFacade
-        XCTAssertEqual(offset.upMeters, 3.80, accuracy: 0.001)
-        XCTAssertEqual(offset.outMeters, 0.40, accuracy: 0.001)
+        let offset = PlaqueCardOffset.abovePlaque
+        XCTAssertEqual(offset.upMeters, 0.25, accuracy: 0.001)
+        XCTAssertEqual(offset.outMeters, 0.08, accuracy: 0.001)
         let local = offset.imageLocalTranslation
         XCTAssertEqual(local.x, 0, accuracy: 0.001)
-        XCTAssertEqual(local.y, 0.40, accuracy: 0.001)
-        XCTAssertEqual(local.z, -3.80, accuracy: 0.001, "up the wall is −Z in ARKit image space")
+        XCTAssertEqual(local.y, 0.08, accuracy: 0.001)
+        XCTAssertEqual(local.z, -0.25, accuracy: 0.001, "up the wall is −Z in ARKit image space")
     }
 
     func testHysteresisRadiiUnchanged() {

@@ -97,6 +97,8 @@ final class TourViewModel {
 
     // MARK: Proximity / AR sign (mutated by TourViewModel+Proximity.swift)
     var proximityMachine: StopProximityStateMachine?
+    /// Visual confirmation overrides an unverified geocode until the visitor closes the sign.
+    var plaqueConfirmedStopID: String?
     var presentedSignStopID: String?
     var signPresentationSource: SignPresentationSource?
 

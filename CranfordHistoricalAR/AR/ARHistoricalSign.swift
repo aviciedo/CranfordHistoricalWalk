@@ -27,7 +27,7 @@ final class ARHistoricalSignEntity: Entity {
     private var post: ModelEntity?
     private var closeControl: ModelEntity?
     private(set) var stopID: String?
-    private var appearance: Appearance = .geoPost
+    private(set) var appearance: Appearance = .geoPost
     private var textureCache: [String: (TextureResource, CGFloat)] = [:]
     private(set) var isPresented = false
 
@@ -78,7 +78,7 @@ final class ARHistoricalSignEntity: Entity {
         self.appearance = appearance
 
         let (texture, aspect) = textureAndAspect
-        let width: Float = appearance == .plaqueCard ? 1.35 : ARHistoricalSignEntity.signWidth
+        let width: Float = appearance == .plaqueCard ? 0.45 : ARHistoricalSignEntity.signWidth
         let height = width * Float(aspect)
 
         var material = UnlitMaterial()

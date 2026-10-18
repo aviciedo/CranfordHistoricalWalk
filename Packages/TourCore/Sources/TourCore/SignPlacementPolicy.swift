@@ -53,10 +53,8 @@ public enum SignPlacementPolicy {
     public static let searchTimeout: TimeInterval = 8
     public static let millPlaqueHint = "Look for the mill plaque on the door"
 
-    /// Assumed width of the Droescher's Mill door plate: **0.18 m (18 cm)**.
-    /// Midpoint of the 15–20 cm range for a small bronze door plate. Estimated from the
-    /// door-context photo against a typical six-panel exterior door (~0.90 m wide): the
-    /// plate is about one-fifth of the door width.
+    /// Unmeasured initial reference-image width, retained until a physical measurement is supplied.
+    /// ARKit automatic image-scale estimation corrects translation when it can estimate the size.
     public static let assumedPlaqueWidthMeters: Double = 0.18
 
     /// ARKit resource group and reference-image name for stop 1.
@@ -94,7 +92,9 @@ public enum SignPlacementPolicy {
             break
         }
         switch mode {
-        case .plaqueAnchored, .geoFallback:
+        case .plaqueAnchored:
+            return "Plaque recognized — the historical sign is just above it"
+        case .geoFallback:
             return nil
         case .hidden, .searchingForPlaque:
             return millPlaqueHint
@@ -114,7 +114,7 @@ public enum SignPlacementPolicy {
 /// **+X** is right along the plate, **+Y** points out of the plate toward the camera,
 /// **+Z** points down the wall. “Up the facade” is therefore **−Z**.
 ///
-/// The user's marked region sits **above the building** so the card does not cover the door.
+/// Keep the card just above the plaque so it remains reachable in the camera view.
 public struct PlaqueCardOffset: Equatable, Sendable {
     public var rightMeters: Double
     /// Toward the camera, off the door.
@@ -128,8 +128,8 @@ public struct PlaqueCardOffset: Equatable, Sendable {
         self.upMeters = upMeters
     }
 
-    /// Default: centered on the plate, slightly off the wall, well above the door.
-    public static let aboveFacade = PlaqueCardOffset(rightMeters: 0, outMeters: 0.40, upMeters: 3.80)
+    /// Default: centered above the plate, slightly off the wall, within the visitor's view.
+    public static let abovePlaque = PlaqueCardOffset(rightMeters: 0, outMeters: 0.08, upMeters: 0.25)
 
     /// Image-anchor local translation: (right, out, down) = (X, Y, −up).
     public var imageLocalTranslation: (x: Double, y: Double, z: Double) {

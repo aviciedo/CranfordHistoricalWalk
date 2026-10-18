@@ -56,10 +56,10 @@ final class ARViewModel {
 
     var localizationState: ARLocalizationState { geoAnchors.localizationState }
     var statusMessage: String? { geoAnchors.userFacingNotice }
-    var geoBackendName: String { geoAnchors.provider.displayName }
+    var geoBackendName: String { placementMode == .plaqueAnchored ? "Plaque image tracking" : geoAnchors.provider.displayName }
     var destinationName: String? { tour.currentStop?.name }
-    var distanceText: String { tour.remainingDistanceText }
-    var timeText: String { tour.remainingTimeText }
+    var distanceText: String { tour.hasPlaqueConfirmedArrival ? "At plaque" : tour.remainingDistanceText }
+    var timeText: String { tour.hasPlaqueConfirmedArrival ? "Arrived" : tour.remainingTimeText }
 
     /// Relative bearing (−180…180) from the device heading to the next waypoint, for the 2D indicator.
     var relativeBearingToWaypoint: Double? {
@@ -171,7 +171,7 @@ final class ARViewModel {
         } else if let signStop = tour.presentedSignStop, imageLoader.cachedImage(for: signStop) == nil, signStop.hasAnyImage {
             loadSignImage(for: signStop)
         }
-        guard let stop = tour.currentStop, let user = tour.userLocation else {
+        guard !tour.hasPlaqueConfirmedArrival, let stop = tour.currentStop, let user = tour.userLocation else {
             geoAnchors.setNavigationTarget(nil)
             return
         }
@@ -263,6 +263,8 @@ final class ARViewModel {
             guard let imageAnchor = anchor as? ARImageAnchor else { continue }
             if imageAnchor.isTracked {
                 handleRecognizedPlaque(imageAnchor)
+            } else {
+                releasePlaqueIfMatching(imageAnchor)
             }
         }
     }
@@ -270,25 +272,27 @@ final class ARViewModel {
     func imageAnchorsDidRemove(_ anchors: [ARAnchor]) {
         for anchor in anchors {
             guard let imageAnchor = anchor as? ARImageAnchor else { continue }
-            if geoAnchors.plaqueAnchors.trackedAnchor === imageAnchor {
-                geoAnchors.plaqueAnchors.unbind(sign: geoAnchors.anchors.sign, returningTo: geoAnchors.anchors.worldRoot)
-                applySignPlacement()
-            }
+            releasePlaqueIfMatching(imageAnchor)
         }
+    }
+
+    private func releasePlaqueIfMatching(_ imageAnchor: ARImageAnchor) {
+        guard geoAnchors.plaqueAnchors.trackedAnchor?.identifier == imageAnchor.identifier else { return }
+        geoAnchors.plaqueAnchors.unbind(sign: geoAnchors.anchors.sign, returningTo: geoAnchors.anchors.worldRoot)
+        applySignPlacement()
     }
 
     /// Recognizing the physical plate can open the sign through the existing state machine
     /// (`userOpenedSign`) so GPS/geocode error does not block an on-site visitor. Dismissed
     /// this visit still wins.
     private func handleRecognizedPlaque(_ imageAnchor: ARImageAnchor) {
-        guard let expected = expectedPlaqueImageName,
+        guard imageAnchor.isTracked, let expected = expectedPlaqueImageName,
               geoAnchors.plaqueAnchors.matches(imageAnchor, expectedName: expected) else { return }
         if tour.proximityMachine?.hasManuallyDismissed == true { return }
         if tour.proximityState == .completed { return }
-        if !tour.isSignPresented {
-            tour.openSignManually()
-        }
-        geoAnchors.plaqueAnchors.bind(imageAnchor: imageAnchor, sign: geoAnchors.anchors.sign, offset: .aboveFacade)
+        guard let stop = tour.currentStop else { return }
+        tour.confirmPlaqueArrival(for: stop.id)
+        geoAnchors.plaqueAnchors.bind(imageAnchor: imageAnchor, sign: geoAnchors.anchors.sign, offset: .abovePlaque)
         applySignPlacement()
     }
 

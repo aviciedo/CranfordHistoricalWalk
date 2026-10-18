@@ -19,8 +19,23 @@ extension TourViewModel {
 
     var isWithinArrivalRadius: Bool { proximityMachine?.isWithinArrivalRadius ?? false }
 
+    var hasPlaqueConfirmedArrival: Bool {
+        guard let currentStop else { return false }
+        return plaqueConfirmedStopID == currentStop.id
+    }
+
+    /// A matching physical plaque is stronger arrival evidence than the unverified GPS geocode.
+    func confirmPlaqueArrival(for stopID: String) {
+        guard progress.phase == .inProgress, let stop = currentStop,
+              stop.id == stopID, stop.hasPlaqueReference,
+              proximityMachine?.hasManuallyDismissed == false else { return }
+        plaqueConfirmedStopID = stopID
+        if !isSignPresented { openSignManually() }
+    }
+
     /// Builds a fresh state machine for the current stop. Called whenever the destination changes.
     func resetProximityForCurrentStop() {
+        plaqueConfirmedStopID = nil
         presentedSignStopID = nil
         signPresentationSource = nil
         guard let stop = currentStop else { proximityMachine = nil; return }
@@ -32,6 +47,9 @@ extension TourViewModel {
 
     func handleLocationForProximity(_ sample: LocationSample) {
         guard progress.phase == .inProgress, let stop = currentStop, var machine = proximityMachine else { return }
+        // Do not immediately dismiss a visually confirmed stop because its bundled geocode is wrong.
+        // Closing/continuing the sign still advances normally and clears this confirmation.
+        guard !hasPlaqueConfirmedArrival else { return }
         // Ignore wildly inaccurate fixes so a 200 m GPS jump cannot open/close the sign.
         guard sample.horizontalAccuracy >= 0, sample.horizontalAccuracy <= 100 else { return }
         let distance = GeoMath.distance(from: sample.coordinate, to: stop.coordinate)

@@ -84,11 +84,29 @@ to a stop** on the home screen, tap a home-map marker, open **Stops** during the
 tour-map pin. You can start and stop any of the five recordings from the living room.
 
 The Droescher's Mill photograph lives in `Assets.xcassets/droeschers-mill` (`imageName: "droeschers-mill"`
-on stop 1). Stop 1 also has an ARKit image-tracking plate (`Assets.xcassets/PlaqueAnchors.arresourcegroup`,
-physical width **18 cm**) so the tour card can lock to the bronze door plaque. The plate quote is the
-date line on the door (`c. 1737`), not 1797 and not extra narrative. If the plate is not found
-(Simulator, poor light, missing reference), the existing geo-anchored sign is used. Closing the card
-uses the same 35 m / 50 m `signDismissed` hysteresis as the rest of the tour.
+on stop 1). Stop 1 also has an ARKit image-tracking reference (`Assets.xcassets/PlaqueAnchors.arresourcegroup`)
+using the visitor's real 1280×960 plaque photograph, unchanged. This replaces the old synthetic
+bronze date-only stand-in, which did not match the physical plaque. The plate quote is the date line
+on the door (`c. 1737`), not 1797 and not extra narrative.
+
+Plaque recognition is Apple ARKit image tracking and does **not** require Google ARCore or an API key.
+Image tracking uses stable anchor identifiers, handles tracking loss, and enables automatic image-scale
+estimation. The physical width is still **unmeasured**: the legacy 18 cm reference width is only an
+initial scale, not a verified measurement. Measure the plaque's outer width on the next site visit
+before treating the placement scale as calibrated.
+
+The recognized card is 45 cm wide, positioned 25 cm above the reference-image center and 8 cm off
+the wall, rather than 3.8 m above the plaque. A recognition banner and "At plaque / Arrived" HUD
+confirm visual arrival. Once the matching plaque is recognized, erroneous GPS/geocode distances
+cannot immediately dismiss the sign or point arrows away; the visitor uses **Continue** to advance.
+GPS-only arrivals keep the existing 35 m / 50 m hysteresis. Tracking loss can return placement to the
+existing geo fallback without marking a different stop visited.
+
+To retest: install the new build on a physical iPhone, start the tour, enter AR at the mill,
+and hold the whole plaque in view with good light. Move the phone slowly to give ARKit parallax
+for scale estimation. Look for **Plaque recognized**, then slightly tilt up to see the card;
+**Read** opens its 2D contents. A real on-site recognition test and Xcode asset compilation are
+still required; Linux tests cannot validate ARKit recognition quality.
 
 `Resources/historical_stops.json` is the five-stop walking tour the app loads: HPAB brochure stops 1–5
 (Droescher's Mill, Cranford Hall, Rahway River, First Baptist Church, Cranford Hotel). `audioURL`

@@ -45,6 +45,30 @@ final class TourCompletionFlowTests: XCTestCase {
         try await waitUntil("new route requested for the next stop") { self.tour.currentRoute?.destination == self.stops[1].coordinate }
     }
 
+    func testRecognizedPlaqueHoldsArrivalDespiteIncorrectGPS() {
+        let mill = stops[0]
+        tour.confirmPlaqueArrival(for: mill.id)
+        XCTAssertTrue(tour.hasPlaqueConfirmedArrival)
+        XCTAssertEqual(tour.proximityState, .signPresented)
+        XCTAssertTrue(tour.isCurrentStopVisited)
+
+        let wrongGPS = GeoMath.destination(from: mill.coordinate, bearing: 90, distance: 320)
+        tour.handleLocationForProximity(LocationSample(coordinate: wrongGPS, horizontalAccuracy: 5))
+        XCTAssertEqual(tour.currentStop?.id, mill.id)
+        XCTAssertTrue(tour.isSignPresented, "a 0.2-mile geocode/GPS discrepancy must not dismiss a recognized plaque")
+
+        tour.closeSign()
+        XCTAssertEqual(tour.currentStop?.id, stops[1].id)
+        XCTAssertFalse(tour.hasPlaqueConfirmedArrival)
+        XCTAssertNil(tour.plaqueConfirmedStopID)
+    }
+
+    func testWrongStopCannotConfirmPlaqueArrival() {
+        tour.confirmPlaqueArrival(for: stops[1].id)
+        XCTAssertFalse(tour.hasPlaqueConfirmedArrival)
+        XCTAssertFalse(tour.isSignPresented)
+    }
+
     func testWalkingAwayAfterSeeingSignAdvances() async throws {
         simulator.teleport(to: stops[0].coordinate)
         try await waitUntil("sign presented") { self.tour.isSignPresented }
