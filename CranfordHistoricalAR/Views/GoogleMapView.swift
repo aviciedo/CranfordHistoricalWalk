@@ -83,7 +83,7 @@ struct GoogleMapView: UIViewRepresentable {
         private var selectedID: String?
         private var cameraRetryCount = 0
 
-        private var landmarkMarker: GMSMarker?
+        private var landmarkMarkers: [String: GMSMarker] = [:]
         private var userMarker: GMSMarker?
         private var accuracyCircle: GMSCircle?
         private var lastPuck: UserPuckModel?
@@ -212,27 +212,35 @@ struct GoogleMapView: UIViewRepresentable {
         /// Decorative artwork beside the real stop coordinate; never supplies route geometry.
         func renderLandmark(markers: [StopMarkerModel]) {
             guard let mapView else { return }
-            guard let mill = markers.first(where: { $0.id == "hpab-001" }) else {
-                landmarkMarker?.map = nil
-                return
+            let artworkByStop = ["hpab-001": "mill-map-landmark", "hpab-002": "greystone-map-landmark"]
+            let visibleIDs = Set(markers.map(\.id))
+            for id in Array(landmarkMarkers.keys) where !visibleIDs.contains(id) {
+                landmarkMarkers.removeValue(forKey: id)?.map = nil
             }
-            if landmarkMarker == nil, let artwork = UIImage(named: "mill-map-landmark") {
-                let size = CGSize(width: 110, height: 82.5)
-                let format = UIGraphicsImageRendererFormat()
-                format.scale = 2
-                let icon = UIGraphicsImageRenderer(size: size, format: format).image { _ in
-                    artwork.draw(in: CGRect(origin: .zero, size: size))
+            for stop in markers {
+                guard let assetName = artworkByStop[stop.id] else { continue }
+                if landmarkMarkers[stop.id] == nil, let artwork = UIImage(named: assetName) {
+                    let size = CGSize(width: 110, height: 82.5)
+                    let format = UIGraphicsImageRendererFormat()
+                    format.scale = 2
+                    let icon = UIGraphicsImageRenderer(size: size, format: format).image { _ in
+                        let scale = min(size.width / artwork.size.width, size.height / artwork.size.height)
+                        let fitted = CGSize(width: artwork.size.width * scale, height: artwork.size.height * scale)
+                        artwork.draw(in: CGRect(x: (size.width - fitted.width) / 2,
+                                                y: size.height - fitted.height,
+                                                width: fitted.width, height: fitted.height))
+                    }
+                    let marker = GMSMarker(position: stop.coordinate)
+                    marker.icon = icon
+                    marker.groundAnchor = CGPoint(x: 0.15, y: 0.95)
+                    marker.isTappable = false
+                    marker.zIndex = 0
+                    marker.tracksViewChanges = false
+                    landmarkMarkers[stop.id] = marker
                 }
-                let marker = GMSMarker(position: mill.coordinate)
-                marker.icon = icon
-                marker.groundAnchor = CGPoint(x: 0.15, y: 0.95)
-                marker.isTappable = false
-                marker.zIndex = 0
-                marker.tracksViewChanges = false
-                landmarkMarker = marker
+                landmarkMarkers[stop.id]?.position = stop.coordinate
+                landmarkMarkers[stop.id]?.map = mapView.camera.zoom >= 14.5 ? mapView : nil
             }
-            landmarkMarker?.position = mill.coordinate
-            landmarkMarker?.map = mapView.camera.zoom >= 14.5 ? mapView : nil
         }
 
         // MARK: User puck

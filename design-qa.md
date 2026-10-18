@@ -160,3 +160,14 @@ Verification: 151 core XCTest tests (including four new route-bearing regression
 production tour-logic integration tests with offline directions, Debug/Release syntax,
 project source registration and asset manifests passed. Native compilation, visual comparison,
 Google services and outdoor AR remain unverified here; the overall visual QA result is blocked.
+
+## Greystone map illustration
+
+Generated a transparent Greystone landmark from the supplied front-elevation photograph in the
+same detailed architectural-cutout style as the mill. It appears beside stop 2 in both the
+Google map and Home illustrated overview; numeric stop pins retain their existing interactions.
+Both live-map decorations follow the real stop coordinates, hide below zoom 14.5 and are removed
+when their stop is absent. Artwork preserves its aspect ratio inside the live-map icon bounds.
+The asset is decorative; it is not a new navigation coordinate or AR recognition reference.
+PNG alpha and manifests, source references and Swift syntax checked. Native map screenshots
+and visual overlap checks still require Xcode/iPhone testing.

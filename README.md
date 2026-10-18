@@ -67,9 +67,9 @@ Tap a stop photograph on the map panel, stop list or details page to enlarge it.
 drag while zoomed, double-tap or use **Reset zoom**, and tap the visible **X** to return. Closing
 a photograph does not mark a stop visited or advance the tour.
 
-The mill landmark illustration is decorative artwork based on the bundled mill photograph.
-It is a noninteractive overlay beside stop 1 on the live Google map at neighborhood zoom, and
-also appears in the offline illustrated overview. It does not supply street data, route geometry,
+The mill and Greystone landmark illustrations are decorative artwork based on their photographs.
+They are noninteractive overlays beside stops 1 and 2 on the live Google map at neighborhood zoom,
+and also appear in the offline illustrated overview. It does not supply street data, route geometry,
 precise building boundaries, or AR image-tracking references. The real photo and plaque reference
 remain separate and unchanged. Google Maps still requires the private Maps key described below.
 

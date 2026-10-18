@@ -255,9 +255,10 @@ struct StylizedCranfordMapView: View {
     }
 
     private func drawLandmark(for stop: HistoricalStop, in context: inout GraphicsContext, size: CGSize) {
-        if stop.id == "hpab-001" {
+        if stop.id == "hpab-001" || stop.id == "hpab-002" {
             let center = point(for: stop, size: size)
-            context.draw(Image("mill-map-landmark"), in: CGRect(x: center.x - 15, y: center.y - 60, width: 90, height: 67.5))
+            let assetName = stop.id == "hpab-001" ? "mill-map-landmark" : "greystone-map-landmark"
+            context.draw(Image(assetName), in: CGRect(x: center.x - 15, y: center.y - 60, width: 90, height: 67.5))
             return
         }
         // Decorative architectural sketches, not reconstructions of the historic buildings.
