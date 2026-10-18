@@ -78,6 +78,7 @@ struct GoogleMapView: UIViewRepresentable {
         private var markerModels: [String: StopMarkerModel] = [:]
         private var iconCache: [String: UIImage] = [:]
         private var markerStyle: StopMarkerStyle = .labeledPin
+        private var markerColorScheme: ColorScheme?
         private var selectedID: String?
         private var cameraRetryCount = 0
 
@@ -87,7 +88,7 @@ struct GoogleMapView: UIViewRepresentable {
 
         private var polyline: GMSPolyline?
         private var polylineCasing: GMSPolyline?
-        private var lastRouteHash: Int = 0
+        private var lastRoute: [CLLocationCoordinate2D] = []
 
         private var lastCameraRequestID: Int = -1
         /// Maps SDK can deliver `didTapAt` for the same gesture as a marker tap; ignore those.
@@ -101,7 +102,8 @@ struct GoogleMapView: UIViewRepresentable {
 
         func render(markers: [StopMarkerModel], style: StopMarkerStyle, selectedID newSelectedID: String?) {
             guard let mapView else { return }
-            let styleChanged = style != markerStyle
+            let styleChanged = style != markerStyle || markerColorScheme != colorScheme
+            markerColorScheme = colorScheme
             let previousSelected = selectedID
             markerStyle = style
             selectedID = newSelectedID
@@ -115,7 +117,8 @@ struct GoogleMapView: UIViewRepresentable {
             for model in markers {
                 let isSelected = model.id == newSelectedID
                 if let existing = markersByID[model.id] {
-                    let selectionChanged = model.id == previousSelected || isSelected
+                    let selectionChanged = previousSelected != newSelectedID
+                        && (model.id == previousSelected || isSelected)
                     if markerModels[model.id] != model || styleChanged || selectionChanged {
                         applyAppearance(existing, model: model, isSelected: isSelected)
                         markerModels[model.id] = model
@@ -254,20 +257,18 @@ struct GoogleMapView: UIViewRepresentable {
 
         // MARK: Route
 
+        static func routesMatch(_ lhs: [CLLocationCoordinate2D], _ rhs: [CLLocationCoordinate2D]) -> Bool {
+            lhs.count == rhs.count && zip(lhs, rhs).allSatisfy {
+                $0.latitude == $1.latitude && $0.longitude == $1.longitude
+            }
+        }
+
         func render(route: [CLLocationCoordinate2D]) {
             guard let mapView else { return }
-            var hasher = Hasher()
-            hasher.combine(route.count)
-            if let f = route.first, let l = route.last {
-                hasher.combine(f.latitude); hasher.combine(f.longitude); hasher.combine(l.latitude); hasher.combine(l.longitude)
-            }
-            if route.count > 2 {
-                let mid = route[route.count / 2]
-                hasher.combine(mid.latitude); hasher.combine(mid.longitude)
-            }
-            let hash = hasher.finalize()
-            guard hash != lastRouteHash else { return }
-            lastRouteHash = hash
+            // Compare every point: a reroute can keep its endpoints and midpoint while
+            // changing the streets in between. Do not leave the old path on screen.
+            guard !Self.routesMatch(route, lastRoute) else { return }
+            lastRoute = route
 
             guard route.count >= 2 else {
                 polyline?.map = nil

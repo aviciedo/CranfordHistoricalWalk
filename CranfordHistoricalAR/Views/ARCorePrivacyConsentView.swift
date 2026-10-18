@@ -48,18 +48,3 @@ struct ARCorePrivacyConsentView: View {
         .background(AppTheme.parchment)
     }
 }
-
-/// Compact home-screen disclosure (same Google requirement, always reachable).
-struct ARCoreHomeDisclosure: View {
-    var body: some View {
-        VStack(spacing: 4) {
-            Text("This application runs on Google Play Services for AR (ARCore), which is provided by Google and governed by the Google Privacy Policy.")
-            if let url = URL(string: "https://policies.google.com/privacy") {
-                Link("Google Privacy Policy", destination: url)
-            }
-        }
-        .font(.caption2)
-        .foregroundStyle(.tertiary)
-        .multilineTextAlignment(.center)
-    }
-}

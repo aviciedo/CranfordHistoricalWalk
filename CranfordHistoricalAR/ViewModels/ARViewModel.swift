@@ -148,14 +148,23 @@ final class ARViewModel {
     private func startObservingTour() {
         observationTask?.cancel()
         observationTask = Task { @MainActor [weak self] in
-            while let self, !Task.isCancelled {
-                await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            while !Task.isCancelled {
+                // AsyncStream ends when the task is cancelled, even if the tour never
+                // changes again. Do not retain the view model across that suspension.
+                let changes = AsyncStream<Void> { [weak self] continuation in
+                    guard let self else {
+                        continuation.finish()
+                        return
+                    }
                     withObservationTracking {
                         self.pushTourStateToAnchors()
                     } onChange: {
-                        continuation.resume()
+                        continuation.yield(())
+                        continuation.finish()
                     }
                 }
+                for await _ in changes { break }
+                guard !Task.isCancelled, self != nil else { return }
                 // Coalesce bursts of changes into at most ~20 updates/s.
                 try? await Task.sleep(for: .milliseconds(50))
             }

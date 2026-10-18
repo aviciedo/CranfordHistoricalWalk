@@ -28,7 +28,13 @@ final class ARHistoricalSignEntity: Entity {
     private var closeControl: ModelEntity?
     private(set) var stopID: String?
     private(set) var appearance: Appearance = .geoPost
-    private var textureCache: [String: (TextureResource, CGFloat)] = [:]
+    private struct Configuration: Equatable {
+        let stop: HistoricalStop
+        let image: LoadedImage?
+        let scale: CGFloat
+        let appearance: Appearance
+    }
+    private var configuration: Configuration?
     private(set) var isPresented = false
 
     required init() {
@@ -65,15 +71,11 @@ final class ARHistoricalSignEntity: Entity {
     /// Builds or swaps the texture for `stop`. Returns false if rendering failed.
     @discardableResult
     func configure(stop: HistoricalStop, image: LoadedImage?, scale: CGFloat, appearance: Appearance = .geoPost) -> Bool {
-        let key = "\(stop.id)|\(image != nil)|\(appearance.rawValue)"
-        let textureAndAspect: (TextureResource, CGFloat)
-        if let cached = textureCache[key] {
-            textureAndAspect = cached
-        } else {
-            guard let rendered = ARHistoricalSignEntity.renderTexture(for: stop, image: image, scale: scale, appearance: appearance) else { return false }
-            textureCache = [key: rendered] // keep only the latest to avoid retaining large images (spec §22)
-            textureAndAspect = rendered
-        }
+        let configuration = Configuration(stop: stop, image: image, scale: scale, appearance: appearance)
+        // Image-anchor updates arrive every frame. Reuse geometry, collision shapes and
+        // texture until the actual content or presentation changes.
+        if self.configuration == configuration { return true }
+        guard let textureAndAspect = Self.renderTexture(for: stop, image: image, scale: scale, appearance: appearance) else { return false }
         stopID = stop.id
         self.appearance = appearance
 
@@ -110,6 +112,7 @@ final class ARHistoricalSignEntity: Entity {
         }
         post?.isEnabled = appearance == .geoPost
         layoutCloseControl(cardWidth: width, cardHeight: height, planeY: planeY)
+        self.configuration = configuration
         return true
     }
 

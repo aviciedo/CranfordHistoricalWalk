@@ -1,9 +1,20 @@
 import XCTest
+import CoreLocation
 import TourCore
 @testable import CranfordHistoricalAR
 
 @MainActor
 final class MapViewModelTests: XCTestCase {
+    func testRerouteWithSameEndpointsAndMidpointChangesTheMapPath() {
+        let original = (0..<5).map { CLLocationCoordinate2D(latitude: 40, longitude: Double($0)) }
+        var rerouted = original
+        rerouted[1].latitude += 0.001
+        XCTAssertFalse(GoogleMapView.Coordinator.routesMatch(original, rerouted))
+        XCTAssertTrue(GoogleMapView.Coordinator.routesMatch(original, original))
+        XCTAssertFalse(GoogleMapView.Coordinator.routesMatch(original, []))
+        XCTAssertTrue(GoogleMapView.Coordinator.routesMatch([], []))
+    }
+
     func testIllustratedMapClampsZoomAndPan() {
         let size = CGSize(width: 300, height: 200)
         let overview = IllustratedMapTransform(scale: 0.5, offset: CGSize(width: 100, height: -100), size: size)
