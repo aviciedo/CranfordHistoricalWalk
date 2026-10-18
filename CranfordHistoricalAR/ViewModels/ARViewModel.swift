@@ -226,7 +226,8 @@ final class ARViewModel {
         imageRequestedForStopID = stop.id
         imageTask?.cancel()
         imageTask = Task { @MainActor [weak self] in
-            guard let self, let image = await self.imageLoader.image(for: stop) else { return }
+            guard let self else { return }
+            guard await self.imageLoader.image(for: stop) != nil else { return }
             guard !Task.isCancelled, self.tour.presentedSignStopID == stop.id else { return }
             self.applySignPlacement()
         }

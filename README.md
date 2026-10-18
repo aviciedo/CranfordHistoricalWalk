@@ -15,6 +15,24 @@ The source includes a subfolder also named CranfordHistoricalAR; the project fil
 The saved project structure and source syntax were checked on Linux; a full iOS build and device installation have not been verified.
 Use Xcode's **Product > Build** directly; the optional verification script still requires XcodeGen.
 
+If Xcode says **Signing requires a development team**, this is your local Apple account setup:
+
+1. Choose **Xcode > Settings > Accounts**. Add your Apple Account if none is listed, then close Settings.
+2. Choose **View > Navigators > Project** (or press **Command–1**). Click the top blue
+   **CranfordHistoricalAR** project icon in the left sidebar.
+3. In the center project editor, click **CranfordHistoricalAR** under **TARGETS**, then
+   **Signing & Capabilities**. If TARGETS is hidden, expand the project/target list at the left
+   edge of that editor.
+4. Check **Automatically manage signing**. Open **Team** and choose your own team or
+   **Personal Team**. Leave the bundle identifier unchanged if it is available to your account,
+   so it keeps matching your Google key restrictions.
+5. Choose your connected iPhone, then **Product > Clean Build Folder**, followed by **Product > Build**.
+   Expect **Build Succeeded** before choosing **Product > Run**.
+
+Google API keys do not select an Apple signing team. A new ZIP includes the compiler fixes but
+does not include your private Google settings or Apple signing identity. Copy your working
+`Config/Secrets.xcconfig` from the previous download into this download before building.
+
 The original project documentation follows.
 
 ---

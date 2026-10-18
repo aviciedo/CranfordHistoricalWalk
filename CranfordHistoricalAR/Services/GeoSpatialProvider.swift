@@ -255,7 +255,7 @@ final class ARCoreGeoSpatialProvider: GeoSpatialProvider {
             var error: NSError?
             // Official: -[GARSession setConfiguration:error:]
             gar.setConfiguration(config, error: &error)
-            if let error {
+            if error != nil {
                 fallbackReason = .sessionConfigurationFailed
                 garSession = nil
                 return

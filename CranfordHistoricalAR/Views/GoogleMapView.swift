@@ -429,7 +429,7 @@ final class StopNameInfoWindow: UIView {
         label.textColor = .label
         label.numberOfLines = 0
         label.lineBreakMode = .byTruncatingTail
-        let fitting = label.sizeThatFits(CGSize(width: 220, height: .greatestFiniteMagnitude))
+        let fitting = label.sizeThatFits(CGSize(width: 220, height: CGFloat.greatestFiniteMagnitude))
         let width = min(220, max(96, ceil(fitting.width)))
         let height = max(22, ceil(fitting.height))
         super.init(frame: CGRect(x: 0, y: 0, width: width + 24, height: height + 16))
