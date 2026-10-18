@@ -61,6 +61,11 @@ extension HistoricalStop {
                 Named for businessman Severin Droescher, who operated a sharpening-stone business here in the early 1900s, the mill is a rare surviving connection to Cranford’s industrial beginnings and the river that helped shape the community.
                 """,
             historicalDate: "Construction: After 1821", imageName: "droeschers-mill",
+            photos: [
+                HistoricalStopPhoto(imageName: "droeschers-mill", caption: "Droescher’s Mill"),
+                HistoricalStopPhoto(imageName: "droeschers-mill-foundation", caption: "Stone foundation beside the Rahway River dam"),
+                HistoricalStopPhoto(imageName: "droeschers-mill-upper-doors", caption: "Upper doors and pulley at Droescher’s Mill"),
+            ],
             narrationText: """
                 Droescher’s Mill: A River That Built a Town
 

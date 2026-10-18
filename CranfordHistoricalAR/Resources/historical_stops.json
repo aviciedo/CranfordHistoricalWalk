@@ -14,6 +14,20 @@
       "longDescription": "Standing along the Rahway River, Droescher’s Mill is the last surviving historic mill of the eleven that once operated along the river.\n\nThe site dates to at least 1779, although the existing wooden structure was built after an earlier mill burned in 1821. Over generations, the mill adapted to changing industries, producing lumber, woolen goods, sharpening stones, and even pipe organs.\n\nNamed for businessman Severin Droescher, who operated a sharpening-stone business here in the early 1900s, the mill is a rare surviving connection to Cranford’s industrial beginnings and the river that helped shape the community.",
       "historicalDate": "Construction: After 1821",
       "imageName": "droeschers-mill",
+      "photos": [
+        {
+          "imageName": "droeschers-mill",
+          "caption": "Droescher’s Mill"
+        },
+        {
+          "imageName": "droeschers-mill-foundation",
+          "caption": "Stone foundation beside the Rahway River dam"
+        },
+        {
+          "imageName": "droeschers-mill-upper-doors",
+          "caption": "Upper doors and pulley at Droescher’s Mill"
+        }
+      ],
       "imageURL": null,
       "illustrationURL": null,
       "audioURL": null,
