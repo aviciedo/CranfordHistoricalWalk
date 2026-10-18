@@ -114,6 +114,12 @@ final class MapViewModel {
 
     // MARK: Camera
 
+    /// Centers a browsed stop without changing the tour's current destination.
+    func show(stop: HistoricalStop) {
+        cameraMode = .free
+        push(.follow(stop.clLocationCoordinate, bearing: nil), animated: true)
+    }
+
     func requestOverview() {
         cameraMode = .overview
         push(.fitAll, animated: true)

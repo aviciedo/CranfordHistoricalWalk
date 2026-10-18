@@ -19,21 +19,33 @@ struct CranfordHistoricalARApp: App {
     }
 }
 
-/// Switches between the first screen and the tour once the user taps "Start Walking Tour".
+/// Native tabs retain one tour and one audio player across every screen.
 struct RootView: View {
     @Environment(TourViewModel.self) private var tour
+    @State private var navigation = AppNavigation()
 
     var body: some View {
-        ZStack {
-            if tour.isShowingTour {
-                TourView()
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
-            } else {
-                HomeView()
-                    .transition(.opacity)
-            }
+        TabView(selection: $navigation.selectedTab) {
+            HomeView()
+                .safeAreaInset(edge: .bottom, spacing: 0) { SharedNarrationBar() }
+                .tabItem { Label("Home", systemImage: "house") }
+                .tag(AppNavigation.Tab.home)
+            TourView()
+                .safeAreaInset(edge: .bottom, spacing: 0) { SharedNarrationBar() }
+                .tabItem { Label("Map", systemImage: "map") }
+                .tag(AppNavigation.Tab.map)
+            StopsView()
+                .safeAreaInset(edge: .bottom, spacing: 0) { SharedNarrationBar() }
+                .tabItem { Label("Stops", systemImage: "mappin.and.ellipse") }
+                .tag(AppNavigation.Tab.stops)
         }
-        .animation(.easeInOut(duration: 0.35), value: tour.isShowingTour)
+        .environment(navigation)
+        .tint(AppTheme.accent)
+        .toolbarBackground(AppTheme.parchment, for: .tabBar)
+        .toolbarBackground(.visible, for: .tabBar)
+        .onChange(of: tour.isShowingTour) { _, showing in
+            navigation.selectedTab = showing ? .map : .home
+        }
         .task { await tour.loadStopsIfNeeded() }
     }
 }

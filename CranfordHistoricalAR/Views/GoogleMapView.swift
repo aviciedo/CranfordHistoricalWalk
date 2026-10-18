@@ -61,6 +61,7 @@ struct GoogleMapView: UIViewRepresentable {
             mapView.mapStyle = MapStyle.style(for: context.environment.colorScheme)
         }
         context.coordinator.render(markers: markers, style: markerStyle, selectedID: selectedStopID)
+        context.coordinator.renderLandmark(markers: markers)
         context.coordinator.render(userPuck: userPuck)
         context.coordinator.render(route: routeCoordinates)
         context.coordinator.apply(cameraRequest: cameraRequest)
@@ -82,6 +83,7 @@ struct GoogleMapView: UIViewRepresentable {
         private var selectedID: String?
         private var cameraRetryCount = 0
 
+        private var landmarkMarker: GMSMarker?
         private var userMarker: GMSMarker?
         private var accuracyCircle: GMSCircle?
         private var lastPuck: UserPuckModel?
@@ -205,6 +207,32 @@ struct GoogleMapView: UIViewRepresentable {
             let image = renderer.uiImage
             iconCache[key] = image
             return image
+        }
+
+        /// Decorative artwork beside the real stop coordinate; never supplies route geometry.
+        func renderLandmark(markers: [StopMarkerModel]) {
+            guard let mapView else { return }
+            guard let mill = markers.first(where: { $0.id == "hpab-001" }) else {
+                landmarkMarker?.map = nil
+                return
+            }
+            if landmarkMarker == nil, let artwork = UIImage(named: "mill-map-landmark") {
+                let size = CGSize(width: 110, height: 82.5)
+                let format = UIGraphicsImageRendererFormat()
+                format.scale = 2
+                let icon = UIGraphicsImageRenderer(size: size, format: format).image { _ in
+                    artwork.draw(in: CGRect(origin: .zero, size: size))
+                }
+                let marker = GMSMarker(position: mill.coordinate)
+                marker.icon = icon
+                marker.groundAnchor = CGPoint(x: 0.15, y: 0.95)
+                marker.isTappable = false
+                marker.zIndex = 0
+                marker.tracksViewChanges = false
+                landmarkMarker = marker
+            }
+            landmarkMarker?.position = mill.coordinate
+            landmarkMarker?.map = mapView.camera.zoom >= 14.5 ? mapView : nil
         }
 
         // MARK: User puck
@@ -381,12 +409,15 @@ struct GoogleMapView: UIViewRepresentable {
 
         nonisolated func mapView(_ mapView: GMSMapView, idleAt position: GMSCameraPosition) {
             let zoom = position.zoom
-            Task { @MainActor in self.parent.onCameraIdle(zoom) }
+            Task { @MainActor in
+                self.renderLandmark(markers: Array(self.markerModels.values))
+                self.parent.onCameraIdle(zoom)
+            }
         }
     }
 }
 
-/// In-map popup for a tapped stop. Name only; the SwiftUI `HomeStopCallout` adds address. No logic.
+/// In-map popup for a tapped stop; the shared details sheet supplies the full content.
 final class StopNameInfoWindow: UIView {
     init(title: String) {
         let label = UILabel()
@@ -454,7 +485,7 @@ struct StopDotMarker: View {
                         Text("\(model.order)").font(.system(size: isSelected ? 13 : 11, weight: .bold, design: .rounded))
                     }
                 }
-                .foregroundStyle(.white)
+                .foregroundStyle(model.state == .visited ? Color(light: .white, dark: AppTheme.forest) : .white)
             }
         }
         .frame(width: 48, height: 48)
@@ -559,28 +590,28 @@ enum MapStyle {
 
     private static let lightJSON = """
     [
-      {"elementType":"geometry","stylers":[{"color":"#f3efe6"}]},
-      {"elementType":"labels.text.fill","stylers":[{"color":"#5f5a4f"}]},
-      {"elementType":"labels.text.stroke","stylers":[{"color":"#f8f5ee"}]},
+      {"elementType":"geometry","stylers":[{"color":"#F8F6EE"}]},
+      {"elementType":"labels.text.fill","stylers":[{"color":"#2E3A2F"}]},
+      {"elementType":"labels.text.stroke","stylers":[{"color":"#F8F6EE"}]},
       {"featureType":"poi","stylers":[{"visibility":"off"}]},
-      {"featureType":"poi.park","elementType":"geometry","stylers":[{"color":"#dfe6d3"},{"visibility":"on"}]},
+      {"featureType":"poi.park","elementType":"geometry","stylers":[{"color":"#dce3d5"},{"visibility":"on"}]},
       {"featureType":"road","elementType":"geometry","stylers":[{"color":"#ffffff"}]},
-      {"featureType":"road","elementType":"geometry.stroke","stylers":[{"color":"#e2dccd"}]},
-      {"featureType":"road.arterial","elementType":"geometry","stylers":[{"color":"#fbf7ee"}]},
+      {"featureType":"road","elementType":"geometry.stroke","stylers":[{"color":"#D9C9B2"}]},
+      {"featureType":"road.arterial","elementType":"geometry","stylers":[{"color":"#F8F6EE"}]},
       {"featureType":"transit","stylers":[{"visibility":"simplified"}]},
-      {"featureType":"water","elementType":"geometry","stylers":[{"color":"#bfd0d6"}]}
+      {"featureType":"water","elementType":"geometry","stylers":[{"color":"#aecbd0"}]}
     ]
     """
 
     private static let darkJSON = """
     [
-      {"elementType":"geometry","stylers":[{"color":"#1d1f22"}]},
-      {"elementType":"labels.text.fill","stylers":[{"color":"#9a9892"}]},
-      {"elementType":"labels.text.stroke","stylers":[{"color":"#1d1f22"}]},
+      {"elementType":"geometry","stylers":[{"color":"#1d2820"}]},
+      {"elementType":"labels.text.fill","stylers":[{"color":"#D9C9B2"}]},
+      {"elementType":"labels.text.stroke","stylers":[{"color":"#1d2820"}]},
       {"featureType":"poi","stylers":[{"visibility":"off"}]},
       {"featureType":"poi.park","elementType":"geometry","stylers":[{"color":"#1f2a25"},{"visibility":"on"}]},
-      {"featureType":"road","elementType":"geometry","stylers":[{"color":"#2c2f33"}]},
-      {"featureType":"road","elementType":"geometry.stroke","stylers":[{"color":"#1a1c1f"}]},
+      {"featureType":"road","elementType":"geometry","stylers":[{"color":"#354436"}]},
+      {"featureType":"road","elementType":"geometry.stroke","stylers":[{"color":"#182119"}]},
       {"featureType":"transit","stylers":[{"visibility":"simplified"}]},
       {"featureType":"water","elementType":"geometry","stylers":[{"color":"#15222a"}]}
     ]

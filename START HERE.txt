@@ -1,6 +1,6 @@
 Cranford Historical AR — Xcode project
 
-Source revision: 56da03fb3449aeba14c81f13a0b6a3effce00de9
+Interface update: Field Guide — Home, Map, Stops, shared player and expandable photos
 
 1. Extract the entire ZIP on the Mac. Keep its folders together.
 2. Double-click CranfordHistoricalAR.xcodeproj inside this folder.
@@ -15,3 +15,10 @@ Xcode is still required. This project was generated on Linux; a successful iOS b
 
 Without Google API keys, the existing fallback map and estimated distances are expected.
 Do not enter Google keys in the example file or commit them to GitHub. Use Config/Secrets.xcconfig if configuring real Maps/Routes.
+
+New interface quick check:
+- Start walking tour, then switch Home / Map / Stops. Your guided stop should stay the same.
+- Tap the mill photo, pinch to zoom, then tap X. Return to the same stop.
+- Play narration and switch tabs. Playback should continue.
+- Open Stop details for the address, recording, photo and View in AR at the current stop.
+- Test light and dark appearance and larger text before relying on the layout outdoors.

@@ -18,9 +18,10 @@ struct TourMapView: View {
                     cameraRequest: mapModel.cameraRequest,
                     bottomInset: bottomInset,
                     onUserGesture: { mapModel.userDidMoveCamera() },
-                    onMarkerTap: { mapModel.select(stopID: $0) }
+                    onMarkerTap: { mapModel.select(stopID: $0) },
+                    markerStyle: .numberedDot,
+                    selectedStopID: mapModel.selectedStopID
                 )
-                .ignoresSafeArea()
                 .onChange(of: tour.userLocation) { _, _ in
                     mapModel.followIfNeeded(tour: tour)
                 }
@@ -79,16 +80,6 @@ struct MapControlStack: View {
                     .frame(width: 44, height: 44)
             }
             .accessibilityLabel("Show route to next stop")
-
-            Divider().frame(width: 28)
-
-            Button {
-                mapModel.requestOverview()
-            } label: {
-                Image(systemName: "map")
-                    .frame(width: 44, height: 44)
-            }
-            .accessibilityLabel("Show all stops")
         }
         .font(.system(size: 17, weight: .medium))
         .foregroundStyle(.primary)
@@ -156,23 +147,12 @@ struct MapUnavailableView: View {
     let stops: [HistoricalStop]
 
     var body: some View {
-        ZStack {
-            AppTheme.parchment.ignoresSafeArea()
-            VStack(spacing: 18) {
-                StylizedCranfordMapView(stops: stops)
-                    .frame(height: 260)
-                    .padding(.horizontal, 24)
-                VStack(spacing: 6) {
-                    Label("Google Maps unavailable", systemImage: "map.circle")
-                        .font(.headline)
-                    Text("Add GOOGLE_MAPS_API_KEY to Config/Secrets.xcconfig and rebuild to see the live map. Stops and navigation still work.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 32)
-                }
+        StylizedCranfordMapView(stops: stops)
+            .overlay(alignment: .topLeading) {
+                Label("Live map unavailable", systemImage: "wifi.exclamationmark")
+                    .font(.footnote.weight(.medium))
+                    .padding(10).background(AppTheme.parchment, in: Capsule())
+                    .padding(12).allowsHitTesting(false)
             }
-            .padding(.bottom, 160)
-        }
     }
 }

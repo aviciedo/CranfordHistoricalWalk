@@ -1,6 +1,6 @@
 # XcodeGen project definition. Regenerate the .xcodeproj with:
 #   brew install xcodegen && xcodegen generate
-# The .xcodeproj is intentionally not committed (see .gitignore).
+# The generated .xcodeproj is also tracked for ready-to-open Mac downloads.
 name: CranfordHistoricalAR
 
 options:

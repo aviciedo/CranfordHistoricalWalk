@@ -130,7 +130,7 @@ struct ARHUDView: View {
                     .font(.subheadline.weight(.semibold))
                     .monospacedDigit()
                     .contentTransition(.numericText())
-                    Text(model.geoBackendName)
+                    Text(model.placementMode == .plaqueAnchored ? "Plaque recognized" : "Walking guidance")
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                 }
@@ -240,14 +240,13 @@ struct ARHUDView: View {
     private var signControls: some View {
         VStack(spacing: 10) {
             if let stop = model.tour.presentedSignStop ?? model.tour.currentStop {
-                StopPhoto(stop: stop, height: 110)
                 NarrationControls(stop: stop)
             }
             HStack(spacing: 12) {
                 Button {
                     model.isShowingSignDetails = true
                 } label: {
-                    Label("Read", systemImage: "text.book.closed")
+                    Label("Stop details", systemImage: "doc.text")
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
                         .background(.regularMaterial, in: Capsule())

@@ -1,102 +1,90 @@
 import SwiftUI
 import TourCore
 
-/// Persistent navigation panel (spec §4, §11, §12). Values come straight from `TourViewModel`
-/// and update with every location sample.
+/// One compact destination surface. The shared audio transport lives above the tab bar.
 struct NextStopCard: View {
     @Environment(TourViewModel.self) private var tour
     var onEnterAR: (() -> Void)? = nil
+    var onDetails: (() -> Void)? = nil
 
     var body: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: 10) {
-                switch tour.phase {
-                case .inProgress:
-                    inProgressContent
-                case .complete:
-                    EyebrowText("Tour complete")
-                    Text("You visited every stop.").font(AppTheme.Fonts.title)
-                case .notStarted:
-                    EyebrowText("Walking tour")
-                    Text(tour.loadState == .loaded ? "Ready when you are." : "Loading stops…").font(AppTheme.Fonts.title)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .animation(.easeInOut(duration: 0.25), value: tour.currentStop?.id)
-    }
-
-    @ViewBuilder
-    private var inProgressContent: some View {
-        if let previous = tour.lastCompletedStop {
-            HStack(spacing: 6) {
-                EyebrowText("Current")
-                Image(systemName: "checkmark.circle.fill").font(.caption).foregroundStyle(AppTheme.visited)
-                Text(previous.name).font(.footnote).foregroundStyle(.secondary).lineLimit(1)
-            }
-        }
         if let current = tour.currentStop {
-            EyebrowText("Next stop", color: AppTheme.heritageGreen)
-            Text(current.name)
-                .font(AppTheme.Fonts.title)
-                .lineLimit(2)
-                .contentTransition(.opacity)
-
-            StopPhoto(stop: current, height: 140)
-            NarrationControls(stop: current)
-
-            HStack(alignment: .firstTextBaseline, spacing: 18) {
-                metric(systemImage: "figure.walk", value: tour.remainingDistanceText)
-                metric(systemImage: "clock", value: tour.remainingTimeText)
-                if tour.isRoutingInFlight && tour.currentRoute == nil {
-                    ProgressView().controlSize(.small)
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .center, spacing: 16) {
+                    if current.hasAnyImage {
+                        StopPhoto(stop: current, height: 88, cornerRadius: 12, width: 88)
+                    }
+                    VStack(alignment: .leading, spacing: 7) {
+                        Text(tour.isSignPresented ? "You've arrived" : "Next stop")
+                            .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
+                        Text(current.name)
+                            .font(.system(.title2, design: .serif).weight(.semibold))
+                            .fixedSize(horizontal: false, vertical: true)
+                        HStack(spacing: 16) {
+                            Label(tour.hasPlaqueConfirmedArrival ? "At plaque" : tour.remainingDistanceText, systemImage: "figure.walk")
+                            Label(tour.hasPlaqueConfirmedArrival ? "Arrived" : tour.remainingTimeText, systemImage: "clock")
+                            if tour.isRoutingInFlight && tour.currentRoute == nil {
+                                ProgressView().controlSize(.small)
+                            }
+                        }
+                        .font(.subheadline.weight(.medium)).monospacedDigit()
+                        .accessibilityElement(children: .combine)
+                    }
+                    Spacer(minLength: 0)
                 }
-                Spacer(minLength: 0)
                 if let onEnterAR {
                     Button(action: onEnterAR) {
-                        Label("Enter AR", systemImage: "arkit")
-                            .font(.subheadline.weight(.semibold))
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 10)
-                            .background(AppTheme.heritageGreen, in: Capsule())
-                            .foregroundStyle(.white)
+                        HStack {
+                            Spacer()
+                            Label("View in AR", systemImage: "camera.viewfinder")
+                            Spacer()
+                            Image(systemName: "chevron.right").font(.subheadline)
+                        }
+                        .font(.headline).padding(.horizontal, 18).padding(.vertical, 16)
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.plain).foregroundStyle(AppTheme.ivory)
+                    .background(AppTheme.forest, in: RoundedRectangle(cornerRadius: 14))
+                }
+                if let onDetails {
+                    Button(action: onDetails) {
+                        HStack {
+                            Label("Stop details", systemImage: "doc.text")
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                        }
+                        .font(.body.weight(.medium)).frame(minHeight: 44)
                     }
                     .buttonStyle(.plain)
                 }
+                if tour.isSignPresented {
+                    Button {
+                        tour.closeSign()
+                    } label: {
+                        Label(tour.nextStop == nil ? "Finish tour" : "Continue to next stop", systemImage: "arrow.right")
+                            .font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                    .buttonStyle(.plain)
+                }
+                routeStatus
             }
-
-            footnote
+            .foregroundStyle(AppTheme.ink)
+            .padding(.horizontal, 20).padding(.top, 16).padding(.bottom, 8)
+            .background(AppTheme.parchment)
         }
-    }
-
-    private func metric(systemImage: String, value: String) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: systemImage).foregroundStyle(.secondary)
-            Text(value)
-                .font(AppTheme.Fonts.metric)
-                .monospacedDigit()
-                .contentTransition(.numericText())
-        }
-        .animation(.easeInOut(duration: 0.2), value: value)
     }
 
     @ViewBuilder
-    private var footnote: some View {
-        if let instruction = tour.currentInstruction, !tour.isRouteAnEstimate {
-            Label(instruction, systemImage: "arrow.triangle.turn.up.right.diamond")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-        } else if tour.isRouteAnEstimate {
-            Label(tour.routingError ?? "Straight-line estimate — walking route unavailable.", systemImage: "info.circle")
-                .font(.footnote)
-                .foregroundStyle(AppTheme.warning)
-                .lineLimit(2)
-        } else if let error = tour.routingError {
-            Label(error, systemImage: "wifi.exclamationmark")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .lineLimit(2)
+    private var routeStatus: some View {
+        if tour.isRouteAnEstimate {
+            Label("Estimated distance · Walking route unavailable", systemImage: "info.circle")
+                .font(.footnote).foregroundStyle(AppTheme.warning)
+        } else if let instruction = tour.currentInstruction {
+            Text(instruction).font(.footnote).foregroundStyle(AppTheme.secondaryInk)
+                .fixedSize(horizontal: false, vertical: true)
+        } else if tour.routingError != nil {
+            Label("Couldn't update directions. Showing the last route.", systemImage: "wifi.exclamationmark")
+                .font(.footnote).foregroundStyle(AppTheme.secondaryInk)
         }
     }
 }

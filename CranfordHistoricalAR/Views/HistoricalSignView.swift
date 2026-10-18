@@ -1,20 +1,14 @@
 import SwiftUI
 import TourCore
 
-/// The historical sign's content (spec §8). Rendered two ways:
-/// - `.arTexture`: fixed-width, high-contrast layout rasterized by `ImageRenderer` onto the AR plane.
-/// - `.sheet`: scrollable, interactive version shown when the user taps the AR sign or arrives
-///   while on the map (also the accessibility-friendly path).
+/// The rasterized RealityKit sign, in post and plaque-card forms. The interactive
+/// reading and photo experience is shared by maps, stop lists and AR via StopDetailView.
 struct HistoricalSignView: View {
-    enum Style { case arTexture, arPlaqueCard, sheet }
+    enum Style { case arTexture, arPlaqueCard }
 
     let stop: HistoricalStop
     var image: LoadedImage?
-    var style: Style = .sheet
-    var onClose: (() -> Void)? = nil
-    var onMarkVisited: (() -> Void)? = nil
-    var isVisited = false
-    var continueTitle = "Continue to next stop"
+    var style: Style = .arTexture
 
     /// Logical width of the AR texture in points; keeps text crisp on the plane.
     static let textureWidth: CGFloat = 720
@@ -23,7 +17,6 @@ struct HistoricalSignView: View {
         switch style {
         case .arTexture: textureBody
         case .arPlaqueCard: plaqueCardBody
-        case .sheet: sheetBody
         }
     }
 
@@ -194,135 +187,34 @@ struct HistoricalSignView: View {
         .background(SignPalette.brass.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
-    // MARK: Sheet layout
-
-    private var sheetBody: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        if let date = stop.displayDate {
-                            Text(date).font(AppTheme.Fonts.display(34)).foregroundStyle(AppTheme.brass)
-                        }
-                        EyebrowText(stop.isSample ? "Sample historic site" : "Cranford historic site", color: .secondary)
-                        Text(stop.name)
-                            .font(AppTheme.Fonts.display(30))
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-
-                    if let image {
-                        SignImage(image: image, cornerRadius: 16)
-                            .frame(height: 220)
-                            .frame(maxWidth: .infinity)
-                    }
-
-                    NarrationControls(stop: stop)
-
-                    if let plaque = stop.plaque, plaque.isUsable {
-                        plaqueQuote(plaque, labelSize: 12, quoteSize: 20)
-                    }
-
-                    Text(stop.longDescription.isEmpty ? stop.shortDescription : stop.longDescription)
-                        .font(.system(.body, design: .serif))
-                        .lineSpacing(4)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Label(stop.address, systemImage: "mappin.and.ellipse")
-                        if stop.isSample {
-                            Label("Placeholder content — not verified history.", systemImage: "exclamationmark.triangle")
-                                .foregroundStyle(AppTheme.warning)
-                        }
-                        if stop.coordinatesUnverified {
-                            Label("Coordinates are unverified — not a surveyed site position.", systemImage: "questionmark.circle")
-                                .foregroundStyle(AppTheme.warning)
-                        }
-                    }
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-
-                    if let onMarkVisited {
-                        VStack(spacing: 8) {
-                            if isVisited {
-                                Label("Visited", systemImage: "checkmark.circle.fill")
-                                    .font(.footnote.weight(.semibold))
-                                    .foregroundStyle(AppTheme.visited)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                            }
-                            Button(action: onMarkVisited) {
-                                Label(isVisited ? continueTitle : "Mark as visited", systemImage: isVisited ? "arrow.right.circle" : "checkmark.circle")
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 14)
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .tint(AppTheme.heritageGreen)
-                        }
-                        .padding(.top, 8)
-                    }
-                }
-                .padding(20)
-            }
-            .background(AppTheme.parchment)
-            .toolbar {
-                if let onClose {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Close", action: onClose)
-                    }
-                }
-            }
-        }
-    }
 }
 
-/// Sheet wrapper that resolves artwork through the app's `ImageLoader` and offers
-/// "Mark as visited / Continue" for the current stop (spec §10, §11).
+/// Shared details presentation used from maps, stops, audio and the AR screen.
 struct HistoricalSignSheet: View {
-    @Environment(AppDependencies.self) private var dependencies
-    @Environment(TourViewModel.self) private var tour
-    @Environment(\.dismiss) private var dismiss
     let stop: HistoricalStop
-    /// Invoked after the sheet closes because the user continued to the next stop.
     var onContinue: (() -> Void)? = nil
-    @State private var image: LoadedImage?
 
     var body: some View {
-        let isCurrent = stop.id == tour.currentStop?.id
-        HistoricalSignView(
-            stop: stop,
-            image: image,
-            style: .sheet,
-            onClose: { dismiss() },
-            onMarkVisited: isCurrent ? {
-                dismiss()
-                tour.completeCurrentStopAndAdvance()
-                onContinue?()
-            } : nil,
-            isVisited: tour.isCompleted(stop),
-            continueTitle: tour.nextStop == nil ? "Finish tour" : "Continue to next stop"
-        )
-        .task(id: stop.id) {
-            image = dependencies.imageLoader.cachedImage(for: stop)
-            if image == nil { image = await dependencies.imageLoader.image(for: stop) }
-        }
+        StopDetailView(stop: stop, onContinue: onContinue)
     }
 }
 
-/// Loads a stop's photograph (asset `imageName` or remote URL) and shows it only when one exists.
-/// Placed under the stop name and above `NarrationControls`.
+/// Resolves local or remote artwork without leaving a blank frame when no image exists.
 struct StopPhoto: View {
     @Environment(AppDependencies.self) private var dependencies
     let stop: HistoricalStop
     var height: CGFloat = 160
     var cornerRadius: CGFloat = 12
+    var width: CGFloat? = nil
     @State private var image: LoadedImage?
 
     var body: some View {
         Group {
             if let image {
-                SignImage(image: image, cornerRadius: cornerRadius)
-                    .frame(height: height)
-                    .frame(maxWidth: .infinity)
-                    .accessibilityLabel("Photograph of \(stop.name)")
+                ExpandableStopImage(image: image, title: stop.name, cornerRadius: cornerRadius)
+                    .frame(width: width, height: height)
+                    .frame(maxWidth: width == nil ? .infinity : width)
+                    .clipped()
             }
         }
         .task(id: stop.id) {
@@ -360,9 +252,9 @@ struct SignImage: View {
 }
 
 enum SignPalette {
-    static let paper = Color(red: 0.97, green: 0.95, blue: 0.90)
-    static let paperDeep = Color(red: 0.92, green: 0.88, blue: 0.80)
-    static let ink = Color(red: 0.13, green: 0.12, blue: 0.11)
+    static let paper = AppTheme.ivory
+    static let paperDeep = AppTheme.sand
+    static let ink = AppTheme.forest
     static let inkMuted = Color(red: 0.40, green: 0.37, blue: 0.32)
-    static let brass = Color(red: 0.68, green: 0.52, blue: 0.24)
+    static let brass = AppTheme.forest
 }

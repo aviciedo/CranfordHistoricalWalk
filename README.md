@@ -1,7 +1,7 @@
 # Ready-to-open Xcode project download
 
 This branch includes the generated `CranfordHistoricalAR.xcodeproj` together with the app source.
-It is a download snapshot of the build fixes on `main` at `56da03f`.
+It includes the current Field Guide interface update and the existing build fixes.
 
 On a Mac with Xcode installed:
 
@@ -28,6 +28,35 @@ Walk toward a historical site, follow AR arrows, and a large AR historical sign 
 > First Baptist Church, Cranford Hotel). Names, addresses, and recordings come from the HPAB May 2020 brochure.
 > Coordinates are **unverified geocodes**, not surveyed site positions. No historical narrative is invented —
 > play the recording for each stop from anywhere; you do not need to be at the GPS location.
+
+## Field Guide interface
+
+The selected earthy design uses ivory, forest, sage, sand and terracotta, with a dark version
+that follows the device setting. The native bottom tabs are **Home**, **Map** and **Stops**.
+A single compact audio player remains above the tabs after starting a walk or playing a stop.
+The Map tab has one destination panel; the arrival state replaces its heading rather than
+adding a second card. Tap the count beside **Your walk** for the tour summary and whole-route view.
+Long-press the home title or **Your walk** in Debug builds for Developer Controls.
+
+Browse any stop and play its recording without changing the guided tour order. **Show on map**
+centers that stop without changing the walking destination. **View in AR** is offered for the
+current guided stop. The shared details page provides the photo, address, recording and available
+historical text; source and coordinate notes are under **About this stop**.
+
+Tap a stop photograph on the map panel, stop list or details page to enlarge it. Pinch to zoom,
+drag while zoomed, double-tap or use **Reset zoom**, and tap the visible **X** to return. Closing
+a photograph does not mark a stop visited or advance the tour.
+
+The mill landmark illustration is decorative artwork based on the bundled mill photograph.
+It is a noninteractive overlay beside stop 1 on the live Google map at neighborhood zoom, and
+also appears in the offline illustrated overview. It does not supply street data, route geometry,
+precise building boundaries, or AR image-tracking references. The real photo and plaque reference
+remain separate and unchanged. Google Maps still requires the private Maps key described below.
+
+Validation in Linux: TourCore build/tests and Swift syntax checks are available. The saved Xcode
+project includes the new files. SwiftUI rendering, image-viewer gestures, tab/player placement,
+Google Maps overlays, dark mode and AR still require Xcode and a physical iPhone. See
+[design-qa.md](design-qa.md) for the remaining device checks; no iOS build success is claimed.
 
 ## Requirements
 
@@ -63,7 +92,7 @@ With Xcode (including iOS and Simulator SDKs) and XcodeGen installed, run from t
 bash scripts/verify-ios-build.sh
 ```
 
-This generates the ignored Xcode project, builds the app for an iPhone without signing,
+This regenerates the included Xcode project, builds the app for an iPhone without signing,
 and compiles the app and host-app tests for the Simulator. It stops on failure and records
 logs and Xcode result bundles under the ignored `.build/ios-verification/` directory.
 It does not run the tests or install the app. A Linux test pass does not verify the iOS build.
@@ -209,8 +238,7 @@ This does **not** mean Geospatial is on. Runtime still requires all of:
 3. Location When In Use **and** precise location (`PreciseLocationForAR`) **before** the Geospatial session is configured.
 4. Network (VPS and Cloud auth).
 5. First-run consent with Google’s required text (“To power this session, Google will process sensor data… Learn more”
-   → https://support.google.com/ar?p=how-google-play-services-for-ar-handles-your-data). The home screen also
-   discloses Google Play Services for AR / the Google Privacy Policy.
+   → https://support.google.com/ar?p=how-google-play-services-for-ar-handles-your-data). The consent screen includes the Google Play Services for AR / Google Privacy Policy notice.
 6. A physical iPhone that reports `isGeospatialModeSupported(.enabled)`. The Simulator cannot run ARKit or Geospatial.
 
 `GARSession` is created with `sessionWithAPIKey:bundleIdentifier:error:`, configured with
@@ -289,7 +317,7 @@ Developer Controls).
 ## Project layout
 
 ```
-project.yml                 XcodeGen definition (the .xcodeproj is generated, not committed)
+project.yml                 XcodeGen definition (the generated .xcodeproj is included for downloads)
 Config/                     Base/Debug/Release xcconfig + Secrets.example.xcconfig
 Packages/TourCore/          Pure Swift package + XCTest (runs on Linux)
 CranfordHistoricalAR/

@@ -3,12 +3,21 @@ import SwiftUI
 /// Restrained palette: archival paper, ink, and a single brass accent (spec §13).
 enum AppTheme {
     static let accent = Color("AccentColor")
-    static let ink = Color(light: Color(red: 0.11, green: 0.12, blue: 0.13), dark: Color(red: 0.93, green: 0.92, blue: 0.89))
-    static let parchment = Color(light: Color(red: 0.96, green: 0.94, blue: 0.90), dark: Color(red: 0.10, green: 0.10, blue: 0.11))
-    static let brass = Color(red: 0.72, green: 0.56, blue: 0.27)
-    static let heritageGreen = Color(red: 0.16, green: 0.33, blue: 0.27)
-    static let visited = Color(red: 0.35, green: 0.52, blue: 0.42)
-    static let warning = Color(red: 0.78, green: 0.45, blue: 0.16)
+    static let forest = Color(red: 46 / 255, green: 58 / 255, blue: 47 / 255)
+    static let ivory = Color(red: 248 / 255, green: 246 / 255, blue: 238 / 255)
+    static let sage = Color(red: 107 / 255, green: 127 / 255, blue: 91 / 255)
+    static let sand = Color(red: 217 / 255, green: 201 / 255, blue: 178 / 255)
+    static let terracotta = Color(red: 201 / 255, green: 111 / 255, blue: 79 / 255)
+    static let ink = Color(light: forest, dark: ivory)
+    static let parchment = Color(light: ivory, dark: Color(red: 0.09, green: 0.12, blue: 0.10))
+    static let surface = Color(light: .white.opacity(0.65), dark: forest)
+    static let playerSurface = Color(light: sand.opacity(0.32), dark: forest)
+    static let secondaryInk = Color(light: Color(red: 0.34, green: 0.37, blue: 0.33), dark: sand)
+    // Semantic aliases keep the existing AR and developer screens on the same palette.
+    static let brass = Color(light: forest, dark: sand)
+    static let heritageGreen = forest
+    static let visited = Color(light: forest, dark: Color(red: 0.72, green: 0.81, blue: 0.66))
+    static let warning = Color(light: Color(red: 0.58, green: 0.25, blue: 0.15), dark: Color(red: 0.94, green: 0.65, blue: 0.49))
 
     enum Fonts {
         static func display(_ size: CGFloat) -> Font { .system(size: size, weight: .semibold, design: .serif) }
@@ -56,11 +65,11 @@ struct GlassCard<Content: View>: View {
     var body: some View {
         content()
             .padding(padding)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: AppTheme.cornerRadius, style: .continuous))
+            .background(AppTheme.surface, in: RoundedRectangle(cornerRadius: AppTheme.cornerRadius, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: AppTheme.cornerRadius, style: .continuous)
                     .strokeBorder(.white.opacity(0.12), lineWidth: 0.5)
             )
-            .shadow(color: .black.opacity(0.12), radius: 18, y: 8)
+
     }
 }

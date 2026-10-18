@@ -1,0 +1,32 @@
+# Field Guide native iOS design review
+
+final result: blocked
+
+The selected visual target is the first displayed Field Guide concept, reattached by the user.
+The approved additions are tap-to-enlarge photos with an X, and the mill map illustration.
+This is the actual SwiftUI app, not a web prototype. Linux cannot render SwiftUI, compile against
+Apple SDKs, launch Xcode, or exercise the iPhone camera. Visual comparison and native interaction
+verification remain blocked by that platform limitation. No design QA pass or iOS build is claimed.
+
+Implemented source scope:
+- Native Home / Map / Stops tabs, one shared audio service and player strip.
+- Ivory/forest/sage/sand/terracotta roles with a device-following dark palette.
+- One map destination panel; details and AR actions for the guided stop.
+- Shared stop details, available photos, recording controls, source notes.
+- Full-screen photo viewer with X, pinch zoom, bounded pan and reset.
+- Generated mill landmark illustration on live/illustrated maps; original photo and plaque unchanged.
+
+Required Mac/iPhone checks:
+1. Build the included CranfordHistoricalAR.xcodeproj with Xcode 16+ and run the app on an iPhone.
+2. Compare the active Map tab with the selected reference at a normal iPhone size.
+3. Confirm the map remains pannable/zoomable and its attribution is not covered.
+4. Confirm the bottom tabs, player and destination panel fit on a smaller screen and at larger text sizes.
+5. Play the mill recording, switch all tabs, inspect a different stop, and confirm the guided stop is unchanged.
+6. Open the photo from the map panel, Stops and details. Zoom, pan, reset and close with X. Confirm no tour advance.
+7. In light/dark appearance, check essential labels, selected tabs, controls and visited markers for contrast.
+8. Verify Show on map centers a browsed stop without changing the guided destination.
+9. Enter AR, return to the map, trigger arrival and Continue; confirm one destination panel and correct next stop.
+10. Test missing Maps/Routes configuration: clearly labeled illustrated/estimated fallback, no developer setup prose in the main flow.
+
+The host-app navigation regression test must be run through Xcode Product > Test. Linux TourCore
+checks do not execute it. On-device visual review and any resulting fixes remain a required follow-up.

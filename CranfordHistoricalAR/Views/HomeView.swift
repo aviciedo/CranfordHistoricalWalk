@@ -1,114 +1,62 @@
 import SwiftUI
 import TourCore
 
-/// First screen (spec §23).
 struct HomeView: View {
     @Environment(TourViewModel.self) private var tour
+    @Environment(AppNavigation.self) private var navigation
     @State private var isShowingDeveloperControls = false
-    @State private var isShowingListenSheet = false
 
     var body: some View {
-        GeometryReader { proxy in
-            ZStack {
-                AppTheme.parchment.ignoresSafeArea()
-
-                VStack(spacing: 0) {
-                    header
-                        .padding(.top, 24)
-                        .modifier(DebugMenuGesture(isPresented: $isShowingDeveloperControls))
-
-                    Spacer(minLength: 16)
-
-                    HomeMapView()
-                        .frame(height: min(proxy.size.height * 0.42, 380))
-                        .padding(.horizontal, 24)
-                        .accessibilityLabel("Map of Cranford with \(tour.stops.count) historical stops. Tap a stop to see its name and play the narration from anywhere.")
-
-                    Spacer(minLength: 16)
-
-                    footer
-                        .padding(.horizontal, 24)
-                        .padding(.bottom, 12)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Cranford")
+                        .font(.system(.largeTitle, design: .serif).weight(.semibold))
+                    Text("HISTORICAL AR")
+                        .font(.subheadline.weight(.semibold)).tracking(3)
+                    Text("See the history around you.")
+                        .font(.body).foregroundStyle(AppTheme.secondaryInk)
+                }
+                .modifier(DebugMenuGesture(isPresented: $isShowingDeveloperControls))
+                HomeMapView().frame(height: 290)
+                HStack {
+                    Label("\(tour.stops.count) stops", systemImage: "mappin.and.ellipse")
+                    Spacer()
+                    Text("Explore at your pace")
+                }
+                .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
+                Button {
+                    if tour.phase == .complete { tour.resetTour() }
+                    tour.startTour()
+                    navigation.selectedTab = .map
+                } label: {
+                    Label(tour.phase == .inProgress ? "Continue your walk" : (tour.phase == .complete ? "Walk it again" : "Start walking tour"), systemImage: "figure.walk")
+                        .frame(maxWidth: .infinity).padding(.vertical, 17)
+                }
+                .buttonStyle(.plain).font(.headline)
+                .foregroundStyle(AppTheme.ivory)
+                .background(AppTheme.forest, in: RoundedRectangle(cornerRadius: 14))
+                .disabled(tour.loadState != .loaded)
+                .opacity(tour.loadState == .loaded ? 1 : 0.5)
+                Button { navigation.selectedTab = .stops } label: {
+                    HStack { Text("Browse the stops"); Spacer(); Image(systemName: "chevron.right") }
+                        .frame(minHeight: 44)
+                }
+                .buttonStyle(.plain).font(.body.weight(.medium))
+                if case .failed(let message) = tour.loadState {
+                    Text(message).font(.footnote).foregroundStyle(AppTheme.warning)
+                    Button("Try again") { Task { await tour.loadStopsIfNeeded() } }
                 }
             }
+            .padding(24)
         }
-    }
-
-    private var header: some View {
-        VStack(spacing: 10) {
-            VStack(spacing: -2) {
-                Text("CRANFORD")
-                    .font(AppTheme.Fonts.display(40))
-                    .tracking(6)
-                Text("HISTORICAL AR")
-                    .font(AppTheme.Fonts.display(24))
-                    .tracking(8)
-                    .foregroundStyle(AppTheme.brass)
-            }
-            .foregroundStyle(AppTheme.ink)
-            .multilineTextAlignment(.center)
-
-            Text("See the history around you.")
-                .font(.system(.title3, design: .serif).italic())
-                .foregroundStyle(.secondary)
-        }
-        .accessibilityElement(children: .combine)
-    }
-
-    private var footer: some View {
-        VStack(spacing: 14) {
-            if case .failed(let message) = tour.loadState {
-                Label(message, systemImage: "exclamationmark.triangle")
-                    .font(.footnote)
-                    .foregroundStyle(AppTheme.warning)
-                    .multilineTextAlignment(.center)
-            }
-
-            Button { isShowingListenSheet = true } label: {
-                HStack(spacing: 10) {
-                    Image(systemName: "headphones")
-                    Text("LISTEN TO A STOP")
-                        .tracking(1.5)
-                }
-                .font(.system(.headline, design: .default).weight(.semibold))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(AppTheme.heritageGreen.opacity(0.12), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .strokeBorder(AppTheme.heritageGreen.opacity(0.45), lineWidth: 1)
-                )
-                .foregroundStyle(AppTheme.heritageGreen)
-            }
-            .disabled(tour.loadState != .loaded)
-            .opacity(tour.loadState == .loaded ? 1 : 0.5)
-            .sheet(isPresented: $isShowingListenSheet) {
-                StopListSheet()
-                    .presentationDetents([.medium, .large])
-                    .presentationDragIndicator(.visible)
-            }
-
-            Button(action: tour.startTour) {
-                HStack(spacing: 10) {
-                    Image(systemName: "figure.walk")
-                    Text("START WALKING TOUR")
-                        .tracking(1.5)
-                }
-                .font(.system(.headline, design: .default).weight(.semibold))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 18)
-                .background(AppTheme.heritageGreen, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .foregroundStyle(.white)
-            }
-            .disabled(tour.loadState != .loaded)
-            .opacity(tour.loadState == .loaded ? 1 : 0.5)
-
+        .background(AppTheme.parchment).foregroundStyle(AppTheme.ink)
+        .task {
+            if tour.locationAuthorization == .authorized { tour.startLocationIfPossible() }
         }
     }
 }
 
-/// Debug builds: a long press on the title opens Developer Controls (spec §19 "only accessible
-/// through a debug menu"). Compiles to a no-op in Release.
 private struct DebugMenuGesture: ViewModifier {
     @Binding var isPresented: Bool
 
@@ -136,8 +84,8 @@ struct StylizedCranfordMapView: View {
     @State private var selectedStop: HistoricalStop?
     @State private var isShowingStopName = false
 
-    private let ink = Color(red: 0.29, green: 0.25, blue: 0.18)
-    private let paper = Color(red: 0.94, green: 0.90, blue: 0.79)
+    private let ink = AppTheme.ink
+    private let paper = AppTheme.parchment
 
     var body: some View {
         GeometryReader { proxy in
@@ -296,6 +244,11 @@ struct StylizedCranfordMapView: View {
     }
 
     private func drawLandmark(for stop: HistoricalStop, in context: inout GraphicsContext, size: CGSize) {
+        if stop.id == "hpab-001" {
+            let center = point(for: stop, size: size)
+            context.draw(Image("mill-map-landmark"), in: CGRect(x: center.x - 15, y: center.y - 60, width: 90, height: 67.5))
+            return
+        }
         // Decorative architectural sketches, not reconstructions of the historic buildings.
         let location = point(for: stop, size: size)
         var sketch = context

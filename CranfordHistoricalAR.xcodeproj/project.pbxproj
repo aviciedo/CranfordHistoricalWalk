@@ -40,7 +40,6 @@
 		9C0E30CCFEADBA94FFE556DA /* NarrationControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B3588BED32734B249FBA671 /* NarrationControls.swift */; };
 		9CDD1406DCEE1B3AE4C7D7BB /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F0DE4625D8615D65FD3EFB0 /* HomeView.swift */; };
 		9E1190481B5EFBA1D046684E /* TourCore in Frameworks */ = {isa = PBXBuildFile; productRef = A15A955AA7D82438AAD676FF /* TourCore */; };
-		A05CD80BD25B6079C7CA76F4 /* ArrivalCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA36D5B3E3BA418B745705CF /* ArrivalCard.swift */; };
 		AC868F643CEE0A38A8219235 /* RealityKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BAA7A4387FC614C69C643ACB /* RealityKit.framework */; };
 		B003EAED16DE750332BADB2A /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 61B6796034569996BDF1001A /* AVFoundation.framework */; };
 		B01FDA2B78F3F71650F2B6A2 /* CoreLocation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 740DEF310E0B49F74C661D00 /* CoreLocation.framework */; };
@@ -65,6 +64,11 @@
 		F95F275F93F652433E3C4744 /* ARCoreGeospatial in Frameworks */ = {isa = PBXBuildFile; productRef = 7CC080AA31AA2B13BA07EFD2 /* ARCoreGeospatial */; };
 		FCCDB810E68D1070CF2F7598 /* TourCore in Frameworks */ = {isa = PBXBuildFile; productRef = 1C37CD7C3C9244A24BAE246A /* TourCore */; };
 		FF8682FD904B345164122DF6 /* ARCoreConsentStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBE7FD3191F06CF47BE56E97 /* ARCoreConsentStore.swift */; };
+		C601FD583E1C78459F28D245 /* AppNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30DAAD03BF6166E5C02C0F09 /* AppNavigation.swift */; };
+		5FC64123AE5CA09AC6373416 /* PhotoViewer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D2E22AB8873668EBFC1D7CA /* PhotoViewer.swift */; };
+		4BF62AB25E0B69874D9B4001 /* SharedNarrationBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CB802D81112E6B2459FCE66 /* SharedNarrationBar.swift */; };
+		DF54B06C3961D5A842D18240 /* StopDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B30FD1A69BDAC8F5309FD15 /* StopDetailView.swift */; };
+		8C5E205C91B0E4E4F44F6B47 /* StopsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDC2903451606F4F4717257E /* StopsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -123,7 +127,6 @@
 		BFC77FC2A82FDCBE9A9773EC /* TourCompleteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TourCompleteView.swift; sourceTree = "<group>"; };
 		C2AB7C3DEE3F8D416B57D77E /* ARNavigationArrow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARNavigationArrow.swift; sourceTree = "<group>"; };
 		C6AE809FE336032FA6B0F9A7 /* ImageLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageLoader.swift; sourceTree = "<group>"; };
-		CA36D5B3E3BA418B745705CF /* ArrivalCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArrivalCard.swift; sourceTree = "<group>"; };
 		CCB806019C409C7420C0DDE8 /* AppDependencies.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDependencies.swift; sourceTree = "<group>"; };
 		D06D11065F5889BCA02EDBF9 /* TourViewModel+Proximity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TourViewModel+Proximity.swift"; sourceTree = "<group>"; };
 		D5FCE2C436DF3AAE5E423CF6 /* MapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapView.swift; sourceTree = "<group>"; };
@@ -137,6 +140,11 @@
 		F1636300C82A2602A371808C /* SimulatedLocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulatedLocationService.swift; sourceTree = "<group>"; };
 		F57B915E316FC8864E6039D4 /* historical_stops.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = historical_stops.json; sourceTree = "<group>"; };
 		FBE7FD3191F06CF47BE56E97 /* ARCoreConsentStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARCoreConsentStore.swift; sourceTree = "<group>"; };
+		30DAAD03BF6166E5C02C0F09 /* AppNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppNavigation.swift; sourceTree = "<group>"; };
+		1D2E22AB8873668EBFC1D7CA /* PhotoViewer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoViewer.swift; sourceTree = "<group>"; };
+		3CB802D81112E6B2459FCE66 /* SharedNarrationBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedNarrationBar.swift; sourceTree = "<group>"; };
+		9B30FD1A69BDAC8F5309FD15 /* StopDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StopDetailView.swift; sourceTree = "<group>"; };
+		DDC2903451606F4F4717257E /* StopsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StopsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -296,6 +304,7 @@
 		CA1F30B04610AAC21DE1421B /* App */ = {
 			isa = PBXGroup;
 			children = (
+				30DAAD03BF6166E5C02C0F09 /* AppNavigation.swift */,
 				3E3EE07058B04AD0CDF063E1 /* AppConfiguration.swift */,
 				CCB806019C409C7420C0DDE8 /* AppDependencies.swift */,
 				61482BBC210A05FC35BB89A5 /* AppTheme.swift */,
@@ -325,9 +334,12 @@
 		FCD63799A533BCE2D9BC7C37 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				DDC2903451606F4F4717257E /* StopsView.swift */,
+				9B30FD1A69BDAC8F5309FD15 /* StopDetailView.swift */,
+				3CB802D81112E6B2459FCE66 /* SharedNarrationBar.swift */,
+				1D2E22AB8873668EBFC1D7CA /* PhotoViewer.swift */,
 				2AB87A5E7FD340D6AA8CE077 /* ARCorePrivacyConsentView.swift */,
 				7462D5144235554654C81D75 /* ARNavigationArrowView.swift */,
-				CA36D5B3E3BA418B745705CF /* ArrivalCard.swift */,
 				7F64C0D47DD5245ED54A9A22 /* ARView.swift */,
 				96E941E591DD1C007DD5736B /* GoogleMapView.swift */,
 				4CB69186614B09B1DF805224 /* HistoricalSignView.swift */,
@@ -448,6 +460,11 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8C5E205C91B0E4E4F44F6B47 /* StopsView.swift in Sources */,
+				DF54B06C3961D5A842D18240 /* StopDetailView.swift in Sources */,
+				4BF62AB25E0B69874D9B4001 /* SharedNarrationBar.swift in Sources */,
+				5FC64123AE5CA09AC6373416 /* PhotoViewer.swift in Sources */,
+				C601FD583E1C78459F28D245 /* AppNavigation.swift in Sources */,
 				9B1A3434197E3815A26624F0 /* ARAnchorManager.swift in Sources */,
 				FF8682FD904B345164122DF6 /* ARCoreConsentStore.swift in Sources */,
 				4CC8B9A2099DED1C91DF0143 /* ARCorePrivacyConsentView.swift in Sources */,
@@ -460,7 +477,6 @@
 				E1044C4A6F7004F9A17FD817 /* AppConfiguration.swift in Sources */,
 				F7A79CDC031255D87431EDB0 /* AppDependencies.swift in Sources */,
 				1D07F01BE18F8634CFFEB457 /* AppTheme.swift in Sources */,
-				A05CD80BD25B6079C7CA76F4 /* ArrivalCard.swift in Sources */,
 				865BEEEB388A50BFBABC9F54 /* CranfordHistoricalARApp.swift in Sources */,
 				BB36F634411FB64E70D33407 /* DeveloperControlsView.swift in Sources */,
 				49B1EA182AADFD5E5002E505 /* DeveloperModeController.swift in Sources */,

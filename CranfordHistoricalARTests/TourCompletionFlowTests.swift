@@ -24,6 +24,27 @@ final class TourCompletionFlowTests: XCTestCase {
         try await waitUntil("first location arrives") { self.tour.userLocation != nil }
     }
 
+    func testBrowsingAndSwitchingTabsDoNotRetargetTheGuidedWalk() {
+        let originalStop = tour.currentStop?.id
+        let originalPhase = tour.phase
+        let navigation = AppNavigation()
+        let map = MapViewModel()
+
+        navigation.showOnMap(stopID: stops[2].id)
+        map.show(stop: stops[2])
+        XCTAssertEqual(navigation.selectedTab, .map)
+        XCTAssertEqual(navigation.focusedStopID, stops[2].id)
+        XCTAssertEqual(map.cameraMode, .free)
+        XCTAssertEqual(tour.currentStop?.id, originalStop)
+
+        navigation.selectedTab = .stops
+        navigation.selectedTab = .home
+        navigation.selectedTab = .map
+        XCTAssertEqual(tour.phase, originalPhase)
+        XCTAssertEqual(tour.currentStop?.id, originalStop)
+        XCTAssertEqual(tour.progress.completedCount, 0)
+    }
+
     func testArrivalMarksVisitedAndClosingAdvances() async throws {
         XCTAssertEqual(tour.currentStop?.id, stops[0].id)
         XCTAssertFalse(tour.isSignPresented)
