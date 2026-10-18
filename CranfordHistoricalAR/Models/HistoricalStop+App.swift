@@ -121,6 +121,8 @@ extension HistoricalStop {
             photos: [
                 HistoricalStopPhoto(imageName: "greystone", caption: "Greystone"),
                 HistoricalStopPhoto(imageName: "greystone-additional-view", caption: "Greystone — additional view"),
+                HistoricalStopPhoto(imageName: "greystone-tower", caption: "Greystone’s stone tower"),
+                HistoricalStopPhoto(imageName: "greystone-stonework", caption: "Close-up of Greystone’s stonework"),
                 HistoricalStopPhoto(imageName: "greystone-footbridge-1912", caption: "Lincoln Park stone footbridge, 1912. The bridge remains today.", credit: "Cranford Historical Society, The Birth and Growth of Cranford, Part IV, PDF page 6."),
                 HistoricalStopPhoto(imageName: "greystone-gloria-swanson", caption: "Gloria Swanson"),
                 HistoricalStopPhoto(imageName: "greystone-william-randolph-hearst", caption: "William Randolph Hearst"),
