@@ -128,6 +128,7 @@ struct DeveloperControlsView: View {
 
             Section("Configuration") {
                 row("Maps SDK key", dependencies.configuration.hasGoogleMapsKey ? "present" : "missing")
+                row("Maps SDK initialized", GoogleMapsBootstrap.isConfigured ? "yes" : "no")
                 row("Routes API key", dependencies.configuration.hasRoutesKey ? "present" : "missing")
                 row("ARCore API key", dependencies.configuration.hasARCoreKey ? "present" : "missing")
                 row("Directions provider", dependencies.configuration.directionsProvider.rawValue)

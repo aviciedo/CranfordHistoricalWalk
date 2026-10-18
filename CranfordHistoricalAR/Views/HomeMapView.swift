@@ -16,6 +16,16 @@ struct HomeMapView: View {
             liveMap
         } else {
             StylizedCranfordMapView(stops: tour.stops)
+                .overlay(alignment: .topLeading) {
+                    Label("Preview map · Live map unavailable", systemImage: "map")
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.ink)
+                        .padding(10)
+                        .background(.regularMaterial, in: Capsule())
+                        .padding(12)
+                        .allowsHitTesting(false)
+                }
+                .accessibilityLabel("Illustrated preview of Cranford. Live Google Maps is unavailable; this preview cannot be zoomed.")
         }
     }
 
@@ -55,6 +65,7 @@ struct HomeMapView: View {
         .overlay(
             RoundedRectangle(cornerRadius: HomeMapView.cornerRadius, style: .continuous)
                 .strokeBorder(AppTheme.brass.opacity(0.35), lineWidth: 1)
+                .allowsHitTesting(false)
         )
         .shadow(color: .black.opacity(0.08), radius: 20, y: 10)
     }

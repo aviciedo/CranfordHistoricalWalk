@@ -102,6 +102,42 @@ insecure HTTP only for `preservecranford.com`.
 
 ## API keys (never committed)
 
+### Home screen shows an illustrated map instead of Google Maps
+
+The beige illustration is a static fallback, not a Google map. It appears when a Maps SDK key
+is missing/placeholder or SDK registration fails. The real Google map already enables pinch,
+double-tap zoom, and dragging. Moving outdoors or allowing GPS does not activate it.
+
+On the Mac:
+
+1. Open [Google Cloud Console](https://console.cloud.google.com/). Select or create your app's
+   project, attach billing, and enable **Maps SDK for iOS** under **APIs & Services > Library**.
+2. Under **APIs & Services > Credentials**, create or select an API key. Under **Application
+   restrictions**, select **iOS apps** and add `com.cranford.historicalar` (or the actual identifier
+   shown in Xcode if you changed it). Under **API restrictions**, allow **Maps SDK for iOS**.
+   A Routes-only key cannot load map tiles.
+3. In Finder, open the **Config** folder inside the particular downloaded project you are building.
+   If `Secrets.xcconfig` already exists, edit it. Otherwise duplicate `Secrets.example.xcconfig`
+   and rename the duplicate exactly `Secrets.xcconfig`.
+4. Open `Secrets.xcconfig` with Xcode or a plain-text editor. Replace the placeholder after
+   `GOOGLE_MAPS_API_KEY =` with your key, without quotes. Keep the other keys/team settings
+   already configured, or clear their example placeholders if you are starting from the template.
+   Never paste a real key in chat or commit this private file.
+5. In Xcode choose **Product > Clean Build Folder**, then **Product > Run** to rebuild and
+   reinstall. These keys are embedded at build time; relaunching an old installation is insufficient.
+6. On the home map, pinch with two fingers, double-tap to zoom in, and drag to pan. It should show
+   Google street-map tiles and Google attribution, rather than the beige illustration.
+
+Each newly downloaded ZIP excludes `Secrets.xcconfig`. Copy your private settings from the older
+project's **Config** folder into the new project's **Config** folder before rebuilding; do not
+overwrite an already configured file. Without that step, a new download returns to the preview map.
+
+In a Debug build, long-press the home title to open **Developer Controls**. **Configuration** shows
+whether the Maps SDK key is present, whether SDK registration succeeded, and the bundle identifier.
+Registration success does not verify Google authorization: blank/missing map tiles with a present
+key still require checking billing, enabled APIs, key restrictions, connectivity, and the Xcode console.
+The Routes API key is separately required for walking routes; it is not required just to zoom the map.
+
 `Config/Secrets.xcconfig` is gitignored. Copy `Config/Secrets.example.xcconfig` to it and set:
 
 | Setting | Purpose |

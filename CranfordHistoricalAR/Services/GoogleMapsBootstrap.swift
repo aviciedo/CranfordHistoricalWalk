@@ -10,9 +10,8 @@ enum GoogleMapsBootstrap {
     static func configure(with configuration: AppConfiguration) -> Bool {
         guard !isConfigured else { return true }
         guard configuration.hasGoogleMapsKey else { return false }
-        GMSServices.provideAPIKey(configuration.googleMapsAPIKey)
-        isConfigured = true
-        return true
+        isConfigured = GMSServices.provideAPIKey(configuration.googleMapsAPIKey)
+        return isConfigured
     }
 
     static var sdkVersion: String { GMSServices.sdkVersion() }
