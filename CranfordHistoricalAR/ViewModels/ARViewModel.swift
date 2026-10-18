@@ -29,6 +29,8 @@ final class ARViewModel {
     let imageLoader: any ImageLoader
     let narrationPlayer: NarrationPlayer
     private(set) var activationMessage: String?
+    private(set) var isShowingWalkingOrientation = true
+    @ObservationIgnored private var walkingOrientation = ARWalkingGuidance.OrientationState()
 
     @ObservationIgnored private weak var arView: ARView?
     @ObservationIgnored private var observationTask: Task<Void, Never>?
@@ -62,7 +64,7 @@ final class ARViewModel {
     var statusMessage: String? {
         if placementMode == .plaqueAnchored, geoAnchors.isTrackingReady { return nil }
         if localizationState.isUsable, geoAnchors.provider.backend == .coreLocation {
-            return "GPS guidance is approximate. Use the map if needed."
+            return nil // The compact walking footer carries the accuracy notice.
         }
         return geoAnchors.userFacingNotice
     }
@@ -74,6 +76,20 @@ final class ARViewModel {
     /// GPS course describes movement, so it must not be used as the camera's heading.
     var relativeBearingToWaypoint: Double? {
         geoAnchors.navigationBearing
+    }
+
+    var isGuidanceApproximate: Bool { geoAnchors.provider.backend == .coreLocation || tour.isRouteAnEstimate }
+
+    var walkingCue: ARWalkingGuidance.RouteCue? {
+        guard let route = tour.currentRoute, let progress = tour.routeProgress else { return nil }
+        return ARWalkingGuidance.routeCue(route: route, progress: progress)
+    }
+
+    var orientationStreet: String {
+        guard let route = tour.currentRoute, let progress = tour.routeProgress else { return guidanceDetail }
+        if let street = ARWalkingGuidance.currentStreetLabel(route: route, progress: progress) { return street }
+        if let street = walkingCue?.streetName { return "Toward \(street)" }
+        return guidanceDetail
     }
 
     var isMarkerAvailable: Bool {
@@ -88,7 +104,10 @@ final class ARViewModel {
     }
 
     var visitConfirmation: String {
-        tour.activeVisitEvidence == .simulation ? "Practice visit · Not saved" : "Visit recorded on this iPhone"
+        #if DEVELOPER_MENU
+        if !tour.isVisitRecordingEnabled { return "Test visit · Not saved" }
+        #endif
+        return tour.activeVisitEvidence == .simulation ? "Practice visit · Not saved" : "Visit recorded on this iPhone"
     }
 
     // MARK: Permissions
@@ -152,13 +171,15 @@ final class ARViewModel {
         guard availability == .ready, !isSessionRunning else { return }
         let configuration = ARWorldTrackingConfiguration()
         configuration.worldAlignment = geoAnchors.preferredWorldAlignment
-        configuration.planeDetection = []
+        configuration.planeDetection = [.horizontal]
         configuration.environmentTexturing = .none
         configuration.isLightEstimationEnabled = true
         configuration.isAutoFocusEnabled = true
         imageTrackingAvailable = PlaqueAnchorController.applyDetectionImages(to: configuration)
         arView.session.run(configuration, options: [.resetTracking, .removeExistingAnchors])
         isSessionRunning = true
+        isShowingWalkingOrientation = true
+        walkingOrientation = ARWalkingGuidance.OrientationState()
         geoAnchors.sessionDidStart(arView.session, arView: arView)
         pushTourStateToAnchors()
     }
@@ -197,6 +218,8 @@ final class ARViewModel {
             activationMessage = nil
             isShowingSignDetails = false
             plaqueSearchStartedAt = nil
+            isShowingWalkingOrientation = true
+            walkingOrientation = ARWalkingGuidance.OrientationState()
         }
         geoAnchors.hasActivatedStop = tour.isCurrentStopVisited
         geoAnchors.locationDidUpdate(tour.userLocation, heading: tour.heading)
@@ -206,7 +229,8 @@ final class ARViewModel {
         } else if let signStop = tour.presentedSignStop, imageLoader.cachedImage(for: signStop) == nil, signStop.hasAnyImage {
             loadSignImage(for: signStop)
         }
-        guard !tour.hasPlaqueConfirmedArrival, let stop = tour.currentStop, let user = tour.userLocation else {
+        guard !tour.hasPlaqueConfirmedArrival, !tour.isRouteAnEstimate,
+              tour.currentRoute != nil, let stop = tour.currentStop, let user = tour.userLocation else {
             geoAnchors.setNavigationTarget(nil)
             return
         }
@@ -214,7 +238,8 @@ final class ARViewModel {
         let waypoint = tour.nextWaypointCoordinate ?? stop.coordinate
         geoAnchors.setNavigationTarget(GeoAnchorManager.NavigationTarget(
             destination: stop.coordinate,
-            bearingToWaypoint: GeoMath.bearing(from: user.coordinate, to: waypoint)
+            bearingToWaypoint: GeoMath.bearing(from: user.coordinate, to: waypoint),
+            turnCue: isShowingWalkingOrientation ? nil : walkingCue
         ))
     }
 
@@ -337,11 +362,18 @@ final class ARViewModel {
 
     func frameDidUpdate(_ frame: ARFrame) {
         geoAnchors.frameDidUpdate(frame)
+        updateWalkingOrientation(timestamp: frame.timestamp)
         // Observation only fires when tour properties change; the 8 s plaque hunt
         // must advance on frames so a still visitor still gets the geo fallback.
         if placementMode == .searchingForPlaque || (tour.isSignPresented && tour.currentStop?.hasPlaqueReference == true && placementMode == .hidden) {
             applySignPlacement()
         }
+    }
+
+    private func updateWalkingOrientation(timestamp: TimeInterval) {
+        let visible = walkingOrientation.update(relativeBearing: relativeBearingToWaypoint, timestamp: timestamp,
+                                                isAtStop: tour.isCurrentStopVisited || isMarkerAvailable || tour.phase == .complete)
+        if isShowingWalkingOrientation != visible { isShowingWalkingOrientation = visible }
     }
 
     /// Geospatial unavailable: same AR session owner, same LocationService, Core Location provider.

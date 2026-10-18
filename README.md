@@ -107,12 +107,39 @@ See [design-qa.md](design-qa.md) for the pending Mac/iPhone comparison checklist
 **Start walking tour → View in AR → activate stop marker → listen/read → Continue to next stop.**
 The guided order stays fixed while visitors browse or listen to other stops.
 
-The reused RealityKit arrows follow the next walking-route vertex, then point to the visible marker
-on arrival. A camera-relative arrow with plain instructions remains visible when the 3D arrows are
-outside the camera view. Ivory arrows with forest rims match the Field Guide interface. They stop
-at the marker and disappear while its story is active. GPS movement direction is not treated as
-the direction the camera is facing. When tracking/heading is unusable, guidance becomes unavailable
-and the **Map** control remains available.
+AR walking uses one broad **semi-transparent ivory ground arrow**, with a fine forest edge,
+instead of four opaque breadcrumbs. It follows the next walking-route vertex, then points to
+the visible stop marker on arrival. Horizontal plane detection refines its height when a nearby
+ground surface is available; otherwise it uses a stable height estimate beneath the camera.
+
+On entering AR, a large camera-relative **left/right/ahead** cue helps the visitor face the walk,
+with the route's current street (or "Toward [street]") and distance in **feet** to the next turn.
+It fades after sustained alignment and returns if the visitor looks away. Near a real route turn
+(about 150 feet), an upright **floating turn arrow and street name** appears in the scene. It
+shows the turn's walking distance in feet, says "Turn … now" at the corner, and retires once
+route progress passes the turn. This turn arrow is distinct from the camera-orientation cue.
+
+Ground/sign transforms ease between positions, heading filtering takes the shortest angular
+path, and visibility uses hysteresis to reduce flicker. There is no continuous pulsing. Reduce
+Motion disables movement/scale animation. The ordinary GPS accuracy notice moves to a small
+walking-footer line; tracking failures still show an explicit message. Meshes/entities are
+reused, and a turn texture rebuilds only when its street, direction or rounded distance changes.
+
+Street names and maneuvers come from Google walking steps, never a stop's address or a hard-coded
+"Davis St". Missing/off-route step data does not produce a fictional turn sign. When only a
+straight-line estimate is available, street-walking arrows are withheld and the visitor is
+directed to the map. Marker guidance, activation and the explicit Continue flow remain shared.
+GPS positioning is approximate; floating signs are clamped to a legible viewing range rather
+than claiming surveyed intersection alignment. Ground arrows stop before the marker and disappear
+while its story is active. GPS movement direction is not treated as the camera's facing.
+When tracking/heading is unusable, arrows hide and the **Map** control remains available.
+
+AR walking refresh validation: **141 TourCore XCTest tests passed**, including upcoming-turn
+selection, route-based feet distances, street parsing, entry/orientation hysteresis and angular
+smoothing. Debug/Release source syntax and saved Xcode source references also passed. These checks
+do not build the iOS application or verify RealityKit rendering, outdoor surface detection,
+intersection alignment, native animation or Google authorization. Those require the Mac/iPhone
+checks in [design-qa.md](design-qa.md); rendered visual QA remains pending.
 
 Arrival reveals a marker; it does **not** record a visit. Tap the AR marker or **Activate stop marker**
 to show the historical information card in AR and start the shared narration player. Repeated taps

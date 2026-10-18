@@ -16,7 +16,7 @@ public struct RouteStep: Hashable, Codable, Sendable {
     public var startCoordinate: GeoCoordinate
     public var endCoordinate: GeoCoordinate
     public var instruction: String?
-    /// Raw maneuver identifier from the provider (e.g. "TURN_LEFT"). Not interpreted by TourCore.
+    /// Raw provider identifier (e.g. "TURN_LEFT"); ARWalkingGuidance normalizes supported turns.
     public var maneuver: String?
     public var coordinates: [GeoCoordinate]
 

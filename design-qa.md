@@ -82,3 +82,38 @@ post-fix screenshot evidence is available. Full-view and focused comparisons rem
    controls. Run Product > Test for the native regression suite.
 
 The remaining blocker is native rendering, interaction and build evidence from macOS/iPhone.
+
+## AR walking-arrow reference update
+
+The additional supplied references show a translucent ground arrow and a large upright arrow
+with a street label near an intersection (Davis Street is an example, not Cranford route data).
+Implementation is native SwiftUI/RealityKit, not a web recreation. Native capture and visual
+comparison remain blocked in this Linux environment; the overall result above remains blocked.
+
+Implemented source specifications: one 1.8 × 1.35-meter ivory arrow at 58% material opacity,
+fine translucent forest edging, detected horizontal ground height with a stable estimated
+fallback, a large entry/look-around cue, and a reused upright turn sign near a route maneuver.
+The turn sign uses a transparent texture containing an SF Symbol, route-supplied street name
+and feet distance. The camera footer replaces the prior large ivory direction card. Heading
+filtering, eased transforms and visibility hysteresis aim to avoid snapping and flicker;
+Reduce Motion disables movement/scale animation.
+
+Additional physical-device checks:
+
+1. Enter AR while facing left, right and away from the first route segment. Confirm the large
+   arrow points toward the walk, uses the actual street and feet distance, then fades after
+   looking along the route. Look away and confirm it reappears without oscillating.
+2. Walk toward a left and right intersection. Confirm the upright arrow names the street
+   being entered, counts down the walking distance, says "now" at the corner, and disappears
+   after turning. Verify it does not simply repeat the current step's earlier maneuver.
+3. Check the ground arrow against gravel, bright pavement, shade and uneven ground. Check its
+   legibility through the translucent fill, ground-height refinement, and smooth rotation.
+   Actual outdoor plane detection and GPS/compass alignment are unverified here.
+4. Test small phones, larger text and Reduce Motion; ensure the entry cue clears the Map
+   button, destination, tracking warnings and marker action. Check VoiceOver announcements.
+5. Lose GPS/heading, interrupt AR and disable routing. Confirm arrows hide appropriately,
+   no street turn is invented from an estimate, and Map remains usable. Activate the mill,
+   Continue to Greystone and verify its new route/entry cue uses the same shared tour state.
+
+No screenshot fidelity, outdoor ground-lock result, native build or on-device animation pass
+is claimed by the source-level and portable logic checks.

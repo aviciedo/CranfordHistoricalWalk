@@ -10,6 +10,7 @@ final class ARAnchorManager {
     private(set) weak var arView: ARView?
     private let rootAnchor = AnchorEntity(world: SIMD3<Float>(repeating: 0))
     let arrows = ARNavigationArrowEntity()
+    let turnSign = ARTurnSignEntity()
     let sign = ARHistoricalSignEntity()
     /// World-space parent for the geo sign. The plaque controller re-parents `sign` onto an image anchor.
     var worldRoot: Entity { rootAnchor }
@@ -17,6 +18,7 @@ final class ARAnchorManager {
     init() {
         rootAnchor.name = "tour-root"
         rootAnchor.addChild(arrows)
+        rootAnchor.addChild(turnSign)
         rootAnchor.addChild(sign)
     }
 
@@ -44,10 +46,11 @@ final class ARAnchorManager {
     /// Hides everything (used when tracking is lost or the user is at the stop).
     func hideNavigation() {
         arrows.setVisible(false)
+        turnSign.hide()
     }
 
     func hideAll() {
-        arrows.setVisible(false)
+        hideNavigation()
         sign.dismiss()
     }
 }

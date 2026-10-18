@@ -60,6 +60,7 @@ final class GeoAnchorManager {
     struct NavigationTarget: Equatable {
         var destination: GeoCoordinate
         var bearingToWaypoint: Double
+        var turnCue: ARWalkingGuidance.RouteCue?
     }
 
     /// Sign content requested by the view model; placed as soon as the camera is tracking.
@@ -80,6 +81,8 @@ final class GeoAnchorManager {
     @ObservationIgnored private var cameraTransform: simd_float4x4?
     @ObservationIgnored private var trackingState: ARCamera.TrackingState = .notAvailable
     @ObservationIgnored private var isInterrupted = false
+    @ObservationIgnored private var groundHeight: Float?
+    @ObservationIgnored private var lastGuidanceTime: TimeInterval?
 
     /// Called when Geospatial cannot be used and Core Location should take over.
     var onNeedsFallback: ((GeoSpatialFallbackReason) -> Void)?
@@ -122,6 +125,8 @@ final class GeoAnchorManager {
         cameraTransform = nil
         trackingState = .notAvailable
         navigationBearing = nil
+        groundHeight = nil
+        lastGuidanceTime = nil
         lastFrameTime = 0
         anchors.attach(to: arView)
         plaqueAnchors.attach(to: arView)
@@ -179,6 +184,7 @@ final class GeoAnchorManager {
         self.trackingState = trackingState
         provider.update(frame: frame)
         provider.update(cameraTransform: cameraTransform, trackingState: trackingState, timestamp: timestamp)
+        updateGroundHeight(frame: frame)
         refreshLocalizationState()
         considerGeospatialFallback()
         placeContent(now: timestamp)
@@ -296,6 +302,8 @@ final class GeoAnchorManager {
         let destinationChanged = newTarget?.destination != target?.destination
         target = newTarget
         if destinationChanged, cameraTransform != nil {
+            navigationBearing = nil
+            lastGuidanceTime = nil
             placeContent(now: lastFrameTime, forceLayout: true)
         }
     }
@@ -306,14 +314,40 @@ final class GeoAnchorManager {
     private var cameraGroundPosition: SIMD3<Float>? {
         guard let cameraTransform else { return nil }
         var p = cameraTransform.translation
-        p.y -= ARNavigationArrowEntity.heightBelowCamera
+        p.y = (groundHeight ?? (p.y - ARNavigationArrowEntity.heightBelowCamera)) + 0.015
         return p
+    }
+
+    /// Prefer a nearby detected horizontal surface beneath the phone. Until one is found,
+    /// hold a stable estimated height rather than making the arrow bob with the camera.
+    private func updateGroundHeight(frame: ARFrame) {
+        let camera = frame.camera.transform.translation
+        let candidates = frame.anchors.compactMap { $0 as? ARPlaneAnchor }.filter { plane in
+            let center = plane.transform * SIMD4<Float>(plane.center.x, plane.center.y, plane.center.z, 1)
+            let below = camera.y - center.y
+            return plane.alignment == .horizontal && plane.extent.x * plane.extent.z >= 0.5
+                && plane.classification != .table && plane.classification != .seat && plane.classification != .ceiling
+                && below > 0.45 && below < 2.5
+                && simd_length(SIMD2(center.x - camera.x, center.z - camera.z)) < 8
+        }
+        let closest = candidates.min { lhs, rhs in
+            let l = lhs.transform * SIMD4<Float>(lhs.center.x, lhs.center.y, lhs.center.z, 1)
+            let r = rhs.transform * SIMD4<Float>(rhs.center.x, rhs.center.y, rhs.center.z, 1)
+            return simd_length(SIMD2(l.x - camera.x, l.z - camera.z)) < simd_length(SIMD2(r.x - camera.x, r.z - camera.z))
+        }
+        if let closest {
+            let center = closest.transform * SIMD4<Float>(closest.center.x, closest.center.y, closest.center.z, 1)
+            groundHeight = groundHeight.map { $0 + (center.y - $0) * 0.12 } ?? center.y
+        } else if groundHeight == nil, case .normal = frame.camera.trackingState {
+            groundHeight = camera.y - ARNavigationArrowEntity.heightBelowCamera
+        }
     }
 
     private func placeContent(now: TimeInterval, forceLayout: Bool = false) {
         guard !hasActivatedStop, isTrackingReady, let base = cameraGroundPosition else {
-            anchors.arrows.setVisible(false)
+            anchors.hideNavigation()
             navigationBearing = nil
+            lastGuidanceTime = nil
             return
         }
         let direction: SIMD3<Float>
@@ -328,7 +362,7 @@ final class GeoAnchorManager {
         } else {
             guard localizationState.isUsable, let target,
                   let worldDirection = provider.worldDirection(forBearing: target.bearingToWaypoint) else {
-                anchors.arrows.setVisible(false)
+                anchors.hideNavigation()
                 navigationBearing = nil
                 return
             }
@@ -336,26 +370,43 @@ final class GeoAnchorManager {
             markerDistance = nil
         }
         guard simd_length(direction) > 0.05 else {
-            anchors.arrows.setVisible(false)
+            anchors.hideNavigation()
             navigationBearing = nil
             return
         }
-        updateCameraGuidance(direction: direction)
+        updateCameraGuidance(direction: direction, now: now)
         anchors.arrows.setVisible(true)
         // Keep arrows until activation, including inside the GPS arrival radius.
-        anchors.arrows.update(base: base, direction: direction, now: now, force: forceLayout, maximumDistance: markerDistance)
+        anchors.arrows.update(base: base, direction: direction, force: forceLayout, maximumDistance: markerDistance)
+        if markerDistance == nil, let cue = target?.turnCue, cue.isUpcomingTurn,
+           cue.isNearTurn || (anchors.turnSign.isShowing && cue.distanceMeters <= 55), let coordinate = cue.coordinate,
+           let camera = cameraTransform?.translation,
+           var position = provider.worldPosition(for: coordinate, altitude: nil, heightBelowCamera: 0) {
+            let flat = SIMD3<Float>(position.x - camera.x, 0, position.z - camera.z)
+            let distance = simd_length(flat)
+            if distance > 0.1 {
+                position = camera + flat / distance * max(3, min(25, distance))
+                position.y = base.y + 2.0
+                anchors.turnSign.update(cue: cue, position: position, camera: camera)
+            } else {
+                anchors.turnSign.hide(animated: true)
+            }
+        } else {
+            anchors.turnSign.hide(animated: true)
+        }
     }
 
-    private func updateCameraGuidance(direction: SIMD3<Float>) {
+    private func updateCameraGuidance(direction: SIMD3<Float>, now: TimeInterval) {
         guard let cameraTransform else { navigationBearing = nil; return }
         let next = ARWalkingGuidance.relativeBearing(
             directionX: Double(direction.x), directionZ: Double(direction.z),
             cameraForwardX: Double(-cameraTransform.columns.2.x),
             cameraForwardZ: Double(-cameraTransform.columns.2.z)
         )
-        if let previous = navigationBearing, let next,
-           abs(GeoMath.relativeBearing(heading: previous, bearing: next)) < 2 { return }
-        navigationBearing = next
+        let elapsed = lastGuidanceTime.map { now - $0 } ?? Self.frameInterval
+        lastGuidanceTime = now
+        guard let next else { navigationBearing = nil; return }
+        navigationBearing = ARWalkingGuidance.smoothAngle(from: navigationBearing, to: next, elapsed: elapsed)
     }
 
     /// World position for a stop, used by the sign (Stage 5) and by debugging overlays.

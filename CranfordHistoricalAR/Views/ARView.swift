@@ -85,6 +85,7 @@ struct ARTourView: View {
 
 /// A quiet camera frame with one direction surface and one on-site action.
 struct ARHUDView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let model: ARViewModel
     var onClose: () -> Void
 
@@ -97,6 +98,15 @@ struct ARHUDView: View {
                     notice(hint, symbol: "viewfinder.circle")
                 }
                 Spacer(minLength: 8)
+                if model.availability == .ready, model.isShowingWalkingOrientation,
+                   !model.isMarkerAvailable, !model.tour.isCurrentStopVisited, model.tour.phase == .inProgress {
+                    ARWalkingOrientationView(relativeBearing: model.relativeBearingToWaypoint,
+                                             street: model.orientationStreet,
+                                             distance: model.walkingCue?.distanceText,
+                                             isUpcomingTurn: model.walkingCue?.isUpcomingTurn == true)
+                        .transition(.opacity)
+                    Spacer(minLength: 8)
+                }
                 if model.availability == .ready {
                     ViewThatFits(in: .vertical) {
                         bottomPanel.fixedSize(horizontal: false, vertical: true)
@@ -107,6 +117,7 @@ struct ARHUDView: View {
                 }
             }
             .padding(.horizontal, 16).padding(.top, 8).padding(.bottom, 12)
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.3), value: model.isShowingWalkingOrientation)
         }
     }
 
@@ -170,7 +181,9 @@ struct ARHUDView: View {
             storyControls
         } else {
             VStack(spacing: 10) {
-                ARNavigationArrowView(relativeBearing: model.relativeBearingToWaypoint, detail: model.guidanceDetail)
+                ARNavigationArrowView(relativeBearing: model.relativeBearingToWaypoint, detail: model.guidanceDetail,
+                                      cue: model.isMarkerAvailable ? nil : model.walkingCue,
+                                      isApproximate: model.isGuidanceApproximate)
                 if let message = model.activationMessage { notice(message, symbol: "location.circle") }
                 if model.isMarkerAvailable {
                     primaryButton("Activate stop marker", symbol: "viewfinder.circle", action: model.activateMarker)
