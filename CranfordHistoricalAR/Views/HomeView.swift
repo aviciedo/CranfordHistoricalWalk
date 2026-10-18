@@ -103,24 +103,6 @@ struct HomeView: View {
             .disabled(tour.loadState != .loaded)
             .opacity(tour.loadState == .loaded ? 1 : 0.5)
 
-            VStack(spacing: 6) {
-                Label("Play any stop from here — you don't have to be at the site.", systemImage: "headphones")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                Label("Explore historical sites through augmented reality.", systemImage: "arkit")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                // Caption comes from the tour document (`dataStatus`), never from the view.
-                if let status = tour.dataStatus, !status.isEmpty {
-                    Text(status)
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                        .multilineTextAlignment(.center)
-                        .lineLimit(3)
-                }
-                ARCoreHomeDisclosure()
-                    .padding(.top, 4)
-            }
         }
     }
 }
