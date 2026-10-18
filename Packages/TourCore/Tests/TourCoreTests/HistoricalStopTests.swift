@@ -6,7 +6,7 @@ final class HistoricalStopTests: XCTestCase {
         let document = try HistoricalStopDecoder.decode(Fixtures.data("historical_stops"))
         XCTAssertEqual(document.schemaVersion, 1)
         XCTAssertEqual(document.stops.map(\.name), [
-            "Droescher’s Mill", "Cranford Hall", "Rahway River", "First Baptist Church", "Cranford Hotel"
+            "Droescher’s Mill", "Greystone", "Rahway River", "First Baptist Church", "Cranford Hotel"
         ])
         XCTAssertEqual(document.stops.map(\.order), [1, 2, 3, 4, 5])
         XCTAssertEqual(document.stops.map(\.id), ["hpab-001", "hpab-002", "hpab-003", "hpab-004", "hpab-005"])
@@ -20,8 +20,8 @@ final class HistoricalStopTests: XCTestCase {
         XCTAssertTrue(document.stops[0].hasPlaqueReference)
         XCTAssertFalse((document.stops[0].plaque?.transcription ?? "").contains("1797"))
         XCTAssertNil(document.stops[1].plaque)
-        let audioFiles = ["Greystone.mp3", "Rahway River.mp3", "First Baptist.mp3", "Cranford Hotel.mp3"]
-        for (stop, file) in zip(document.stops.dropFirst(), audioFiles) {
+        let audioFiles = ["Rahway River.mp3", "First Baptist.mp3", "Cranford Hotel.mp3"]
+        for (stop, file) in zip(document.stops.dropFirst(2), audioFiles) {
             XCTAssertFalse(stop.isSample)
             XCTAssertTrue(stop.coordinatesUnverified)
             XCTAssertEqual(stop.arrivalRadius, 35)
@@ -35,6 +35,67 @@ final class HistoricalStopTests: XCTestCase {
             XCTAssertNil(stop.narrationText)
             XCTAssertEqual(stop.narrationVoicePreference, .systemDefault)
         }
+    }
+
+    func testGreystoneUsesCreatorContentAndPreservesTheExistingTourDestination() throws {
+        let stop = try HistoricalStopDecoder.decode(Fixtures.data("historical_stops")).stops[1]
+        XCTAssertEqual(stop.id, "hpab-002", "Keep existing visits and navigation associated with this stop")
+        XCTAssertEqual(stop.name, "Greystone")
+        XCTAssertEqual(stop.order, 2)
+        XCTAssertEqual(stop.latitude, 40.6522522)
+        XCTAssertEqual(stop.longitude, -74.2997607)
+        XCTAssertEqual(stop.address, "600 Lincoln Park East, Cranford, NJ")
+        XCTAssertTrue(stop.coordinatesUnverified)
+        XCTAssertEqual(stop.arrivalRadius, 35)
+        XCTAssertEqual(stop.effectiveDepartureRadius, 50)
+        XCTAssertEqual(stop.historicalDate, "Built: Beginning in 1920")
+        XCTAssertTrue(stop.markerInformation.contains("25-room mansion"))
+        XCTAssertTrue(stop.longDescription.contains("Charles E. Kaltenbach"))
+        XCTAssertTrue(stop.longDescription.contains("In 1939, it reopened as Cranford Hall"))
+        let script = try XCTUnwrap(stop.narrationText)
+        XCTAssertTrue(script.hasPrefix("Greystone: The Castle on the River"))
+        XCTAssertTrue(script.contains("Gloria Swanson"))
+        XCTAssertTrue(script.contains("William Randolph Hearst"))
+        XCTAssertTrue(script.contains("Cranford Park Care"))
+        XCTAssertTrue(script.hasSuffix("continuous transformation of our town."))
+        XCTAssertGreaterThan(script.split(whereSeparator: \.isWhitespace).count, 330)
+        XCTAssertNil(stop.audioURL, "The previous recording must not override the new script")
+        XCTAssertEqual(stop.narrationSource, .synthesizedSpeech(text: script))
+        XCTAssertEqual(stop.narrationVoicePreference, .warmMaleEnglish)
+        XCTAssertFalse(stop.hasPlaqueReference, "Gallery photos do not become physical AR markers")
+        XCTAssertEqual(try JSONDecoder().decode(HistoricalStop.self, from: JSONEncoder().encode(stop)), stop)
+    }
+
+    func testPhotoGalleryPreservesOrderCaptionsAndCreditsAcrossCodable() throws {
+        var stop = makeStop()
+        stop.imageName = "cover"
+        stop.photos = [
+            HistoricalStopPhoto(imageName: "cover", caption: "Main photo"),
+            HistoricalStopPhoto(imageName: "  bridge  ", caption: "Stone footbridge, 1912", credit: "Archive, page 6"),
+            HistoricalStopPhoto(imageName: "cover", caption: "Duplicate"),
+            HistoricalStopPhoto(imageName: "\n", caption: "Invalid"),
+            HistoricalStopPhoto(imageName: "portrait", caption: "Portrait")
+        ]
+        XCTAssertEqual(stop.galleryPhotos.map(\.imageName), ["cover", "bridge", "portrait"])
+        XCTAssertEqual(stop.galleryPhotos[0].caption, "Main photo")
+        XCTAssertEqual(stop.galleryPhotos[1].credit, "Archive, page 6")
+        XCTAssertTrue(stop.hasAnyImage)
+        let decoded = try JSONDecoder().decode(HistoricalStop.self, from: JSONEncoder().encode(stop))
+        XCTAssertEqual(decoded, stop)
+        XCTAssertEqual(decoded.galleryPhotos, stop.galleryPhotos)
+        stop.imageName = nil
+        XCTAssertTrue(stop.hasAnyImage, "A gallery-only stop still supplies cover artwork")
+        XCTAssertEqual(stop.galleryPhotos.first?.imageName, "cover")
+    }
+
+    func testLegacySinglePhotoStopsKeepTheirCoverAndEmptyPhotoNamesAreIgnored() {
+        var stop = makeStop()
+        stop.imageName = "legacy-cover"
+        XCTAssertEqual(stop.galleryPhotos, [HistoricalStopPhoto(imageName: "legacy-cover", caption: stop.name)])
+        stop.imageName = "  "
+        stop.photos = [HistoricalStopPhoto(imageName: "", caption: "Empty")]
+        XCTAssertFalse(stop.hasAnyImage)
+        XCTAssertTrue(stop.galleryPhotos.isEmpty)
     }
 
     func testMillUsesTheFullCreatorScriptAndKeepsItsPhysicalPlaqueReference() throws {
@@ -123,6 +184,7 @@ final class HistoricalStopTests: XCTestCase {
         XCTAssertFalse(stop.isSample)
         XCTAssertFalse(stop.coordinatesUnverified)
         XCTAssertNil(stop.narrationText)
+        XCTAssertTrue(stop.photos.isEmpty)
         XCTAssertEqual(stop.narrationVoicePreference, .systemDefault)
         XCTAssertEqual(stop.narrationSource, nil)
     }

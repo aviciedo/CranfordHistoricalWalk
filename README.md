@@ -24,7 +24,7 @@ The original project documentation follows.
 A SwiftUI + ARKit/RealityKit + Core Location + Google Maps walking-tour MVP for Cranford, New Jersey.
 Follow AR walking arrows, activate a stop marker on site, and discover its historical sign and narration.
 
-> The bundled walking tour is **five** HPAB audio-tour stops (Droescher's Mill, Cranford Hall, Rahway River,
+> The bundled walking tour is **five** HPAB audio-tour stops (Droescher's Mill, Greystone, Rahway River,
 > First Baptist Church, Cranford Hotel). The tour began with the HPAB May 2020 brochure; stop 1 now uses
 > the tour creator’s supplied descriptions and narration script. Stops 2–5 keep their HPAB recordings.
 > Coordinates are **unverified geocodes**, not surveyed site positions. Read or listen to any stop from
@@ -74,7 +74,7 @@ and the **Map** control remains available.
 Arrival reveals a marker; it does **not** record a visit. Tap the AR marker or **Activate stop marker**
 to show the historical information card in AR and start the shared narration player. Repeated taps
 do not restart playback or duplicate the visit. Stop 1 can use its currently tracked physical plaque
-even if the bundled geocode is wrong. Cranford Hall and other stops without a reference photograph
+even if the bundled geocode is wrong. Greystone and other stops without a reference photograph
 use an on-site GPS marker, as selected for this MVP.
 
 GPS activation requires a fresh location (under 30 seconds old), reported accuracy of 25 m or better,
@@ -92,7 +92,7 @@ activations are practice and never overwrite real visit records.
 
 Closing a card, viewing a photo, browsing a stop or walking away never advances the destination.
 After activation, **Continue to next stop** updates the route and AR target from Droescher's Mill
-to Cranford Hall, then onward through the remaining stops. Stay in AR or tap **Map**. The map's
+to Greystone, then onward through the remaining stops. Stay in AR or tap **Map**. The map's
 **Directions** action opens Google Maps walking directions in the installed app or browser;
 embedded Google Maps/Routes still require their existing API-key configuration.
 
@@ -212,10 +212,10 @@ for scale estimation. Look for **Plaque recognized**, then slightly tilt up to s
 still required; Linux tests cannot validate ARKit recognition quality.
 
 `Resources/historical_stops.json` is the five-stop walking tour the app loads: HPAB brochure stops 1–5
-(Droescher's Mill, Cranford Hall, Rahway River, First Baptist Church, Cranford Hotel). `audioURL`
-values for stops 2–5 remain the QR destinations. Stop 1 uses the supplied on-device narration above.
+(Droescher's Mill, Greystone, Rahway River, First Baptist Church, Cranford Hotel). `audioURL`
+values for stops 3–5 remain the QR destinations. Stops 1 and 2 use the creator-supplied on-device narration.
 First Baptist uses the QR file
-`First Baptist.mp3` (not `First Baptist Church.mp3`). Cranford Hall uses `Greystone.mp3`. Coordinates
+`First Baptist.mp3` (not `First Baptist Church.mp3`). Greystone no longer plays the earlier `Greystone.mp3` recording. Coordinates
 are **unverified Nominatim geocodes** (`coordinatesUnverified: true`). A three-stop SAMPLE fixture
 remains in TourCore tests only (`sample_historical_stops.json`).
 
@@ -433,3 +433,30 @@ CranfordHistoricalARTests/  Host-app unit tests (Mac/Xcode)
 All seven implementation stages are in place, plus narration/HPAB catalog work and an ARCore Geospatial
 provider behind `GeoSpatialProvider`. The pure logic is tested on Linux; the iOS app and Geospatial itself
 need a Mac + device (see `docs/arcore-geospatial-report.md` in the project store).
+
+## Greystone content and photo gallery
+
+Stop 2 is now displayed as **Greystone** throughout Home, Map, Stops, AR and the player.
+Its stable `hpab-002` identifier, approximate coordinates and tour position are unchanged.
+The creator supplied its marker text, expanded description and full narration, including
+references to its later name, Cranford Hall. The new script uses the same on-device English
+male voice preference as the mill. Playback length depends on the installed voice; 160 seconds
+is an editorial estimate, not a measured recording.
+
+Stop details support a `photos` array of local asset names, captions and optional credits.
+The first photo is the cover unless the older `imageName` explicitly supplies a different cover.
+With multiple photos the gallery rotates every six seconds, supports manual swipes and
+Previous/Next buttons, and has a pause control. Rotation pauses while a photo or AR is open,
+when leaving the screen, or when the app becomes inactive. VoiceOver and Reduce Motion
+use manual paging. Tap any photo to enlarge it, pinch to zoom, and use X to return.
+Photo browsing never changes the walking destination or marks a stop visited.
+
+**Photo import pending:** The five Greystone attachments were visible in conversation but
+the original files were not available in the execution workspace. No substitute photos or
+broken asset names have been added to the tour JSON. Once the original files are available,
+use the file titled Greystone as the cover; include the other building photo, the two portraits
+(captioned Gloria Swanson and William Randolph Hearst), and the Lincoln Park stone footbridge
+(1912). For the bridge, retain the creator-supplied source credit: Cranford Historical Society,
+*The Birth and Growth of Cranford*, Part IV, PDF page 6. The supplied caption says the bridge
+remains today. This source was supplied by the creator, not independently verified here.
+Gallery photos do not enable ARKit recognition; Greystone retains its nearby-GPS AR activation.

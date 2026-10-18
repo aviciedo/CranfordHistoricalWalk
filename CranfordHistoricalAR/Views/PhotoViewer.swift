@@ -25,6 +25,7 @@ struct StopPhotoViewer: View {
     @Environment(\.dismiss) private var dismiss
     let image: LoadedImage
     let title: String
+    var credit: String? = nil
     @State private var scale: CGFloat = 1
     @State private var offset = CGSize.zero
     @GestureState private var magnification: CGFloat = 1
@@ -44,6 +45,9 @@ struct StopPhotoViewer: View {
                 .accessibilityLabel("Close photo")
             }
             .padding(.horizontal, 20).padding(.vertical, 8)
+            if let credit {
+                Text(credit).font(.caption).padding(.horizontal, 20).padding(.bottom, 8)
+            }
             GeometryReader { proxy in
                 Image(uiImage: image.image)
                     .resizable().scaledToFit()

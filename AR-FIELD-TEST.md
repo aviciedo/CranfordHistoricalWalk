@@ -36,8 +36,8 @@ be completed on your Mac and iPhone. The screenshots/mockups are design referenc
 3. On a physical iPhone, enter **View in AR**, let tracking settle, and activate the marker.
    The historical card should appear; narration should start. Expect **Practice visit · Not saved**.
 4. Tap **Hide AR card**. The destination should remain the mill. Tap **Continue to next stop**.
-   Expect Cranford Hall to become the destination; the AR arrows should guide toward its route.
-5. Jump to Cranford Hall, activate that marker and continue. This flow does not require a Hall
+   Expect Greystone to become the destination; the AR arrows should guide toward its route.
+5. Jump to Greystone, activate that marker and continue. This flow does not require a Greystone
    plaque photo. Practice must not create saved visit dates or replace existing real ones.
 6. Turn off simulated walking and reset the walk before real testing. An iOS Simulator can test
    the map and logic, but cannot run this AR camera experience.
@@ -62,14 +62,14 @@ be completed on your Mac and iPhone. The screenshots/mockups are design referenc
 7. Tap the card for readable details, or close it. The walking destination must stay at the mill
    until you choose **Continue to next stop**. Browsing/listening alone must never record a visit.
 
-## 4. Continue to stop 2: Cranford Hall
+## 4. Continue to stop 2: Greystone
 
-1. Tap **Continue to next stop**. Expect the destination to become **Cranford Hall**, with a new
+1. Tap **Continue to next stop**. Expect the destination to become **Greystone**, with a new
    route, distance/time and AR direction. The mill's plaque must no longer control the arrows.
 2. Remain in AR, or tap **Map** at the top left for the in-app walking map. The map's **Directions**
    button opens Google Maps walking directions. Return to this app for marker activation;
    Google Maps itself does not record visits in Cranford Historical AR.
-3. At Cranford Hall, expect a floating AR marker based on GPS. No physical plaque recognition
+3. At Greystone, expect a floating AR marker based on GPS. No physical plaque recognition
    is configured for this stop yet. Tap the marker and expect the card, recording and saved visit.
 4. Open **Stops** and confirm visit dates for both stops. Close/reopen the app and check again.
    A new walk starts at stop 1 even though saved visit dates remain visible.
@@ -111,12 +111,35 @@ measure its outer width next visit so its AR scale can be calibrated. No need to
    then **Voices > English**. Choose/download an English male voice, return to the app and tap Play
    again. Enhanced/premium voices are preferred when available. No API key or voice subscription
    is needed. Voice inventory and Settings wording vary by iOS version.
-6. Pause and resume, change tabs, then play Cranford Hall while the mill is speaking. Expect only
+6. Pause and resume, change tabs, then play Greystone while the mill is speaking. Expect only
    one narrator at a time. Return to the mill and retry its narration. Speech has a progress bar;
    recorded audio retains its scrubbing and skip controls.
 7. In AR, activate the mill marker. Expect this same new voice and script to start, with the short
-   historical card. **Stop details** opens the longer description/transcript. Continue to Cranford
-   Hall and confirm its original recording remains available.
+   historical card. **Stop details** opens the longer description/transcript. Continue to Greystone and confirm its new script uses the same male-voice preference.
 
 The Linux tests check script selection and male-voice metadata policy. They cannot listen to the
 voice, evaluate pronunciation, compile AVFoundation/SwiftUI, or verify this on a real iPhone.
+
+## 7. Greystone content and slideshow
+
+The actual photo import is pending the original image files. Run the gallery steps below
+after the approved images have been added; the current stop has no substitute gallery assets.
+
+1. Open stop 2 from **Stops** and confirm its name is **Greystone**, address is **600 Lincoln
+   Park East**, and construction date begins in **1920**. Check the short map popup and AR card.
+2. Read the longer description and expand **Read narration**. Tap Play: expect the full
+   **Greystone: The Castle on the River** story in the same on-device male voice as stop 1.
+   It should replace the old recording. Check pronunciation and pause/resume; duration varies.
+3. After photo import, expect the image titled Greystone first. Watch for a page change after
+   six seconds. Swipe both ways; Previous/Next buttons pause rotation so you can read the caption.
+   Pause/Play should work. Enlarge each image, pinch to zoom, then close with X. The gallery
+   should return to the same image without advancing the tour or recording a visit.
+4. Check the 1912 Lincoln Park footbridge caption and Historical Society credit. Portraits
+   should be fully visible rather than cropping faces. Test the smaller iPhone, larger text,
+   light/dark appearance, VoiceOver and Reduce Motion. The last two use manual paging.
+5. While a photo is enlarged, while AR is open, while the app is inactive, and after leaving
+   details, confirm the slideshow pauses. Returning should not create multiple timers.
+6. Activate the Greystone AR marker on site; expect its new narration and short card. Opening
+   or swiping gallery photos alone must not record a visit. Continue should move to stop 3.
+
+These native interactions and the iOS build remain unverified on Linux.

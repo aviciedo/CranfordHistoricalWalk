@@ -16,7 +16,7 @@ struct StopDetailView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
-                    StopPhoto(stop: stop, height: 240, cornerRadius: 16)
+                    StopPhotoGallery(stop: stop, isObscured: isShowingAR)
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Stop \(stop.order) of \(tour.stops.count)")
                             .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)

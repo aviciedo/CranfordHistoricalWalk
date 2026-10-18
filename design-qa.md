@@ -42,3 +42,10 @@ and spoken-versus-recorded player controls now share the updated stop data. Phys
 recognition assets remain unchanged. The on-device male voice, pronunciation, read-aloud progress,
 short AR card fit and map popups need the additional checks in AR-FIELD-TEST.md. No new native
 visual/audio QA pass is claimed.
+
+Greystone update: the second stop now uses the creator-supplied name, marker text, description
+and full on-device narration while retaining its stable tour ID. A shared multi-photo detail
+gallery supports rotation, manual paging, credits, pause and full-screen zoom. Original Greystone
+attachment files are not available in this workspace; their import remains pending and no
+substitute assets were added. Native gallery behavior, voice playback and build status still
+require Mac/iPhone verification using AR-FIELD-TEST.md.

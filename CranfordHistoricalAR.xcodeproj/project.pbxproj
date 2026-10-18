@@ -71,6 +71,7 @@
 		8C5E205C91B0E4E4F44F6B47 /* StopsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDC2903451606F4F4717257E /* StopsView.swift */; };
 		68CDDC14800B0BCDD181E9D9 /* StopVisitStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16AAEC54E173B9370438E362 /* StopVisitStore.swift */; };
 		DA4733EA4FDD7D0604AA419A /* NarrationPlayerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 622C536D43B1884F8AABC0C0 /* NarrationPlayerTests.swift */; };
+		98247C655389B54E6F48DD62 /* StopPhotoGallery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B48970ADF663133DDEA9CD0 /* StopPhotoGallery.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -149,6 +150,7 @@
 		DDC2903451606F4F4717257E /* StopsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StopsView.swift; sourceTree = "<group>"; };
 		16AAEC54E173B9370438E362 /* StopVisitStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StopVisitStore.swift; sourceTree = "<group>"; };
 		622C536D43B1884F8AABC0C0 /* NarrationPlayerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NarrationPlayerTests.swift; sourceTree = "<group>"; };
+		9B48970ADF663133DDEA9CD0 /* StopPhotoGallery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StopPhotoGallery.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -344,6 +346,7 @@
 				9B30FD1A69BDAC8F5309FD15 /* StopDetailView.swift */,
 				3CB802D81112E6B2459FCE66 /* SharedNarrationBar.swift */,
 				1D2E22AB8873668EBFC1D7CA /* PhotoViewer.swift */,
+				9B48970ADF663133DDEA9CD0 /* StopPhotoGallery.swift */,
 				2AB87A5E7FD340D6AA8CE077 /* ARCorePrivacyConsentView.swift */,
 				7462D5144235554654C81D75 /* ARNavigationArrowView.swift */,
 				7F64C0D47DD5245ED54A9A22 /* ARView.swift */,
@@ -470,6 +473,7 @@
 				DF54B06C3961D5A842D18240 /* StopDetailView.swift in Sources */,
 				4BF62AB25E0B69874D9B4001 /* SharedNarrationBar.swift in Sources */,
 				5FC64123AE5CA09AC6373416 /* PhotoViewer.swift in Sources */,
+				98247C655389B54E6F48DD62 /* StopPhotoGallery.swift in Sources */,
 				C601FD583E1C78459F28D245 /* AppNavigation.swift in Sources */,
 				9B1A3434197E3815A26624F0 /* ARAnchorManager.swift in Sources */,
 				FF8682FD904B345164122DF6 /* ARCoreConsentStore.swift in Sources */,

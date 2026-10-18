@@ -19,6 +19,8 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
     public var historicalDate: String?
     /// Name of an image in the app's asset catalog.
     public var imageName: String?
+    /// Ordered local photographs for the detail-screen slideshow; the first is the cover.
+    public var photos: [HistoricalStopPhoto]
     /// Remote historical photograph.
     public var imageURL: URL?
     /// Remote illustration / drawing.
@@ -58,6 +60,7 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
         longDescription: String,
         historicalDate: String? = nil,
         imageName: String? = nil,
+        photos: [HistoricalStopPhoto] = [],
         imageURL: URL? = nil,
         illustrationURL: URL? = nil,
         audioURL: URL? = nil,
@@ -81,6 +84,7 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
         self.longDescription = longDescription
         self.historicalDate = historicalDate
         self.imageName = imageName
+        self.photos = photos
         self.imageURL = imageURL
         self.illustrationURL = illustrationURL
         self.audioURL = audioURL
@@ -109,7 +113,23 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
     }
 
     public var hasAnyImage: Bool {
-        imageName != nil || imageURL != nil || illustrationURL != nil
+        !galleryPhotos.isEmpty || imageURL != nil || illustrationURL != nil
+    }
+
+    /// Ignore empty/duplicate entries while preserving editorial order and old single-photo stops.
+    public var galleryPhotos: [HistoricalStopPhoto] {
+        var seen = Set<String>()
+        var result: [HistoricalStopPhoto] = []
+        for var photo in photos {
+            photo.imageName = photo.imageName.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !photo.imageName.isEmpty, seen.insert(photo.imageName).inserted else { continue }
+            result.append(photo)
+        }
+        if let name = imageName?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty,
+           seen.insert(name).inserted {
+            result.insert(HistoricalStopPhoto(imageName: name, caption: self.name), at: 0)
+        }
+        return result
     }
 
     /// Short location popup. The longer description and narration stay in the detail screen.
@@ -159,7 +179,7 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case id, name, latitude, longitude, altitude, address, shortDescription, longDescription
-        case historicalDate, imageName, imageURL, illustrationURL, audioURL
+        case historicalDate, imageName, photos, imageURL, illustrationURL, audioURL
         case narrationText, narrationVoicePreference
         case arrivalRadius, departureRadius, order, estimatedVisitDuration, isSample
         case coordinatesUnverified, plaque
@@ -177,6 +197,7 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
         longDescription = try c.decodeIfPresent(String.self, forKey: .longDescription) ?? ""
         historicalDate = try c.decodeIfPresent(String.self, forKey: .historicalDate)
         imageName = try c.decodeIfPresent(String.self, forKey: .imageName)
+        photos = try c.decodeIfPresent([HistoricalStopPhoto].self, forKey: .photos) ?? []
         imageURL = try c.decodeIfPresent(URL.self, forKey: .imageURL)
         illustrationURL = try c.decodeIfPresent(URL.self, forKey: .illustrationURL)
         audioURL = try c.decodeIfPresent(URL.self, forKey: .audioURL)
@@ -189,6 +210,20 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
         isSample = try c.decodeIfPresent(Bool.self, forKey: .isSample) ?? false
         coordinatesUnverified = try c.decodeIfPresent(Bool.self, forKey: .coordinatesUnverified) ?? false
         plaque = try c.decodeIfPresent(StopPlaque.self, forKey: .plaque)
+    }
+}
+
+/// A bundled photo and its reader-visible caption/credit. Photos are not AR recognition markers.
+public struct HistoricalStopPhoto: Identifiable, Hashable, Codable, Sendable {
+    public var imageName: String
+    public var caption: String
+    public var credit: String?
+    public var id: String { imageName }
+
+    public init(imageName: String, caption: String, credit: String? = nil) {
+        self.imageName = imageName
+        self.caption = caption
+        self.credit = credit
     }
 }
 

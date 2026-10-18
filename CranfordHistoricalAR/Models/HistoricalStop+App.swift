@@ -89,12 +89,50 @@ extension HistoricalStop {
             )
         ),
         HistoricalStop(
-            id: "hpab-002", name: "Cranford Hall", latitude: 40.6522522, longitude: -74.2997607,
+            id: "hpab-002", name: "Greystone", latitude: 40.6522522, longitude: -74.2997607,
             address: "600 Lincoln Park East, Cranford, NJ",
-            shortDescription: "HPAB audio-tour stop. Play the recording for the site description. No transcript is bundled.",
-            longDescription: "",
-            audioURL: URL(string: "http://www.preservecranford.com/Audio/Greystone.mp3"),
-            order: 2, isSample: false, coordinatesUnverified: true
+            shortDescription: "A grand 25-room mansion overlooking the Rahway River, later transformed into Cranford Hall.",
+            longDescription: """
+                Built beginning in 1920, Greystone was an extraordinary 25-room, English castle-inspired mansion overlooking the Rahway River. Its 14-acre estate, with 600 feet of riverfront, belonged to wealthy silk manufacturer Charles E. Kaltenbach.
+
+                Constructed on land once owned by Severin Droescher, the mansion replaced most of his planned Lincoln Park residential development. Hollywood stars like Gloria Swanson and newspaper magnate William Randolph Hearst were among Greystone’s distinguished guests.
+
+                Following Kaltenbach's death and the decline of his silk business, the property was acquired by Cranford Township. In 1939, it reopened as Cranford Hall, beginning its long history as a healthcare facility.
+                """,
+            historicalDate: "Built: Beginning in 1920",
+            narrationText: """
+                Greystone: The Castle on the River
+
+                At our previous stop, Droescher’s Mill, we discovered how the Rahway River powered the industries that helped build early Cranford.
+
+                By the early 1900s as the town continued to grow, its scenic banks of the Rahway River had become desirable places for grand homes and landscaped estates. And few were more impressive than the mansion that once stood here, known as Greystone.
+
+                Construction began in 1920 for Charles E. Kaltenbach, a wealthy silk-ribbon manufacturer whose family business had prospered in New Jersey's textile industry.
+
+                Inspired by an English castle, the magnificent 25-room mansion featured castle-like towers and an elegant ballroom. Its sprawling 14-acre grounds included landscaped gardens and an extraordinary 600 feet of frontage along the Rahway River.
+
+                Interestingly, this estate was built on land formerly owned by Severin Droescher, the businessman behind the nearby mill. Droescher had originally envisioned an exclusive neighborhood called Lincoln Park, but Kaltenbach acquired a large portion of the property for his private estate.
+
+                Greystone soon became a setting for lavish and glamorous Hollywood entertainment. Hollywood stars like Gloria Swanson and newspaper magnate William Randolph Hearst were among its famous guests.
+
+                But the mansion's glamorous chapter was very short.
+
+                In 1930, Kaltenbach died suddenly of a heart attack at just 44 years old. Meanwhile, his family's silk business struggled as new synthetic fabrics, including rayon, transformed the textile industry.
+
+                By the late 1930s, the estate faced substantial unpaid taxes, and Cranford Township acquired the property.
+
+                Then came an unexpected new beginning.
+
+                In October 1939, the former mansion reopened as Cranford Hall, a nursing and convalescent home. Over the following decades, much of the original estate was divided and developed, but the building continued serving the community.
+
+                Today, the property remains a healthcare facility, known as Cranford Park Care.
+
+                From a magnificent private residence to a place dedicated to caring for others, Greystone reflects Cranford's changing and dynamic history.
+
+                And just as at Droescher’s Mill, the Rahway River remains a quiet witness to the continuous transformation of our town.
+                """,
+            narrationVoicePreference: .warmMaleEnglish,
+            order: 2, estimatedVisitDuration: 160, isSample: false, coordinatesUnverified: true
         ),
         HistoricalStop(
             id: "hpab-003", name: "Rahway River", latitude: 40.6659731, longitude: -74.3108614,

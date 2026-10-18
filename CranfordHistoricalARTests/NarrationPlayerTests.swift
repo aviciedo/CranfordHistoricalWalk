@@ -5,13 +5,15 @@ import XCTest
 
 @MainActor
 final class NarrationPlayerTests: XCTestCase {
-    func testPreviewMillMatchesTheBundledContent() async throws {
+    func testPreviewCreatorStopsMatchTheBundledContent() async throws {
         let document = try await BundledJSONHistoricalStopService().loadTour()
-        let mill = try XCTUnwrap(document.stops.first { $0.id == "hpab-001" })
-        var preview = try XCTUnwrap(HistoricalStop.previewStops.first { $0.id == mill.id })
-        // Previews use the equivalent derived departure radius; JSON supplies it explicitly.
-        preview.departureRadius = mill.departureRadius
-        XCTAssertEqual(preview, mill)
+        for id in ["hpab-001", "hpab-002"] {
+            let stop = try XCTUnwrap(document.stops.first { $0.id == id })
+            var preview = try XCTUnwrap(HistoricalStop.previewStops.first { $0.id == id })
+            // Previews use the equivalent derived departure radius; JSON supplies it explicitly.
+            preview.departureRadius = stop.departureRadius
+            XCTAssertEqual(preview, stop)
+        }
     }
 
     func testRequestedMaleVoiceDoesNotSilentlyFallBackWhenMissing() {

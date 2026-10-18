@@ -27,6 +27,8 @@ protocol ImageLoader: AnyObject {
     func cachedImage(for stop: HistoricalStop) -> LoadedImage?
     /// Resolves the best available image, caching it. Never throws: a missing image is normal.
     func image(for stop: HistoricalStop) async -> LoadedImage?
+    /// Resolve one gallery page without replacing the stop's cover/AR artwork.
+    func image(for photo: HistoricalStopPhoto, at stop: HistoricalStop) async -> LoadedImage?
     /// Warm the cache for stops the user is about to reach.
     func prefetch(_ stops: [HistoricalStop])
 }
@@ -51,6 +53,7 @@ final class CompositeImageLoader: ImageLoader {
     init(session: URLSession? = nil) {
         self.session = session ?? CompositeImageLoader.makeSession()
         cache.countLimit = 8
+        cache.totalCostLimit = 64 * 1024 * 1024
     }
 
     private static func makeSession() -> URLSession {
@@ -68,21 +71,31 @@ final class CompositeImageLoader: ImageLoader {
     func image(for stop: HistoricalStop) async -> LoadedImage? {
         if let cached = cachedImage(for: stop) { return cached }
         guard stop.hasAnyImage else { return nil }
-        if let failedAt = failures[stop.id], Date().timeIntervalSince(failedAt) < retryInterval { return nil }
-        if let task = inFlight[stop.id] { return await task.value }
+        return await load(key: stop.id) { [weak self] in await self?.resolve(stop) }
+    }
 
-        let task = Task<LoadedImage?, Never> { [weak self] in
-            guard let self else { return nil }
-            return await self.resolve(stop)
+    func image(for photo: HistoricalStopPhoto, at stop: HistoricalStop) async -> LoadedImage? {
+        let key = "\(stop.id)|photo|\(photo.imageName)"
+        return await load(key: key) { [weak self] in
+            await self?.localImage(named: photo.imageName, isSample: stop.isSample)
         }
-        inFlight[stop.id] = task
+    }
+
+    private func load(key: String, resolve: @escaping @MainActor () async -> LoadedImage?) async -> LoadedImage? {
+        if let cached = cache.object(forKey: key as NSString)?.value { return cached }
+        if let failedAt = failures[key], Date().timeIntervalSince(failedAt) < retryInterval { return nil }
+        if let task = inFlight[key] { return await task.value }
+
+        let task = Task<LoadedImage?, Never> { await resolve() }
+        inFlight[key] = task
         let result = await task.value
-        inFlight[stop.id] = nil
+        inFlight[key] = nil
         if let result {
-            cache.setObject(CacheEntry(result), forKey: stop.id as NSString)
-            failures[stop.id] = nil
+            cache.setObject(CacheEntry(result), forKey: key as NSString,
+                            cost: result.image.cgImage.map { $0.bytesPerRow * $0.height } ?? 0)
+            failures[key] = nil
         } else {
-            failures[stop.id] = Date()
+            failures[key] = Date()
         }
         return result
     }
@@ -94,10 +107,9 @@ final class CompositeImageLoader: ImageLoader {
     }
 
     private func resolve(_ stop: HistoricalStop) async -> LoadedImage? {
-        if let name = stop.imageName, let image = UIImage(named: name) {
-            let isPlaceholder = stop.isSample || name.lowercased().hasPrefix("placeholder")
-            let kind: LoadedImage.Kind = name.lowercased().contains("illustration") ? .illustration : .photograph
-            return LoadedImage(image: image, kind: kind, isPlaceholder: isPlaceholder)
+        if let photo = stop.galleryPhotos.first,
+           let image = await image(for: photo, at: stop) {
+            return image
         }
         if let url = stop.imageURL, let image = await download(url) {
             return LoadedImage(image: image, kind: .photograph, isPlaceholder: stop.isSample)
@@ -106,6 +118,15 @@ final class CompositeImageLoader: ImageLoader {
             return LoadedImage(image: image, kind: .illustration, isPlaceholder: stop.isSample)
         }
         return nil
+    }
+
+    private func localImage(named name: String, isSample: Bool) async -> LoadedImage? {
+        await Task.detached(priority: .utility) { () -> LoadedImage? in
+            guard let image = UIImage(named: name) else { return nil }
+            return LoadedImage(image: image.preparingForDisplay() ?? image,
+                               kind: name.lowercased().contains("illustration") ? .illustration : .photograph,
+                               isPlaceholder: isSample || name.lowercased().hasPrefix("placeholder"))
+        }.value
     }
 
     /// Downloads and decodes off the main actor. Any failure yields `nil` — never an error (spec §21).
