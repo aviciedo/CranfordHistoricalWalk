@@ -257,9 +257,7 @@ struct ARHUDView: View {
                 Button("Story") { model.isShowingSignDetails = true }.frame(minHeight: 44)
                 #if DEVELOPER_MENU
                 Spacer()
-                if model.tour.isMillDiscoveryStop {
-                    Button("Align bonus") { isShowingCalibration = true }.frame(minHeight: 44)
-                }
+                Button("Align bonus") { isShowingCalibration = true }.frame(minHeight: 44)
                 #endif
             }
             .font(.footnote.weight(.medium)).buttonStyle(.plain)

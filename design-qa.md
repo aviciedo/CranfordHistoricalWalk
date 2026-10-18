@@ -198,3 +198,14 @@ Core and production tour-logic checks cover reference mismatch, bonus placement,
 optional continuation, calibration isolation, duplicate activation and advancing to stop 3.
 Native reference-image validation, recognition quality, estimated scale and physical overlay
 placement remain blocked here pending Xcode/iPhone field testing. Overall visual QA remains blocked.
+
+## Greystone pillar context photo
+
+The supplied wider photo shows the plaque/pillar proportions. Default bonus bounds now fit above
+the sign within the pillar's apparent width, keeping close to the texture's natural aspect ratio.
+The image is retained unchanged as a field reference; it is not an added AR target containing
+non-planar scenery. Physical reference scale remains an estimate. New Debug Greystone sliders
+persist independently of mill calibration, support fine increments, and can update placement
+without requiring a new image-anchor pose. Each stop's reset is isolated; visit resets preserve
+both. Tests exercise the fit constraints and storage/reset independence. Native UI, real image
+recognition, and actual pillar fit remain unverified without the Mac/iPhone; visual QA is blocked.

@@ -18,6 +18,7 @@ final class DeveloperModeController {
     private let defaults: UserDefaults
     private static let viewingKey = "cranford.developer.mill-viewing-point.v1"
     private static let windowKey = "cranford.developer.mill-window-layout.v1"
+    private static let parkKey = "cranford.developer.greystone-bonus-layout.v1"
     private(set) var viewingPointMessage: String?
     private(set) var savedViewingAccuracy: Double?
     var savedViewingPoint: GeoCoordinate? { tour.viewingPointOverride }
@@ -41,6 +42,12 @@ final class DeveloperModeController {
         if let values = defaults.array(forKey: Self.windowKey) as? [Double], values.count == 4 {
             let layout = WindowBonusLayout(right: values[0], up: values[1], width: values[2], height: values[3])
             if layout.dimensions(plaqueWidthMeters: 0.18) != nil { tour.windowBonusLayout = layout }
+        }
+        if let values = defaults.array(forKey: Self.parkKey) as? [Double], values.count == 4 {
+            let layout = WindowBonusLayout(right: values[0], up: values[1], width: values[2], height: values[3])
+            if layout.dimensions(plaqueWidthMeters: SignPlacementPolicy.assumedParkReferenceWidthMeters) != nil {
+                tour.parkBonusLayout = layout
+            }
         }
     }
 
@@ -92,6 +99,32 @@ final class DeveloperModeController {
     func resetWindowLayout() {
         tour.windowBonusLayout = WindowBonusLayout()
         defaults.removeObject(forKey: Self.windowKey)
+    }
+
+    var parkRight: Double {
+        get { tour.parkBonusLayout.right }
+        set { var layout = tour.parkBonusLayout; layout.right = newValue; saveParkLayout(layout) }
+    }
+    var parkUp: Double {
+        get { tour.parkBonusLayout.up }
+        set { var layout = tour.parkBonusLayout; layout.up = newValue; saveParkLayout(layout) }
+    }
+    var parkWidth: Double {
+        get { tour.parkBonusLayout.width }
+        set { var layout = tour.parkBonusLayout; layout.width = newValue; saveParkLayout(layout) }
+    }
+    var parkHeight: Double {
+        get { tour.parkBonusLayout.height }
+        set { var layout = tour.parkBonusLayout; layout.height = newValue; saveParkLayout(layout) }
+    }
+    private func saveParkLayout(_ layout: WindowBonusLayout) {
+        guard layout.dimensions(plaqueWidthMeters: SignPlacementPolicy.assumedParkReferenceWidthMeters) != nil else { return }
+        tour.parkBonusLayout = layout
+        defaults.set([layout.right, layout.up, layout.width, layout.height], forKey: Self.parkKey)
+    }
+    func resetParkLayout() {
+        tour.parkBonusLayout = .abovePlaque
+        defaults.removeObject(forKey: Self.parkKey)
     }
 
     func markStoryRead() {

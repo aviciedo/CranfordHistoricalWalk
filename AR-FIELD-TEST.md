@@ -102,3 +102,16 @@ substitute for an Xcode iPhone build or the physical-device checks above.
 6. Reference scale is unmeasured: 0.75 m describes the entire supplied image frame including stone,
    not just the black plaque. Report recognition failures, screenshots and the measured sign width
    when available. Validate ARKit reference-image quality during the Xcode asset build.
+
+## Fine-tune the Greystone pillar extra
+
+- Use the new default card above the black Cranford Park sign. It should fit inside the pillar's
+  visible edges and leave the plaque readable. This is a photo-based starting point, not a
+  measured physical fit; the close-up reference still uses its estimated full-frame width.
+- In the AR camera, tap **Align bonus** and scroll to **Greystone plaque bonus alignment**.
+  Keep the plaque visible and adjust Move right, Move up, Width and Height. Even with the phone
+  held still, changes should update the card. Close the controls to inspect it on the pillar.
+- Relaunch to verify saved settings. Reset visits and verify alignment survives. Reset Greystone
+  placement and verify the photo-based defaults return while the mill's alignment stays unchanged.
+- Send a screenshot of the final four values and the overlay, plus any measured plaque width.
+  The photo by itself cannot establish scale in feet/meters or certify a public viewing position.

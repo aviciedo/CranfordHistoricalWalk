@@ -378,6 +378,40 @@ final class StopVisitStoreTests: XCTestCase {
         XCTAssertNil(tour.viewingPointOverride)
     }
 
+    func testGreystoneCalibrationPersistsAndResetsIndependentlyOfMill() async throws {
+        let suite = "cranford.park-layout.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let service = DeveloperTestLocationService(sample: nil)
+        let tour = TourViewModel(stopService: InMemoryHistoricalStopService(stops: HistoricalStop.previewStops),
+                                 locationService: service, directionsService: PreviewDirectionsService())
+        await tour.loadStopsIfNeeded()
+        let developer = DeveloperModeController(tour: tour, realLocationService: service, defaults: defaults)
+        developer.bonusRight = 4.2
+        developer.parkRight = 0.05
+        developer.parkUp = 0.65
+        developer.parkWidth = 0.8
+        developer.parkHeight = 0.5
+        tour.parkBonusLayout = .abovePlaque // Verify the next controller actually reloads storage.
+        let reloaded = DeveloperModeController(tour: tour, realLocationService: service, defaults: defaults)
+        XCTAssertEqual(reloaded.parkRight, 0.05)
+        XCTAssertEqual(reloaded.parkUp, 0.65)
+        XCTAssertEqual(reloaded.parkWidth, 0.8)
+        XCTAssertEqual(reloaded.parkHeight, 0.5)
+        XCTAssertEqual(reloaded.bonusRight, 4.2)
+        reloaded.clearVisitsAndResetTour()
+        XCTAssertEqual(reloaded.parkWidth, 0.8, "Resetting visits preserves Greystone calibration")
+        reloaded.resetWindowLayout()
+        XCTAssertEqual(reloaded.parkWidth, 0.8, "Mill reset must not alter Greystone")
+        reloaded.bonusRight = 4.8
+        reloaded.resetParkLayout()
+        XCTAssertEqual(tour.parkBonusLayout, .abovePlaque)
+        XCTAssertEqual(reloaded.bonusRight, 4.8, "Greystone reset must not alter mill calibration")
+        let afterReset = DeveloperModeController(tour: tour, realLocationService: service, defaults: defaults)
+        XCTAssertEqual(afterReset.parkWidth, WindowBonusLayout.abovePlaque.width)
+        XCTAssertEqual(afterReset.bonusRight, 4.8)
+    }
+
     func testSimulatedGPSCannotBeSavedAsTheRealViewingPoint() async throws {
         let suite = "cranford.discovery.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))

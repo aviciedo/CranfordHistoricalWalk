@@ -648,3 +648,24 @@ again to restore the bonus pose. No remote unlock follows from saved visit histo
 Verified here: 153 core tests, 22 production tour-logic integration tests with offline directions,
 Debug/Release syntax and resource/source checks. Native build, ARKit reference-image validation
 and real recognition remain to be checked on the Mac/iPhone.
+
+## Greystone pillar placement refinement
+
+The additional context photograph is retained at
+[docs/field-references/greystone-plaque-pillar.jpg](docs/field-references/greystone-plaque-pillar.jpg).
+It shows the black sign attached to a stone pillar with free space above it. The default extra
+now fits within the pillar's apparent width and clears the sign, rather than using the earlier
+wider floating card. These are photo-relative proportions, not measured dimensions. The original
+close-up remains the recognition reference; the wider view includes background at other depths
+and is retained for placement guidance rather than registered as another planar image target.
+
+In Debug, open **Align bonus → Greystone plaque bonus alignment** while the plaque remains in
+view. Adjust right/up/width/height, then return to inspect. Changes are applied even while the
+phone is still, and persist locally across relaunch and visit resets. Greystone and mill settings
+have separate storage/reset controls. Units are widths of the original close-up reference frame,
+including stone; the 0.75 m reference scale is still unmeasured. Reset Greystone placement restores
+the new photo-based defaults. No map coordinate or walking route is altered by these settings.
+
+Validation: 154 core tests, 23 production tour-logic integration tests using offline directions,
+Debug/Release source syntax and project/asset checks. Native slider layout, recognition and
+actual overlay alignment still need Xcode/iPhone testing.

@@ -107,6 +107,7 @@ final class TourViewModel {
     var discovery = StopDiscovery()
     var arrivalStoryStopID: String?
     var windowBonusLayout = WindowBonusLayout()
+    var parkBonusLayout = WindowBonusLayout.abovePlaque
     #if DEVELOPER_MENU
     /// Testing only. Defaults to recording on each launch; does not affect this walk's progress.
     var isVisitRecordingEnabled = true

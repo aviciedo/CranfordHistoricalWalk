@@ -152,7 +152,7 @@ extension TourViewModel {
 
     var isPlaqueDiscoveryStop: Bool { currentStop?.hasPlaqueReference == true }
     var isMillDiscoveryStop: Bool { currentStop?.plaque?.referenceImageName == SignPlacementPolicy.millReferenceImageName }
-    var currentBonusLayout: WindowBonusLayout { isMillDiscoveryStop ? windowBonusLayout : .abovePlaque }
+    var currentBonusLayout: WindowBonusLayout { isMillDiscoveryStop ? windowBonusLayout : parkBonusLayout }
     var canContinueCurrentStop: Bool { isCurrentStopVisited || (isPlaqueDiscoveryStop && discovery.canContinue) }
 
     func openStory(for stopID: String) {

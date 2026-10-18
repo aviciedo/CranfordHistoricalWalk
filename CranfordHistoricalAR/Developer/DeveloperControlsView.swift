@@ -65,6 +65,18 @@ struct DeveloperControlsView: View {
             }
 
             Section {
+                calibrationSlider("Move right", value: $developer.parkRight, range: -1...1, unit: "reference width", step: 0.01)
+                calibrationSlider("Move up", value: $developer.parkUp, range: -0.5...2, unit: "reference width", step: 0.01)
+                calibrationSlider("Width", value: $developer.parkWidth, range: 0.25...2, unit: "reference width", step: 0.01)
+                calibrationSlider("Height", value: $developer.parkHeight, range: 0.2...2, unit: "reference width", step: 0.01)
+                Button("Reset Greystone placement") { developer.resetParkLayout() }
+            } header: {
+                Text("Greystone plaque bonus alignment")
+            } footer: {
+                Text("Keep the Cranford Park plaque and stone surround in view while adjusting. Fit the bonus inside the stone pillar above the black sign. Values use the original close-up image frame width, including stone. Physical scale is still estimated. Settings stay on this device and do not change the mill.")
+            }
+
+            Section {
                 Toggle("Save visit history", isOn: $developer.isVisitRecordingEnabled)
                 row("Saved stops", "\(tour.visitRecords.count)")
                 Button(role: .destructive) {
@@ -245,10 +257,10 @@ struct DeveloperControlsView: View {
         .font(.subheadline)
     }
 
-    private func calibrationSlider(_ title: String, value: Binding<Double>, range: ClosedRange<Double>) -> some View {
+    private func calibrationSlider(_ title: String, value: Binding<Double>, range: ClosedRange<Double>, unit: String = "plaque width", step: Double = 0.1) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            row(title, String(format: "%.1f × plaque width", value.wrappedValue))
-            Slider(value: value, in: range, step: 0.1)
+            row(title, String(format: "%.2f × %@", value.wrappedValue, unit))
+            Slider(value: value, in: range, step: step)
                 .accessibilityLabel(title)
         }
     }

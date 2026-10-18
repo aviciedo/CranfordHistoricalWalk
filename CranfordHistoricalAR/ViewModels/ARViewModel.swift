@@ -249,6 +249,15 @@ final class ARViewModel {
         }
         geoAnchors.locationDidUpdate(tour.userLocation, heading: tour.heading)
         applySignPlacement()
+        #if DEVELOPER_MENU
+        // Apply slider changes even if the phone is still and ARKit sends no new anchor pose.
+        if tour.discovery.hasVerifiedPlaque, geoAnchors.isTrackingReady,
+           let stop = tour.currentStop, let anchor = geoAnchors.plaqueAnchors.trackedAnchor,
+           anchor.isTracked, geoAnchors.plaqueAnchors.matches(anchor, expectedName: stop.plaque?.referenceImageName) {
+            geoAnchors.presentWindowBonus(for: stop, imageAnchor: anchor,
+                                          layout: tour.currentBonusLayout, displayScale: displayScale)
+        }
+        #endif
         if tour.presentedSignStop == nil {
             imageRequestedForStopID = nil
         } else if let signStop = tour.presentedSignStop, imageLoader.cachedImage(for: signStop) == nil, signStop.hasAnyImage {
@@ -297,7 +306,7 @@ final class ARViewModel {
     var discoveryPlacementInstruction: String {
         tour.isMillDiscoveryStop
             ? "Point your camera at it. The bonus will appear over the two glass panes."
-            : "Include the plaque and its stone surround in view. Your on-site extra will appear above it."
+            : "Include the plaque and its stone surround in view. Your on-site extra will appear on the pillar above the sign."
     }
 
     private func applySignPlacement() {
