@@ -135,11 +135,6 @@ struct StopListSheet: View {
         NavigationStack {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 12) {
-                    Text("Play any stop from here. You do not need to be at the GPS location.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 4)
-
                     ForEach(tour.stops) { stop in
                         VStack(alignment: .leading, spacing: 12) {
                             StopRow(stop: stop, isCurrent: stop.id == tour.currentStop?.id, isCompleted: tour.isCompleted(stop))
@@ -194,7 +189,6 @@ struct StopRow: View {
             }
             VStack(alignment: .leading, spacing: 3) {
                 Text(stop.name).font(.headline)
-                Text(stop.shortDescription).font(.subheadline).foregroundStyle(.secondary).lineLimit(2)
                 if stop.isSample {
                     EyebrowText("Sample location", color: AppTheme.warning)
                 }
