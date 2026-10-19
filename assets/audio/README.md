@@ -19,6 +19,7 @@ recording. Droescher, Severin and Alleum Yoga pronunciation still need local rev
 2. Bind the private key as **CRANFORD_NARRATION_API_KEY**, scoped to `api.openai.com`.
    `OPENAI_` names are reserved in this workspace. Never put the value in tracked files.
 3. Install the pinned official SDK from `requirements.txt`; provide ffmpeg and ffprobe.
+   A restricted key needs Audio/Speech write access; Models read access is not required.
 4. Run `python3 assets/audio/generate_narration.py --check` for local-only validation, then
    run the same command without `--check` to authorize the speech request.
 5. The generator uses one request, a lossless temporary WAV, mono 44.1 kHz conversion,

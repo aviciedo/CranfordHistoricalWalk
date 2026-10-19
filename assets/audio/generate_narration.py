@@ -63,10 +63,11 @@ def main():
         raise SystemExit("Missing secure narration API key binding. No speech request was sent.")
     from openai import OpenAI, OpenAIError
     client = OpenAI(api_key=key, base_url="https://api.openai.com/v1", max_retries=0, timeout=180)
-    stage = "checking model access"
+    stage = "generating speech"
     try:
-        # Nonbillable model-access check. Billing failures from speech are never retried.
-        client.models.retrieve(profile["model"])
+        # A key restricted to Audio/Speech need not have Models/Read permission.
+        # Submit only the authorized speech request; authentication, model-access and
+        # billing failures from that endpoint are never retried automatically.
         with tempfile.TemporaryDirectory(prefix="cranford-narration-") as tmp:
             raw = Path(tmp) / "generated.wav"
             mono = Path(tmp) / "mono.wav"
