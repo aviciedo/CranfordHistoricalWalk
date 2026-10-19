@@ -120,25 +120,43 @@ struct StylizedCranfordMapView: View {
                 }
                 .allowsHitTesting(false)
 
+                // Match the painted illustration bounds, including transparent gaps. Number
+                // buttons are layered above these targets so overlapping taps stay predictable.
+                ForEach(stops) { stop in
+                    let bounds = landmarkBounds(for: stop, size: proxy.size)
+                    Button {
+                        selectedStop = stop
+                        isShowingStopName = true
+                    } label: {
+                        Color.clear
+                            .frame(width: max(44, bounds.width * transform.scale),
+                                   height: max(44, bounds.height * transform.scale))
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHidden(true) // The numbered control names the same action.
+                    .position(transform.project(CGPoint(x: bounds.midX, y: bounds.midY), in: proxy.size))
+                }
+
                 ForEach(stops.sorted { $0.order < $1.order }) { stop in
                     Button {
                         selectedStop = stop
                         isShowingStopName = true
                     } label: {
                         Text("\(stop.order)")
-                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                            .font(.system(size: 18, weight: .bold, design: .rounded))
                             .foregroundStyle(.white)
-                            .frame(width: 27, height: 27)
+                            .frame(width: 40, height: 40)
                             .background(AppTheme.heritageGreen, in: Circle())
                             .overlay(Circle().strokeBorder(.white, lineWidth: 2))
                             .padding(5)
                             .background(AppTheme.brass.opacity(0.25), in: Circle())
-                            .frame(width: 44, height: 44)
+                            .frame(width: 56, height: 56)
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Stop \(stop.order), \(stop.name)")
-                    .accessibilityHint("Shows the stop name")
+                    .accessibilityHint("Opens the stop popup")
                     .position(transform.project(point(for: stop, size: proxy.size), in: proxy.size))
                 }
             }
@@ -179,7 +197,7 @@ struct StylizedCranfordMapView: View {
                 .padding(10)
             }
             .overlay(alignment: .bottom) {
-                Text("Schematic streets · Pinch to zoom · Tap a number")
+                Text("Schematic streets · Pinch to zoom · Tap a stop")
                     .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(ink)
                     .padding(.horizontal, 10)
@@ -254,11 +272,19 @@ struct StylizedCranfordMapView: View {
         context.stroke(route, with: .color(AppTheme.heritageGreen.opacity(0.5)), style: StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [4, 5]))
     }
 
+    private func landmarkBounds(for stop: HistoricalStop, size: CGSize) -> CGRect {
+        let center = point(for: stop, size: size)
+        if stop.id == "hpab-001" || stop.id == "hpab-002" {
+            return CGRect(x: center.x - 15, y: center.y - 60, width: 90, height: 67.5)
+        }
+        let x = center.x + (stop.order.isMultiple(of: 2) ? -22 : 22)
+        return CGRect(x: x - 22, y: center.y - 64, width: 46, height: 54)
+    }
+
     private func drawLandmark(for stop: HistoricalStop, in context: inout GraphicsContext, size: CGSize) {
         if stop.id == "hpab-001" || stop.id == "hpab-002" {
-            let center = point(for: stop, size: size)
             let assetName = stop.id == "hpab-001" ? "mill-map-landmark" : "greystone-map-landmark"
-            context.draw(Image(assetName), in: CGRect(x: center.x - 15, y: center.y - 60, width: 90, height: 67.5))
+            context.draw(Image(assetName), in: landmarkBounds(for: stop, size: size))
             return
         }
         // Decorative architectural sketches, not reconstructions of the historic buildings.

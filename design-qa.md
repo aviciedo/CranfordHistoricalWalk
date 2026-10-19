@@ -246,3 +246,12 @@ the player's same-ID cache. No audio was regenerated or visits reset.
 Portable release checks use system SHA-256 in place of unavailable Apple CryptoKit. New native
 regressions for playback/source refresh and AR entry require Xcode and remain unrun. Native
 SwiftUI sheet transitions, device playback and field AR behavior still require device QA.
+
+
+## Larger numbers and full landmark tap targets
+
+Build 0.2.0 (3) increases numbered circles from 24 to 40 points, selected circles to 44,
+and interaction bounds to 56 points. Landmark icon views use their full bounds as targets,
+with matching stop IDs and popup data. The fallback map matches artwork targets to painted
+bounds and projects them with zoom/pan. Debug/Release syntax passed; native rendering and
+physical touch-target behavior remain unverified without Xcode/iPhone.

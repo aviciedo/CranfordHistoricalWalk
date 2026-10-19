@@ -148,7 +148,7 @@ struct GoogleMapView: UIViewRepresentable {
             applyIcon(marker, image: icon(for: model, isSelected: isSelected))
         }
 
-        /// Dot styles use `iconView` so the whole 44 pt control is tappable, not just opaque pixels
+        /// Dot styles use `iconView` so the whole 56 pt control is tappable, not just opaque pixels
         /// of a padded `UIImage`. Labeled pins keep `icon` (the artwork is already the hit box).
         private func applyIcon(_ marker: GMSMarker, image: UIImage?) {
             if markerStyle == .labeledPin {
@@ -157,7 +157,7 @@ struct GoogleMapView: UIViewRepresentable {
                 marker.tracksViewChanges = false
                 return
             }
-            let side: CGFloat = 44
+            let side: CGFloat = 56
             let view = UIImageView(image: image)
             view.bounds = CGRect(x: 0, y: 0, width: side, height: side)
             view.contentMode = .center
@@ -209,7 +209,7 @@ struct GoogleMapView: UIViewRepresentable {
             return image
         }
 
-        /// Decorative artwork beside the real stop coordinate; never supplies route geometry.
+        /// Tappable artwork beside the real stop coordinate; shares the numbered marker’s stop ID.
         func renderLandmark(markers: [StopMarkerModel]) {
             guard let mapView else { return }
             let artworkByStop = ["hpab-001": "mill-map-landmark", "hpab-002": "greystone-map-landmark"]
@@ -231,13 +231,20 @@ struct GoogleMapView: UIViewRepresentable {
                                                 width: fitted.width, height: fitted.height))
                     }
                     let marker = GMSMarker(position: stop.coordinate)
-                    marker.icon = icon
+                    let view = UIImageView(image: icon)
+                    view.bounds = CGRect(origin: .zero, size: size)
+                    view.contentMode = .scaleAspectFit
+                    view.isUserInteractionEnabled = false
+                    marker.iconView = view
+                    marker.userData = stop.id
                     marker.groundAnchor = CGPoint(x: 0.15, y: 0.95)
-                    marker.isTappable = false
+                    marker.isTappable = true
                     marker.zIndex = 0
                     marker.tracksViewChanges = false
                     landmarkMarkers[stop.id] = marker
                 }
+                landmarkMarkers[stop.id]?.title = stop.name
+                landmarkMarkers[stop.id]?.snippet = stop.information
                 landmarkMarkers[stop.id]?.position = stop.coordinate
                 landmarkMarkers[stop.id]?.map = mapView.camera.zoom >= 14.5 ? mapView : nil
             }
@@ -474,14 +481,14 @@ struct StopDotMarker: View {
     }
 
     private var diameter: CGFloat {
-        if isSelected { return 30 }
-        return showsNumber ? 24 : 14
+        if isSelected { return showsNumber ? 44 : 30 }
+        return showsNumber ? 40 : 14
     }
 
     var body: some View {
         ZStack {
             if isSelected {
-                Circle().fill(AppTheme.brass.opacity(0.28)).frame(width: diameter + 16, height: diameter + 16)
+                Circle().fill(AppTheme.brass.opacity(0.28)).frame(width: diameter + 12, height: diameter + 12)
             }
             Circle()
                 .fill(fill)
@@ -491,15 +498,15 @@ struct StopDotMarker: View {
             if showsNumber || isSelected {
                 Group {
                     if model.state == .visited {
-                        Image(systemName: "checkmark").font(.system(size: isSelected ? 13 : 10, weight: .bold))
+                        Image(systemName: "checkmark").font(.system(size: isSelected ? 20 : 18, weight: .bold))
                     } else {
-                        Text("\(model.order)").font(.system(size: isSelected ? 13 : 11, weight: .bold, design: .rounded))
+                        Text("\(model.order)").font(.system(size: isSelected ? 20 : 18, weight: .bold, design: .rounded))
                     }
                 }
                 .foregroundStyle(model.state == .visited ? Color(light: .white, dark: AppTheme.forest) : .white)
             }
         }
-        .frame(width: 48, height: 48)
+        .frame(width: 56, height: 56)
     }
 }
 

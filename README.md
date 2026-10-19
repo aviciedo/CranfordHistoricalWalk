@@ -721,3 +721,14 @@ Native regression tests cover source replacement, actual bundle hashes/durations
 AR entry at first/next/completed tour and story/discovery gating. These require Xcode and remain
 unrun here; SwiftUI presentation, native playback and outdoor directions/recognition are not
 certified by portable or syntax checks.
+
+
+## Larger map markers — 0.2.0 (3)
+
+Numbered circles are now 40 points across (44 when selected), with larger numerals and a
+56-point interaction area. The mill/Greystone landmark images are also tappable across their
+full displayed bounds and carry the same stop identifier as their numbered markers, opening
+the same popup/details action. Number markers remain above artwork for overlapping taps.
+The illustrated fallback map has equivalent illustration targets that follow pan/zoom.
+Debug/Release Swift syntax checks passed. Native Google Maps hit testing, small-screen spacing
+and actual tap behavior still require Xcode/iPhone testing. Audio release stays cedar-2.
