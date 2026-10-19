@@ -294,3 +294,23 @@ as the map controls. A custom top safe-area row replaces the system toolbar pres
 so dark appearance and newer OS glass styling cannot change the button surface. Dismissal
 and its accessibility label remain intact. Debug/Release syntax passed; native screenshots
 and touch/layout verification require Xcode/iPhone.
+
+
+## Home spacing review and refinement
+
+Scope: the user-provided Home screenshot and current implementation. The screenshot shows
+large header/developer gaps ahead of the map and actions low in the viewport. Its existing
+serif heading, restrained palette and clear map/CTA hierarchy are retained. This is a supplied-
+screenshot review, not a completed live Product Design audit: the Linux workspace cannot run
+or capture the native iPhone screen. No new screenshot or native visual pass is claimed.
+
+Build 0.2.0 (8) moves content upward with top padding 24→8, section gaps 24→12 and header gaps
+8→4; the brand text uses smaller scalable system styles. The map grows from 290 to 310–350
+points, with viewport-aware space reserved for the existing controls. This balances a larger
+map against bringing actions higher. Colors, typefaces, artwork, horizontal margins, control
+styles/order and navigation are unchanged. The latest inline Browse action stays above Start.
+
+Debug/Release syntax passed. Approximate default-text height budgets were checked for usable
+heights 568/620/680/740; the shortest needs scrolling, while the larger budgets fit. Dynamic
+Type continues scaling and scrolling; actual text wrapping, map framing, VoiceOver order,
+player-expanded/minimized layouts and device screenshots require Xcode/iPhone verification.

@@ -6,86 +6,103 @@ struct HomeView: View {
     @Environment(AppNavigation.self) private var navigation
     @State private var isShowingDeveloperControls = false
     @State private var scrollBaseline: CGFloat?
+    @ScaledMetric(relativeTo: .body) private var homeContentReserve: CGFloat = 238
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Cranford")
-                        .font(.system(.largeTitle, design: .serif).weight(.semibold))
-                    Text("HISTORICAL AR")
-                        .font(.subheadline.weight(.semibold)).tracking(3)
-                    Text("See the history around you.")
-                        .font(.body).foregroundStyle(AppTheme.secondaryInk)
-                }
-                .modifier(DebugMenuGesture(isPresented: $isShowingDeveloperControls))
-                #if DEVELOPER_MENU
-                Button {
-                    isShowingDeveloperControls = true
-                } label: {
-                    Label("Developer", systemImage: "wrench.and.screwdriver")
-                        .frame(minHeight: 44)
-                }
-                .buttonStyle(.plain)
-                .font(.subheadline.weight(.medium))
-                .accessibilityHint("Opens testing tools and live GPS coordinates")
-                #endif
-                HomeMapView().frame(height: 290)
-                HStack {
-                    Label("\(tour.stops.count) stops", systemImage: "mappin.and.ellipse")
-                    Spacer()
-                    Button { navigation.selectedTab = .stops } label: {
-                        HStack(spacing: 6) {
-                            Text("Browse the stops")
-                            Image(systemName: "chevron.right").font(.caption.weight(.semibold))
-                        }
-                        .frame(minHeight: 44)
-                        .contentShape(Rectangle())
+        GeometryReader { viewport in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Cranford")
+                            .font(.system(.title, design: .serif).weight(.semibold))
+                        Text("HISTORICAL AR")
+                            .font(.footnote.weight(.semibold)).tracking(3)
+                        Text("See the history around you.")
+                            .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
                     }
-                    .buttonStyle(.plain).font(.subheadline.weight(.semibold))
-                    .foregroundStyle(AppTheme.ink)
-                }
-                .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
-                Button {
-                    if tour.phase == .complete { tour.resetTour() }
-                    tour.startTour()
-                    navigation.selectedTab = .map
-                } label: {
-                    Label(tour.phase == .inProgress ? "Continue your walk" : (tour.phase == .complete ? "Walk it again" : "Start walking tour"), systemImage: "figure.walk")
-                        .frame(maxWidth: .infinity).padding(.vertical, 17)
-                }
-                .buttonStyle(.plain).font(.headline)
-                .foregroundStyle(AppTheme.ivory)
-                .background(AppTheme.forest, in: RoundedRectangle(cornerRadius: 14))
-                .disabled(tour.loadState != .loaded)
-                .opacity(tour.loadState == .loaded ? 1 : 0.5)
+                    .modifier(DebugMenuGesture(isPresented: $isShowingDeveloperControls))
+                    #if DEVELOPER_MENU
+                    Button {
+                        isShowingDeveloperControls = true
+                    } label: {
+                        Label("Developer", systemImage: "wrench.and.screwdriver")
+                            .frame(minHeight: 44)
+                    }
+                    .buttonStyle(.plain)
+                    .font(.subheadline.weight(.medium))
+                    .accessibilityHint("Opens testing tools and live GPS coordinates")
+                    #endif
+                    HomeMapView().frame(height: mapHeight(in: viewport.size.height))
+                    HStack {
+                        Label("\(tour.stops.count) stops", systemImage: "mappin.and.ellipse")
+                        Spacer()
+                        Button { navigation.selectedTab = .stops } label: {
+                            HStack(spacing: 6) {
+                                Text("Browse the stops")
+                                Image(systemName: "chevron.right").font(.caption.weight(.semibold))
+                            }
+                            .frame(minHeight: 44)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain).font(.subheadline.weight(.semibold))
+                        .foregroundStyle(AppTheme.ink)
+                    }
+                    .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
+                    Button {
+                        if tour.phase == .complete { tour.resetTour() }
+                        tour.startTour()
+                        navigation.selectedTab = .map
+                    } label: {
+                        Label(tour.phase == .inProgress ? "Continue your walk" : (tour.phase == .complete ? "Walk it again" : "Start walking tour"), systemImage: "figure.walk")
+                            .frame(maxWidth: .infinity).padding(.vertical, 17)
+                    }
+                    .buttonStyle(.plain).font(.headline)
+                    .foregroundStyle(AppTheme.ivory)
+                    .background(AppTheme.forest, in: RoundedRectangle(cornerRadius: 14))
+                    .disabled(tour.loadState != .loaded)
+                    .opacity(tour.loadState == .loaded ? 1 : 0.5)
 
-                if case .failed(let message) = tour.loadState {
-                    Text(message).font(.footnote).foregroundStyle(AppTheme.warning)
-                    Button("Try again") { Task { await tour.loadStopsIfNeeded() } }
+                    if case .failed(let message) = tour.loadState {
+                        Text(message).font(.footnote).foregroundStyle(AppTheme.warning)
+                        Button("Try again") { Task { await tour.loadStopsIfNeeded() } }
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 8)
+                .padding(.bottom, 16)
+                .background {
+                    GeometryReader { geometry in
+                        Color.clear.preference(key: HomeScrollOffsetKey.self,
+                            value: geometry.frame(in: .named("home.scroll")).minY)
+                    }
                 }
             }
-            .padding(24)
-            .background {
-                GeometryReader { geometry in
-                    Color.clear.preference(key: HomeScrollOffsetKey.self,
-                        value: geometry.frame(in: .named("home.scroll")).minY)
-                }
+            .coordinateSpace(name: "home.scroll")
+            .onPreferenceChange(HomeScrollOffsetKey.self) { offset in
+                if let baseline = scrollBaseline {
+                    if offset < baseline - 24 {
+                        navigation.isNarrationMinimized = true
+                        scrollBaseline = offset
+                    } else if offset > baseline { scrollBaseline = offset }
+                } else { scrollBaseline = offset }
             }
-        }
-        .coordinateSpace(name: "home.scroll")
-        .onPreferenceChange(HomeScrollOffsetKey.self) { offset in
-            if let baseline = scrollBaseline {
-                if offset < baseline - 24 {
-                    navigation.isNarrationMinimized = true
-                    scrollBaseline = offset
-                } else if offset > baseline { scrollBaseline = offset }
-            } else { scrollBaseline = offset }
         }
         .background(AppTheme.parchment).foregroundStyle(AppTheme.ink)
         .task {
             if tour.locationAuthorization == .authorized { tour.startLocationIfPossible() }
         }
+    }
+
+    private func mapHeight(in availableHeight: CGFloat) -> CGFloat {
+        // RootView already removes the shared player/navigation from this viewport. Reserve
+        // space for the existing controls; keep the map larger than before even when scrolling
+        // is needed on a short screen or at accessibility text sizes.
+        #if DEVELOPER_MENU
+        let reserved = homeContentReserve + 56 // Developer's 44-point target plus its gap.
+        #else
+        let reserved = homeContentReserve
+        #endif
+        return max(310, min(350, availableHeight - reserved))
     }
 }
 

@@ -769,3 +769,17 @@ an instant satellite fix. The button is disabled while pending or using develope
 Permission failures and timeout have inline feedback. Native regressions cover cached-fix
 rejection, shared-pipeline updates, repeated-tap prevention and simulation. Swift Debug/Release
 syntax passed; those native tests and hardware refresh behavior require Xcode/iPhone testing.
+
+
+## Home spacing refinement — 0.2.0 (8)
+
+Home keeps the existing typefaces, colors, artwork, navigation, controls and content order.
+Vertical padding is now 8 points above/16 below (formerly 24 each), section gaps 12 (formerly
+24), and brand-header gaps 4 (formerly 8). The serif title uses title size, the uppercase
+subtitle footnote size and the tagline subheadline size. These remain Dynamic Type styles.
+The map grows from 290 points to 310–350 based on the usable viewport, reserving room for the
+existing actions and developer control. The content reserve scales with text size; smaller
+viewports and larger text remain scrollable. Horizontal margins and button touch targets stay
+the same. Browse remains beside the stop count above the walking CTA, as in the latest release.
+Debug/Release Swift syntax passed. Height-budget calculations cover several viewport sizes but
+are estimates, not screenshots or native layout tests; iPhone visual verification remains open.
