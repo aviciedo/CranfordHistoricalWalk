@@ -7,6 +7,7 @@ final class AppNavigation {
     enum Tab: Hashable { case home, map, stops }
     var selectedTab: Tab = .home
     var focusedStopID: String?
+    var isNarrationMinimized = false
 
     func showOnMap(stopID: String) {
         focusedStopID = stopID

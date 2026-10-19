@@ -5,6 +5,7 @@ import TourCore
 struct SharedNarrationBar: View {
     @Environment(AppDependencies.self) private var dependencies
     @Environment(TourViewModel.self) private var tour
+    @Environment(AppNavigation.self) private var navigation
     @State private var detailStop: HistoricalStop?
 
     private var stop: HistoricalStop? {
@@ -14,26 +15,57 @@ struct SharedNarrationBar: View {
 
     var body: some View {
         if let stop, stop.narrationSource != nil {
-            HStack(spacing: 14) {
-                NarrationPlayButton(stop: stop, diameter: 46)
-                Button { detailStop = stop } label: {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(stop.name).font(.subheadline.weight(.semibold))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .lineLimit(1)
-                        NarrationTimeline(stop: stop, compact: true)
-                    }
-                    .frame(minHeight: 44)
-                    .contentShape(Rectangle())
+            VStack(spacing: 0) {
+                Button { navigation.isNarrationMinimized.toggle() } label: {
+                    Capsule()
+                        .fill(AppTheme.secondaryInk.opacity(0.6))
+                        .frame(width: 36, height: 4)
+                        .frame(maxWidth: .infinity, minHeight: navigation.isNarrationMinimized ? 12 : 24)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Open details and narration controls for \(stop.name)")
-                .accessibilityValue(playbackValue(for: stop))
-                .accessibilityHint("Opens the full player, playback times, and stop information")
+                .accessibilityLabel(navigation.isNarrationMinimized ? "Expand player" : "Minimize player")
+                .accessibilityHint("Tap to toggle the player size, or drag down to minimize and up to expand")
+                HStack(spacing: 14) {
+                    NarrationPlayButton(stop: stop, diameter: navigation.isNarrationMinimized ? 44 : 46)
+                    Button {
+                        if navigation.isNarrationMinimized { navigation.isNarrationMinimized = false }
+                        else { detailStop = stop }
+                    } label: {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(stop.name).font(.subheadline.weight(.semibold))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .lineLimit(1)
+                            if !navigation.isNarrationMinimized {
+                                NarrationTimeline(stop: stop, compact: true)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(navigation.isNarrationMinimized
+                        ? "Expand player for \(stop.name)" : "Open details and narration controls for \(stop.name)")
+                    .accessibilityValue(playbackValue(for: stop))
+                    .accessibilityHint(navigation.isNarrationMinimized
+                        ? "Shows playback progress and times" : "Opens the full player and stop information")
+                    if navigation.isNarrationMinimized {
+                        Image(systemName: "chevron.up").font(.caption.weight(.semibold))
+                            .accessibilityHidden(true)
+                    }
+                }
+                .padding(.horizontal, 22)
+                .padding(.bottom, navigation.isNarrationMinimized ? 0 : 10)
             }
-            .padding(.horizontal, 22).padding(.vertical, 10)
             .background(AppTheme.playerSurface)
             .foregroundStyle(AppTheme.ink)
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 16).onEnded { value in
+                    guard abs(value.translation.height) > abs(value.translation.width) else { return }
+                    if value.translation.height > 20 { navigation.isNarrationMinimized = true }
+                    else if value.translation.height < -20 { navigation.isNarrationMinimized = false }
+                }
+            )
             .sheet(item: $detailStop) { HistoricalSignSheet(stop: $0) }
         }
     }

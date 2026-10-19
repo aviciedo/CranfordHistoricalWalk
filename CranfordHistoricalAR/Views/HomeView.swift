@@ -5,6 +5,7 @@ struct HomeView: View {
     @Environment(TourViewModel.self) private var tour
     @Environment(AppNavigation.self) private var navigation
     @State private var isShowingDeveloperControls = false
+    @State private var scrollBaseline: CGFloat?
 
     var body: some View {
         ScrollView {
@@ -33,7 +34,16 @@ struct HomeView: View {
                 HStack {
                     Label("\(tour.stops.count) stops", systemImage: "mappin.and.ellipse")
                     Spacer()
-                    Text("Explore at your pace")
+                    Button { navigation.selectedTab = .stops } label: {
+                        HStack(spacing: 6) {
+                            Text("Browse the stops")
+                            Image(systemName: "chevron.right").font(.caption.weight(.semibold))
+                        }
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain).font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppTheme.ink)
                 }
                 .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
                 Button {
@@ -49,23 +59,39 @@ struct HomeView: View {
                 .background(AppTheme.forest, in: RoundedRectangle(cornerRadius: 14))
                 .disabled(tour.loadState != .loaded)
                 .opacity(tour.loadState == .loaded ? 1 : 0.5)
-                Button { navigation.selectedTab = .stops } label: {
-                    HStack { Text("Browse the stops"); Spacer(); Image(systemName: "chevron.right") }
-                        .frame(minHeight: 44)
-                }
-                .buttonStyle(.plain).font(.body.weight(.medium))
+
                 if case .failed(let message) = tour.loadState {
                     Text(message).font(.footnote).foregroundStyle(AppTheme.warning)
                     Button("Try again") { Task { await tour.loadStopsIfNeeded() } }
                 }
             }
             .padding(24)
+            .background {
+                GeometryReader { geometry in
+                    Color.clear.preference(key: HomeScrollOffsetKey.self,
+                        value: geometry.frame(in: .named("home.scroll")).minY)
+                }
+            }
+        }
+        .coordinateSpace(name: "home.scroll")
+        .onPreferenceChange(HomeScrollOffsetKey.self) { offset in
+            if let baseline = scrollBaseline {
+                if offset < baseline - 24 {
+                    navigation.isNarrationMinimized = true
+                    scrollBaseline = offset
+                } else if offset > baseline { scrollBaseline = offset }
+            } else { scrollBaseline = offset }
         }
         .background(AppTheme.parchment).foregroundStyle(AppTheme.ink)
         .task {
             if tour.locationAuthorization == .authorized { tour.startLocationIfPossible() }
         }
     }
+}
+
+private struct HomeScrollOffsetKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }
 
 private struct DebugMenuGesture: ViewModifier {

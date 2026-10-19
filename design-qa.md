@@ -255,3 +255,13 @@ and interaction bounds to 56 points. Landmark icon views use their full bounds a
 with matching stop IDs and popup data. The fallback map matches artwork targets to painted
 bounds and projects them with zoom/pan. Debug/Release syntax passed; native rendering and
 physical touch-target behavior remain unverified without Xcode/iPhone.
+
+
+## Home scrolling and shared player resizing
+
+Build 0.2.0 (4) uses actual Home content offset to collapse the player after an upward scroll,
+so panning inside the map alone does not trigger it. A capsule handle, tap/drag affordances,
+compact play/pause, and an expandable title keep the player discoverable. Layout uses the
+existing safe-area inset, preserving the bottom navigation and playback instance. Browse the
+stops moved to the summary row above the walking CTA. Debug/Release syntax passed; native
+scroll behavior, sheet interactions, dynamic type and device visual QA remain unverified.

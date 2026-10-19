@@ -732,3 +732,15 @@ the same popup/details action. Number markers remain above artwork for overlappi
 The illustrated fallback map has equivalent illustration targets that follow pan/zoom.
 Debug/Release Swift syntax checks passed. Native Google Maps hit testing, small-screen spacing
 and actual tap behavior still require Xcode/iPhone testing. Audio release stays cedar-2.
+
+
+## Collapsible shared player — 0.2.0 (4)
+
+Swiping upward through Home by more than 24 points minimizes the shared player into a compact
+play/pause and title row. A visible top handle toggles its size; dragging the player down
+minimizes and up expands, and tapping the minimized title expands it. Playback continues
+without preparing or restarting audio. Minimized state survives tab changes for the session.
+Reduce Motion disables the layout animation. Browse the stops is now beside the stop count,
+above Continue/Start, rather than below that button. The bottom navigation stays available.
+Debug/Release Swift syntax checks passed. Real device scroll/drag interaction, large-text layout
+and continuous playback during resizing remain to be checked in Xcode/iPhone.
