@@ -60,5 +60,12 @@
     "reference_audio_sha256": "b8b586a48c31b1543608f90b7f02a2ede4787c65419635bd6b96c0405833b5da",
     "profile_instructions_sha256": "02c7e139ee02c6332a22310c18f762b2a0d0b1df5f06fc8288b907280e981ed7",
     "standardized_at": "2026-10-18T20:35:43.916131-04:00"
+  },
+  "stop_02_recording": {
+    "title": "Greystone: The Castle on the River",
+    "transcript": "stops/stop_02_greystone.txt",
+    "spoken_body_sha256": "f773d389e2427fe26e98cc0c05be99191d5604594f0e292aede95a37e2929a59",
+    "word_count": 333,
+    "target_output": "stops/stop_02_greystone.mp3"
   }
 }

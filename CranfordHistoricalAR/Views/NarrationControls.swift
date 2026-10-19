@@ -20,7 +20,7 @@ struct NarrationControls: View {
                     }
                 }
                 NarrationTimeline(stop: stop)
-                if stop.audioURL?.lastPathComponent == "stop_01_droeschers_mill.mp3" {
+                if ["stop_01_droeschers_mill.mp3", "stop_02_greystone.mp3"].contains(stop.audioURL?.lastPathComponent ?? "") {
                     Text("AI-generated narration · OpenAI cedar")
                         .font(.caption).foregroundStyle(AppTheme.secondaryInk)
                 }

@@ -19,11 +19,12 @@ def tokens(text):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--recording", choices=["reference", "stop01"], default="stop01")
+    parser.add_argument("--recording", choices=["reference", "stop01", "stop02"], default="stop01")
     args = parser.parse_args()
     root = Path(__file__).resolve().parent
     profile = json.loads((root / "narrator_profile.json").read_text())
-    recording = profile["reference_recording"] if args.recording == "reference" else profile["approved_recording"]
+    recording = profile[{"reference": "reference_recording", "stop01": "approved_recording",
+                         "stop02": "stop_02_recording"}[args.recording]]
     path = root / recording["target_output"]
     expected = (root / recording["transcript"]).read_text().rstrip("\n").split("\n\n", 1)[1]
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
@@ -40,7 +41,7 @@ def main():
         with path.open("rb") as file:
             result = client.audio.transcriptions.create(
                 model="gpt-4o-transcribe", file=file, language="en", response_format="json",
-                prompt="Proper names: Cranford, Rahway River, Droescher’s Mill, Severin Droescher, Alleum Yoga, Lincoln Park.",
+                prompt="Proper names: Cranford, Rahway River, Droescher’s Mill, Severin Droescher, Alleum Yoga, Lincoln Park, Greystone, Charles E. Kaltenbach, Gloria Swanson, William Randolph Hearst, Cranford Hall, Cranford Park Care.",
             )
     except OpenAIError as error:
         raise SystemExit(f"Transcription unavailable: HTTP {getattr(error, 'status_code', 'unknown')}. No retry.") from None

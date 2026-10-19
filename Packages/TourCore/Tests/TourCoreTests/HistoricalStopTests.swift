@@ -59,8 +59,8 @@ final class HistoricalStopTests: XCTestCase {
         XCTAssertTrue(script.contains("Cranford Park Care"))
         XCTAssertTrue(script.hasSuffix("continuous transformation of our town."))
         XCTAssertGreaterThan(script.split(whereSeparator: \.isWhitespace).count, 330)
-        XCTAssertNil(stop.audioURL, "The previous recording must not override the new script")
-        XCTAssertEqual(stop.narrationSource, .synthesizedSpeech(text: script))
+        XCTAssertEqual(stop.audioURL?.relativeString, "stop_02_greystone.mp3")
+        XCTAssertEqual(stop.narrationSource, .bundledAudio(fileName: "stop_02_greystone.mp3"))
         XCTAssertEqual(stop.narrationVoicePreference, .warmMaleEnglish)
         XCTAssertEqual(stop.imageName, "greystone")
         XCTAssertEqual(stop.galleryPhotos.map(\.imageName), [

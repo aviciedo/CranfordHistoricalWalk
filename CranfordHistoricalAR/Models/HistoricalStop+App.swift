@@ -128,6 +128,7 @@ extension HistoricalStop {
                 HistoricalStopPhoto(imageName: "greystone-gloria-swanson", caption: "Gloria Swanson"),
                 HistoricalStopPhoto(imageName: "greystone-william-randolph-hearst", caption: "William Randolph Hearst"),
             ],
+            audioURL: URL(string: "stop_02_greystone.mp3"),
             narrationText: """
                 Greystone: The Castle on the River
 
@@ -160,7 +161,7 @@ extension HistoricalStop {
                 And just as at Droescher’s Mill, the Rahway River remains a quiet witness to the continuous transformation of our town.
                 """,
             narrationVoicePreference: .warmMaleEnglish,
-            order: 2, estimatedVisitDuration: 160, isSample: false, coordinatesUnverified: true,
+            order: 2, estimatedVisitDuration: 142.733061, isSample: false, coordinatesUnverified: true,
             plaque: StopPlaque(transcription: "Cranford Park", quoteLabel: "On-site discovery plaque",
                               referenceImageName: SignPlacementPolicy.parkReferenceImageName,
                               physicalWidthMeters: SignPlacementPolicy.assumedParkReferenceWidthMeters)

@@ -219,3 +219,15 @@ checked. The initial take was superseded to correct inconsistent family-name pro
 Local business/family pronunciation and human acceptance remain unverified. Native AVPlayer
 playback, seeking, audio-session interruptions and completion-to-discovery transitions still need
 Xcode/iPhone testing. The source and portable checks do not constitute a native build pass.
+
+
+## Produced Greystone narration
+
+Stop 2 now selects its bundled, manually started 2:23 cedar recording. Its transcript is the
+exact supplied text, its measured duration replaces the estimate, and its controls disclose AI
+narration. The profile instructions and existing stop-1/reference MP3s remain unchanged. Full
+ASR and automated reference comparison passed; only healthcare/health care spelling differs.
+Encoding, decoding, loudness, absence of long silence and source/resource registration were
+checked. Core tests (154), actual Swift preview checks (2) and Debug/Release syntax checks passed.
+Native AVPlayer resource/duration and manual-start tests cover both stops but remain unrun here;
+Xcode and iPhone playback/seek/completion-to-optional-discovery checks are still required.

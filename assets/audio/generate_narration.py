@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the narrator reference or approved stop-1 recording using environment credentials.
+"""Generate the narrator reference or approved stop recordings using environment credentials.
 
 Requires requirements.txt, ffmpeg and ffprobe. --check never contacts OpenAI.
 App bundling is a separate step after audio quality review.
@@ -39,10 +39,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true", help="Validate local inputs without API requests")
     parser.add_argument("--force", action="store_true", help="Explicitly authorize replacing an existing recording")
-    parser.add_argument("--recording", choices=["reference", "stop01"], default="stop01")
+    parser.add_argument("--recording", choices=["reference", "stop01", "stop02"], default="stop01")
     args = parser.parse_args()
     profile = json.loads((ROOT / "narrator_profile.json").read_text())
-    recording = profile["reference_recording"] if args.recording == "reference" else profile["approved_recording"]
+    recording = profile[{"reference": "reference_recording", "stop01": "approved_recording",
+                         "stop02": "stop_02_recording"}[args.recording]]
     master = (ROOT / recording["transcript"]).read_text(encoding="utf-8").rstrip("\n")
     title, body = master.split("\n\n", 1)
     assert title == recording["title"], "Unexpected metadata title"

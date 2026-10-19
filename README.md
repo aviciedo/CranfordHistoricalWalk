@@ -286,9 +286,10 @@ OpenAI cedar recording produced with `gpt-4o-mini-tts`. The shared player retain
 The controls disclose that the voice is AI-generated. Playback is offline and uses no OpenAI key.
 
 The reusable narrator profile and 42-second reference sample are under [assets/audio](assets/audio/README.md).
-Generation uses a private environment secret outside the iPhone app. Stop 2 keeps on-device
-`warmMaleEnglish` narration; stops 3–5 keep their original recordings. Local voice installation
-requirements apply to stop 2, not the produced stop-1 recording.
+Generation uses a private environment secret outside the iPhone app. Stop 2 now uses the bundled
+`stop_02_greystone.mp3`: a measured 2:23 cedar recording of the exact supplied script, using the
+same narrator instructions and processing as stop 1. Both recordings play offline without an
+installed speech voice. Stops 3–5 keep their original recordings.
 
 The Droescher's Mill photograph lives in `Assets.xcassets/droeschers-mill` (`imageName: "droeschers-mill"`
 on stop 1). Stop 1 also has an ARKit image-tracking reference (`Assets.xcassets/PlaqueAnchors.arresourcegroup`)
@@ -313,7 +314,7 @@ and Xcode asset compilation remain required checks; Linux tests cannot validate 
 
 `Resources/historical_stops.json` is the five-stop walking tour the app loads: HPAB brochure stops 1–5
 (Droescher's Mill, Greystone, Rahway River, First Baptist Church, Cranford Hotel). `audioURL`
-values for stops 3–5 remain the QR destinations. Stop 1 uses its bundled cedar recording; stop 2 uses its creator-supplied on-device narration.
+values for stops 3–5 remain the QR destinations. Stops 1 and 2 use bundled cedar recordings of their creator-supplied narration.
 First Baptist uses the QR file
 `First Baptist.mp3` (not `First Baptist Church.mp3`). Greystone no longer plays the earlier `Greystone.mp3` recording. Stops 1 and 2 use the creator-supplied on-site coordinates documented below; stops 3–5 remain
 **unverified Nominatim geocodes**. All retain `coordinatesUnverified: true` because they are not surveyed positions. A three-stop SAMPLE fixture
@@ -554,9 +555,9 @@ need a Mac + device (see `docs/arcore-geospatial-report.md` in the project store
 Stop 2 is now displayed as **Greystone** throughout Home, Map, Stops, AR and the player.
 Its stable `hpab-002` identifier, approximate coordinates and tour position are unchanged.
 The creator supplied its marker text, expanded description and full narration, including
-references to its later name, Cranford Hall. Its script retains the on-device English
-male voice preference; stop 1 now has a separate produced cedar recording. Playback length depends on the installed voice; 160 seconds
-is an editorial estimate, not a measured recording.
+references to its later name, Cranford Hall. The exact script is retained as a readable transcript.
+Its bundled cedar narration is 142.73 seconds (2:23), replacing the former on-device reading
+and editorial duration estimate. The voice preference remains available for fallback only.
 
 Stop details support a `photos` array of local asset names, captions and optional credits.
 The first photo is the cover unless the older `imageName` explicitly supplies a different cover.

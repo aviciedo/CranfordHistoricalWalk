@@ -1,0 +1,80 @@
+{
+  "currency": "USD",
+  "scope": "This stop-2 task only: one speech generation, one transcript check, one full comparison with existing reference. No reference or stop-1 regeneration.",
+  "checked_at_utc": "2026-10-19T00:55:31.660486+00:00",
+  "speech": {
+    "requests": 1,
+    "reported_usage": null,
+    "reason": "Audio/speech streaming WAV response does not return token usage. Request ID retained in production report.",
+    "estimated_text_input_tokens": 1008,
+    "estimated_audio_output_tokens_range": [
+      2687,
+      3359
+    ],
+    "assumptions": "Input estimated at 4 characters/token across exact body and instructions, excluding unknown service overhead. Audio output estimated at 20–25 tokens/second of the original 134.35-second generated WAV, before local tempo correction. These are heuristic assumptions, not measured TTS usage.",
+    "estimated_cost_usd_range": [
+      0.032848800000000004,
+      0.040912800000000006
+    ],
+    "prices_per_million_tokens": {
+      "text_input": 0.6,
+      "audio_output": 12
+    }
+  },
+  "transcript_check": {
+    "reported_usage": {
+      "input_tokens": 1483,
+      "output_tokens": 439,
+      "total_tokens": 1922,
+      "type": "tokens",
+      "input_token_details": {
+        "audio_tokens": 1427,
+        "text_tokens": 56
+      }
+    },
+    "estimated_cost_usd": 0.0080975,
+    "prices_per_million_tokens": {
+      "input": 2.5,
+      "output": 10
+    }
+  },
+  "reference_listening_comparison": {
+    "reported_usage": {
+      "completion_tokens": 313,
+      "prompt_tokens": 2071,
+      "total_tokens": 2384,
+      "completion_tokens_details": {
+        "accepted_prediction_tokens": 0,
+        "audio_tokens": 0,
+        "reasoning_tokens": 0,
+        "rejected_prediction_tokens": 0,
+        "text_tokens": 313
+      },
+      "prompt_tokens_details": {
+        "audio_tokens": 1848,
+        "cache_write_tokens": null,
+        "cached_tokens": 0,
+        "image_tokens": 0,
+        "text_tokens": 223
+      }
+    },
+    "estimated_cost_usd": 0.0628235,
+    "prices_per_million_tokens": {
+      "text_input": 2.5,
+      "audio_input": 32,
+      "text_output": 10
+    }
+  },
+  "verification_reported_total_tokens": 4306,
+  "estimated_total_cost_usd_range": [
+    0.10376980000000001,
+    0.11183380000000001
+  ],
+  "rounded_estimated_total_usd": 0.11,
+  "pricing_sources": [
+    "https://developers.openai.com/api/docs/models/gpt-4o-mini-tts",
+    "https://developers.openai.com/api/docs/models/gpt-4o-transcribe",
+    "https://developers.openai.com/api/docs/models/gpt-audio"
+  ],
+  "limitations": "Approximate list-price calculation, not a billing receipt. Speech usage is estimated; taxes, credits and account-specific prices are excluded. Project Usage is authoritative."
+}

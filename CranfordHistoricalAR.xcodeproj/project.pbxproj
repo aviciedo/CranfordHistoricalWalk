@@ -74,6 +74,7 @@
 		98247C655389B54E6F48DD62 /* StopPhotoGallery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B48970ADF663133DDEA9CD0 /* StopPhotoGallery.swift */; };
 		C1EE33CE77C02E436A62BA72 /* BottomNavigationBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = B148BB18AD21C1BBEF00414B /* BottomNavigationBar.swift */; };
 		4496C4AFC9B63D28F494F533 /* stop_01_droeschers_mill.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 03265AD0612AB5EF94C94F91 /* stop_01_droeschers_mill.mp3 */; };
+		14F82778F2AA764FAF369C87 /* stop_02_greystone.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A7D899DD74CED05AAE9F13C0 /* stop_02_greystone.mp3 */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -155,6 +156,7 @@
 		9B48970ADF663133DDEA9CD0 /* StopPhotoGallery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StopPhotoGallery.swift; sourceTree = "<group>"; };
 		B148BB18AD21C1BBEF00414B /* BottomNavigationBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BottomNavigationBar.swift; sourceTree = "<group>"; };
 		03265AD0612AB5EF94C94F91 /* stop_01_droeschers_mill.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; name = stop_01_droeschers_mill.mp3; path = assets/audio/stops/stop_01_droeschers_mill.mp3; sourceTree = SOURCE_ROOT; };
+		A7D899DD74CED05AAE9F13C0 /* stop_02_greystone.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; name = stop_02_greystone.mp3; path = assets/audio/stops/stop_02_greystone.mp3; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -244,6 +246,7 @@
 			children = (
 				F57B915E316FC8864E6039D4 /* historical_stops.json */,
 				03265AD0612AB5EF94C94F91 /* stop_01_droeschers_mill.mp3 */,
+				A7D899DD74CED05AAE9F13C0 /* stop_02_greystone.mp3 */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -466,6 +469,7 @@
 				C86558EAD221081AC0D679C6 /* Assets.xcassets in Resources */,
 				197B8322EBDE3C8B46E76D1C /* historical_stops.json in Resources */,
 				4496C4AFC9B63D28F494F533 /* stop_01_droeschers_mill.mp3 in Resources */,
+				14F82778F2AA764FAF369C87 /* stop_02_greystone.mp3 in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

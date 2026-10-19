@@ -64,6 +64,8 @@ targets:
           - "Info.plist"
       - path: assets/audio/stops/stop_01_droeschers_mill.mp3
         buildPhase: resources
+      - path: assets/audio/stops/stop_02_greystone.mp3
+        buildPhase: resources
     settings:
       base:
         # Must match Info.plist CFBundleIdentifier and the iOS-app restriction on the Google API key.
