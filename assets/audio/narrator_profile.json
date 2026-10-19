@@ -1,0 +1,48 @@
+{
+  "profile_version": 1,
+  "narrator_name": "The Proud Local Storyteller",
+  "synthetic_voice": true,
+  "model": "gpt-4o-mini-tts",
+  "voice": "cedar",
+  "language": "en-US",
+  "instructions": "Speak in American English as a warm, approachable male-sounding storyteller, about 40–45 years old, with a medium-to-slightly-low pitch and relaxed, lightly textured voice. Imagine sharing hometown history with one visiting friend while walking through Cranford. Convey quiet pride, curiosity and occasional wonder. Use a subtle northern New Jersey / Mid-Atlantic character without a caricature or exaggerated accent. Be friendly and intelligent, never academic, pompous, theatrical or commercial. A gentle smile can occasionally be audible. Reflect nostalgically on the river and early town; show restrained enthusiasm for surprising details. Do not invent personal anecdotes or add any words. Read every supplied word, exactly once, with natural conversational phrasing. Aim for about 140 words per minute, allowing natural variation and slightly slower dates and names. Leave approximately 350–600 milliseconds between paragraphs, without excessive silence. Avoid dramatic suspense, announcer diction, movie-trailer bass, robotic rhythm, excessive vocal fry or breathy whispering. No music, effects, logos or spoken delivery instructions. Do not speak a title or introductory announcement. Pronounce Cranford as CRAN-fərd and Rahway as RAW-way. Keep Droescher and Severin consistent throughout; use DRESH-er and SEV-er-in as provisional readings. Read Alleum Yoga naturally as AL-ee-um YOH-guh; this provisional pronunciation has not been confirmed by the business.",
+  "api_key_environment_variable": "CRANFORD_NARRATION_API_KEY",
+  "generation": {
+    "sdk": "openai",
+    "sdk_version": "3.35.1",
+    "response_format": "wav",
+    "speed": 1.0,
+    "max_retries": 0
+  },
+  "audio": {
+    "format": "mp3",
+    "codec": "libmp3lame",
+    "bitrate_kbps": 128,
+    "channels": 1,
+    "sample_rate_hz": 44100,
+    "target_words_per_minute": 140,
+    "paragraph_pause_guidance_ms": [
+      350,
+      600
+    ],
+    "loudness_target_lufs": -16,
+    "peak_ceiling_dbtp": -2,
+    "processing": "Static gain only if needed; modest pitch-preserving tempo adjustment if outside 135–145 WPM. No compression, music or effects."
+  },
+  "pronunciation_review": {
+    "Cranford": "CRAN-fərd (creator supplied)",
+    "Rahway": "RAW-way (creator supplied)",
+    "Droescher": "DRESH-er (provisional; local review needed)",
+    "Severin": "SEV-er-in (provisional; local review needed)",
+    "Alleum Yoga": "AL-ee-um YOH-guh (provisional; preferred business pronunciation unverified)"
+  },
+  "approved_recording": {
+    "title": "Droescher’s Mill: A River That Built a Town",
+    "transcript": "stops/stop_01_droeschers_mill.txt",
+    "spoken_body_sha256": "e5731fd94593a4c11dafba4cd7cee4436b84654f144e38f093d53ff05f19320d",
+    "word_count": 353,
+    "target_output": "stops/stop_01_droeschers_mill.mp3"
+  },
+  "production_status": "pending_network_access_and_secure_key_binding",
+  "cost": "Not incurred; no speech API request has been sent."
+}
