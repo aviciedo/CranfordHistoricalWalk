@@ -314,3 +314,14 @@ Debug/Release syntax passed. Approximate default-text height budgets were checke
 heights 568/620/680/740; the shortest needs scrolling, while the larger budgets fit. Dynamic
 Type continues scaling and scrolling; actual text wrapping, map framing, VoiceOver order,
 player-expanded/minimized layouts and device screenshots require Xcode/iPhone verification.
+
+
+## Stops heading and row distribution
+
+Build 0.2.0 (9) addresses the supplied screenshot's empty top region with a compact Home-style
+app title and a hidden native navigation bar. The list begins immediately below the title.
+Rows distribute the remaining viewport evenly, using a 100-point minimum and full-row hit
+areas; illustration sizes, visit labels and disclosure actions are unchanged. Available row
+height reacts to the shared player and actual brand-header size. Dynamic text may grow/scroll.
+Debug/Release syntax passed. Native screen captures, large-text wrapping and device UI behavior
+remain unverified without Xcode/iPhone.

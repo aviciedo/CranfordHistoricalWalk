@@ -783,3 +783,14 @@ viewports and larger text remain scrollable. Horizontal margins and button touch
 the same. Browse remains beside the stop count above the walking CTA, as in the latest release.
 Debug/Release Swift syntax passed. Height-budget calculations cover several viewport sizes but
 are estimates, not screenshots or native layout tests; iPhone visual verification remains open.
+
+
+## Stops title and full-height spacing — 0.2.0 (9)
+
+Stops now has the same Cranford / HISTORICAL AR title typography as Home. The large native
+navigation-title area is removed, bringing the first stop directly below the compact brand
+header. Row minimums divide the actual remaining list viewport evenly, excluding the header,
+shared player and bottom navigation. Illustrations, text styles, visit state and detail actions
+are preserved. Rows have a 100-point minimum and can grow with wrapped text; shorter screens
+and larger text scroll rather than clip. Debug/Release syntax passed; native screenshots and
+physical interaction/layout checks still require Xcode/iPhone.

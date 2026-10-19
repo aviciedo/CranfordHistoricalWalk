@@ -5,9 +5,7 @@ struct StopsView: View {
     var body: some View {
         NavigationStack {
             StopsContent()
-                .navigationTitle("The stops")
-                .toolbarBackground(AppTheme.parchment, for: .navigationBar)
-                .toolbarBackground(.visible, for: .navigationBar)
+                .toolbar(.hidden, for: .navigationBar)
         }
     }
 }
@@ -17,43 +15,61 @@ struct StopsContent: View {
     @State private var detailStop: HistoricalStop?
 
     var body: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 0) {
-                ForEach(tour.stops) { stop in
-                    Button { detailStop = stop } label: {
-                        HStack(spacing: 14) {
-                            StopListIllustration(stopID: stop.id)
-                                .frame(width: 82, height: 76)
-                                .accessibilityHidden(true)
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text("Stop \(stop.order)").font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
-                                Text(stop.name).font(.system(.title3, design: .serif).weight(.semibold))
-                                if let visit = tour.lastRecordedVisit(for: stop) {
-                                    Label("\(visit.evidence == .recognizedPlaque ? "Plaque verified" : "Visited") \(visit.activatedAt.formatted(date: .abbreviated, time: .omitted))", systemImage: "checkmark.circle.fill")
-                                        .font(.caption).foregroundStyle(AppTheme.visited)
-                                } else if tour.isCompleted(stop) {
-                                    Label(stop.hasPlaqueReference ? "Story completed · No saved plaque verification" : "Practice visit", systemImage: "checkmark.circle")
-                                        .font(.caption).foregroundStyle(AppTheme.secondaryInk)
-                                } else if stop.id == tour.currentStop?.id {
-                                    Text("Next on your walk").font(.caption).foregroundStyle(AppTheme.secondaryInk)
+        VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Cranford")
+                    .font(.system(.title, design: .serif).weight(.semibold))
+                Text("HISTORICAL AR")
+                    .font(.footnote.weight(.semibold)).tracking(3)
+            }
+            .padding(.horizontal, 24).padding(.top, 8).padding(.bottom, 8)
+            GeometryReader { viewport in
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 0) {
+                        ForEach(tour.stops) { stop in
+                            Button { detailStop = stop } label: {
+                                HStack(spacing: 14) {
+                                    StopListIllustration(stopID: stop.id)
+                                        .frame(width: 82, height: 76)
+                                        .accessibilityHidden(true)
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        Text("Stop \(stop.order)").font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
+                                        Text(stop.name).font(.system(.title3, design: .serif).weight(.semibold))
+                                        if let visit = tour.lastRecordedVisit(for: stop) {
+                                            Label("\(visit.evidence == .recognizedPlaque ? "Plaque verified" : "Visited") \(visit.activatedAt.formatted(date: .abbreviated, time: .omitted))", systemImage: "checkmark.circle.fill")
+                                                .font(.caption).foregroundStyle(AppTheme.visited)
+                                        } else if tour.isCompleted(stop) {
+                                            Label(stop.hasPlaqueReference ? "Story completed · No saved plaque verification" : "Practice visit", systemImage: "checkmark.circle")
+                                                .font(.caption).foregroundStyle(AppTheme.secondaryInk)
+                                        } else if stop.id == tour.currentStop?.id {
+                                            Text("Next on your walk").font(.caption).foregroundStyle(AppTheme.secondaryInk)
+                                        }
+                                    }
+                                    Spacer(minLength: 8)
+                                    Image(systemName: "chevron.right").font(.subheadline)
                                 }
+                                .padding(.vertical, 12)
+                                .frame(maxWidth: .infinity, minHeight: rowHeight(in: viewport.size.height), alignment: .leading)
+                                .contentShape(Rectangle())
                             }
-                            Spacer(minLength: 8)
-                            Image(systemName: "chevron.right").font(.subheadline)
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Stop \(stop.order), \(stop.name), details and narration")
+                            Divider()
                         }
-                        .frame(maxWidth: .infinity, minHeight: 76, alignment: .leading)
-                        .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Stop \(stop.order), \(stop.name), details and narration")
-                    .padding(.vertical, 20)
-                    Divider()
+                    .padding(.horizontal, 24).padding(.bottom, 8)
                 }
             }
-            .padding(.horizontal, 24)
         }
         .background(AppTheme.parchment).foregroundStyle(AppTheme.ink)
         .sheet(item: $detailStop) { HistoricalSignSheet(stop: $0) }
+    }
+
+    private func rowHeight(in availableHeight: CGFloat) -> CGFloat {
+        let count = max(tour.stops.count, 1)
+        // This viewport already excludes the actual header, player and navigation. Text may grow beyond
+        // this minimum; the list stays scrollable at larger accessibility sizes.
+        return max(100, (availableHeight - 8 - CGFloat(count)) / CGFloat(count))
     }
 }
 
