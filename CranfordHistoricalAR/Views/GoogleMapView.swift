@@ -19,6 +19,8 @@ struct GoogleMapView: UIViewRepresentable {
     /// Highlighted stop for dot styles (the labeled pin style has no selection state).
     var selectedStopID: String? = nil
     var showsCompass = true
+    var overviewIncludesUserLocation = true
+    var keepsLandmarksVisible = false
     /// Padding used when fitting all stops into view.
     var fitInsets = UIEdgeInsets(top: 90, left: 40, bottom: 40, right: 40)
     /// Tap on the map away from any marker (used to dismiss callouts).
@@ -246,7 +248,7 @@ struct GoogleMapView: UIViewRepresentable {
                 landmarkMarkers[stop.id]?.title = stop.name
                 landmarkMarkers[stop.id]?.snippet = stop.information
                 landmarkMarkers[stop.id]?.position = stop.coordinate
-                landmarkMarkers[stop.id]?.map = mapView.camera.zoom >= 14.5 ? mapView : nil
+                landmarkMarkers[stop.id]?.map = (parent.keepsLandmarksVisible || mapView.camera.zoom >= 14.5) ? mapView : nil
             }
         }
 
@@ -365,7 +367,8 @@ struct GoogleMapView: UIViewRepresentable {
             let update: GMSCameraUpdate
             switch request.kind {
             case .fitAll:
-                let coordinates = markerModels.values.map(\.coordinate) + (lastPuck.map { [$0.coordinate] } ?? [])
+                let coordinates = markerModels.values.map(\.coordinate)
+                    + (parent.overviewIncludesUserLocation ? (lastPuck.map { [$0.coordinate] } ?? []) : [])
                 guard var bounds = coordinates.first.map({ GMSCoordinateBounds(coordinate: $0, coordinate: $0) }) else {
                     mapView.animate(to: GoogleMapView.cranfordFallbackCamera)
                     return

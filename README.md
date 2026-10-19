@@ -794,3 +794,14 @@ shared player and bottom navigation. Illustrations, text styles, visit state and
 are preserved. Rows have a 100-point minimum and can grow with wrapped text; shorter screens
 and larger text scroll rather than clip. Debug/Release syntax passed; native screenshots and
 physical interaction/layout checks still require Xcode/iPhone.
+
+
+## Home map opens on the tour — 0.2.0 (10)
+
+Home now fits only the five tour stops when it opens or the catalog finishes loading, without
+an initial zoom animation. A distant user location no longer stretches the Home overview.
+The blue location marker still reflects the actual GPS reading; pan/zoom and stop taps work
+as before. Home retains the numbered markers and keeps mill/Greystone illustrations visible
+even below the usual landmark zoom threshold. Fit padding accounts for their full extents.
+The main walking map retains its existing user/destination framing and zoom-dependent artwork.
+Debug/Release syntax passed; actual map framing and icon overlap need native device verification.

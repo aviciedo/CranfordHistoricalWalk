@@ -24,10 +24,12 @@ struct HomeMapView: View {
                     markerStyle: .numberedDot,
                     selectedStopID: mapModel.selectedStopID,
                     showsCompass: false,
-                    fitInsets: UIEdgeInsets(top: 28, left: 28, bottom: 28, right: 28)
+                    overviewIncludesUserLocation: false,
+                    keepsLandmarksVisible: true,
+                    fitInsets: UIEdgeInsets(top: 86, left: 30, bottom: 30, right: 104)
                 )
-                .onAppear { mapModel.requestOverview() }
-                .onChange(of: tour.stops.count) { _, _ in mapModel.requestOverview() }
+                .onAppear { mapModel.requestOverview(animated: false) }
+                .onChange(of: tour.stops.count) { _, _ in mapModel.requestOverview(animated: false) }
                 .clipShape(RoundedRectangle(cornerRadius: 16))
             } else {
                 StylizedCranfordMapView(stops: tour.stops)

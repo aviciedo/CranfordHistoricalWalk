@@ -325,3 +325,12 @@ areas; illustration sizes, visit labels and disclosure actions are unchanged. Av
 height reacts to the shared player and actual brand-header size. Dynamic text may grow/scroll.
 Debug/Release syntax passed. Native screen captures, large-text wrapping and device UI behavior
 remain unverified without Xcode/iPhone.
+
+
+## Home tour-focused initial map
+
+Build 0.2.0 (10) excludes user GPS from Home's stop-overview bounds and removes initial fit
+animation. This addresses zooming out for a distant visitor. Home keeps landmark images visible
+at the overview zoom, with padding for the images and numbered markers. Defaults for the
+guided map are unchanged. Debug/Release syntax passed. Actual Google Maps fitting, artwork
+overlap and native map screenshots remain unverified without Xcode/iPhone.

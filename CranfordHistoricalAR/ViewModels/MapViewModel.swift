@@ -122,9 +122,9 @@ final class MapViewModel {
         push(.follow(stop.clLocationCoordinate, bearing: nil), animated: true)
     }
 
-    func requestOverview() {
+    func requestOverview(animated: Bool = true) {
         cameraMode = .overview
-        push(.fitAll, animated: true)
+        push(.fitAll, animated: animated)
     }
 
     func requestFollow(tour: TourViewModel) {
