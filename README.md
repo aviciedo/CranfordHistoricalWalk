@@ -744,3 +744,15 @@ Reduce Motion disables the layout animation. Browse the stops is now beside the 
 above Continue/Start, rather than below that button. The bottom navigation stays available.
 Debug/Release Swift syntax checks passed. Real device scroll/drag interaction, large-text layout
 and continuous playback during resizing remain to be checked in Xcode/iPhone.
+
+
+## Simplified stop details — 0.2.0 (5)
+
+Stop details now place Show on map and Start AR directly beneath the address, followed by
+Narration player. The external Google Maps directions link and current turn instruction have
+been removed from this sheet. Narration player uses the same disclosure interaction as Read
+narration, starts expanded and can collapse without stopping playback. Stop description starts
+collapsed and opens to the existing complete description. The post-story plaque invitation
+points to Start AR, which retains the existing story/discovery and current destination rules.
+Debug/Release syntax passed; native layout, disclosure gestures and continued playback require
+Mac/iPhone testing.

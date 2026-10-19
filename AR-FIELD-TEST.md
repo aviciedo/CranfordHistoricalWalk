@@ -23,7 +23,7 @@ window anchoring still need Xcode/iPhone testing. Use a Debug build to access De
    the mill photograph and description. It must not start audio or record a plaque verification.
 2. Tap Play. Confirm the warm male narration plays only after this action and the map/AR player
    does not start a second copy. Pause/resume; browse another stop without changing the guided order.
-3. After the mill narration actually ends, confirm **Find the plaque in AR** appears. Repeat with
+3. After the mill narration actually ends, confirm the invitation to use **Start AR** appears. Repeat with
    **I've read the story** to test the reading route. Developer's **Mark story read for testing**
    avoids waiting through the recording during repeated placement tests.
 4. Choose Continue without scanning. Confirm Greystone becomes the destination, its walking route
@@ -33,7 +33,7 @@ window anchoring still need Xcode/iPhone testing. Use a Debug build to access De
 
 ## Plaque and two-door-pane overlay
 
-1. From a permitted place outside, choose **Find the plaque in AR** and point at the plaque beside
+1. From a permitted place outside, choose **Start AR** and point at the plaque beside
    the red double doors. Keep the entrance clear. The camera must not show the old giant marker
    above the plaque or automatically replay the full narration.
 2. A matching, currently tracked plaque with normal AR tracking should trigger one short
@@ -89,7 +89,7 @@ substitute for an Xcode iPhone build or the physical-device checks above.
 ## Greystone Cranford Park discovery
 
 1. Continue to Greystone. Confirm its story opens on arrival, or open it from Map/Stops. Read or
-   listen, then choose **Find the plaque in AR**. Also test Continue without scanning: this must
+   listen, then choose **Start AR**. Also test Continue without scanning: this must
    advance to the Rahway River without recording a plaque-verified visit or unlocking an extra.
 2. Aim at the black **Cranford Park** sign. Include the stone surround shown in the reference
    photograph, keep the camera steady and use good light. The mill plaque must not unlock this stop.

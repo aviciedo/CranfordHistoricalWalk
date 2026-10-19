@@ -12,14 +12,14 @@ struct StopDetailView: View {
     var onStartDiscovery: (() -> Void)? = nil
     var onEnterAR: (() -> Void)? = nil
     @State private var isShowingAR = false
+    @State private var isNarrationExpanded = true
+    @State private var isDescriptionExpanded = false
 
     private var isCurrent: Bool { tour.phase == .inProgress && tour.currentStop?.id == stop.id }
 
-    private var arButtonTitle: String {
-        if tour.phase == .complete { return "Start new walk in AR" }
-        let destination = tour.currentStop ?? tour.stops.first
-        if let destination, destination.id != stop.id { return "Walk to Stop \(destination.order) in AR" }
-        return "View in AR"
+    private var stopDescription: String {
+        if !stop.longDescription.isEmpty { return stop.longDescription }
+        return stop.shortDescription.hasPrefix("HPAB audio-tour stop.") ? "" : stop.shortDescription
     }
 
     private func enterAR() {
@@ -55,10 +55,6 @@ struct StopDetailView: View {
                         Label(stop.address, systemImage: "mappin.and.ellipse")
                             .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
                     }
-                    if isCurrent && stop.hasPlaqueReference && tour.discovery.hasArrived {
-                        Text("Pause in a permitted viewing area before listening. The arrival location is approximate until it is confirmed on site.")
-                            .font(.footnote).foregroundStyle(AppTheme.secondaryInk)
-                    }
                     HStack(spacing: 12) {
                         Button {
                             navigation.showOnMap(stopID: stop.id)
@@ -70,7 +66,7 @@ struct StopDetailView: View {
                         .buttonStyle(.plain)
                         .background(AppTheme.playerSurface, in: RoundedRectangle(cornerRadius: 12))
                         Button(action: enterAR) {
-                            Label(arButtonTitle, systemImage: "camera.viewfinder")
+                            Label(tour.phase == .complete ? "Start new walk in AR" : "Start AR", systemImage: "camera.viewfinder")
                                 .frame(maxWidth: .infinity, minHeight: 52)
                         }
                         .buttonStyle(.plain).foregroundStyle(AppTheme.ivory)
@@ -79,35 +75,20 @@ struct StopDetailView: View {
                         .accessibilityHint("Opens the camera with walking directions. On-site plaque discovery is available after listening or reading.")
                     }
                     .font(.subheadline.weight(.semibold))
-                    if let directionsURL = stop.googleWalkingDirectionsURL {
-                        Link(destination: directionsURL) {
-                            HStack(spacing: 12) {
-                                Label("Walking directions in Google Maps", systemImage: "figure.walk")
-                                Spacer(minLength: 0)
-                                Image(systemName: "arrow.up.right").font(.subheadline)
-                            }
-                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                    if stop.narrationSource != nil {
+                        DisclosureGroup("Narration player", isExpanded: $isNarrationExpanded) {
+                            NarrationControls(stop: stop).padding(.top, 12)
                         }
                         .font(.subheadline.weight(.medium))
-                        .accessibilityLabel("Open walking directions to \(stop.name) in Google Maps")
                     }
-                    if isCurrent, let instruction = tour.currentInstruction {
-                        Label(instruction, systemImage: "arrow.turn.up.right")
-                            .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
+                    if isCurrent && stop.hasPlaqueReference && tour.discovery.hasArrived {
+                        Text("Pause in a permitted viewing area before listening. The arrival location is approximate until it is confirmed on site.")
+                            .font(.footnote).foregroundStyle(AppTheme.secondaryInk)
                     }
-                    NarrationControls(stop: stop)
                     if isCurrent && stop.hasPlaqueReference {
                         if tour.discovery.hasFinishedStory {
                             if !tour.discovery.hasVerifiedPlaque {
-                                Button {
-                                    enterAR()
-                                } label: {
-                                    Label("Find the plaque in AR", systemImage: "viewfinder")
-                                        .font(.headline).frame(maxWidth: .infinity, minHeight: 54)
-                                }
-                                .buttonStyle(.plain).foregroundStyle(AppTheme.ivory)
-                                .background(AppTheme.forest, in: RoundedRectangle(cornerRadius: 14))
-                                Text("An optional extra: find the plaque from a permitted viewing spot to unlock a little more history. Stay outside and keep the entrance clear.")
+                                Text("Tap Start AR to find the plaque and unlock an optional on-site extra. Stay outside and keep the entrance clear.")
                                     .font(.footnote).foregroundStyle(AppTheme.secondaryInk)
                             }
                         } else {
@@ -115,10 +96,12 @@ struct StopDetailView: View {
                                 .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
                         }
                     }
-                    if !stop.longDescription.isEmpty {
-                        Text(stop.longDescription).font(.body).lineSpacing(5)
-                    } else if !stop.shortDescription.hasPrefix("HPAB audio-tour stop.") {
-                        Text(stop.shortDescription).font(.body).lineSpacing(5)
+                    if !stopDescription.isEmpty {
+                        DisclosureGroup("Stop description", isExpanded: $isDescriptionExpanded) {
+                            Text(stopDescription).font(.body).lineSpacing(5)
+                                .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 12)
+                        }
+                        .font(.subheadline.weight(.medium))
                     }
                     if let script = stop.narrationText, !script.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         DisclosureGroup("Read narration") {

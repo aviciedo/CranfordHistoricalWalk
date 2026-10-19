@@ -265,3 +265,13 @@ compact play/pause, and an expandable title keep the player discoverable. Layout
 existing safe-area inset, preserving the bottom navigation and playback instance. Browse the
 stops moved to the summary row above the walking CTA. Debug/Release syntax passed; native
 scroll behavior, sheet interactions, dynamic type and device visual QA remain unverified.
+
+
+## Stop-detail disclosure layout
+
+Build 0.2.0 (5) removes both directions rows. Two actions sit directly below the address,
+then an initially expanded Narration player disclosure. Stop description is initially collapsed,
+matching Read narration. The redundant lower plaque button is replaced by an invitation to
+use Start AR; the existing entry logic is preserved. Disclosure state is presentation-only
+and never stops/re-prepares audio. Debug/Release Swift parsing passed. Native visual, large-text,
+VoiceOver and playback-while-collapsing checks remain unrun here.
