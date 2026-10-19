@@ -152,16 +152,24 @@ struct StopDetailView: View {
                 .padding(24)
             }
             .background(AppTheme.parchment).foregroundStyle(AppTheme.ink)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(AppTheme.parchment, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
+            .toolbar(.hidden, for: .navigationBar)
+            .safeAreaInset(edge: .top, spacing: 0) {
+                HStack {
                     Button { dismiss() } label: {
-                        Image(systemName: "xmark").frame(width: 44, height: 44)
+                        Image(systemName: "xmark")
+                            .font(.system(size: 19, weight: .medium))
+                            .foregroundStyle(AppTheme.forest)
+                            .frame(width: 46, height: 46)
+                            .background(.white, in: Circle())
+                            .contentShape(Circle())
+                            .shadow(color: .black.opacity(0.12), radius: 5, y: 3)
                     }
+                    .buttonStyle(.plain)
                     .accessibilityLabel("Close stop details")
+                    Spacer()
                 }
+                .padding(.horizontal, 24).padding(.vertical, 8)
+                .background(AppTheme.parchment)
             }
             .fullScreenCover(isPresented: $isShowingAR, onDismiss: { dismiss() }) { ARTourView() }
             .onAppear { if isCurrent { tour.openStory(for: stop.id) } }

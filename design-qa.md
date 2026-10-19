@@ -285,3 +285,12 @@ Duplicate requests and developer simulation are blocked. Core Location continuou
 resume after the one-shot callback, including errors/invalid samples. Native regression added;
 Debug/Release syntax passed. Actual one-shot acquisition and native test execution are unrun
 here without Xcode/iPhone.
+
+
+## White stop-detail close control
+
+Build 0.2.0 (7) uses a fixed 46-point white circle, forest X and the same subtle shadow
+as the map controls. A custom top safe-area row replaces the system toolbar presentation
+so dark appearance and newer OS glass styling cannot change the button surface. Dismissal
+and its accessibility label remain intact. Debug/Release syntax passed; native screenshots
+and touch/layout verification require Xcode/iPhone.
