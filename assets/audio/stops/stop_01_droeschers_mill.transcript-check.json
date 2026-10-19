@@ -1,0 +1,68 @@
+{
+  "audio_sha256": "197afe552a3e7be4bb100fa9eeacde4eef9cce32d7ad9aa406ccbf3575661f71",
+  "model": "gpt-4o-transcribe",
+  "speech_model": "gpt-4o-mini-tts",
+  "voice": "cedar",
+  "normalized_word_match": false,
+  "word_match_ratio": 0.9766162310866575,
+  "differences": [
+    {
+      "kind": "replace",
+      "expected": "two hundred",
+      "transcribed": "200"
+    },
+    {
+      "kind": "replace",
+      "expected": "rahway",
+      "transcribed": "raway"
+    },
+    {
+      "kind": "replace",
+      "expected": "landscaped",
+      "transcribed": "landscape"
+    },
+    {
+      "kind": "replace",
+      "expected": "twentieth",
+      "transcribed": "20th"
+    },
+    {
+      "kind": "replace",
+      "expected": "alleum",
+      "transcribed": "allium"
+    },
+    {
+      "kind": "replace",
+      "expected": "rahway",
+      "transcribed": "raway"
+    },
+    {
+      "kind": "replace",
+      "expected": "eleven",
+      "transcribed": "11"
+    },
+    {
+      "kind": "replace",
+      "expected": "rahway",
+      "transcribed": "raway"
+    }
+  ],
+  "transcription": "Imagine Cranford more than 200 years ago. Before the railroad, before the busy downtown and modern neighborhoods we know today, the Raway River was the heart of our community. The river's flowing waters provided the power that helped early settlers build homes, produce goods, and establish businesses. In fact, early Cranford was once known as Crane's Mills, a reflection of how important milling was to our town's development. Here at Droescher's Mill, that history survives. Historical records confirm a mill on this site as early as 1779. The original building was destroyed by fire in 1821, and the wooden structure you see today was built afterward. Its substantial fieldstone foundation, approximately two feet thick in places, and heavy oak timbers reflect the durable construction of early industrial buildings. Over the next century, the mill changed with the needs of the community. Water-powered machinery helped transform raw materials into useful products. The site operated as a sawmill, later became associated with wool manufacturing, and eventually supported woodworking and other industries. By the early 1900s, businessman Severin Droescher was using the mill to manufacture sharpening stones for razors and other cutting tools. He also improved the surrounding riverfront, rebuilding the dam and adding stone walls, a footbridge, and landscape features connected to his nearby Lincoln Park residential development. In the 20th century, its workshops were adapted for pipe organ manufacturing, before eventually being converted into offices and commercial spaces we know today. The mill is now home to commercial offices with many of the tenants in the healthcare sector. The site also houses a popular local yoga studio, Allium Yoga, which serves the Cranford community as a welcoming and inclusive wellness space. Today, the building no longer operates as a water-powered mill, yet the Raway River still flows beside it, and the dam remains part of Cranford's river management infrastructure. Recognized on the National Register of Historic Places in 1974, and designated a Cranford Historic Landmark in 2014, Droescher's Mill stands as a tangible reminder of the community's industrial origins. Of the 11 historic mills that once lined the Raway River, this is the last survivor.",
+  "usage": {
+    "input_tokens": 1540,
+    "output_tokens": 449,
+    "total_tokens": 1989,
+    "type": "tokens",
+    "input_token_details": {
+      "audio_tokens": 1512,
+      "text_tokens": 28
+    }
+  },
+  "limitations": "ASR spelling/dates can differ from the actual speech. Listening review is still needed for delivery and local pronunciation.",
+  "review_notes": {
+    "number_variants": "two hundred/200, twentieth/20th and eleven/11 are equivalent representations.",
+    "name_variants": "Raway and allium are ASR spellings of Rahway and Alleum; master text is unchanged. Preferred local/business pronunciation still needs confirmation.",
+    "landscaped": "The targeted listening check heard the final /t/ of landscaped and no repeated words.",
+    "coverage": "All approved passages detected, without an omitted or repeated passage. This is automated review, not a human word-for-word certification."
+  }
+}

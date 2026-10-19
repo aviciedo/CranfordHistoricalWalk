@@ -70,6 +70,7 @@ extension HistoricalStop {
                 HistoricalStopPhoto(imageName: "droeschers-mill-river-view", caption: "Droescher’s Mill and the Rahway River dam"),
                 HistoricalStopPhoto(imageName: "droeschers-mill-through-railing", caption: "Droescher’s Mill and the Rahway River, viewed through the railing"),
             ],
+            audioURL: URL(string: "stop_01_droeschers_mill.mp3"),
             narrationText: """
                 Droescher’s Mill: A River That Built a Town
 
@@ -85,20 +86,20 @@ extension HistoricalStop {
 
                 Over the next century, the mill changed with the needs of the community.
 
-                Water-powered machinery helped transform raw materials into useful products. The site operated as a sawmill, later became associated with wool manufacturing, and eventually supported woodworking and other industries.
+                Water-powered machinery helped transform raw materials into useful products. The site operated as a sawmill, later became associated with wool manufacturing, and eventually supported woodworking, and other industries.
 
                 By the early 1900s, businessman Severin Droescher was using the mill to manufacture sharpening stones for razors and other cutting tools. He also improved the surrounding riverfront, rebuilding the dam and adding stone walls, a footbridge, and landscaped features connected to his nearby Lincoln Park residential development.
 
-                In the twentieth century, its workshops were adapted for pipe-organ manufacturing, before eventually being converted into offices and commercial spaces we know today. The mill is now home to commercial offices with many of the tenants in the healthcare sector. The site also houses a popular local yoga studio, Alleum Yoga, which serves the Cranford community as a welcoming and inclusive wellness space.
+                In the twentieth century, its workshops were adapted for pipe-organ manufacturing, before eventually being converted into offices and commercial spaces we know today. The mill is now home to commercial offices with many of the tenants in the healthcare sector. The site also houses a popular local yoga studio, Alleum Yoga which serves the Cranford community as a welcoming and inclusive wellness space.\u{20}
 
-                Today, the building no longer operates as a water-powered mill. Yet the Rahway River still flows beside it, and the dam remains part of Cranford’s river-management infrastructure.
+                Today, the building no longer operates as a water-powered mill. Yet the Rahway River still flows beside it, and the dam remains part of Cranford's river-management infrastructure.
 
-                Recognized on the National Register of Historic Places in 1974 and designated a Cranford historic landmark in 2014, Droescher’s Mill stands as a tangible reminder of the community’s industrial origins.
+                Recognized on the National Register of Historic Places in 1974 and designated a Cranford historic landmark in 2014, Droescher’s Mill stands as a tangible reminder of the community's industrial origins.
 
                 Of the eleven historic mills that once lined the Rahway River, this is the last survivor.
                 """,
             narrationVoicePreference: .warmMaleEnglish,
-            order: 1, estimatedVisitDuration: 155, isSample: false, coordinatesUnverified: true,
+            order: 1, estimatedVisitDuration: 151.301224, isSample: false, coordinatesUnverified: true,
             plaque: StopPlaque(
                 transcription: "c. 1737",
                 quoteLabel: "Door plaque",

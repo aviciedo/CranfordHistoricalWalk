@@ -1,0 +1,33 @@
+{
+  "model": "gpt-4o-mini-tts",
+  "voice": "cedar",
+  "title_spoken": false,
+  "duration_seconds": 42.24,
+  "size_bytes": 676401,
+  "sample_rate_hz": 44100,
+  "channels": 1,
+  "bitrate_kbps": 128,
+  "spoken_body_sha256": "9f4437adb638fbc361dcde350999061b1ae7ff95cc846dd5c443fb437a69abd7",
+  "input_word_count": 100,
+  "speech_requests_this_run": 1,
+  "segments": 1,
+  "request_id": "req_15b95aba0ed94ea5a9370936c5ea96d9",
+  "generation_fingerprint": "70b8f7ee3059e8d85bc94735afcd376bdf29fcf26b7c9d56f6ec247e10abbfbe",
+  "tempo_factor": 1.0,
+  "normalization_applied": true,
+  "normalization_target_lufs": -19,
+  "integrated_lufs": -19.59,
+  "true_peak_dbtp": -2.42,
+  "quality_status": "Encoding and complete-passages transcription checks passed. Reference is retained for human audition and future continuity; local pronunciation approval remains pending.",
+  "pronunciation_notes": {
+    "Cranford": "CRAN-fərd (creator supplied)",
+    "Rahway": "RAW-way (creator supplied)",
+    "Droescher": "DRESH-er (provisional; local review needed)",
+    "Severin": "SEV-er-in (provisional; local review needed)",
+    "Alleum Yoga": "AL-ee-um YOH-guh (provisional; preferred business pronunciation unverified)"
+  },
+  "cost": "Actual billed cost is not returned by the speech endpoint; check project usage.",
+  "audio_sha256": "b8b586a48c31b1543608f90b7f02a2ede4787c65419635bd6b96c0405833b5da",
+  "profile_version": 2,
+  "instructions_sha256": "02c7e139ee02c6332a22310c18f762b2a0d0b1df5f06fc8288b907280e981ed7"
+}

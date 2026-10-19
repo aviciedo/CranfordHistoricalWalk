@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Generate the approved stop-1 recording. Credentials are read only from the environment.
+"""Generate the narrator reference or approved stop-1 recording using environment credentials.
 
 Requires requirements.txt, ffmpeg and ffprobe. --check never contacts OpenAI.
-The recording is intentionally not wired into the app until audio review passes.
+App bundling is a separate step after audio quality review.
 """
 import argparse
 import hashlib
@@ -28,9 +28,9 @@ def probe(path):
                            "-of", "json", str(path)]))
 
 
-def loudness(path):
+def loudness(path, target=-19):
     result = subprocess.run(["ffmpeg", "-hide_banner", "-i", str(path), "-af",
-                             "loudnorm=I=-16:TP=-2:LRA=11:print_format=json",
+                             f"loudnorm=I={target}:TP=-2:LRA=11:print_format=json",
                              "-f", "null", "-"], check=True, capture_output=True, text=True)
     return json.loads(re.findall(r'\{\s*"input_i".*?\}', result.stderr, re.S)[-1])
 
@@ -39,9 +39,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true", help="Validate local inputs without API requests")
     parser.add_argument("--force", action="store_true", help="Explicitly authorize replacing an existing recording")
+    parser.add_argument("--recording", choices=["reference", "stop01"], default="stop01")
     args = parser.parse_args()
     profile = json.loads((ROOT / "narrator_profile.json").read_text())
-    recording = profile["approved_recording"]
+    recording = profile["reference_recording"] if args.recording == "reference" else profile["approved_recording"]
     master = (ROOT / recording["transcript"]).read_text(encoding="utf-8").rstrip("\n")
     title, body = master.split("\n\n", 1)
     assert title == recording["title"], "Unexpected metadata title"
@@ -63,20 +64,32 @@ def main():
         raise SystemExit("Missing secure narration API key binding. No speech request was sent.")
     from openai import OpenAI, OpenAIError
     client = OpenAI(api_key=key, base_url="https://api.openai.com/v1", max_retries=0, timeout=180)
+    fingerprint = hashlib.sha256(json.dumps([profile["model"], profile["voice"], profile["instructions"], body],
+                                           ensure_ascii=False).encode()).hexdigest()
+    cache = ROOT / ".work" / args.recording
+    cache.mkdir(parents=True, exist_ok=True)
+    raw = cache / f"{fingerprint}.wav"
+    generated_this_run = False
+    previous_report = output.with_suffix(".production.json")
+    request_id = json.loads(previous_report.read_text()).get("request_id") if previous_report.exists() else None
     stage = "generating speech"
     try:
         # A key restricted to Audio/Speech need not have Models/Read permission.
         # Submit only the authorized speech request; authentication, model-access and
         # billing failures from that endpoint are never retried automatically.
         with tempfile.TemporaryDirectory(prefix="cranford-narration-") as tmp:
-            raw = Path(tmp) / "generated.wav"
             mono = Path(tmp) / "mono.wav"
             stage = "generating speech"
-            with client.audio.speech.with_streaming_response.create(
-                model=profile["model"], voice=profile["voice"], input=body,
-                instructions=profile["instructions"], response_format="wav", speed=1.0,
-            ) as response:
-                response.stream_to_file(raw)
+            if not raw.exists():
+                with client.audio.speech.with_streaming_response.create(
+                    model=profile["model"], voice=profile["voice"], input=body,
+                    instructions=profile["instructions"], response_format="wav", speed=1.0,
+                ) as response:
+                    partial = raw.with_suffix(".partial")
+                    response.stream_to_file(partial)
+                    request_id = response.headers.get("x-request-id")
+                    partial.replace(raw)
+                    generated_this_run = True
             stage = "processing audio"
             run(["ffmpeg", "-v", "error", "-y", "-i", str(raw), "-ac", "1", "-ar", "44100", str(mono)])
             seconds = float(probe(mono)["format"]["duration"])
@@ -86,13 +99,19 @@ def main():
                 raise SystemExit("Delivery pace needs manual review; no aggressive time stretching was applied.")
             paced = Path(tmp) / "paced.wav"
             run(["ffmpeg", "-v", "error", "-y", "-i", str(mono), "-af", f"atempo={tempo:.8f}", str(paced)])
-            levels = loudness(paced)
+            target_lufs = profile["audio"]["loudness_target_lufs"]
+            levels = loudness(paced, target_lufs)
             integrated, peak = float(levels["input_i"]), float(levels["input_tp"])
             assert math.isfinite(integrated) and math.isfinite(peak), "Empty or invalid generated audio"
-            # Static gain preserves dynamics; no limiter or dynamic compression is used.
-            gain = min(-16 - integrated, -2 - peak) if not (-18 <= integrated <= -14 and peak <= -2) else 0
+            needs_normalization = abs(integrated - target_lufs) > 1 or peak > -2
+            audio_filter = "anull"
+            if needs_normalization:
+                audio_filter = (f"loudnorm=I={target_lufs}:TP=-2:LRA=11:"
+                                f"measured_I={levels['input_i']}:measured_TP={levels['input_tp']}:"
+                                f"measured_LRA={levels['input_lra']}:measured_thresh={levels['input_thresh']}:"
+                                f"offset={levels['target_offset']}:linear=true")
             temporary_mp3 = Path(tmp) / "final.mp3"
-            run(["ffmpeg", "-v", "error", "-y", "-i", str(paced), "-af", f"volume={gain:.4f}dB",
+            run(["ffmpeg", "-v", "error", "-y", "-i", str(paced), "-af", audio_filter,
                  "-ac", "1", "-ar", "44100", "-c:a", "libmp3lame", "-b:a", "128k",
                  "-metadata", f"title={title}", "-metadata", "artist=AI narration — OpenAI cedar",
                  str(temporary_mp3)])
@@ -109,7 +128,10 @@ def main():
                 "duration_seconds": float(info["format"]["duration"]), "size_bytes": output.stat().st_size,
                 "sample_rate_hz": 44100, "channels": 1, "bitrate_kbps": 128,
                 "spoken_body_sha256": recording["spoken_body_sha256"], "input_word_count": len(body.split()),
-                "requests": 1, "segments": 1, "tempo_factor": tempo, "static_gain_db": gain,
+                "speech_requests_this_run": int(generated_this_run), "segments": 1,
+                "request_id": request_id, "generation_fingerprint": fingerprint,
+                "tempo_factor": tempo, "normalization_applied": needs_normalization,
+                "normalization_target_lufs": target_lufs,
                 "integrated_lufs": float(final_levels["input_i"]), "true_peak_dbtp": float(final_levels["input_tp"]),
                 "quality_status": "Encoding verified; full listening and transcript/pronunciation review still required",
                 "pronunciation_notes": profile["pronunciation_review"],

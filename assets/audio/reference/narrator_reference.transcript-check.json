@@ -1,0 +1,28 @@
+{
+  "audio_sha256": "b8b586a48c31b1543608f90b7f02a2ede4787c65419635bd6b96c0405833b5da",
+  "model": "gpt-4o-transcribe",
+  "speech_model": "gpt-4o-mini-tts",
+  "voice": "cedar",
+  "normalized_word_match": false,
+  "word_match_ratio": 0.9850746268656716,
+  "differences": [
+    {
+      "kind": "replace",
+      "expected": "two hundred",
+      "transcribed": "200"
+    }
+  ],
+  "transcription": "Imagine Cranford more than 200 years ago. Before the railroad, before the busy downtown and modern neighborhoods we know today, the Rahway River was the heart of our community. Here at Droescher’s Mill, that history survives. By the early 1900s, businessman Severin Droescher was using the mill to manufacture sharpening stones for razors and other cutting tools. He also improved the surrounding riverfront, rebuilding the dam and adding stone walls, a footbridge, and landscaped features connected to his nearby Lincoln Park residential development. Of the eleven historic mills that once lined the Rahway River, this is the last survivor.",
+  "usage": {
+    "input_tokens": 449,
+    "output_tokens": 131,
+    "total_tokens": 580,
+    "type": "tokens",
+    "input_token_details": {
+      "audio_tokens": 421,
+      "text_tokens": 28
+    }
+  },
+  "limitations": "ASR spelling/dates can differ from the actual speech. Listening review is still needed for delivery and local pronunciation.",
+  "review_notes": "Only difference is two hundred versus the equivalent numeral 200. No missing or repeated passage detected."
+}

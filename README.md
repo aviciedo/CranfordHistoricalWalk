@@ -269,8 +269,8 @@ fallback. `NarrationPlayer` is created once in `AppDependencies`; Home, Stops, M
 Playback is available anywhere. Playing or reading a stop does not record a visit or retarget the walk.
 
 Droescher’s Mill now uses the creator’s supplied short marker copy, 95-word expanded description,
-and full 361-word narration, including the supplied healthcare/Alleum Yoga paragraph. Changes to
-the script are limited to light punctuation/typography. The name/address are shared across map
+and the exact approved 353-word spoken narration, including the supplied healthcare/Alleum Yoga
+paragraph. The title is metadata and is not spoken. The approved wording and punctuation are preserved. The name/address are shared across map
 markers, AR, photos, details, Stops and the player. The expanded page has an optional **Read narration**
 section, so the long script does not crowd the short AR card.
 
@@ -280,19 +280,15 @@ and AR recognition name are retained; the inscription appears under **About this
 from the supplied construction history. This is user-supplied historical copy, not independently
 verified research. Stop IDs, coordinates and visit records are unchanged.
 
-The mill’s `audioURL` is unset so the older HPAB recording does not override the new script.
-`narrationVoicePreference: "warmMaleEnglish"` chooses a runtime English male voice, preferring enhanced
-or premium quality and US English at equal quality. System novelty/personal voices are excluded.
-Speech uses a slightly gentler pace and pitch. Voice sound, pronunciation and exact duration depend
-on the iPhone; **2:35 is an editorial target, not a measured recording duration**. No external speech
-API or API key is needed. If no suitable voice is available, the app explains how to download an
-English male voice in iPhone Settings and keeps the script readable. Tap Play again after download;
-failed playback is retried. The app does not silently substitute a female voice.
+The mill’s `audioURL` now selects the bundled `stop_01_droeschers_mill.mp3`: a 2:31 AI-generated
+OpenAI cedar recording produced with `gpt-4o-mini-tts`. The shared player retains manual Play,
+15-second skipping/scrubbing and its existing completion event for optional plaque discovery.
+The controls disclose that the voice is AI-generated. Playback is offline and uses no OpenAI key.
 
-Read-aloud narration uses play/pause and a progress bar. File recordings retain 15-second skipping
-and scrubbing. Speech progress uses UTF-16 ranges and ignores callbacks from a previous utterance
-when playback changes. The final read-aloud duration is measured when speech finishes. It is not
-preset to 2:35. Stop 2 also uses its supplied script; stops 3–5 keep their original recorded audio and controls.
+The reusable narrator profile and 42-second reference sample are under [assets/audio](assets/audio/README.md).
+Generation uses a private environment secret outside the iPhone app. Stop 2 keeps on-device
+`warmMaleEnglish` narration; stops 3–5 keep their original recordings. Local voice installation
+requirements apply to stop 2, not the produced stop-1 recording.
 
 The Droescher's Mill photograph lives in `Assets.xcassets/droeschers-mill` (`imageName: "droeschers-mill"`
 on stop 1). Stop 1 also has an ARKit image-tracking reference (`Assets.xcassets/PlaqueAnchors.arresourcegroup`)
@@ -317,7 +313,7 @@ and Xcode asset compilation remain required checks; Linux tests cannot validate 
 
 `Resources/historical_stops.json` is the five-stop walking tour the app loads: HPAB brochure stops 1–5
 (Droescher's Mill, Greystone, Rahway River, First Baptist Church, Cranford Hotel). `audioURL`
-values for stops 3–5 remain the QR destinations. Stops 1 and 2 use the creator-supplied on-device narration.
+values for stops 3–5 remain the QR destinations. Stop 1 uses its bundled cedar recording; stop 2 uses its creator-supplied on-device narration.
 First Baptist uses the QR file
 `First Baptist.mp3` (not `First Baptist Church.mp3`). Greystone no longer plays the earlier `Greystone.mp3` recording. Stops 1 and 2 use the creator-supplied on-site coordinates documented below; stops 3–5 remain
 **unverified Nominatim geocodes**. All retain `coordinatesUnverified: true` because they are not surveyed positions. A three-stop SAMPLE fixture
@@ -558,8 +554,8 @@ need a Mac + device (see `docs/arcore-geospatial-report.md` in the project store
 Stop 2 is now displayed as **Greystone** throughout Home, Map, Stops, AR and the player.
 Its stable `hpab-002` identifier, approximate coordinates and tour position are unchanged.
 The creator supplied its marker text, expanded description and full narration, including
-references to its later name, Cranford Hall. The new script uses the same on-device English
-male voice preference as the mill. Playback length depends on the installed voice; 160 seconds
+references to its later name, Cranford Hall. Its script retains the on-device English
+male voice preference; stop 1 now has a separate produced cedar recording. Playback length depends on the installed voice; 160 seconds
 is an editorial estimate, not a measured recording.
 
 Stop details support a `photos` array of local asset names, captions and optional credits.
@@ -669,3 +665,12 @@ the new photo-based defaults. No map coordinate or walking route is altered by t
 Validation: 154 core tests, 23 production tour-logic integration tests using offline directions,
 Debug/Release source syntax and project/asset checks. Native slider layout, recognition and
 actual overlay alignment still need Xcode/iPhone testing.
+
+## Produced stop 1 audio and narrator reference
+
+See [assets/audio/README.md](assets/audio/README.md) for the real MP3s, approved source text,
+profile, reproduction commands and quality reports. The 42.24-second reference was generated
+before the 151.30-second stop recording using the same voice profile. Technical and automated
+listening checks passed with local pronunciation/human acceptance still pending. No API key is
+included in source or the app. The reference remains outside the iPhone resource bundle; only
+the stop recording is shipped. Native playback and discovery-after-finish checks require Xcode.

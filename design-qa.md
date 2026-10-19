@@ -209,3 +209,13 @@ persist independently of mill calibration, support fine increments, and can upda
 without requiring a new image-anchor pose. Each stop's reset is isolated; visit resets preserve
 both. Tests exercise the fit constraints and storage/reset independence. Native UI, real image
 recognition, and actual pillar fit remain unverified without the Mac/iPhone; visual QA is blocked.
+
+## Produced mill narration and reusable audio reference
+
+Stop 1 now selects a real bundled MP3; its controls disclose the AI voice. Cedar/gpt-4o-mini-tts
+reference and full narration share frozen instructions, with the title excluded from spoken input.
+The exact approved master is retained. Encoding/levels, ASR coverage and automated listening were
+checked. The initial take was superseded to correct inconsistent family-name pronunciation.
+Local business/family pronunciation and human acceptance remain unverified. Native AVPlayer
+playback, seeking, audio-session interruptions and completion-to-discovery transitions still need
+Xcode/iPhone testing. The source and portable checks do not constitute a native build pass.

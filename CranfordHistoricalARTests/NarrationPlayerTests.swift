@@ -5,6 +5,20 @@ import XCTest
 
 @MainActor
 final class NarrationPlayerTests: XCTestCase {
+    func testProducedMillNarrationIsBundledPlayableAndDoesNotAutoStart() async throws {
+        let mill = HistoricalStop.previewStops[0]
+        XCTAssertEqual(mill.narrationSource, .bundledAudio(fileName: "stop_01_droeschers_mill.mp3"))
+        let url = try XCTUnwrap(Bundle.main.url(forResource: "stop_01_droeschers_mill", withExtension: "mp3"))
+        let asset = AVURLAsset(url: url)
+        let duration = try await asset.load(.duration)
+        XCTAssertEqual(duration.seconds, mill.estimatedVisitDuration, accuracy: 0.5)
+        let player = NarrationPlayer()
+        defer { player.stop() }
+        XCTAssertTrue(player.prepare(mill))
+        XCTAssertEqual(player.kind, .recording)
+        XCTAssertFalse(player.isPlaying, "Selecting a produced recording must still require Play")
+    }
+
     func testPreviewCreatorStopsMatchTheBundledContent() async throws {
         let document = try await BundledJSONHistoricalStopService().loadTour()
         for id in ["hpab-001", "hpab-002"] {

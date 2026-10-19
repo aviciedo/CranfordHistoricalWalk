@@ -20,6 +20,10 @@ struct NarrationControls: View {
                     }
                 }
                 NarrationTimeline(stop: stop)
+                if stop.audioURL?.lastPathComponent == "stop_01_droeschers_mill.mp3" {
+                    Text("AI-generated narration · OpenAI cedar")
+                        .font(.caption).foregroundStyle(AppTheme.secondaryInk)
+                }
                 if player.stopID == stop.id, case .failed(let message) = player.status {
                     Text(message).font(.footnote).foregroundStyle(AppTheme.warning)
                 }

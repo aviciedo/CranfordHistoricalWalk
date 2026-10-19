@@ -62,6 +62,8 @@ targets:
       - path: CranfordHistoricalAR
         excludes:
           - "Info.plist"
+      - path: assets/audio/stops/stop_01_droeschers_mill.mp3
+        buildPhase: resources
     settings:
       base:
         # Must match Info.plist CFBundleIdentifier and the iOS-app restriction on the Google API key.

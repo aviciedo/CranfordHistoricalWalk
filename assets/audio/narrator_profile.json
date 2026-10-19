@@ -1,11 +1,11 @@
 {
-  "profile_version": 1,
+  "profile_version": 2,
   "narrator_name": "The Proud Local Storyteller",
   "synthetic_voice": true,
   "model": "gpt-4o-mini-tts",
   "voice": "cedar",
   "language": "en-US",
-  "instructions": "Speak in American English as a warm, approachable male-sounding storyteller, about 40–45 years old, with a medium-to-slightly-low pitch and relaxed, lightly textured voice. Imagine sharing hometown history with one visiting friend while walking through Cranford. Convey quiet pride, curiosity and occasional wonder. Use a subtle northern New Jersey / Mid-Atlantic character without a caricature or exaggerated accent. Be friendly and intelligent, never academic, pompous, theatrical or commercial. A gentle smile can occasionally be audible. Reflect nostalgically on the river and early town; show restrained enthusiasm for surprising details. Do not invent personal anecdotes or add any words. Read every supplied word, exactly once, with natural conversational phrasing. Aim for about 140 words per minute, allowing natural variation and slightly slower dates and names. Leave approximately 350–600 milliseconds between paragraphs, without excessive silence. Avoid dramatic suspense, announcer diction, movie-trailer bass, robotic rhythm, excessive vocal fry or breathy whispering. No music, effects, logos or spoken delivery instructions. Do not speak a title or introductory announcement. Pronounce Cranford as CRAN-fərd and Rahway as RAW-way. Keep Droescher and Severin consistent throughout; use DRESH-er and SEV-er-in as provisional readings. Read Alleum Yoga naturally as AL-ee-um YOH-guh; this provisional pronunciation has not been confirmed by the business.",
+  "instructions": "Speak in American English as a warm, approachable male-sounding storyteller, about 40–45 years old, with a medium-to-slightly-low pitch and relaxed, lightly textured voice. Imagine sharing hometown history with one visiting friend while walking through Cranford. Convey quiet pride, curiosity and occasional wonder. Use a subtle northern New Jersey / Mid-Atlantic character without a caricature or exaggerated accent. Be friendly and intelligent, never academic, pompous, theatrical or commercial. A gentle smile can occasionally be audible. Reflect nostalgically on the river and early town; show restrained enthusiasm for surprising details. Do not invent personal anecdotes or add any words. Read every supplied word, exactly once, with natural conversational phrasing. Aim for about 140 words per minute, allowing natural variation and slightly slower dates and names. Leave approximately 350–600 milliseconds between paragraphs, without excessive silence. Avoid dramatic suspense, announcer diction, movie-trailer bass, robotic rhythm, excessive vocal fry or breathy whispering. No music, effects, logos or spoken delivery instructions. Do not speak a title or introductory announcement. Pronounce Cranford as CRAN-fərd and Rahway as RAW-way. Pronunciation consistency is essential. EVERY occurrence of Droescher must sound exactly DRESH-er, IPA /ˈdrɛʃər/: short EH as in dress, never a long OH vowel. Droescher’s is exactly DRESH-erz, /ˈdrɛʃərz/. Use this identical short-EH pronunciation at every mention, including Severin Droescher and Droescher’s Mill. Severin is SEV-er-in. Alleum Yoga is provisionally AL-ee-um YOH-guh; the business’s preferred pronunciation remains unverified. Speak all text smoothly once, with no phrase restarts or repeated words. Do not speak the phonetic guidance.",
   "api_key_environment_variable": "CRANFORD_NARRATION_API_KEY",
   "generation": {
     "sdk": "openai",
@@ -25,9 +25,9 @@
       350,
       600
     ],
-    "loudness_target_lufs": -16,
+    "loudness_target_lufs": -19,
     "peak_ceiling_dbtp": -2,
-    "processing": "Static gain only if needed; modest pitch-preserving tempo adjustment if outside 135–145 WPM. No compression, music or effects."
+    "processing": "Gentle two-pass loudness normalization only when needed, targeting -19 LUFS for mono speech and -2 dB true peak. Modest pitch-preserving tempo correction outside 135–145 WPM. No music, effects or aggressive compression."
   },
   "pronunciation_review": {
     "Cranford": "CRAN-fərd (creator supplied)",
@@ -43,6 +43,22 @@
     "word_count": 353,
     "target_output": "stops/stop_01_droeschers_mill.mp3"
   },
-  "production_status": "pending_network_access_and_secure_key_binding",
-  "cost": "Not incurred; no speech API request has been sent."
+  "production_status": "generated_automated_checks_completed_local_pronunciation_review_pending",
+  "cost": "Billable generation and automated verification completed. Exact charge is not returned by these endpoints; consult project usage with the saved request IDs.",
+  "reference_recording": {
+    "title": "The Proud Local Storyteller — Voice Reference",
+    "transcript": "reference/narrator_reference.txt",
+    "spoken_body_sha256": "9f4437adb638fbc361dcde350999061b1ae7ff95cc846dd5c443fb437a69abd7",
+    "word_count": 100,
+    "target_output": "reference/narrator_reference.mp3",
+    "purpose": "Audition benchmark for delivery, warmth, pacing and names; exact excerpts from the approved stop 1 script."
+  },
+  "continuity": {
+    "strategy": "Reuse this voice, model, unchanged instructions, pronunciation notes and audio processing. Compare future narrations with the saved reference audio.",
+    "reference_audio_is_not_voice_cloning_input": true,
+    "limitation": "The speech endpoint does not take this reference audio as conditioning; exact timbre is not guaranteed across API/model updates.",
+    "reference_audio_sha256": "b8b586a48c31b1543608f90b7f02a2ede4787c65419635bd6b96c0405833b5da",
+    "profile_instructions_sha256": "02c7e139ee02c6332a22310c18f762b2a0d0b1df5f06fc8288b907280e981ed7",
+    "standardized_at": "2026-10-18T20:35:43.916131-04:00"
+  }
 }
