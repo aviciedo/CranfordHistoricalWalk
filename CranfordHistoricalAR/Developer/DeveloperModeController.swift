@@ -48,13 +48,17 @@ final class DeveloperModeController {
             for _ in 0..<75 {
                 try? await Task.sleep(for: .milliseconds(200))
                 guard !Task.isCancelled, let self else { return }
-                if self.isSimulating {
+                let fix = self.tour.userLocation.map {
+                    GPSRefreshPolicy.Fix(timestamp: $0.timestamp, isSimulated: $0.isSimulated, horizontalAccuracy: $0.horizontalAccuracy)
+                }
+                switch GPSRefreshPolicy.tick(isSimulating: self.isSimulating, fix: fix, requestedAt: requestedAt) {
+                case .keepWaiting:
+                    break
+                case .stoppedBecauseSimulating:
                     self.gpsRefreshMessage = "GPS refresh stopped: Simulated location is on."
                     self.isRefreshingGPS = false
                     return
-                }
-                if let sample = self.tour.userLocation, sample.timestamp >= requestedAt,
-                   !sample.isSimulated, sample.horizontalAccuracy.isFinite, sample.horizontalAccuracy >= 0 {
+                case .receivedFreshFix:
                     self.gpsRefreshMessage = "Fresh GPS coordinates received."
                     self.isRefreshingGPS = false
                     return

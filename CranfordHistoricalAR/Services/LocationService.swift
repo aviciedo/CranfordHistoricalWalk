@@ -165,8 +165,7 @@ final class EventBroadcaster<Event: Sendable> {
 final class CoreLocationService: NSObject, LocationService {
     private let manager = CLLocationManager()
     private let broadcaster = EventBroadcaster<LocationEvent>()
-    private var isRunning = false
-    private var isRequestingFreshLocation = false
+    private var refreshSession = OneShotLocationRefresh()
 
     override init() {
         super.init()
@@ -197,8 +196,7 @@ final class CoreLocationService: NSObject, LocationService {
     }
 
     func start() {
-        guard !isRunning else { return }
-        isRunning = true
+        guard refreshSession.startUpdating() else { return }
         manager.startUpdatingLocation()
         if CLLocationManager.headingAvailable() {
             manager.headingOrientation = .portrait
@@ -209,22 +207,24 @@ final class CoreLocationService: NSObject, LocationService {
     /// One-shot refresh on the existing manager. Continuous updates must pause because
     /// requestLocation() is ignored while startUpdatingLocation() is active.
     func requestFreshLocation() {
-        guard authorization == .authorized else { requestWhenInUseAuthorization(); return }
-        manager.stopUpdatingLocation()
-        isRequestingFreshLocation = true
-        manager.requestLocation()
+        switch refreshSession.requestFreshLocation(isAuthorized: authorization == .authorized) {
+        case .needsAuthorization:
+            requestWhenInUseAuthorization()
+        case .beginOneShot:
+            manager.stopUpdatingLocation()
+            refreshSession.armOneShot()
+            manager.requestLocation()
+        }
     }
 
     private func resumeAfterRefresh() {
-        guard isRequestingFreshLocation else { return }
-        isRequestingFreshLocation = false
-        if isRunning { manager.startUpdatingLocation() }
+        if refreshSession.finishOneShot() == .resumeContinuousUpdates {
+            manager.startUpdatingLocation()
+        }
     }
 
     func stop() {
-        isRequestingFreshLocation = false
-        guard isRunning else { return }
-        isRunning = false
+        guard refreshSession.stopUpdating() else { return }
         manager.stopUpdatingLocation()
         manager.stopUpdatingHeading()
     }
