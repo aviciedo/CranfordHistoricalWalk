@@ -1,7 +1,7 @@
 import SwiftUI
 import TourCore
 
-/// Browsing a stop never retargets the tour. AR is offered only for its current destination.
+/// Browsing never retargets the tour. AR entry guides to the first/current destination.
 struct StopDetailView: View {
     @Environment(TourViewModel.self) private var tour
     @Environment(AppNavigation.self) private var navigation
@@ -10,9 +10,35 @@ struct StopDetailView: View {
     let stop: HistoricalStop
     var onContinue: (() -> Void)? = nil
     var onStartDiscovery: (() -> Void)? = nil
+    var onEnterAR: (() -> Void)? = nil
     @State private var isShowingAR = false
 
     private var isCurrent: Bool { tour.phase == .inProgress && tour.currentStop?.id == stop.id }
+
+    private var arButtonTitle: String {
+        if tour.phase == .complete { return "Start new walk in AR" }
+        let destination = tour.currentStop ?? tour.stops.first
+        if let destination, destination.id != stop.id { return "Walk to Stop \(destination.order) in AR" }
+        return "View in AR"
+    }
+
+    private func enterAR() {
+        guard tour.prepareForARFromDetails() else { return }
+        if dependencies.narrationPlayer.isPlaying { dependencies.narrationPlayer.pause() }
+        let shouldDiscover = tour.currentStop?.id == stop.id && stop.hasPlaqueReference
+            && tour.discovery.hasFinishedStory
+        if shouldDiscover, let onStartDiscovery {
+            onStartDiscovery()
+            dismiss()
+        } else if let onEnterAR {
+            // The detail sheet is already over the camera: return to that session.
+            onEnterAR()
+            dismiss()
+        } else {
+            if shouldDiscover { _ = tour.beginPlaqueDiscovery() }
+            isShowingAR = true
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -43,14 +69,14 @@ struct StopDetailView: View {
                         }
                         .buttonStyle(.plain)
                         .background(AppTheme.playerSurface, in: RoundedRectangle(cornerRadius: 12))
-                        if isCurrent && !stop.hasPlaqueReference {
-                            Button { isShowingAR = true } label: {
-                                Label("View in AR", systemImage: "camera.viewfinder")
-                                    .frame(maxWidth: .infinity, minHeight: 52)
-                            }
-                            .buttonStyle(.plain).foregroundStyle(AppTheme.ivory)
-                            .background(AppTheme.forest, in: RoundedRectangle(cornerRadius: 12))
+                        Button(action: enterAR) {
+                            Label(arButtonTitle, systemImage: "camera.viewfinder")
+                                .frame(maxWidth: .infinity, minHeight: 52)
                         }
+                        .buttonStyle(.plain).foregroundStyle(AppTheme.ivory)
+                        .background(AppTheme.forest, in: RoundedRectangle(cornerRadius: 12))
+                        .disabled(tour.loadState != .loaded)
+                        .accessibilityHint("Opens the camera with walking directions. On-site plaque discovery is available after listening or reading.")
                     }
                     .font(.subheadline.weight(.semibold))
                     if let directionsURL = stop.googleWalkingDirectionsURL {
@@ -74,9 +100,7 @@ struct StopDetailView: View {
                         if tour.discovery.hasFinishedStory {
                             if !tour.discovery.hasVerifiedPlaque {
                                 Button {
-                                    if dependencies.narrationPlayer.stopID == stop.id { dependencies.narrationPlayer.pause() }
-                                    if let onStartDiscovery { onStartDiscovery(); dismiss() }
-                                    else if tour.beginPlaqueDiscovery() { isShowingAR = true }
+                                    enterAR()
                                 } label: {
                                     Label("Find the plaque in AR", systemImage: "viewfinder")
                                         .font(.headline).frame(maxWidth: .infinity, minHeight: 54)

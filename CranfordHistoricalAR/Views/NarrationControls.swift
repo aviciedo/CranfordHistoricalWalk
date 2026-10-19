@@ -20,8 +20,8 @@ struct NarrationControls: View {
                     }
                 }
                 NarrationTimeline(stop: stop)
-                if ["stop_01_droeschers_mill.mp3", "stop_02_greystone.mp3"].contains(stop.audioURL?.lastPathComponent ?? "") {
-                    Text("AI-generated narration · OpenAI cedar")
+                if let recording = ProducedNarrationRelease.recording(for: stop.id) {
+                    Text("AI-generated narration · OpenAI cedar · \(Int(recording.duration.rounded()) / 60):\(String(format: "%02d", Int(recording.duration.rounded()) % 60))")
                         .font(.caption).foregroundStyle(AppTheme.secondaryInk)
                 }
                 if player.stopID == stop.id, case .failed(let message) = player.status {

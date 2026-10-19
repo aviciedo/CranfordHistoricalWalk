@@ -7,7 +7,8 @@ window anchoring still need Xcode/iPhone testing. Use a Debug build to access De
 
 1. Download the current GitHub ZIP, copy your existing `Config/Secrets.xcconfig` into its Config
    folder, open `CranfordHistoricalAR.xcodeproj`, select your signing team and run on the iPhone.
-2. On Home, open **Developer**. Leave **Simulated location** off for field testing.
+2. On Home, open **Developer**. Confirm **0.2.0 (2)** and audio release **cedar-2**.
+   Leave **Simulated location** off for field testing.
 3. Tap **Clear visits & restart at stop 1**. To avoid saving repeated test visits, turn **Save visit
    history** off. This leaves story completion and AR discovery usable; confirmation says the visit
    was not saved. Saving defaults to on after relaunch.
@@ -115,3 +116,19 @@ substitute for an Xcode iPhone build or the physical-device checks above.
   placement and verify the photo-based defaults return while the mill's alignment stays unchanged.
 - Send a screenshot of the final four values and the overlay, plus any measured plaque width.
   The photo by itself cannot establish scale in feet/meters or certify a public viewing position.
+
+
+## Narration-source and detail AR regression
+
+- From fresh launch before starting a walk, open each stop's details. AR must be visible.
+  Entering it starts the first destination, not the stop merely being browsed.
+- Play stop 1 and stop 2. Details must identify OpenAI cedar. In Developer, Prepared audio must
+  show bundledAudio for the corresponding MP3; compare with the MP3 under assets/audio/stops.
+- After the first story, Continue to Greystone. Open details for another stop and enter AR:
+  the button names the current destination, and the destination must remain Greystone.
+- Before finishing the story, entering AR must not unlock/record a plaque. Afterwards, the
+  current stop's AR action/Find the plaque action must start recognition. Scan its real marker.
+- From details already over the AR camera, View in AR must close details and keep one session.
+  Close the camera and ensure the app returns to a usable map/list without a stranded sheet.
+- After finishing the whole tour, the detail action must explicitly say Start new walk in AR.
+  It restarts at stop 1 while leaving saved visit history intact.

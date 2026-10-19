@@ -33,6 +33,18 @@ struct DeveloperControlsView: View {
         @Bindable var developer = developer
         let diagnostics = developer.diagnostics
         Form {
+            Section("Installed build and narration") {
+                row("Version", "\(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?") (\(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"))")
+                row("Audio release", ProducedNarrationRelease.identifier)
+                ForEach(ProducedNarrationRelease.recordings, id: \.stopID) { recording in
+                    row(recording.stopID, recording.fileName)
+                }
+                if let source = dependencies.narrationPlayer.preparedSource {
+                    row("Prepared audio", String(describing: source))
+                }
+            }
+            .textSelection(.enabled)
+
             Section {
                 Button("Save this location as the viewing point") { developer.saveViewingPoint() }
                     .frame(minHeight: 44)

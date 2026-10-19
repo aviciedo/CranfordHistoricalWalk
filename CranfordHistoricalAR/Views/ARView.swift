@@ -76,7 +76,8 @@ struct ARTourView: View {
         .sheet(isPresented: Binding(get: { model.isShowingSignDetails }, set: { model.isShowingSignDetails = $0 })) {
             if let stop = tour.presentedSignStop ?? tour.currentStop {
                 HistoricalSignSheet(stop: stop, onContinue: { model.isShowingSignDetails = false },
-                                    onStartDiscovery: model.startPlaqueDiscovery)
+                                    onStartDiscovery: model.startPlaqueDiscovery,
+                                    onEnterAR: { model.isShowingSignDetails = false })
                     .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
             }

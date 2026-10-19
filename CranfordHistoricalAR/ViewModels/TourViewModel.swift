@@ -197,6 +197,16 @@ final class TourViewModel {
         if proximityMachine == nil { resetProximityForCurrentStop() }
     }
 
+    /// Explicit AR entry starts the first destination, resumes the current one, or restarts
+    /// a completed walk. Browsing a different detail never jumps the guided destination.
+    @discardableResult
+    func prepareForARFromDetails() -> Bool {
+        guard loadState == .loaded, !stops.isEmpty else { return false }
+        if phase == .complete { resetTour() }
+        startTour()
+        return phase == .inProgress && currentStop != nil
+    }
+
     func leaveTour() {
         isShowingTour = false
     }

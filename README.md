@@ -59,8 +59,10 @@ adding a second card. Tap the count beside **Your walk** for the tour summary an
 Tap **Developer** on Home (or long-press the home title or **Your walk**) in Debug builds for Developer Controls.
 
 Browse any stop and play its recording without changing the guided tour order. **Show on map**
-centers that stop without changing the walking destination. **View in AR** is offered for the
-current guided stop. The shared details page provides the photo, address, recording and available
+centers that stop without changing the walking destination. The details page always offers
+**View in AR** (or **Walk to Stop N in AR** when browsing another stop). This explicitly starts
+the first destination or resumes the current guided destination; it never skips ahead merely
+because another detail is open. After a completed tour, **Start new walk in AR** restarts it. The shared details page provides the photo, address, recording and available
 historical text; source and coordinate notes are under **About this stop**.
 
 Tap a stop photograph on the map panel, stop list or details page to enlarge it. Pinch to zoom,
@@ -675,3 +677,47 @@ before the 151.30-second stop recording using the same voice profile. Technical 
 listening checks passed with local pronunciation/human acceptance still pending. No API key is
 included in source or the app. The reference remains outside the iPhone resource bundle; only
 the stop recording is shipped. Native playback and discovery-after-finish checks require Xcode.
+
+
+## Narration and detail-screen AR correction — 0.2.0 (2)
+
+The previously published archive contained both approved cedar MP3s and their Xcode resource
+registrations. The app does not persist narration selections or recordings across launches.
+Correct wording with the old voice is consistent with the earlier on-device narration path,
+but this workspace cannot inspect the installed iPhone binary to establish which build or
+source actually played. All earlier releases also displayed the same 0.1.0 (1) version.
+
+A confirmed player defect reused a prepared source solely by stop ID. Changing a recording or
+script for that ID could keep an earlier source for that player instance; it does not explain
+persistence across a genuine reinstall by itself. Preparation now compares source and voice
+as well as identity. A produced-narration release pins stops 1/2 to the approved local MP3s,
+even if legacy metadata requests phone speech or a remote recording. Loading checks their
+actual SHA-256 hashes and exact readable transcripts; incomplete/mixed resources fail with an
+explicit rebuild message. The approved audio and user visit records are unchanged.
+
+The missing AR action was caused by `isCurrent && !stop.hasPlaqueReference`: it excluded both
+mill and Greystone. The primary action is now available from every detail page. It starts or
+resumes the guided walk, offers walking directions before story completion, and starts plaque
+search for the current stop after listening/reading. It cannot bypass matching image/normal
+tracking requirements or award a visit by entering AR. Details already over the camera return
+to that session instead of presenting a second camera. The explicit post-story plaque CTA stays.
+
+To install and identify this correction:
+
+1. Close the previous Xcode project and extract this full ZIP into a fresh folder.
+2. Copy your existing `Config/Secrets.xcconfig` into this folder's Config folder.
+3. Open this folder's `CranfordHistoricalAR.xcodeproj`. Choose your iPhone, then
+   **Product → Clean Build Folder**, followed by **Run**.
+4. On the iPhone open **Home → Developer → Installed build and narration**. Expect
+   **0.2.0 (2)** and **cedar-2**. After tapping Play, Prepared audio must show bundledAudio
+   with the stop_01 or stop_02 MP3. Details show cedar and about 2:31 / 2:23 respectively.
+   If the version is different, Xcode ran another project/build. Resetting visits is unnecessary.
+
+154 TourCore tests and six portable checks passed. The latter exercise actual preview and
+loader/release code with real MP3 bytes, including rejection of altered/missing audio, old
+metadata and changed transcripts. Only the SHA-256 implementation is substituted with the Linux
+system utility because Apple CryptoKit is unavailable. Debug/Release Swift parsing passed.
+Native regression tests cover source replacement, actual bundle hashes/durations, manual start,
+AR entry at first/next/completed tour and story/discovery gating. These require Xcode and remain
+unrun here; SwiftUI presentation, native playback and outdoor directions/recognition are not
+certified by portable or syntax checks.

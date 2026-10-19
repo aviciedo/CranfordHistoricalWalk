@@ -25,6 +25,8 @@ final class NarrationPlayer: NSObject {
     private(set) var stopID: String?
     private(set) var title: String = ""
     private(set) var kind: Kind?
+    private(set) var preparedSource: HistoricalStop.NarrationSource?
+    @ObservationIgnored private var preparedVoicePreference: NarrationVoicePreference?
     private(set) var status: Status = .idle
     /// Seconds. For synthesized speech this is wall-clock time spent speaking.
     private(set) var elapsed: TimeInterval = 0
@@ -75,22 +77,26 @@ final class NarrationPlayer: NSObject {
 
     // MARK: Loading
 
-    /// Prepares narration for `stop`. Re-preparing the same stop is a no-op; a different stop
+    /// Prepares narration for `stop`. Only the same stop, source and voice are reused; a change
     /// stops whatever was playing. Returns false when narration or its required voice is unavailable.
     @discardableResult
     func prepare(_ stop: HistoricalStop) -> Bool {
-        if stopID == stop.id, kind != nil {
+        let source = ProducedNarrationRelease.source(for: stop)
+        if stopID == stop.id, preparedSource == source,
+           preparedVoicePreference == stop.narrationVoicePreference, kind != nil {
             // Retry refreshes downloaded voices / failed recordings instead of keeping a failure.
             guard case .failed = status else { return true }
         }
         tearDown()
         stopID = stop.id
         title = stop.name
-        guard let source = stop.narrationSource else {
+        guard let source else {
             kind = nil
             status = .idle
             return false
         }
+        preparedSource = source
+        preparedVoicePreference = stop.narrationVoicePreference
         switch source {
         case .remoteAudio(let url):
             loadRecording(url: url)
@@ -102,6 +108,7 @@ final class NarrationPlayer: NSObject {
             } else {
                 kind = .recording
                 status = .failed("Narration file \"\(fileName)\" is not in the app bundle.")
+                return false
             }
         case .synthesizedSpeech(let text):
             kind = .synthesizedSpeech
@@ -386,6 +393,8 @@ final class NarrationPlayer: NSObject {
         itemObservers.removeAll()
         player = nil
         kind = nil
+        preparedSource = nil
+        preparedVoicePreference = nil
         speechVoice = nil
         speechPreference = .systemDefault
         duration = nil

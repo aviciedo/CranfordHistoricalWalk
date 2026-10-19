@@ -231,3 +231,18 @@ Encoding, decoding, loudness, absence of long silence and source/resource regist
 checked. Core tests (154), actual Swift preview checks (2) and Debug/Release syntax checks passed.
 Native AVPlayer resource/duration and manual-start tests cover both stops but remain unrun here;
 Xcode and iPhone playback/seek/completion-to-optional-discovery checks are still required.
+
+
+## Narration-source correction and restored detail AR entry
+
+The AR action had been excluded for all plaque stops; it is now independent of plaque/current
+status, with destination-specific text. Entry starts/resumes the walk, preserves ordering and
+story-first bonus eligibility, and reuses an existing camera session from its details. Build
+0.2.0 (2)/cedar-2 diagnostics identify the installed release and actual prepared audio source.
+Produced MP3s and transcripts are validated against known hashes; source/voice changes invalidate
+the player's same-ID cache. No audio was regenerated or visits reset.
+
+154 core tests, six portable preview/release checks and Debug/Release syntax checks passed.
+Portable release checks use system SHA-256 in place of unavailable Apple CryptoKit. New native
+regressions for playback/source refresh and AR entry require Xcode and remain unrun. Native
+SwiftUI sheet transitions, device playback and field AR behavior still require device QA.

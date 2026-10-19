@@ -45,6 +45,38 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertEqual(tour.progress.completedCount, 0)
     }
 
+    func testDetailAREntryStartsFirstStopWithoutClaimingAVisit() {
+        tour.progress.reset()
+        XCTAssertTrue(tour.prepareForARFromDetails())
+        XCTAssertEqual(tour.currentStop?.id, stops[0].id)
+        XCTAssertTrue(tour.isShowingTour)
+        XCTAssertFalse(tour.discovery.hasFinishedStory)
+        XCTAssertFalse(tour.discovery.hasVerifiedPlaque)
+        XCTAssertTrue(tour.visitRecords.isEmpty)
+    }
+
+    func testDetailAREntryResumesNextStopWithoutSkippingStoryOrUnlockingPlaque() async throws {
+        try await arrive(at: 0)
+        tour.finishStory(for: stops[0].id)
+        tour.completeCurrentStopAndAdvance()
+        XCTAssertEqual(tour.currentStop?.id, stops[1].id)
+        let progress = tour.progress
+        XCTAssertTrue(tour.prepareForARFromDetails())
+        XCTAssertEqual(tour.progress, progress)
+        XCTAssertEqual(tour.currentStop?.id, stops[1].id)
+        XCTAssertFalse(tour.discovery.hasFinishedStory)
+        XCTAssertFalse(tour.beginPlaqueDiscovery())
+        XCTAssertFalse(tour.discovery.hasVerifiedPlaque)
+    }
+
+    func testDetailAREntryExplicitlyRestartsCompletedTour() {
+        while tour.phase == .inProgress { tour.progress.completeCurrentStop() }
+        XCTAssertTrue(tour.prepareForARFromDetails())
+        XCTAssertEqual(tour.currentStop?.id, stops[0].id)
+        XCTAssertEqual(tour.progress.completedCount, 0)
+        XCTAssertFalse(tour.discovery.hasVerifiedPlaque)
+    }
+
     override func tearDown() async throws {
         simulator.stop()
         tour.stopLocation()

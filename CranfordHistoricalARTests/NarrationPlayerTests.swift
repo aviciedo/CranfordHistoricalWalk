@@ -32,6 +32,72 @@ final class NarrationPlayerTests: XCTestCase {
         }
     }
 
+    func testProducedReleaseOverridesLegacySystemAndRemoteSources() throws {
+        let player = NarrationPlayer()
+        defer { player.stop() }
+        for recording in ProducedNarrationRelease.recordings {
+            var stop = try XCTUnwrap(HistoricalStop.previewStops.first { $0.id == recording.stopID })
+            for legacyURL in [URL?.none, URL(string: "http://preservecranford.com/Audio/old.mp3")] {
+                stop.audioURL = legacyURL
+                XCTAssertTrue(player.prepare(stop))
+                XCTAssertEqual(player.preparedSource, .bundledAudio(fileName: recording.fileName))
+                XCTAssertEqual(player.kind, .recording)
+                XCTAssertFalse(player.isPlaying)
+            }
+        }
+    }
+
+    func testChangedSourceForSameStopReplacesPreparedSpeech() {
+        var stop = HistoricalStop.previewStops[0]
+        stop.id = "source-change-regression"
+        stop.audioURL = nil
+        stop.narrationVoicePreference = .systemDefault
+        let player = NarrationPlayer()
+        defer { player.stop() }
+        XCTAssertTrue(player.prepare(stop))
+        XCTAssertEqual(player.kind, .synthesizedSpeech)
+        stop.audioURL = URL(string: "stop_01_droeschers_mill.mp3")
+        XCTAssertTrue(player.prepare(stop))
+        XCTAssertEqual(player.kind, .recording)
+        XCTAssertEqual(player.preparedSource, .bundledAudio(fileName: "stop_01_droeschers_mill.mp3"))
+        XCTAssertFalse(player.isPlaying)
+    }
+
+    func testChangedTranscriptForSameStopRefreshesPreparedSpeech() {
+        var stop = HistoricalStop.previewStops[0]
+        stop.id = "text-change-regression"
+        stop.audioURL = nil
+        stop.narrationVoicePreference = .systemDefault
+        let player = NarrationPlayer()
+        defer { player.stop() }
+        XCTAssertTrue(player.prepare(stop))
+        stop.narrationText = "The updated story."
+        XCTAssertTrue(player.prepare(stop))
+        XCTAssertEqual(player.preparedSource, .synthesizedSpeech(text: "The updated story."))
+    }
+
+    func testReleaseRejectsMissingAudioOrOutdatedTranscript() throws {
+        let data = try Data(contentsOf: XCTUnwrap(Bundle.main.url(forResource: "historical_stops", withExtension: "json")))
+        var document = try HistoricalStopDecoder.decode(data)
+        XCTAssertThrowsError(try ProducedNarrationRelease.install(in: &document, bundle: Bundle(for: Self.self)))
+        document.stops[0].narrationText = "An outdated script."
+        XCTAssertThrowsError(try ProducedNarrationRelease.install(in: &document, bundle: .main))
+    }
+
+    func testReleaseCorrectsLegacyAudioMetadataAndPreservesOtherStops() throws {
+        let data = try Data(contentsOf: XCTUnwrap(Bundle.main.url(forResource: "historical_stops", withExtension: "json")))
+        var document = try HistoricalStopDecoder.decode(data)
+        let remaining = Array(document.stops.dropFirst(2))
+        document.stops[0].audioURL = nil
+        document.stops[1].audioURL = URL(string: "http://preservecranford.com/Audio/Greystone.mp3")
+        try ProducedNarrationRelease.install(in: &document, bundle: .main)
+        for (stop, recording) in zip(document.stops, ProducedNarrationRelease.recordings) {
+            XCTAssertEqual(stop.narrationSource, .bundledAudio(fileName: recording.fileName))
+            XCTAssertEqual(stop.estimatedVisitDuration, recording.duration)
+        }
+        XCTAssertEqual(Array(document.stops.dropFirst(2)), remaining)
+    }
+
     func testRequestedMaleVoiceDoesNotSilentlyFallBackWhenMissing() {
         XCTAssertNil(NarrationPlayer.selectSpeechVoice(preference: .warmMaleEnglish, from: []))
         XCTAssertNil(NarrationPlayer.makeSpeechUtterance(text: "The mill story.", voice: nil, preference: .warmMaleEnglish))

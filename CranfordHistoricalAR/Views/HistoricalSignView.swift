@@ -250,9 +250,10 @@ struct HistoricalSignSheet: View {
     let stop: HistoricalStop
     var onContinue: (() -> Void)? = nil
     var onStartDiscovery: (() -> Void)? = nil
+    var onEnterAR: (() -> Void)? = nil
 
     var body: some View {
-        StopDetailView(stop: stop, onContinue: onContinue, onStartDiscovery: onStartDiscovery)
+        StopDetailView(stop: stop, onContinue: onContinue, onStartDiscovery: onStartDiscovery, onEnterAR: onEnterAR)
     }
 }
 
