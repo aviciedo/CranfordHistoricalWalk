@@ -20,11 +20,50 @@ final class DeveloperModeController {
     private static let windowKey = "cranford.developer.mill-window-layout.v1"
     private static let parkKey = "cranford.developer.greystone-bonus-layout.v1"
     private(set) var viewingPointMessage: String?
+    private(set) var isRefreshingGPS = false
+    private(set) var gpsRefreshMessage: String?
+    @ObservationIgnored private var gpsRefreshTask: Task<Void, Never>?
     private(set) var savedViewingAccuracy: Double?
     var savedViewingPoint: GeoCoordinate? { tour.viewingPointOverride }
 
     var isSimulating: Bool { simulator != nil }
     var isWalking: Bool { simulator?.isWalking ?? false }
+
+    func refreshGPSNow() {
+        guard !isRefreshingGPS else { return }
+        guard !isSimulating else {
+            gpsRefreshMessage = "Turn off Simulated location to refresh device GPS."
+            return
+        }
+        tour.startLocationIfPossible()
+        guard realLocationService.authorization == .authorized else {
+            gpsRefreshMessage = "Allow location access in iPhone Settings, then try again."
+            return
+        }
+        let requestedAt = Date()
+        isRefreshingGPS = true
+        gpsRefreshMessage = "Requesting a fresh GPS fix…"
+        realLocationService.requestFreshLocation()
+        gpsRefreshTask = Task { [weak self] in
+            for _ in 0..<75 {
+                try? await Task.sleep(for: .milliseconds(200))
+                guard !Task.isCancelled, let self else { return }
+                if self.isSimulating {
+                    self.gpsRefreshMessage = "GPS refresh stopped: Simulated location is on."
+                    self.isRefreshingGPS = false
+                    return
+                }
+                if let sample = self.tour.userLocation, sample.timestamp >= requestedAt,
+                   !sample.isSimulated, sample.horizontalAccuracy.isFinite, sample.horizontalAccuracy >= 0 {
+                    self.gpsRefreshMessage = "Fresh GPS coordinates received."
+                    self.isRefreshingGPS = false
+                    return
+                }
+            }
+            self?.gpsRefreshMessage = "No fresh fix yet. Move outdoors and try again."
+            self?.isRefreshingGPS = false
+        }
+    }
 
     /// Default start: a few hundred meters south-west of the first stop so the first leg is real.
     static let defaultStartOffsetMeters: Double = 350

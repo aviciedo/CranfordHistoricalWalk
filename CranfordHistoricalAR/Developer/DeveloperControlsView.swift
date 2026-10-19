@@ -105,6 +105,18 @@ struct DeveloperControlsView: View {
             }
 
             Section {
+                Button { developer.refreshGPSNow() } label: {
+                    HStack {
+                        Label("Refresh GPS now", systemImage: "arrow.clockwise")
+                        Spacer()
+                        if developer.isRefreshingGPS { ProgressView() }
+                    }
+                    .frame(minHeight: 44)
+                }
+                .disabled(developer.isRefreshingGPS || developer.isSimulating)
+                if let message = developer.gpsRefreshMessage {
+                    Text(message).font(.footnote).foregroundStyle(.secondary)
+                }
                 TimelineView(.periodic(from: .now, by: 1)) { context in
                     VStack(spacing: 12) {
                         if let sample = tour.userLocation {

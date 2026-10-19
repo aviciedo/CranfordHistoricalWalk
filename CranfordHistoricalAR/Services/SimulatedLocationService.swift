@@ -57,6 +57,8 @@ final class SimulatedLocationService: LocationService {
         publishHeading()
     }
 
+    func requestFreshLocation() { publishLocation() }
+
     func stop() {
         guard isRunning else { return }
         isRunning = false

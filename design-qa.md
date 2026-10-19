@@ -275,3 +275,13 @@ matching Read narration. The redundant lower plaque button is replaced by an inv
 use Start AR; the existing entry logic is preserved. Disclosure state is presentation-only
 and never stops/re-prepares audio. Debug/Release Swift parsing passed. Native visual, large-text,
 VoiceOver and playback-while-collapsing checks remain unrun here.
+
+
+## Developer Refresh GPS now
+
+Build 0.2.0 (6) adds a live-coordinates button with pending/success/timeout feedback, using
+the same location manager and tour event stream. Cached timestamps cannot satisfy a refresh.
+Duplicate requests and developer simulation are blocked. Core Location continuous updates
+resume after the one-shot callback, including errors/invalid samples. Native regression added;
+Debug/Release syntax passed. Actual one-shot acquisition and native test execution are unrun
+here without Xcode/iPhone.

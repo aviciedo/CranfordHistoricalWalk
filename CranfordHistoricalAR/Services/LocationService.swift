@@ -127,6 +127,7 @@ protocol LocationService: AnyObject {
     func requestWhenInUseAuthorization()
     func requestTemporaryPreciseLocationIfNeeded()
     func start()
+    func requestFreshLocation()
     func stop()
 }
 
@@ -165,6 +166,7 @@ final class CoreLocationService: NSObject, LocationService {
     private let manager = CLLocationManager()
     private let broadcaster = EventBroadcaster<LocationEvent>()
     private var isRunning = false
+    private var isRequestingFreshLocation = false
 
     override init() {
         super.init()
@@ -204,7 +206,23 @@ final class CoreLocationService: NSObject, LocationService {
         }
     }
 
+    /// One-shot refresh on the existing manager. Continuous updates must pause because
+    /// requestLocation() is ignored while startUpdatingLocation() is active.
+    func requestFreshLocation() {
+        guard authorization == .authorized else { requestWhenInUseAuthorization(); return }
+        manager.stopUpdatingLocation()
+        isRequestingFreshLocation = true
+        manager.requestLocation()
+    }
+
+    private func resumeAfterRefresh() {
+        guard isRequestingFreshLocation else { return }
+        isRequestingFreshLocation = false
+        if isRunning { manager.startUpdatingLocation() }
+    }
+
     func stop() {
+        isRequestingFreshLocation = false
         guard isRunning else { return }
         isRunning = false
         manager.stopUpdatingLocation()
@@ -230,9 +248,9 @@ extension CoreLocationService: CLLocationManagerDelegate {
         let samples = locations
             .filter { $0.horizontalAccuracy >= 0 }
             .map(LocationSample.init(location:))
-        guard !samples.isEmpty else { return }
         Task { @MainActor in
             for sample in samples { self.publish(.location(sample)) }
+            self.resumeAfterRefresh()
         }
     }
 
@@ -243,7 +261,10 @@ extension CoreLocationService: CLLocationManagerDelegate {
 
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         let failure = LocationFailure(error)
-        Task { @MainActor in self.publish(.failure(failure)) }
+        Task { @MainActor in
+            self.publish(.failure(failure))
+            self.resumeAfterRefresh()
+        }
     }
 
     nonisolated func locationManagerShouldDisplayHeadingCalibration(_ manager: CLLocationManager) -> Bool {

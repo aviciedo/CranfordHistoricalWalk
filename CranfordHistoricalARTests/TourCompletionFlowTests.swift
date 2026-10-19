@@ -377,6 +377,34 @@ final class TourCompletionFlowTests: XCTestCase {
 @MainActor
 final class StopVisitStoreTests: XCTestCase {
     #if DEVELOPER_MENU
+    func testGPSRefreshWaitsForNewTimestampAndUsesSharedLocationPipeline() async throws {
+        let point = HistoricalStop.previewStops[0].coordinate
+        let service = DeveloperTestLocationService(sample: LocationSample(coordinate: point))
+        let tour = TourViewModel(stopService: InMemoryHistoricalStopService(stops: HistoricalStop.previewStops),
+                                 locationService: service, directionsService: PreviewDirectionsService())
+        await tour.loadStopsIfNeeded()
+        tour.startTour()
+        defer { tour.stopLocation(); tour.cancelRouting() }
+        for _ in 0..<100 where tour.userLocation == nil { try await Task.sleep(for: .milliseconds(5)) }
+        let developer = DeveloperModeController(tour: tour, realLocationService: service)
+        developer.refreshGPSNow()
+        developer.refreshGPSNow()
+        XCTAssertEqual(service.refreshRequests, 1, "Repeated taps cannot overlap requests")
+        try await Task.sleep(for: .milliseconds(250))
+        XCTAssertTrue(developer.isRefreshingGPS, "The existing coordinate must not count as a fresh fix")
+        let fresh = LocationSample(coordinate: point, horizontalAccuracy: 3)
+        service.emit(fresh)
+        for _ in 0..<100 where developer.isRefreshingGPS { try await Task.sleep(for: .milliseconds(10)) }
+        XCTAssertFalse(developer.isRefreshingGPS)
+        XCTAssertEqual(developer.gpsRefreshMessage, "Fresh GPS coordinates received.")
+        XCTAssertEqual(tour.userLocation, fresh)
+        XCTAssertEqual(tour.currentStop?.id, HistoricalStop.previewStops[0].id)
+        developer.enableSimulation()
+        developer.refreshGPSNow()
+        XCTAssertEqual(service.refreshRequests, 1)
+        XCTAssertFalse(developer.isRefreshingGPS)
+    }
+
     func testViewingPointAndWindowCalibrationPersistWithoutChangingSiteCoordinates() async throws {
         let suite = "cranford.discovery.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
@@ -597,19 +625,22 @@ final class StopVisitStoreTests: XCTestCase {
 @MainActor
 private final class DeveloperTestLocationService: LocationService {
     private let sample: LocationSample?
+    private let broadcaster = EventBroadcaster<LocationEvent>()
+    private(set) var refreshRequests = 0
+    func emit(_ sample: LocationSample) { broadcaster.send(.location(sample)) }
     init(sample: LocationSample? = nil) { self.sample = sample }
     var authorization: LocationAuthorization { .authorized }
     var isPreciseLocationAuthorized: Bool { true }
     var isHeadingAvailable: Bool { false }
     func events() -> AsyncStream<LocationEvent> {
-        AsyncStream { continuation in
-            if let sample { continuation.yield(.location(sample)) }
-            continuation.finish()
-        }
+        let stream = broadcaster.stream(replayLatest: false)
+        if let sample { broadcaster.send(.location(sample)) }
+        return stream
     }
     func requestWhenInUseAuthorization() {}
     func requestTemporaryPreciseLocationIfNeeded() {}
     func start() {}
+    func requestFreshLocation() { refreshRequests += 1 }
     func stop() {}
 }
 #endif

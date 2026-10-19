@@ -756,3 +756,16 @@ collapsed and opens to the existing complete description. The post-story plaque 
 points to Start AR, which retains the existing story/discovery and current destination rules.
 Debug/Release syntax passed; native layout, disclosure gestures and continued playback require
 Mac/iPhone testing.
+
+
+## Developer GPS refresh — 0.2.0 (6)
+
+Developer → Live coordinates includes Refresh GPS now. It requests a best-accuracy one-shot
+location using the existing CLLocationManager, pausing continuous location updates while the
+one-shot is pending and resuming them after success/failure (heading stays active). Progress
+clears only after the shared tour pipeline accepts a non-simulated fix timestamped after the
+request, or after a 15-second timeout. Accuracy is reported honestly; a request cannot promise
+an instant satellite fix. The button is disabled while pending or using developer simulation.
+Permission failures and timeout have inline feedback. Native regressions cover cached-fix
+rejection, shared-pipeline updates, repeated-tap prevention and simulation. Swift Debug/Release
+syntax passed; those native tests and hardware refresh behavior require Xcode/iPhone testing.
