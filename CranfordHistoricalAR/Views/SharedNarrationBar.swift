@@ -61,9 +61,14 @@ struct SharedNarrationBar: View {
             .foregroundStyle(AppTheme.ink)
             .simultaneousGesture(
                 DragGesture(minimumDistance: 16).onEnded { value in
-                    guard abs(value.translation.height) > abs(value.translation.width) else { return }
-                    if value.translation.height > 20 { navigation.isNarrationMinimized = true }
-                    else if value.translation.height < -20 { navigation.isNarrationMinimized = false }
+                    switch NarrationMinimizePolicy.drag(
+                        width: Double(value.translation.width),
+                        height: Double(value.translation.height)
+                    ) {
+                    case .minimize: navigation.isNarrationMinimized = true
+                    case .expand: navigation.isNarrationMinimized = false
+                    case .ignore: break
+                    }
                 }
             )
             .sheet(item: $detailStop) { HistoricalSignSheet(stop: $0) }

@@ -79,12 +79,13 @@ struct HomeView: View {
             }
             .coordinateSpace(name: "home.scroll")
             .onPreferenceChange(HomeScrollOffsetKey.self) { offset in
-                if let baseline = scrollBaseline {
-                    if offset < baseline - 24 {
-                        navigation.isNarrationMinimized = true
-                        scrollBaseline = offset
-                    } else if offset > baseline { scrollBaseline = offset }
-                } else { scrollBaseline = offset }
+                let sample = NarrationMinimizePolicy.scrolled(
+                    offset: Double(offset),
+                    baseline: scrollBaseline.map(Double.init),
+                    isMinimized: navigation.isNarrationMinimized
+                )
+                scrollBaseline = sample.baseline.map(CGFloat.init)
+                navigation.isNarrationMinimized = sample.isMinimized
             }
         }
         .background(AppTheme.parchment).foregroundStyle(AppTheme.ink)
@@ -98,11 +99,15 @@ struct HomeView: View {
         // space for the existing controls; keep the map larger than before even when scrolling
         // is needed on a short screen or at accessibility text sizes.
         #if DEVELOPER_MENU
-        let reserved = homeContentReserve + 56 // Developer's 44-point target plus its gap.
+        let includesDeveloperControl = true
         #else
-        let reserved = homeContentReserve
+        let includesDeveloperControl = false
         #endif
-        return max(310, min(350, availableHeight - reserved))
+        return CGFloat(HomeMapFraming.mapHeight(
+            availableHeight: Double(availableHeight),
+            contentReserve: Double(homeContentReserve),
+            includesDeveloperControl: includesDeveloperControl
+        ))
     }
 }
 
