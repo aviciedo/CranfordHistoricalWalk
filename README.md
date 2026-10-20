@@ -805,3 +805,14 @@ as before. Home retains the numbered markers and keeps mill/Greystone illustrati
 even below the usual landmark zoom threshold. Fit padding accounts for their full extents.
 The main walking map retains its existing user/destination framing and zoom-dependent artwork.
 Debug/Release syntax passed; actual map framing and icon overlap need native device verification.
+
+
+## Rahway River Stops illustration — 0.2.0 (11)
+
+Stop 3 in the Stops menu now uses a transparent, photo-based illustration of the supplied
+Rahway River stepped weir, matching the detailed cutout style of the mill and Greystone.
+The original generated RGBA PNG is bundled through the existing asset catalog and replaces
+the generic river symbol in this row. Its view keeps the existing 82×76-point fit, accessibility
+label, full-row detail action and visit states. This is decorative artwork; tour coordinates,
+photo gallery, map icons and AR recognition targets are unchanged. Alpha/asset registration
+and Debug/Release Swift syntax checks passed; native rendering still needs Xcode/iPhone.

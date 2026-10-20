@@ -73,7 +73,8 @@ struct StopsContent: View {
     }
 }
 
-/// Transparent decorative thumbnails. The remaining stops use symbolic artwork until
+/// Transparent decorative thumbnails. Stops 1–3 use photo-based artwork; the remaining stops
+/// use symbolic artwork until
 /// their own reference photographs are supplied, rather than invented reconstructions.
 private struct StopListIllustration: View {
     let stopID: String
@@ -85,39 +86,16 @@ private struct StopListIllustration: View {
                 Image("mill-map-landmark").resizable().scaledToFit()
             case "hpab-002":
                 Image("greystone-map-landmark").resizable().scaledToFit()
+            case "hpab-003":
+                Image("rahway-river-illustration").resizable().scaledToFit()
             default:
                 Canvas { context, size in
                     context.scaleBy(x: size.width / 100, y: size.height / 90)
-                    if stopID == "hpab-003" {
-                        drawRiver(in: &context)
-                    } else {
-                        drawBuilding(in: &context, isChurch: stopID == "hpab-004")
-                    }
+                    drawBuilding(in: &context, isChurch: stopID == "hpab-004")
                 }
             }
         }
         .allowsHitTesting(false)
-    }
-
-    private func drawRiver(in context: inout GraphicsContext) {
-        var river = Path()
-        river.move(to: CGPoint(x: 35, y: 13))
-        river.addCurve(to: CGPoint(x: 49, y: 77), control1: CGPoint(x: 97, y: 28), control2: CGPoint(x: 4, y: 53))
-        context.stroke(river, with: .color(Color(red: 0.39, green: 0.62, blue: 0.68)),
-                       style: StrokeStyle(lineWidth: 23, lineCap: .round))
-        for y in [28.0, 43.0, 60.0] {
-            var ripple = Path()
-            ripple.move(to: CGPoint(x: 37, y: y))
-            ripple.addQuadCurve(to: CGPoint(x: 59, y: y + 2), control: CGPoint(x: 49, y: y - 4))
-            context.stroke(ripple, with: .color(.white.opacity(0.7)), style: StrokeStyle(lineWidth: 1.7, lineCap: .round))
-        }
-        for stone in [CGRect(x: 22, y: 59, width: 13, height: 8), CGRect(x: 66, y: 31, width: 14, height: 9), CGRect(x: 61, y: 70, width: 11, height: 7)] {
-            context.fill(Path(ellipseIn: stone), with: .color(Color(red: 0.65, green: 0.61, blue: 0.51)))
-        }
-        for tree in [CGPoint(x: 18, y: 30), CGPoint(x: 82, y: 61)] {
-            context.fill(Path(roundedRect: CGRect(x: tree.x - 1.5, y: tree.y, width: 3, height: 13), cornerRadius: 1), with: .color(.brown))
-            context.fill(Path(ellipseIn: CGRect(x: tree.x - 10, y: tree.y - 14, width: 20, height: 24)), with: .color(Color(red: 0.40, green: 0.52, blue: 0.35)))
-        }
     }
 
     private func drawBuilding(in context: inout GraphicsContext, isChurch: Bool) {

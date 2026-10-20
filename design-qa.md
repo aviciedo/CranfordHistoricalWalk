@@ -334,3 +334,13 @@ animation. This addresses zooming out for a distant visitor. Home keeps landmark
 at the overview zoom, with padding for the images and numbered markers. Defaults for the
 guided map are unchanged. Debug/Release syntax passed. Actual Google Maps fitting, artwork
 overlap and native map screenshots remain unverified without Xcode/iPhone.
+
+
+## Rahway River photo-based menu illustration
+
+Build 0.2.0 (11) replaces stop 3's generic river drawing with a detailed transparent waterfall
+vignette generated from the supplied photo using existing mill/Greystone art as style references.
+The generated PNG was visually inspected and has real alpha transparency. Asset catalog
+registration and row source mapping were checked; existing row dimensions/actions are preserved.
+Debug/Release syntax passed. Native asset compilation, small-icon legibility and device visual
+QA remain unverified without Xcode/iPhone.
