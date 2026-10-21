@@ -335,9 +335,9 @@ final class NarrationPlayer: NSObject {
     }
 
     fileprivate func speechDidProgress(characterEnd: Int, utterance: AVSpeechUtterance) {
-        guard kind == .synthesizedSpeech, activeUtterance === utterance, !speechText.isEmpty else { return }
-        // AVFoundation ranges use UTF-16, not Swift's grapheme-cluster count.
-        progress = min(Double(characterEnd) / Double(speechText.utf16.count), 1)
+        guard kind == .synthesizedSpeech, activeUtterance === utterance,
+              let fraction = NarrationSpeechProgress.fraction(characterEndUTF16: characterEnd, utf16Length: speechText.utf16.count) else { return }
+        progress = fraction
     }
 
     fileprivate func speechDidFinish(utterance: AVSpeechUtterance) {
@@ -359,16 +359,19 @@ final class NarrationPlayer: NSObject {
     }
 
     private func handleInterruption(typeValue: UInt?, optionsValue: UInt?) {
-        guard let typeValue, let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
-        switch type {
-        case .began:
+        switch NarrationInterruptionPolicy.decision(
+            typeRaw: typeValue,
+            optionsRaw: optionsValue,
+            isPlaying: isPlaying,
+            wasPlayingBefore: wasPlayingBeforeInterruption
+        ) {
+        case .began(let pausePlayback):
             wasPlayingBeforeInterruption = isPlaying
-            if isPlaying { pause() }
-        case .ended:
-            let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue ?? 0)
-            if wasPlayingBeforeInterruption, options.contains(.shouldResume) { play() }
+            if pausePlayback { pause() }
+        case .ended(let resumePlayback):
+            if resumePlayback { play() }
             wasPlayingBeforeInterruption = false
-        @unknown default:
+        case .ignore:
             break
         }
     }

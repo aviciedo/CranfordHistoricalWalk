@@ -17,10 +17,7 @@ struct StopDetailView: View {
 
     private var isCurrent: Bool { tour.phase == .inProgress && tour.currentStop?.id == stop.id }
 
-    private var stopDescription: String {
-        if !stop.longDescription.isEmpty { return stop.longDescription }
-        return stop.shortDescription.hasPrefix("HPAB audio-tour stop.") ? "" : stop.shortDescription
-    }
+    private var stopDescription: String { stop.screenDescription }
 
     private func enterAR() {
         guard tour.prepareForARFromDetails() else { return }

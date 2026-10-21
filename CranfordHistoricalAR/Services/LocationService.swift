@@ -65,8 +65,8 @@ struct HeadingSample: Sendable, Equatable {
     }
 
     /// Best available heading: true north when valid, else magnetic.
-    var bestHeading: Double { trueHeading ?? magneticHeading }
-    var isReliable: Bool { accuracy.isFinite && accuracy >= 0 && accuracy <= 25 && bestHeading.isFinite }
+    var bestHeading: Double { HeadingDisplay.best(trueHeading: trueHeading, magneticHeading: magneticHeading) }
+    var isReliable: Bool { HeadingDisplay.isReliable(accuracy: accuracy, heading: bestHeading) }
 }
 
 enum LocationAuthorization: Sendable, Equatable {

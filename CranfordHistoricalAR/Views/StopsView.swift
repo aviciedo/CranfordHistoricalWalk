@@ -35,15 +35,7 @@ struct StopsContent: View {
                                     VStack(alignment: .leading, spacing: 6) {
                                         Text("Stop \(stop.order)").font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
                                         Text(stop.name).font(.system(.title3, design: .serif).weight(.semibold))
-                                        if let visit = tour.lastRecordedVisit(for: stop) {
-                                            Label("\(visit.evidence == .recognizedPlaque ? "Plaque verified" : "Visited") \(visit.activatedAt.formatted(date: .abbreviated, time: .omitted))", systemImage: "checkmark.circle.fill")
-                                                .font(.caption).foregroundStyle(AppTheme.visited)
-                                        } else if tour.isCompleted(stop) {
-                                            Label(stop.hasPlaqueReference ? "Story completed · No saved plaque verification" : "Practice visit", systemImage: "checkmark.circle")
-                                                .font(.caption).foregroundStyle(AppTheme.secondaryInk)
-                                        } else if stop.id == tour.currentStop?.id {
-                                            Text("Next on your walk").font(.caption).foregroundStyle(AppTheme.secondaryInk)
-                                        }
+                                        statusLabel(for: stop)
                                     }
                                     Spacer(minLength: 8)
                                     Image(systemName: "chevron.right").font(.subheadline)
@@ -65,6 +57,29 @@ struct StopsContent: View {
         .sheet(item: $detailStop) { HistoricalSignSheet(stop: $0) }
     }
 
+    @ViewBuilder
+    private func statusLabel(for stop: HistoricalStop) -> some View {
+        switch StopListStatus.resolve(
+            recordedVisitEvidence: tour.lastRecordedVisit(for: stop)?.evidence,
+            isCompleted: tour.isCompleted(stop),
+            hasPlaqueReference: stop.hasPlaqueReference,
+            isCurrentDestination: stop.id == tour.currentStop?.id
+        ) {
+        case .recordedVisit(let plaqueVerified):
+            if let visit = tour.lastRecordedVisit(for: stop) {
+                Label("\(plaqueVerified ? "Plaque verified" : "Visited") \(visit.activatedAt.formatted(date: .abbreviated, time: .omitted))", systemImage: "checkmark.circle.fill")
+                    .font(.caption).foregroundStyle(AppTheme.visited)
+            }
+        case .completed(let savedPlaqueMissing):
+            Label(savedPlaqueMissing ? "Story completed · No saved plaque verification" : "Practice visit", systemImage: "checkmark.circle")
+                .font(.caption).foregroundStyle(AppTheme.secondaryInk)
+        case .nextOnWalk:
+            Text("Next on your walk").font(.caption).foregroundStyle(AppTheme.secondaryInk)
+        case .none:
+            EmptyView()
+        }
+    }
+
     private func rowHeight(in availableHeight: CGFloat) -> CGFloat {
         let count = max(tour.stops.count, 1)
         // This viewport already excludes the actual header, player and navigation. Text may grow beyond
@@ -81,17 +96,13 @@ private struct StopListIllustration: View {
 
     var body: some View {
         Group {
-            switch stopID {
-            case "hpab-001":
-                Image("mill-map-landmark").resizable().scaledToFit()
-            case "hpab-002":
-                Image("greystone-map-landmark").resizable().scaledToFit()
-            case "hpab-003":
-                Image("rahway-river-illustration").resizable().scaledToFit()
-            default:
+            switch StopListArtwork.selection(for: stopID) {
+            case .bundled(let name):
+                Image(name).resizable().scaledToFit()
+            case .symbolic(let isChurch):
                 Canvas { context, size in
                     context.scaleBy(x: size.width / 100, y: size.height / 90)
-                    drawBuilding(in: &context, isChurch: stopID == "hpab-004")
+                    drawBuilding(in: &context, isChurch: isChurch)
                 }
             }
         }

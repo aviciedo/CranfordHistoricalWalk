@@ -43,7 +43,7 @@ final class CompositeImageLoader: ImageLoader {
     private var inFlight: [String: Task<LoadedImage?, Never>] = [:]
     /// Stops for which every source failed; retried only after `retryInterval`.
     private var failures: [String: Date] = [:]
-    private let retryInterval: TimeInterval = 120
+    private let retryInterval: TimeInterval = ArtworkClassification.failureRetryInterval
 
     private final class CacheEntry {
         let value: LoadedImage
@@ -83,7 +83,7 @@ final class CompositeImageLoader: ImageLoader {
 
     private func load(key: String, resolve: @escaping @MainActor () async -> LoadedImage?) async -> LoadedImage? {
         if let cached = cache.object(forKey: key as NSString)?.value { return cached }
-        if let failedAt = failures[key], Date().timeIntervalSince(failedAt) < retryInterval { return nil }
+        if let failedAt = failures[key], ArtworkClassification.shouldSuppressRetry(failedAt: failedAt, now: Date(), interval: retryInterval) { return nil }
         if let task = inFlight[key] { return await task.value }
 
         let task = Task<LoadedImage?, Never> { await resolve() }
@@ -112,30 +112,39 @@ final class CompositeImageLoader: ImageLoader {
             return image
         }
         if let url = stop.imageURL, let image = await download(url) {
-            return LoadedImage(image: image, kind: .photograph, isPlaceholder: stop.isSample)
+            return loaded(image, label: ArtworkClassification.remote(kind: .photograph, isSample: stop.isSample))
         }
         if let url = stop.illustrationURL, let image = await download(url) {
-            return LoadedImage(image: image, kind: .illustration, isPlaceholder: stop.isSample)
+            return loaded(image, label: ArtworkClassification.remote(kind: .illustration, isSample: stop.isSample))
         }
         return nil
+    }
+
+    private func loaded(_ image: UIImage, label: ArtworkClassification) -> LoadedImage {
+        LoadedImage(
+            image: image,
+            kind: label.kind == .illustration ? .illustration : .photograph,
+            isPlaceholder: label.isPlaceholder
+        )
     }
 
     private func localImage(named name: String, isSample: Bool) async -> LoadedImage? {
         await Task.detached(priority: .utility) { () -> LoadedImage? in
             guard let image = UIImage(named: name) else { return nil }
+            let label = ArtworkClassification.localAsset(named: name, isSample: isSample)
             return LoadedImage(image: image.preparingForDisplay() ?? image,
-                               kind: name.lowercased().contains("illustration") ? .illustration : .photograph,
-                               isPlaceholder: isSample || name.lowercased().hasPrefix("placeholder"))
+                               kind: label.kind == .illustration ? .illustration : .photograph,
+                               isPlaceholder: label.isPlaceholder)
         }.value
     }
 
     /// Downloads and decodes off the main actor. Any failure yields `nil` — never an error (spec §21).
     private func download(_ url: URL) async -> UIImage? {
-        guard url.scheme == "https" || url.scheme == "http" || url.isFileURL else { return nil }
+        guard ArtworkClassification.allowsDownload(scheme: url.scheme, isFileURL: url.isFileURL) else { return nil }
         let session = self.session
         return await Task.detached(priority: .utility) { () -> UIImage? in
             guard let (data, response) = try? await session.data(from: url) else { return nil }
-            if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) { return nil }
+            if let http = response as? HTTPURLResponse, !ArtworkClassification.acceptsHTTPStatus(http.statusCode) { return nil }
             guard let image = UIImage(data: data) else { return nil }
             // Decode now so the first draw on the main thread does not stall.
             return image.preparingForDisplay() ?? image
