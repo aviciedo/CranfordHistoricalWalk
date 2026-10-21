@@ -12,7 +12,6 @@ struct StopDetailView: View {
     var onStartDiscovery: (() -> Void)? = nil
     var onEnterAR: (() -> Void)? = nil
     @State private var isShowingAR = false
-    @State private var isNarrationExpanded = true
     @State private var isDescriptionExpanded = false
 
     private var isCurrent: Bool { tour.phase == .inProgress && tour.currentStop?.id == stop.id }
@@ -76,10 +75,7 @@ struct StopDetailView: View {
                     }
                     .font(.subheadline.weight(.semibold))
                     if stop.narrationSource != nil {
-                        DisclosureGroup("Narration player", isExpanded: $isNarrationExpanded) {
-                            NarrationControls(stop: stop).padding(.top, 12)
-                        }
-                        .font(.subheadline.weight(.medium))
+                        NarrationControls(stop: stop)
                     }
                     if isCurrent && stop.hasPlaqueReference && tour.discovery.hasArrived {
                         Text("Pause in a permitted viewing area before listening. The arrival location is approximate until it is confirmed on site.")
