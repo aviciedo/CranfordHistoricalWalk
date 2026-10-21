@@ -271,7 +271,6 @@ struct ARHUDView: View {
         VStack(alignment: .leading, spacing: 12) {
             Label(model.visitConfirmation, systemImage: "checkmark.circle.fill")
                 .font(.subheadline.weight(.semibold)).foregroundStyle(AppTheme.forest)
-            if let stop = model.tour.currentStop { NarrationControls(stop: stop) }
             HStack(spacing: 12) {
                 Button { model.isShowingSignDetails = true } label: {
                     Label("Stop details", systemImage: "doc.text").frame(maxWidth: .infinity, minHeight: 44)
