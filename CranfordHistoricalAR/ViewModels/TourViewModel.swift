@@ -103,6 +103,8 @@ final class TourViewModel {
     var signPresentationSource: SignPresentationSource?
     var visitRecords: [StopVisitRecord]
     var activeVisitEvidence: StopVisitEvidence?
+    /// Prevent one GPS fix from advancing multiple tour stops.
+    var lastAutomaticVisitSampleTimestamp: Date?
     let visitStore: any StopVisitStore
     var discovery = StopDiscovery()
     var arrivalStoryStopID: String?
