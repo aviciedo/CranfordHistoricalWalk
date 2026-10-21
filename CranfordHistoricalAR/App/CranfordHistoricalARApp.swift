@@ -24,7 +24,6 @@ struct RootView: View {
     @Environment(TourViewModel.self) private var tour
     @Environment(AppDependencies.self) private var dependencies
     @State private var navigation = AppNavigation()
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         TabView(selection: $navigation.selectedTab) {
@@ -44,12 +43,10 @@ struct RootView: View {
         .toolbar(.hidden, for: .tabBar)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             VStack(spacing: 0) {
-                SharedNarrationBar()
                 BottomNavigationBar(selection: $navigation.selectedTab)
             }
             .background(AppTheme.navigationBackground.ignoresSafeArea(edges: .bottom))
         }
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.22), value: navigation.isNarrationMinimized)
         .environment(navigation)
         .tint(AppTheme.accent)
         .onChange(of: tour.isShowingTour) { _, showing in
