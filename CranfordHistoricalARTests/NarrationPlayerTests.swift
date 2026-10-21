@@ -98,6 +98,12 @@ final class NarrationPlayerTests: XCTestCase {
         XCTAssertEqual(Array(document.stops.dropFirst(2)), remaining)
     }
 
+    func testInterruptionRawValuesMatchThePlaybackPolicy() {
+        XCTAssertEqual(AVAudioSession.InterruptionType.began.rawValue, NarrationInterruptionPolicy.beganType)
+        XCTAssertEqual(AVAudioSession.InterruptionType.ended.rawValue, NarrationInterruptionPolicy.endedType)
+        XCTAssertEqual(AVAudioSession.InterruptionOptions.shouldResume.rawValue, NarrationInterruptionPolicy.shouldResumeOption)
+    }
+
     func testRequestedMaleVoiceDoesNotSilentlyFallBackWhenMissing() {
         XCTAssertNil(NarrationPlayer.selectSpeechVoice(preference: .warmMaleEnglish, from: []))
         XCTAssertNil(NarrationPlayer.makeSpeechUtterance(text: "The mill story.", voice: nil, preference: .warmMaleEnglish))

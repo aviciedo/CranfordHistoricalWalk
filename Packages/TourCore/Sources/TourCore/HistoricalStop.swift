@@ -116,6 +116,15 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
         !galleryPhotos.isEmpty || imageURL != nil || illustrationURL != nil
     }
 
+    /// Screen copy for the stop detail. A long description wins, including whitespace.
+    /// The HPAB placeholder short description is hidden rather than shown as history.
+    public var screenDescription: String {
+        if !longDescription.isEmpty { return longDescription }
+        return shortDescription.hasPrefix(Self.placeholderShortDescriptionPrefix) ? "" : shortDescription
+    }
+
+    public static let placeholderShortDescriptionPrefix = "HPAB audio-tour stop."
+
     /// Ignore empty/duplicate entries while preserving editorial order and old single-photo stops.
     public var galleryPhotos: [HistoricalStopPhoto] {
         var seen = Set<String>()

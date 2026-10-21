@@ -147,9 +147,11 @@ final class TourViewModel {
 
     /// Heading to draw on the map/AR: compass when reliable, else GPS course while moving.
     var displayHeading: Double? {
-        if let heading, heading.isReliable { return heading.bestHeading }
-        if let userLocation, let course = userLocation.course, (userLocation.speed ?? 0) > 0.5 { return course }
-        return nil
+        HeadingDisplay.choose(
+            reliableCompass: (heading?.isReliable == true) ? heading?.bestHeading : nil,
+            course: userLocation?.course,
+            speed: userLocation?.speed
+        )
     }
 
     var hasReliableHeading: Bool { displayHeading != nil }
@@ -304,30 +306,43 @@ final class TourViewModel {
     }
 
     private func refreshLocationIssue() {
-        switch locationAuthorization {
-        case .notDetermined:
-            locationIssue = .permissionNotDetermined
-        case .denied:
-            locationIssue = .permissionDenied
-        case .restricted:
-            locationIssue = .permissionRestricted
-        case .authorized:
-            if let failure = lastLocationFailure, userLocation == nil {
-                switch failure {
-                case .denied: locationIssue = .permissionDenied
-                case .locationUnknown: locationIssue = .waitingForSignal
-                case .network: locationIssue = .failure("Location needs a network connection right now.")
-                case .other(let text): locationIssue = .failure(text)
-                }
-            } else if !isPreciseLocation {
-                locationIssue = .reducedAccuracy
-            } else if let userLocation {
-                locationIssue = userLocation.horizontalAccuracy > TourViewModel.poorAccuracyThreshold
-                    ? .poorAccuracy(meters: userLocation.horizontalAccuracy)
-                    : nil
-            } else {
-                locationIssue = .waitingForSignal
-            }
+        locationIssue = LocationGuidance.issue(
+            permission: Self.guidancePermission(locationAuthorization),
+            isPrecise: isPreciseLocation,
+            hasLocation: userLocation != nil,
+            horizontalAccuracy: userLocation?.horizontalAccuracy,
+            failure: lastLocationFailure.map(Self.guidanceFailure),
+            poorAccuracyMeters: TourViewModel.poorAccuracyThreshold
+        ).map(Self.locationIssue(from:))
+    }
+
+    private static func guidancePermission(_ authorization: LocationAuthorization) -> LocationGuidance.Permission {
+        switch authorization {
+        case .notDetermined: return .notDetermined
+        case .denied: return .denied
+        case .restricted: return .restricted
+        case .authorized: return .authorized
+        }
+    }
+
+    private static func guidanceFailure(_ failure: LocationFailure) -> LocationGuidance.Failure {
+        switch failure {
+        case .denied: return .denied
+        case .locationUnknown: return .locationUnknown
+        case .network: return .network
+        case .other(let text): return .other(text)
+        }
+    }
+
+    private static func locationIssue(from issue: LocationGuidance.Issue) -> LocationIssue {
+        switch issue {
+        case .permissionNotDetermined: return .permissionNotDetermined
+        case .permissionDenied: return .permissionDenied
+        case .permissionRestricted: return .permissionRestricted
+        case .reducedAccuracy: return .reducedAccuracy
+        case .waitingForSignal: return .waitingForSignal
+        case .poorAccuracy(let meters): return .poorAccuracy(meters: meters)
+        case .failure(let text): return .failure(text)
         }
     }
 }
