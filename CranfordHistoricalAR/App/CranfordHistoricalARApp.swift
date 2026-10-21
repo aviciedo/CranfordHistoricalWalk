@@ -15,6 +15,7 @@ struct CranfordHistoricalARApp: App {
                 .environment(dependencies)
                 .environment(dependencies.tourViewModel)
                 .tint(AppTheme.accent)
+                .preferredColorScheme(.light)
         }
     }
 }
