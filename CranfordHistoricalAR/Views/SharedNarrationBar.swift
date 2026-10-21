@@ -97,7 +97,7 @@ struct NarrationPlayButton: View {
                     ProgressView().tint(AppTheme.ivory)
                 } else {
                     Image(systemName: isCurrent && player.isPlaying ? "pause.fill" : "play.fill")
-                        .font(.title3.weight(.semibold))
+                        .font(.system(size: diameter * 0.43, weight: .bold))
                 }
             }
             .frame(width: diameter, height: diameter)
