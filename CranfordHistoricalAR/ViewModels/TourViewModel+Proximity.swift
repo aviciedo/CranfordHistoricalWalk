@@ -60,6 +60,37 @@ extension TourViewModel {
         let effects = machine.handle(.distanceUpdated(meters: distance))
         proximityMachine = machine
         apply(effects, for: stop, source: .automatic)
+        // A reliable physical GPS arrival completes this destination without AR or audio.
+        // Evaluate each location fix at most once, so a stop change cannot reuse the same
+        // stationary fix to cascade through two nearby tour destinations.
+        if lastAutomaticVisitSampleTimestamp != sample.timestamp,
+           sample.horizontalAccuracy <= StopActivationPolicy.maximumAccuracyMeters,
+           distance + sample.horizontalAccuracy <= stop.arrivalRadius {
+            lastAutomaticVisitSampleTimestamp = sample.timestamp
+            let decision = StopActivationPolicy.decide(
+                trackingReady: true, // Core Location arrival needs no AR camera session.
+                plaqueIsTracked: false,
+                isSimulated: sample.isSimulated || locationService is SimulatedLocationService,
+                distanceMeters: distance,
+                horizontalAccuracy: sample.horizontalAccuracy,
+                locationTimestamp: sample.timestamp,
+                arrivalRadius: stop.arrivalRadius
+            )
+            if case .allow(let evidence) = decision {
+                progress.markCurrentStopVisited()
+                activeVisitEvidence = evidence
+                #if DEVELOPER_MENU
+                if isVisitRecordingEnabled {
+                    visitStore.record(StopVisitRecord(stopID: stop.id, activatedAt: Date(), evidence: evidence))
+                }
+                #else
+                visitStore.record(StopVisitRecord(stopID: stop.id, activatedAt: Date(), evidence: evidence))
+                #endif
+                visitRecords = visitStore.records()
+                completeCurrentStopAndAdvance()
+                return
+            }
+        }
         if stop.hasPlaqueReference {
             var viewingPoint = stop.coordinate
             #if DEVELOPER_MENU
