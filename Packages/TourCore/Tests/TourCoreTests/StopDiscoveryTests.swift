@@ -98,6 +98,52 @@ final class StopDiscoveryTests: XCTestCase {
         XCTAssertTrue(discovery.arrive())
     }
 
+    func testSwitchingStopsRestoresThatSitesStoryAndPlaqueProgress() {
+        var memory = StopDiscoveryMemory()
+        var mill = memory.transition(to: "hpab-001", saving: StopDiscovery())
+        mill.finishStory()
+        mill.beginDiscovery()
+        XCTAssertTrue(mill.recognizePlaque(isMatching: true, trackingReady: true, isSimulated: false))
+
+        var park = memory.transition(to: "hpab-002", saving: mill)
+        XCTAssertFalse(park.hasFinishedStory)
+        XCTAssertFalse(park.hasVerifiedPlaque)
+        park.finishStory()
+
+        let restoredMill = memory.transition(to: "hpab-001", saving: park)
+        XCTAssertTrue(restoredMill.hasVerifiedPlaque)
+        XCTAssertEqual(restoredMill.stage, .unlocked)
+        let restoredPark = memory.transition(to: "hpab-002", saving: restoredMill)
+        XCTAssertTrue(restoredPark.hasFinishedStory)
+        XCTAssertFalse(restoredPark.hasVerifiedPlaque)
+        XCTAssertEqual(restoredPark.stage, .readyForDiscovery)
+    }
+
+    func testSameStopAndEmptyTargetKeepOrStoreTheActiveDiscovery() {
+        var memory = StopDiscoveryMemory()
+        var current = memory.transition(to: "hpab-001", saving: StopDiscovery())
+        current.arrive()
+        let again = memory.transition(to: "hpab-001", saving: current)
+        XCTAssertTrue(again.hasArrived)
+        XCTAssertTrue(again.hasOfferedArrivalStory)
+
+        let cleared = memory.transition(to: nil, saving: again)
+        XCTAssertEqual(cleared, StopDiscovery())
+        let restored = memory.transition(to: "hpab-001", saving: cleared)
+        XCTAssertTrue(restored.hasArrived)
+    }
+
+    func testResetDropsSavedDiscoveryBeforeTheWalkStartsAgain() {
+        var memory = StopDiscoveryMemory()
+        var current = memory.transition(to: "hpab-001", saving: StopDiscovery())
+        current.finishStory()
+        memory.reset()
+        let restarted = memory.transition(to: "hpab-001", saving: current)
+        XCTAssertFalse(restarted.hasFinishedStory)
+        XCTAssertEqual(restarted, StopDiscovery())
+        XCTAssertTrue(memory.byStopID.isEmpty)
+    }
+
     func testWindowPlacementMovesRightAndUpAndScalesWithPlaque() throws {
         let layout = WindowBonusLayout()
         let small = try XCTUnwrap(layout.dimensions(plaqueWidthMeters: 0.18))

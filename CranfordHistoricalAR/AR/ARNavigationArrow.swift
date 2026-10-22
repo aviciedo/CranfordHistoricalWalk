@@ -43,7 +43,6 @@ private enum ARChevronArt {
 /// direction follows the smoothed camera-relative route bearing, rather than a fixed icon.
 @MainActor
 final class ARNavigationArrowEntity: Entity {
-    static let firstArrowDistance: Float = 3.8
     static let heightBelowCamera: Float = 1.15
     private let holder = Entity()
     private let heading = Entity()
@@ -63,13 +62,14 @@ final class ARNavigationArrowEntity: Entity {
     func update(base: SIMD3<Float>, direction: SIMD3<Float>, camera: SIMD3<Float>,
                 relativeBearing: Double?, force: Bool = false, maximumDistance: Float? = nil) {
         let flat = SIMD3<Float>(direction.x, 0, direction.z)
-        guard simd_length(flat) > 0.001, let bearing = relativeBearing, bearing.isFinite else {
+        guard ARChevronPlacement.canAim(flatLength: simd_length(flat), relativeBearing: relativeBearing),
+              let bearing = relativeBearing else {
             holder.isEnabled = false
             return
         }
         let dir = simd_normalize(flat)
-        let distance = min(Self.firstArrowDistance, maximumDistance.map { max(0, $0 - 1.2) } ?? Self.firstArrowDistance)
-        holder.isEnabled = isShowing && distance >= 0.9
+        let distance = ARChevronPlacement.travelDistance(maximumDistance: maximumDistance)
+        holder.isEnabled = ARChevronPlacement.isVisible(isShowing: isShowing, travelDistance: distance)
         guard holder.isEnabled else { return }
         var position = base + dir * distance
         position.y += 0.95
@@ -78,12 +78,12 @@ final class ARNavigationArrowEntity: Entity {
         let degrees = ARChevronGeometry.rotationDegrees(relativeBearing: bearing)
         let rotation = simd_quatf(angle: Float(degrees * .pi / 180), axis: [0, 0, 1])
         let appearing = lastPosition == nil
-        let bearingChange = lastBearing.map { abs(atan2(sin((bearing - $0) * .pi / 180),
-                                                       cos((bearing - $0) * .pi / 180)) * 180 / .pi) } ?? 360
-        if !force, let lastPosition, let lastRotation,
-           simd_distance(position, lastPosition) < 0.25,
-           abs(simd_dot(facing.vector, lastRotation.vector)) > 0.999,
-           bearingChange < 2 { return }
+        let bearingChange = lastBearing.map { ARChevronPlacement.bearingChangeDegrees(from: $0, to: bearing) } ?? 360
+        if let lastPosition, let lastRotation,
+           ARChevronPlacement.shouldKeepPreviousPose(
+               positionDelta: simd_distance(position, lastPosition),
+               facingDot: simd_dot(facing.vector, lastRotation.vector),
+               bearingChange: bearingChange, force: force) { return }
         lastPosition = position
         lastRotation = facing
         lastBearing = bearing
