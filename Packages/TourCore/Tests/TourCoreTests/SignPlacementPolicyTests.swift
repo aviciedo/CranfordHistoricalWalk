@@ -68,6 +68,22 @@ final class SignPlacementPolicyTests: XCTestCase {
         XCTAssertEqual(SignPlacementPolicy.mode(input), .geoFallback)
     }
 
+    func testManualDismissHidesTheCardBeforeProximityCatchesUp() {
+        var input = presentedMill()
+        input.hasManuallyDismissed = true
+        input.proximity = .signPresented
+        input.isSignRequested = true
+        input.plaqueDetected = true
+        XCTAssertEqual(SignPlacementPolicy.mode(input), .hidden)
+    }
+
+    func testSearchContinuesUntilTheTimeout() {
+        var input = presentedMill()
+        input.searchElapsed = SignPlacementPolicy.searchTimeout - 0.001
+        XCTAssertEqual(SignPlacementPolicy.mode(input), .searchingForPlaque)
+        XCTAssertTrue(SignPlacementPolicy.shouldKeepNavigationArrows(mode: .geoFallback, insideArrivalRadius: false))
+    }
+
     func testDismissedThisVisitDoesNotReshowOnRetrack() {
         var input = presentedMill()
         input.hasManuallyDismissed = true

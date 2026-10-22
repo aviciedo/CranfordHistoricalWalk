@@ -48,6 +48,27 @@ final class RouteRefreshPolicyTests: XCTestCase {
         XCTAssertEqual(policy.refreshReason(for: c), .destinationChanged)
     }
 
+    func testOffRouteInsideMinimumIntervalDoesNotRefresh() {
+        let route = makeRoute(from: cranfordCenter, bearing: 0, segments: 5, segmentMeters: 100)
+        let jumped = GeoMath.destination(from: cranfordCenter, bearing: 90, distance: 40)
+        let soon = context(route: route, user: jumped, destination: route.destination, lastOrigin: cranfordCenter, lastDestination: route.destination, lastDate: t0, now: t0 + 2)
+        XCTAssertNil(policy.refreshReason(for: soon), "a GPS jump inside the minimum interval must not stampede the Routes API")
+        let later = context(route: route, user: jumped, destination: route.destination, lastOrigin: cranfordCenter, lastDestination: route.destination, lastDate: t0, now: t0 + 20)
+        XCTAssertEqual(policy.refreshReason(for: later), .offRoute)
+    }
+
+    func testStalePolylineForTheNewStopRefreshesImmediately() {
+        let oldRoute = makeRoute(from: cranfordCenter, bearing: 0, segments: 5, segmentMeters: 100)
+        let newDestination = GeoMath.destination(from: cranfordCenter, bearing: 90, distance: 400)
+        // The request was already recorded for the new stop, but the polyline still ends at the old one.
+        let pending = context(route: oldRoute, user: cranfordCenter, destination: newDestination, lastOrigin: cranfordCenter, lastDestination: newDestination, lastDate: t0, now: t0 + 1)
+        XCTAssertEqual(policy.refreshReason(for: pending), .destinationChanged)
+
+        let jitter = GeoMath.destination(from: oldRoute.destination, bearing: 45, distance: 0.4)
+        let noise = context(route: oldRoute, user: cranfordCenter, destination: jitter, lastOrigin: cranfordCenter, lastDestination: oldRoute.destination, lastDate: t0, now: t0 + 1)
+        XCTAssertNil(policy.refreshReason(for: noise), "sub-meter destination noise is not a new stop")
+    }
+
     func testMinimumIntervalSuppressesRapidRefresh() {
         let route = makeRoute(from: cranfordCenter, bearing: 0, segments: 5, segmentMeters: 100)
         let user = GeoMath.destination(from: cranfordCenter, bearing: 0, distance: 60)

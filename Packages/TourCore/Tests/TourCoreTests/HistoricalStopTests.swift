@@ -173,6 +173,8 @@ final class HistoricalStopTests: XCTestCase {
         XCTAssertEqual(try stop(audio: nil).narrationSource, .synthesizedSpeech(text: "Long text."))
         XCTAssertEqual(try stop(audio: nil, long: "  ").narrationSource, .synthesizedSpeech(text: "Short."))
         XCTAssertNil(try stop(audio: nil, long: "", short: "").narrationSource)
+        XCTAssertEqual(try stop(audio: "file:///tmp/mill.m4a").narrationSource, .remoteAudio(URL(string: "file:///tmp/mill.m4a")!))
+        XCTAssertEqual(try stop(audio: "ftp://example.org/mill.mp3").narrationSource, .synthesizedSpeech(text: "Long text."))
     }
 
     func testSampleCoordinatesAreNearCranford() throws {
@@ -203,6 +205,44 @@ final class HistoricalStopTests: XCTestCase {
     func testDepartureRadiusNeverBelowArrival() {
         let stop = makeStop(arrival: 40, departure: 20)
         XCTAssertEqual(stop.effectiveDepartureRadius, 56, accuracy: 0.001) // max(40+15, 40*1.4)
+        let equal = makeStop(arrival: 40, departure: 40)
+        XCTAssertEqual(equal.effectiveDepartureRadius, 56, accuracy: 0.001, "a radius equal to arrival would flap; keep the hysteresis floor")
+    }
+
+    func testStopsAreSortedByOrderThenIdentifier() throws {
+        let json = """
+        {"schemaVersion":1,"tourName":"T","stops":[
+          {"id":"c","name":"C","latitude":40.67,"longitude":-74.32,"order":2},
+          {"id":"a","name":"A","latitude":40.65,"longitude":-74.30,"order":1},
+          {"id":"b","name":"B","latitude":40.66,"longitude":-74.31,"order":2}
+        ]}
+        """.data(using: .utf8)!
+        let stops = try HistoricalStopDecoder.decode(json).stops
+        XCTAssertEqual(stops.map(\.id), ["a", "b", "c"])
+    }
+
+    func testUnusablePlaqueIsNotATrackingReference() throws {
+        func decoded(_ plaque: String) throws -> HistoricalStop {
+            let json = """
+            {"schemaVersion":1,"tourName":"T","stops":[
+              {"id":"a","name":"A","latitude":40.65,"longitude":-74.30,"order":1,"plaque":\(plaque)}
+            ]}
+            """.data(using: .utf8)!
+            return try HistoricalStopDecoder.decode(json).stops[0]
+        }
+        XCTAssertFalse(try decoded(#"{"transcription":"  ","quoteLabel":"Door plaque","referenceImageName":"plate","physicalWidthMeters":0.18}"#).hasPlaqueReference)
+        XCTAssertFalse(try decoded(#"{"transcription":"c. 1737","quoteLabel":"Door plaque","referenceImageName":"","physicalWidthMeters":0.18}"#).hasPlaqueReference)
+        XCTAssertFalse(try decoded(#"{"transcription":"c. 1737","quoteLabel":"Door plaque","referenceImageName":"plate","physicalWidthMeters":0}"#).hasPlaqueReference)
+        XCTAssertFalse(try decoded(#"{"transcription":"c. 1737","quoteLabel":"Door plaque","referenceImageName":"plate","physicalWidthMeters":-0.2}"#).hasPlaqueReference)
+        let missingLabel = """
+        {"schemaVersion":1,"tourName":"T","stops":[
+          {"id":"a","name":"A","latitude":40.65,"longitude":-74.30,"order":1,"plaque":{"transcription":"c. 1737","referenceImageName":"plate","physicalWidthMeters":0.18}}
+        ]}
+        """.data(using: .utf8)!
+        XCTAssertThrowsError(try HistoricalStopDecoder.decode(missingLabel))
+        let usable = try decoded(#"{"transcription":"c. 1737","quoteLabel":"Door plaque","referenceImageName":"plate","physicalWidthMeters":0.18}"#)
+        XCTAssertTrue(usable.hasPlaqueReference)
+        XCTAssertEqual(usable.plaque?.transcription, "c. 1737")
     }
 
     func testRejectsDuplicateIDs() {
@@ -217,10 +257,22 @@ final class HistoricalStopTests: XCTestCase {
     }
 
     func testRejectsInvalidCoordinateAndEmptyTour() {
-        let bad = """
+        let badLatitude = """
         {"schemaVersion":1,"tourName":"T","stops":[{"id":"a","name":"A","latitude":140.65,"longitude":-74.30,"order":1}]}
         """.data(using: .utf8)!
-        XCTAssertThrowsError(try HistoricalStopDecoder.decode(bad))
+        XCTAssertThrowsError(try HistoricalStopDecoder.decode(badLatitude)) { error in
+            XCTAssertEqual(error as? HistoricalStopDecodingError, .invalidCoordinate(stopID: "a"))
+        }
+        let badLongitude = """
+        {"schemaVersion":1,"tourName":"T","stops":[{"id":"edge","name":"E","latitude":40.65,"longitude":181,"order":1}]}
+        """.data(using: .utf8)!
+        XCTAssertThrowsError(try HistoricalStopDecoder.decode(badLongitude)) { error in
+            XCTAssertEqual(error as? HistoricalStopDecodingError, .invalidCoordinate(stopID: "edge"))
+        }
+        XCTAssertFalse(GeoCoordinate(latitude: .nan, longitude: -74.3).isValid)
+        XCTAssertFalse(GeoCoordinate(latitude: 40.65, longitude: .infinity).isValid)
+        XCTAssertTrue(GeoCoordinate(latitude: 90, longitude: 180).isValid)
+        XCTAssertTrue(GeoCoordinate(latitude: -90, longitude: -180).isValid)
         let empty = #"{"schemaVersion":1,"tourName":"T","stops":[]}"#.data(using: .utf8)!
         XCTAssertThrowsError(try HistoricalStopDecoder.decode(empty)) { error in
             XCTAssertEqual(error as? HistoricalStopDecodingError, .emptyTour)
