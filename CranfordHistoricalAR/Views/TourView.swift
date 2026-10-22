@@ -99,7 +99,7 @@ struct TourView: View {
     }
 
     private var map: some View {
-        TourMapView(mapModel: mapModel, bottomInset: 0)
+        TourMapView(mapModel: mapModel, bottomInset: 0, onEnterAR: enterWalkingAR)
             .clipped()
     }
 
@@ -120,6 +120,12 @@ struct TourView: View {
             .disabled(tour.loadState != .loaded)
             .padding(20)
         }
+    }
+
+    private func enterWalkingAR() {
+        // Start/resume the shared destination; opening the camera never skips a stop or story.
+        guard tour.prepareForARFromDetails() else { return }
+        isShowingAR = true
     }
 
     private func focusRequestedStop() {

@@ -829,3 +829,15 @@ so coordinatesUnverified stays true. Provenance is in docs/field-references/chur
 The bundled catalog, test fixture and native previews agree. Map position, walking-route
 destination, proximity and AR geographic target use this shared coordinate. Stop identity,
 visit records, arrival radii, narration, artwork and other stops are unchanged.
+
+
+## Map AR entry control — 0.2.0 (13)
+
+The Map screen now includes a white circular camera/viewfinder button above recenter and
+route overview, matching the supplied control reference. It starts/resumes the guided tour
+and presents the existing AR camera for the current destination (the next uncompleted stop).
+It does not skip stops, finish a story or unlock a bonus. The button remains available without
+a Google Maps key; existing AR permission/status handling and route estimates apply. The
+control has an accessible name/destination hint and is disabled until tour data is loaded.
+Debug/Release Swift syntax and callback/presentation wiring checks passed; native camera
+presentation and field walking guidance still require iPhone testing.

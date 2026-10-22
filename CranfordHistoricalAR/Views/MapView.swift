@@ -7,6 +7,7 @@ struct TourMapView: View {
     @Environment(TourViewModel.self) private var tour
     var mapModel: MapViewModel
     var bottomInset: CGFloat
+    var onEnterAR: () -> Void
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -48,43 +49,56 @@ struct TourMapView: View {
             }
         }
         .overlay(alignment: .bottomTrailing) {
-            if GoogleMapsBootstrap.isConfigured {
-                MapControlStack(mapModel: mapModel)
-                    .padding(.trailing, 16).padding(.bottom, 20)
-            }
+            MapControlStack(mapModel: mapModel, onEnterAR: onEnterAR)
+                .padding(.trailing, 16).padding(.bottom, 20)
         }
         .animation(.easeInOut(duration: 0.25), value: tour.locationIssue)
     }
 }
 
-/// Recenter / overview buttons.
+/// AR entry, recenter and overview controls.
 struct MapControlStack: View {
     @Environment(TourViewModel.self) private var tour
     var mapModel: MapViewModel
+    var onEnterAR: () -> Void
 
     var body: some View {
         VStack(spacing: 10) {
-            Button {
-                mapModel.requestFollow(tour: tour)
-            } label: {
-                Image(systemName: "location.fill")
+            Button(action: onEnterAR) {
+                Image(systemName: "camera.viewfinder")
                     .frame(width: 46, height: 46)
                     .background(.white, in: Circle())
                     .shadow(color: .black.opacity(0.12), radius: 5, y: 3)
             }
-            .disabled(tour.userLocation == nil)
-            .opacity(tour.userLocation == nil ? 0.45 : 1)
-            .accessibilityLabel("Center on my location")
+            .disabled(tour.loadState != .loaded)
+            .opacity(tour.loadState == .loaded ? 1 : 0.45)
+            .accessibilityLabel("AR walking directions")
+            .accessibilityHint("Opens camera guidance to \(tour.currentStop?.name ?? tour.stops.first?.name ?? "the next tour stop")")
+            .accessibilityIdentifier("map.enterAR")
 
-            Button {
-                mapModel.showUserAndDestination(tour: tour)
-            } label: {
-                Image(systemName: "scope")
-                    .frame(width: 46, height: 46)
-                    .background(.white, in: Circle())
-                    .shadow(color: .black.opacity(0.12), radius: 5, y: 3)
+            if GoogleMapsBootstrap.isConfigured {
+                Button {
+                    mapModel.requestFollow(tour: tour)
+                } label: {
+                    Image(systemName: "location.fill")
+                        .frame(width: 46, height: 46)
+                        .background(.white, in: Circle())
+                        .shadow(color: .black.opacity(0.12), radius: 5, y: 3)
+                }
+                .disabled(tour.userLocation == nil)
+                .opacity(tour.userLocation == nil ? 0.45 : 1)
+                .accessibilityLabel("Center on my location")
+
+                Button {
+                    mapModel.showUserAndDestination(tour: tour)
+                } label: {
+                    Image(systemName: "scope")
+                        .frame(width: 46, height: 46)
+                        .background(.white, in: Circle())
+                        .shadow(color: .black.opacity(0.12), radius: 5, y: 3)
+                }
+                .accessibilityLabel("Show route to next stop")
             }
-            .accessibilityLabel("Show route to next stop")
         }
         .font(.system(size: 19, weight: .medium))
         .buttonStyle(.plain)

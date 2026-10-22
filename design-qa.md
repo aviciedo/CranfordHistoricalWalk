@@ -356,3 +356,13 @@ route/arrival alignment still requires field confirmation.
 Validation for this update: 154 TourCore tests passed, Debug/Release Swift syntax passed,
 and a data comparison confirmed all other stop records and church non-coordinate fields
 are unchanged. Native field-route/arrival behavior is not exercised by these portable checks.
+
+
+## Map AR button
+
+Build 0.2.0 (13) adds the supplied camera/viewfinder affordance as a 46-point white circular
+control at the top of the existing right-side map controls. It enters the single existing
+ARTourView presentation through the shared tour start/resume path. Existing current/next-stop
+routing and story/recognition rules are preserved. The AR control also appears on the fallback
+map. Swift Debug/Release syntax and callback wiring passed; real device sizing, camera entry,
+permission prompts and route guidance remain unverified without Xcode/iPhone.
