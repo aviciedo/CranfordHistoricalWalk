@@ -84,6 +84,66 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertTrue(tour.progress.isCompleted(stops[0].id))
     }
 
+    func testActiveARSessionDoesNotAutoSkipNonPlaqueStop() {
+        tour.isARSessionActive = true
+        tour.arDiscoveryStopID = nil
+        advanceToStop(at: 3)
+        tour.handleLocationForProximity(LocationSample(coordinate: stops[3].coordinate, horizontalAccuracy: 4))
+        XCTAssertEqual(tour.currentStop?.id, stops[3].id)
+        XCTAssertEqual(tour.presentedSignStopID, stops[3].id)
+        XCTAssertFalse(tour.isCurrentStopVisited)
+        XCTAssertFalse(tour.progress.isCompleted(stops[3].id))
+    }
+
+    func testStartingARAtNonPlaqueStopHoldsUntilTheSessionEnds() {
+        tour.isARSessionActive = true
+        advanceToStop(at: 3)
+        tour.isARSessionActive = false
+        XCTAssertTrue(tour.prepareForARFromDetails(stopID: stops[3].id))
+        tour.handleLocationForProximity(LocationSample(coordinate: stops[3].coordinate, horizontalAccuracy: 5))
+        XCTAssertEqual(tour.currentStop?.id, stops[3].id, "Start AR must not skip the selected church")
+        XCTAssertFalse(tour.progress.isCompleted(stops[3].id))
+
+        tour.endARDiscoverySession()
+        tour.handleLocationForProximity(LocationSample(
+            coordinate: stops[3].coordinate, horizontalAccuracy: 5, timestamp: Date().addingTimeInterval(2)))
+        XCTAssertEqual(tour.currentStop?.id, stops[4].id)
+        XCTAssertTrue(tour.progress.isCompleted(stops[3].id))
+    }
+
+    func testMapAREntryWhileAlreadyAtFirstStopDoesNotSkipIt() async throws {
+        simulator.teleport(to: stops[0].coordinate)
+        try await waitUntil("standing at the mill") {
+            self.tour.userLocation?.coordinate == self.stops[0].coordinate
+        }
+        tour.isARSessionActive = false
+        tour.progress.reset()
+        tour.proximityMachine = nil
+        tour.arDiscoveryStopID = nil
+        XCTAssertEqual(tour.phase, .notStarted)
+        XCTAssertTrue(tour.prepareForARFromDetails())
+        XCTAssertEqual(tour.currentStop?.id, stops[0].id)
+        XCTAssertFalse(tour.progress.isCompleted(stops[0].id))
+        XCTAssertEqual(tour.arDiscoveryStopID, stops[0].id)
+    }
+
+    func testAccurateGPSStillCompletesNonPlaqueStopOutsideAR() {
+        tour.isARSessionActive = false
+        tour.arDiscoveryStopID = nil
+        advanceToStop(at: 2)
+        tour.handleLocationForProximity(LocationSample(coordinate: stops[2].coordinate, horizontalAccuracy: 5))
+        XCTAssertEqual(tour.currentStop?.id, stops[3].id)
+        XCTAssertTrue(tour.progress.isCompleted(stops[2].id))
+    }
+
+    private func advanceToStop(at index: Int) {
+        while tour.currentStop?.id != stops[index].id, tour.phase == .inProgress {
+            tour.progress.markCurrentStopVisited()
+            tour.completeCurrentStopAndAdvance()
+        }
+        XCTAssertEqual(tour.currentStop?.id, stops[index].id)
+    }
+
     func testUnknownOrUntrackedPlaqueCannotRetargetAndDismissedCameraReleasesGPSHold() {
         let initial = tour.currentStop?.id
         XCTAssertFalse(tour.selectRecognizedPlaque(imageName: "unknown", isTracked: true, trackingReady: true))

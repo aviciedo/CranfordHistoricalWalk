@@ -217,7 +217,17 @@ final class TourViewModel {
             let previousID = currentStop?.id
             guard progress.selectStop(withID: stopID) else { return false }
             if previousID != stopID || proximityMachine == nil { destinationDidChange() }
-        } else if phase == .complete { resetTour() }
+        } else {
+            if phase == .complete {
+                resetTour()
+            } else if progress.phase == .notStarted {
+                progress.start()
+            }
+            // Latch the destination before start replays the current fix. The camera
+            // session is not running yet, and that replay would otherwise complete
+            // the stop the visitor just asked to see.
+            if arDiscoveryStopID == nil { arDiscoveryStopID = currentStop?.id }
+        }
         startTour()
         return phase == .inProgress && currentStop != nil
     }

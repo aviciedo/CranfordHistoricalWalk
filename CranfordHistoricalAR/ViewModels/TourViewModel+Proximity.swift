@@ -62,11 +62,14 @@ extension TourViewModel {
         let effects = machine.handle(.distanceUpdated(meters: distance))
         proximityMachine = machine
         apply(effects, for: stop, source: .automatic)
-        // Outside AR discovery, a reliable GPS arrival completes the destination.
-        // Hold plaque sites during AR so GPS cannot reset the story or discovery mid-scan.
+        // Outside AR, a reliable GPS arrival completes the destination.
+        // Hold whichever stop the camera is aimed at — including stops with no plaque —
+        // from the moment AR entry selects it until the session ends. Otherwise one
+        // accurate fix skips the site while the visitor is opening or using the camera.
         // Evaluate each location fix at most once, so a stop change cannot reuse the same
         // stationary fix to cascade through two nearby tour destinations.
-        if !(stop.hasPlaqueReference && (isARSessionActive || arDiscoveryStopID == stop.id)),
+        let gpsAdvanceHeld = isARSessionActive || arDiscoveryStopID == stop.id
+        if !gpsAdvanceHeld,
            lastAutomaticVisitSampleTimestamp != sample.timestamp,
            sample.horizontalAccuracy <= StopActivationPolicy.maximumAccuracyMeters,
            distance + sample.horizontalAccuracy <= stop.arrivalRadius {
