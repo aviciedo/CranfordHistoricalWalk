@@ -9,9 +9,9 @@ enum AppTheme {
     static let sand = Color(red: 217 / 255, green: 201 / 255, blue: 178 / 255)
     static let terracotta = Color(red: 201 / 255, green: 111 / 255, blue: 79 / 255)
     static let ink = Color(light: forest, dark: ivory)
-    static let parchment = Color(light: ivory, dark: Color(red: 0.09, green: 0.12, blue: 0.10))
-    static let surface = Color(light: .white.opacity(0.65), dark: forest)
-    static let playerSurface = Color(light: Color(red: 236 / 255, green: 229 / 255, blue: 219 / 255), dark: forest)
+    static let parchment = ivory
+    static let surface = ivory
+    static let playerSurface = ivory
     /// Navigation stays warm white with fixed high-contrast labels, including in dark appearance.
     static let navigationBackground = ivory
     static let navigationInactive = Color(red: 110 / 255, green: 113 / 255, blue: 105 / 255)

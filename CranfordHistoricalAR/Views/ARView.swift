@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreMotion
 import TourCore
 
 /// The AR experience (spec §6): camera, 3D arrows, distance/time, status messaging.
@@ -10,6 +11,11 @@ struct ARTourView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var model: ARViewModel?
     @State private var awaitingGeospatialConsent = false
+    @State private var showScanInstruction = true
+    @State private var motionManager = CMMotionManager()
+    @State private var phoneWasRaised = false
+    @State private var horizontalSince: Date?
+    @State private var isLeavingAR = false
 
     var body: some View {
         ZStack {
@@ -43,6 +49,34 @@ struct ARTourView: View {
         .statusBarHidden(false)
     }
 
+    private func returnToMap() {
+        guard !isLeavingAR else { return }
+        isLeavingAR = true
+        motionManager.stopDeviceMotionUpdates()
+        if let stop = tour.currentStop { navigation.showOnMap(stopID: stop.id) }
+        else { navigation.selectedTab = .map }
+        dismiss()
+    }
+
+    /// Requires an upright/tilted phone first to avoid exiting as AR opens.
+    private func beginPhoneOrientationMonitoring() {
+        guard motionManager.isDeviceMotionAvailable, !motionManager.isDeviceMotionActive else { return }
+        motionManager.deviceMotionUpdateInterval = 0.2
+        motionManager.startDeviceMotionUpdates(to: .main) { motion, error in
+            guard error == nil, let gravity = motion?.gravity, !isLeavingAR else { return }
+            let screenUpHorizontal = gravity.z < -0.92
+                && abs(gravity.x) < 0.35 && abs(gravity.y) < 0.35
+            if abs(gravity.z) < 0.70 {
+                phoneWasRaised = true
+                horizontalSince = nil
+            } else if phoneWasRaised && screenUpHorizontal {
+                if let since = horizontalSince {
+                    if Date().timeIntervalSince(since) >= 2.0 { returnToMap() }
+                } else { horizontalSince = Date() }
+            } else { horizontalSince = nil }
+        }
+    }
+
     private func startAR() {
         if model == nil {
             model = ARViewModel(tour: tour, provider: dependencies.makeGeoSpatialProvider(), imageLoader: dependencies.imageLoader, narrationPlayer: dependencies.narrationPlayer)
@@ -67,12 +101,44 @@ struct ARTourView: View {
                 CameraExplanationView(state: .unsupported)
             }
 
-            ARHUDView(model: model, onClose: {
-                if let stop = tour.currentStop { navigation.showOnMap(stopID: stop.id) }
-                else { navigation.selectedTab = .map }
-                dismiss()
-            })
+            ARHUDView(model: model, onClose: returnToMap)
+
+            if model.availability == .ready && showScanInstruction {
+                // Live camera stays active behind this subtle scrim.
+                Color.gray.opacity(0.28).ignoresSafeArea().allowsHitTesting(false)
+                VStack(spacing: 17) {
+                    Image(systemName: "viewfinder")
+                        .font(.system(size: 46, weight: .ultraLight))
+                    Text("Scan your surroundings")
+                        .font(.system(.title2, design: .serif).weight(.semibold))
+                    Text("Slowly move your iPhone from side to side and scan the area around you to help AR recognize your surroundings.")
+                        .font(.subheadline)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button {
+                        withAnimation(.easeOut(duration: 0.25)) { showScanInstruction = false }
+                    } label: {
+                        Text("Start exploring")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity, minHeight: 52)
+                            .background(AppTheme.forest, in: RoundedRectangle(cornerRadius: 14))
+                            .foregroundStyle(AppTheme.ivory)
+                    }
+                    .buttonStyle(.plain)
+                    Text("Hold the phone flat, screen facing up, for 2 seconds to return to the map.")
+                        .font(.caption)
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(AppTheme.secondaryInk)
+                }
+                .foregroundStyle(AppTheme.forest)
+                .padding(24)
+                .frame(maxWidth: 340)
+                .background(AppTheme.ivory.opacity(0.96), in: RoundedRectangle(cornerRadius: 22))
+                .padding(.horizontal, 20)
+            }
         }
+        .onAppear { beginPhoneOrientationMonitoring() }
+        .onDisappear { motionManager.stopDeviceMotionUpdates() }
         .sheet(isPresented: Binding(get: { model.isShowingSignDetails }, set: { model.isShowingSignDetails = $0 })) {
             if let stop = tour.presentedSignStop ?? tour.currentStop {
                 HistoricalSignSheet(stop: stop, onContinue: { model.isShowingSignDetails = false },
@@ -271,7 +337,6 @@ struct ARHUDView: View {
         VStack(alignment: .leading, spacing: 12) {
             Label(model.visitConfirmation, systemImage: "checkmark.circle.fill")
                 .font(.subheadline.weight(.semibold)).foregroundStyle(AppTheme.forest)
-            if let stop = model.tour.currentStop { NarrationControls(stop: stop) }
             HStack(spacing: 12) {
                 Button { model.isShowingSignDetails = true } label: {
                     Label("Stop details", systemImage: "doc.text").frame(maxWidth: .infinity, minHeight: 44)
