@@ -366,3 +366,19 @@ ARTourView presentation through the shared tour start/resume path. Existing curr
 routing and story/recognition rules are preserved. The AR control also appears on the fallback
 map. Swift Debug/Release syntax and callback wiring passed; real device sizing, camera entry,
 permission prompts and route guidance remain unverified without Xcode/iPhone.
+
+
+## White/hunter-green AR chevron update
+
+Build 0.2.0 (14) follows the supplied three-chevron reference using actual extruded geometry,
+white inset faces and shaded hunter-green sides. Waypoint guidance is upright, placed along
+the route and camera-facing; its chevrons rotate with smoothed relative bearing. The near-turn
+entity uses the same geometry with maneuver direction and a retained street/distance label.
+Initial orientation uses a matching silhouette and the directions panel uses hunter green.
+Motion thresholds, short eased transitions and Reduce Motion handling remain; meshes are reused.
+
+158 core tests and Debug/Release Swift syntax passed. New geometry tests cover winding,
+concave outline coverage, watertight body edges, unit normals, depth and all direction mappings.
+Native RealityKit compilation, actual green shading, photo-reference resemblance, outdoor
+contrast, perceived scale and smoothness are unverified without Xcode/iPhone rendering.
+No new native screenshot or device verification is claimed.

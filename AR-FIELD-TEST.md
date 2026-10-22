@@ -132,3 +132,16 @@ substitute for an Xcode iPhone build or the physical-device checks above.
   Close the camera and ensure the app returns to a usable map/list without a stranded sheet.
 - After finishing the whole tour, the detail action must explicitly say Start new walk in AR.
   It restarts at stop 1 while leaving saved visit history intact.
+
+
+## Hunter-green chevrons
+
+- Confirm build 0.2.0 (14). Enter AR while facing ahead, left, right and away from the route.
+  Three white chevrons with hunter-green depth should point appropriately and retain the
+  matching instruction/street/distance; behind-you guidance must say Turn around.
+- Walk toward a turn and rotate the phone slowly. Check camera-facing legibility, smooth
+  positioning/rotation, white faces and green sides, and the street's maneuver chevrons.
+- Confirm transitions between ahead and turn signs do not contradict the route. Move near a
+  plaque/stop and verify navigation hides as before, without rendering through the doorway.
+- Repeat with Reduce Motion, strong sunlight, weak compass/GPS, tracking loss and resume.
+  No reliable tracking/localization means navigation must hide, not invent a direction.

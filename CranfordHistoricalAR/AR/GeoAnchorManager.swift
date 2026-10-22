@@ -440,7 +440,10 @@ final class GeoAnchorManager {
         updateCameraGuidance(direction: direction, now: now)
         anchors.arrows.setVisible(true)
         // Keep arrows until activation, including inside the GPS arrival radius.
-        anchors.arrows.update(base: base, direction: direction, force: forceLayout, maximumDistance: markerDistance)
+        if let camera = cameraTransform?.translation {
+            anchors.arrows.update(base: base, direction: direction, camera: camera,
+                                  relativeBearing: navigationBearing, force: forceLayout, maximumDistance: markerDistance)
+        }
         if markerDistance == nil, let cue = target?.turnCue, cue.isUpcomingTurn,
            cue.isNearTurn || (anchors.turnSign.isShowing && cue.distanceMeters <= 55), let coordinate = cue.coordinate,
            let camera = cameraTransform?.translation,

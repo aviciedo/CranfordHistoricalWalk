@@ -841,3 +841,25 @@ a Google Maps key; existing AR permission/status handling and route estimates ap
 control has an accessible name/destination hint and is disabled until tour data is loaded.
 Debug/Release Swift syntax and callback/presentation wiring checks passed; native camera
 presentation and field walking guidance still require iPhone testing.
+
+
+## Hunter-green AR chevrons — 0.2.0 (14)
+
+AR route guidance now uses three upright 3D chevrons with opaque white inset faces and shaded
+hunter-green frames, backs and 18-cm-deep sides. These replace the flat shaft arrow. They sit
+above the detected/estimated route ground plane, ahead along the waypoint direction, face the
+visitor for legibility and rotate to the existing smoothed camera-relative bearing. White
+chevrons on initial orientation guidance use the same silhouette/palette. Upcoming street
+signs use the same three-dimensional set above the retained street/distance label, with
+route-derived maneuver orientation. Directions panels now use translucent hunter green.
+
+Meshes are created once/reused; position and rotation transitions last about 0.35–0.4 seconds
+and Reduce Motion removes those transitions. Existing localization/tracking guards, stop and
+plaque behavior, arrow distance suppression near markers, street turn hysteresis and routing
+logic remain in place. Appearance/scale are not surveyed physical positions.
+
+158 TourCore tests passed, including concave-face area/winding, closed body topology, normals,
+depth bounds, invalid values and direction mapping. Debug/Release Swift syntax passed. These
+checks do not compile RealityKit or verify rendering. Native mesh/material compilation,
+contrast in sunlight, perspective, placement, turn transitions and camera movement still
+require Xcode/iPhone testing before field behavior can be called verified.

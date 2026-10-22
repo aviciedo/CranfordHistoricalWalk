@@ -5,60 +5,100 @@ import SwiftUI
 import TourCore
 import UIKit
 
-/// One broad, translucent ground arrow. Reuses its mesh; no pulsing or repeated breadcrumb trail.
+/// Shared three-dimensional chevron artwork: opaque white faces, hunter-green frame/sides.
+@MainActor
+private enum ARChevronArt {
+    static let bodyMesh = makeMesh(ARChevronGeometry.body(), name: "hunter-chevron-body")
+    static let faceMesh = makeMesh(ARChevronGeometry.front(), name: "white-chevron-face")
+
+    static func makeMesh(_ data: ARChevronGeometry.Mesh, name: String) -> MeshResource? {
+        var descriptor = MeshDescriptor(name: name)
+        descriptor.positions = MeshBuffers.Positions(data.positions)
+        descriptor.normals = MeshBuffers.Normals(data.normals)
+        descriptor.primitives = .triangles(data.indices)
+        return try? MeshResource.generate(from: [descriptor])
+    }
+
+    static func makeGroup() -> Entity {
+        let group = Entity()
+        guard let bodyMesh, let faceMesh else { return group }
+        let green = SimpleMaterial(color: UIColor(red: 0.10, green: 0.25, blue: 0.17, alpha: 1),
+                                   roughness: 0.55, isMetallic: false)
+        let white = UnlitMaterial(color: .white)
+        for index in 0..<3 {
+            let body = ModelEntity(mesh: bodyMesh, materials: [green])
+            body.position.x = Float(index - 1) * 0.78
+            let face = ModelEntity(mesh: faceMesh, materials: [white])
+            face.scale = SIMD3<Float>(0.84, 0.88, 1)
+            face.position.z = 0.006 // Clear the green front face without z-fighting.
+            body.addChild(face)
+            group.addChild(body)
+        }
+        group.scale = SIMD3<Float>(repeating: 0.65)
+        return group
+    }
+}
+
+/// Three upright world-positioned chevrons above the route, facing the visitor. Their visual
+/// direction follows the smoothed camera-relative route bearing, rather than a fixed icon.
 @MainActor
 final class ARNavigationArrowEntity: Entity {
-    static let firstArrowDistance: Float = 2.5
+    static let firstArrowDistance: Float = 3.8
     static let heightBelowCamera: Float = 1.15
     private let holder = Entity()
-    private var lastBase: SIMD3<Float>?
-    private var lastDirection: SIMD3<Float>?
-    private var lastDistance: Float?
+    private let heading = Entity()
+    private var lastPosition: SIMD3<Float>?
+    private var lastRotation: simd_quatf?
+    private var lastBearing: Double?
     private(set) var isShowing = false
 
     required init() {
         super.init()
-        guard let mesh = Self.makeArrowMesh() else { return }
-        var material = UnlitMaterial(color: UIColor(red: 248 / 255, green: 246 / 255, blue: 238 / 255, alpha: 1))
-        material.blending = .transparent(opacity: .init(floatLiteral: 0.58))
-        let arrow = ModelEntity(mesh: mesh, materials: [material])
-        // A fine, translucent forest edge preserves contrast without the previous heavy border.
-        var edgeMaterial = UnlitMaterial(color: UIColor(red: 46 / 255, green: 58 / 255, blue: 47 / 255, alpha: 1))
-        edgeMaterial.blending = .transparent(opacity: .init(floatLiteral: 0.26))
-        let edge = ModelEntity(mesh: mesh, materials: [edgeMaterial])
-        edge.scale = SIMD3<Float>(1.035, 1, 1.035)
-        edge.position.y = -0.004
-        arrow.addChild(edge)
-        holder.addChild(arrow)
+        heading.addChild(ARChevronArt.makeGroup())
+        holder.addChild(heading)
         holder.isEnabled = false
         addChild(holder)
     }
 
-    func update(base: SIMD3<Float>, direction: SIMD3<Float>, force: Bool = false, maximumDistance: Float? = nil) {
+    func update(base: SIMD3<Float>, direction: SIMD3<Float>, camera: SIMD3<Float>,
+                relativeBearing: Double?, force: Bool = false, maximumDistance: Float? = nil) {
         let flat = SIMD3<Float>(direction.x, 0, direction.z)
-        guard simd_length(flat) > 0.001 else { return }
+        guard simd_length(flat) > 0.001, let bearing = relativeBearing, bearing.isFinite else {
+            holder.isEnabled = false
+            return
+        }
         let dir = simd_normalize(flat)
-        // Keep the whole arrow in front of the marker, rather than pointing through its door.
         let distance = min(Self.firstArrowDistance, maximumDistance.map { max(0, $0 - 1.2) } ?? Self.firstArrowDistance)
         holder.isEnabled = isShowing && distance >= 0.9
         guard holder.isEnabled else { return }
-        let appearing = lastBase == nil
-        if !force, let lastBase, let lastDirection, let lastDistance,
-           simd_length(SIMD2(base.x - lastBase.x, base.z - lastBase.z)) < 0.6,
-           abs(base.y - lastBase.y) < 0.04, abs(distance - lastDistance) < 0.15,
-           simd_dot(dir, lastDirection) > cos(Float(3 * Double.pi / 180)) { return }
-        lastBase = base
-        lastDirection = dir
-        lastDistance = distance
-        let yaw = atan2(dir.x, -dir.z)
-        let target = Transform(scale: .one, rotation: simd_quatf(angle: -yaw, axis: [0, 1, 0]), translation: base + dir * distance)
+        var position = base + dir * distance
+        position.y += 0.95
+        let offset = camera - position
+        let facing = simd_quatf(angle: atan2(offset.x, offset.z), axis: [0, 1, 0])
+        let degrees = ARChevronGeometry.rotationDegrees(relativeBearing: bearing)
+        let rotation = simd_quatf(angle: Float(degrees * .pi / 180), axis: [0, 0, 1])
+        let appearing = lastPosition == nil
+        let bearingChange = lastBearing.map { abs(atan2(sin((bearing - $0) * .pi / 180),
+                                                       cos((bearing - $0) * .pi / 180)) * 180 / .pi) } ?? 360
+        if !force, let lastPosition, let lastRotation,
+           simd_distance(position, lastPosition) < 0.25,
+           abs(simd_dot(facing.vector, lastRotation.vector)) > 0.999,
+           bearingChange < 2 { return }
+        lastPosition = position
+        lastRotation = facing
+        lastBearing = bearing
+        let target = Transform(scale: .one, rotation: facing, translation: position)
+        let headingTarget = Transform(scale: .one, rotation: rotation, translation: .zero)
         if UIAccessibility.isReduceMotionEnabled {
             holder.transform = target
+            heading.transform = headingTarget
+        } else if appearing {
+            holder.transform = Transform(scale: SIMD3<Float>(repeating: 0.94), rotation: facing, translation: position)
+            heading.transform = headingTarget
+            holder.move(to: target, relativeTo: self, duration: 0.3, timingFunction: .easeInOut)
         } else {
-            if appearing {
-                holder.transform = Transform(scale: SIMD3<Float>(repeating: 0.94), rotation: target.rotation, translation: target.translation)
-            }
             holder.move(to: target, relativeTo: self, duration: 0.4, timingFunction: .easeInOut)
+            heading.move(to: headingTarget, relativeTo: holder, duration: 0.35, timingFunction: .easeInOut)
         }
     }
 
@@ -66,48 +106,10 @@ final class ARNavigationArrowEntity: Entity {
         guard visible != isShowing else { return }
         isShowing = visible
         holder.isEnabled = visible
-        if !visible { lastBase = nil; lastDirection = nil; lastDistance = nil }
-    }
-
-    // MARK: Mesh
-
-    /// Flat chevron arrow in the XZ plane pointing toward −Z, ~1.8 m long, double-sided.
-    static func makeArrowMesh() -> MeshResource? {
-        let L: Float = 1.8, W: Float = 1.35, shaftW: Float = 0.44, headL: Float = 0.85
-        // Outline (counter-clockwise seen from above, +Y up). Tip at −Z.
-        let outline: [SIMD2<Float>] = [
-            SIMD2(0, -L / 2),                      // tip
-            SIMD2(W / 2, -L / 2 + headL),           // right head corner
-            SIMD2(shaftW / 2, -L / 2 + headL),      // right shaft top
-            SIMD2(shaftW / 2, L / 2),               // right shaft bottom
-            SIMD2(-shaftW / 2, L / 2),              // left shaft bottom
-            SIMD2(-shaftW / 2, -L / 2 + headL),     // left shaft top
-            SIMD2(-W / 2, -L / 2 + headL)           // left head corner
-        ]
-        var positions: [SIMD3<Float>] = outline.map { SIMD3($0.x, 0, $0.y) }
-        // Head triangle and shaft quad; no overlapping transparent faces.
-        var indices: [UInt32] = [
-            0, 6, 1,          // head
-            2, 5, 3, 3, 5, 4  // shaft
-        ]
-        // Make it double-sided by duplicating with reversed winding.
-        let count = UInt32(positions.count)
-        positions += positions
-        let back = indices.chunked(3).flatMap { [$0[0] + count, $0[2] + count, $0[1] + count] }
-        indices += back
-        let normals = Array(repeating: SIMD3<Float>(0, 1, 0), count: Int(count)) + Array(repeating: SIMD3<Float>(0, -1, 0), count: Int(count))
-
-        var descriptor = MeshDescriptor(name: "navigation-arrow")
-        descriptor.positions = MeshBuffers.Positions(positions)
-        descriptor.normals = MeshBuffers.Normals(normals)
-        descriptor.primitives = .triangles(indices)
-        return try? MeshResource.generate(from: [descriptor])
-    }
-}
-
-private extension Array {
-    func chunked(_ size: Int) -> [[Element]] {
-        stride(from: 0, to: count, by: size).map { Array(self[$0..<Swift.min($0 + size, count)]) }
+        if !visible {
+            holder.stopAllAnimations(recursive: true)
+            lastPosition = nil; lastRotation = nil; lastBearing = nil
+        }
     }
 }
 
@@ -115,21 +117,33 @@ private extension Array {
 /// Texture work occurs only when the maneuver, street or rounded distance changes.
 @MainActor
 final class ARTurnSignEntity: Entity {
-    private let plane = ModelEntity(mesh: .generatePlane(width: 3.2, height: 2.4))
+    private let plane = ModelEntity(mesh: .generatePlane(width: 3.2, height: 1.2))
+    private let chevrons = ARChevronArt.makeGroup()
     private var signature: String?
     private var lastPosition: SIMD3<Float>?
     private var lastRotation: simd_quatf?
+    private var lastScale: Float?
     private var hideTask: Task<Void, Never>?
     private(set) var isShowing = false
 
     required init() {
         super.init()
+        plane.position.y = -1.2
         addChild(plane)
+        chevrons.position.y = 0.4
+        addChild(chevrons)
         isEnabled = false
     }
 
     func update(cue: ARWalkingGuidance.RouteCue, position: SIMD3<Float>, camera: SIMD3<Float>) {
         let key = "\(cue.direction.rawValue)|\(cue.streetLabel)|\(cue.distanceText)"
+        if signature != key || !isShowing {
+            let angle = Float(ARChevronGeometry.rotationDegrees(direction: cue.direction) * .pi / 180)
+            let target = Transform(scale: chevrons.scale, rotation: simd_quatf(angle: angle, axis: [0, 0, 1]),
+                                   translation: SIMD3<Float>(0, 0.4, 0))
+            if UIAccessibility.isReduceMotionEnabled || !isShowing { chevrons.transform = target }
+            else { chevrons.move(to: target, relativeTo: self, duration: 0.35, timingFunction: .easeInOut) }
+        }
         if signature != key {
             let renderer = ImageRenderer(content: ARFloatingTurnContent(cue: cue))
             renderer.scale = 1.5
@@ -154,7 +168,10 @@ final class ARTurnSignEntity: Entity {
         let rotation = simd_quatf(angle: atan2(offset.x, offset.z), axis: [0, 1, 0])
         // Keep the street legible as the intersection comes into view.
         let size = max(0.85, min(2.3, simd_length(SIMD2(offset.x, offset.z)) / 9))
-        let target = Transform(scale: SIMD3<Float>(repeating: size), rotation: rotation, translation: position)
+        // Scaling the label below the chevrons must not bury it beneath the street.
+        var targetPosition = position
+        targetPosition.y += max(0, 1.8 * size - 1.8)
+        let target = Transform(scale: SIMD3<Float>(repeating: size), rotation: rotation, translation: targetPosition)
         let appearing = !isShowing
         hideTask?.cancel()
         hideTask = nil
@@ -164,16 +181,18 @@ final class ARTurnSignEntity: Entity {
         }
         isShowing = true
         isEnabled = true
-        if !appearing, let lastPosition, let lastRotation,
-           simd_distance(position, lastPosition) < 0.25,
+        if !appearing, let lastPosition, let lastRotation, let lastScale,
+           simd_distance(targetPosition, lastPosition) < 0.25,
+           abs(size - lastScale) < 0.03,
            abs(simd_dot(rotation.vector, lastRotation.vector)) > 0.999 { return }
-        lastPosition = position
+        lastPosition = targetPosition
         lastRotation = rotation
+        lastScale = size
         if UIAccessibility.isReduceMotionEnabled {
             transform = target
         } else {
             if appearing {
-                transform = Transform(scale: target.scale * 0.94, rotation: rotation, translation: position)
+                transform = Transform(scale: target.scale * 0.94, rotation: rotation, translation: targetPosition)
                 if #available(iOS 18.0, *) {
                     components.set(OpacityComponent(opacity: 0))
                     let fade = FromToByAnimation<Float>(name: "turn-entrance", from: 0, to: 1, duration: 0.3,
@@ -197,6 +216,7 @@ final class ARTurnSignEntity: Entity {
         isShowing = false
         lastPosition = nil
         lastRotation = nil
+        lastScale = nil
         stopAllAnimations()
         guard animated, !UIAccessibility.isReduceMotionEnabled else { isEnabled = false; return }
         move(to: Transform(scale: scale * 0.96, rotation: orientation, translation: position),

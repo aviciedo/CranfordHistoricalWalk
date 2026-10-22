@@ -27,7 +27,7 @@ struct ARNavigationArrowView: View {
         .fixedSize(horizontal: false, vertical: true)
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(.black.opacity(0.48), in: RoundedRectangle(cornerRadius: 16))
+        .background(AppTheme.forest.opacity(0.88), in: RoundedRectangle(cornerRadius: 16))
         .accessibilityElement(children: .combine)
     }
 }
@@ -46,10 +46,13 @@ struct ARWalkingOrientationView: View {
 
     var body: some View {
         VStack(spacing: 10) {
-            Image(systemName: direction?.symbolName ?? "viewfinder")
-                .font(.system(size: 100, weight: .heavy))
-                .contentTransition(reduceMotion ? .opacity : .symbolEffect(.replace))
-                .accessibilityHidden(true)
+            if let relativeBearing {
+                ARChevronSymbol(relativeBearing: relativeBearing)
+                    .frame(width: 200, height: 190)
+            } else {
+                Image(systemName: "viewfinder").font(.system(size: 80, weight: .medium))
+                    .accessibilityHidden(true)
+            }
             Text(ARWalkingGuidance.instruction(for: relativeBearing))
                 .font(.title2.weight(.bold))
             Text(street).font(.title3.weight(.semibold))
@@ -76,10 +79,6 @@ struct ARFloatingTurnContent: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            Image(systemName: cue.direction.symbolName)
-                .font(.system(size: 170, weight: .heavy))
-                .foregroundStyle(AppTheme.ivory)
-                .shadow(color: AppTheme.forest.opacity(0.85), radius: 3)
             Text(cue.streetLabel)
                 .font(.system(size: 44, weight: .semibold))
                 .lineLimit(2).minimumScaleFactor(0.65)
@@ -93,7 +92,39 @@ struct ARFloatingTurnContent: View {
                 .shadow(color: AppTheme.forest, radius: 3)
         }
         .padding(24)
-        .frame(width: 640, height: 480)
+        .frame(width: 640, height: 240)
         .environment(\.colorScheme, .light)
+    }
+}
+
+
+/// Camera-fixed entry cue shares the world mesh silhouette and palette.
+private struct ARChevronSymbol: View {
+    var relativeBearing: Double
+    var body: some View {
+        HStack(spacing: 3) {
+            ForEach(0..<3) { _ in
+                ZStack {
+                    ChevronSilhouette().fill(AppTheme.forest).offset(x: 7, y: 6)
+                    ChevronSilhouette().fill(.white)
+                }
+                .frame(width: 48, height: 100)
+            }
+        }
+        .rotationEffect(.degrees(ARChevronGeometry.rotationDegrees(relativeBearing: relativeBearing)))
+        .shadow(color: .black.opacity(0.25), radius: 4, y: 3)
+        .accessibilityHidden(true)
+    }
+}
+
+private struct ChevronSilhouette: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.addLines(ARChevronGeometry.outline.map {
+            CGPoint(x: (CGFloat($0.x) + 0.45) * rect.width,
+                    y: (0.95 - CGFloat($0.y)) / 1.9 * rect.height)
+        })
+        path.closeSubpath()
+        return path
     }
 }
