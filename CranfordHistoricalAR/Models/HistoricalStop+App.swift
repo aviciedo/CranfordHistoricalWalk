@@ -47,7 +47,7 @@ extension HistoricalStop {
     /// Same five stops as the bundled walking tour (previews and host-app tests).
     static let previewStops: [HistoricalStop] = [
         HistoricalStop(
-            id: "hpab-001", name: "Droescher’s Mill", latitude: 40.6503, longitude: -74.3012,
+            id: "hpab-001", name: "Droescher’s Mill", latitude: 40.650249, longitude: -74.301047,
             address: "347 Lincoln Avenue East, Cranford, NJ",
             shortDescription: """
                 The mill site dates to at least 1779.

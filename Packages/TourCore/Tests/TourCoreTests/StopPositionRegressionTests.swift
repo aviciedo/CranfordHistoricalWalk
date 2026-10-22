@@ -4,7 +4,7 @@ import XCTest
 /// Independent on-site coordinates supplied by the tour creator, not derived from the catalog.
 final class StopPositionRegressionTests: XCTestCase {
     private let fieldPositions = [
-        GeoCoordinate(latitude: 40.6503, longitude: -74.3012),
+        GeoCoordinate(latitude: 40.650249, longitude: -74.301047),
         GeoCoordinate(latitude: 40.6524, longitude: -74.2990)
     ]
     private let now = Date(timeIntervalSince1970: 1_800_000_000)
@@ -16,8 +16,8 @@ final class StopPositionRegressionTests: XCTestCase {
             XCTAssertLessThan(GeoMath.distance(from: stop.coordinate, to: location), 1, stop.name)
         }
         let separation = GeoMath.distance(from: stops[0].coordinate, to: stops[1].coordinate)
-        XCTAssertGreaterThan(separation, 295)
-        XCTAssertLessThan(separation, 305, "The supplied points are about 298 m apart; this is not a walking-route measurement")
+        XCTAssertGreaterThan(separation, 290)
+        XCTAssertLessThan(separation, 300, "The supplied points are about 294 m apart; this is not a walking-route measurement")
     }
 
     func testAnAccurateFixAtEachSuppliedLocationRevealsItsMarkerAndAllowsActivation() throws {

@@ -584,11 +584,11 @@ reference in the ARKit resource group for optional on-site bonus discovery.
 
 ## Stop 1 and 2 on-site coordinate correction
 
-After on-site testing, the tour creator supplied these replacement coordinates on October 18, 2026:
+Current destination coordinates include the creator’s October 22, 2026 public viewing-area GPS reading for stop 1 and on-site reading for the church:
 
 | Stop | Latitude | Longitude |
 | --- | --- | --- |
-| Droescher’s Mill (`hpab-001`) | 40.6503 | -74.3012 |
+| Droescher’s Mill (`hpab-001`) | 40.650249 | -74.301047 |
 | Greystone (`hpab-002`) | 40.6524 | -74.2990 |
 | First Baptist Church (`hpab-004`) | 40.653165 | -74.302768 |
 
@@ -910,3 +910,17 @@ Field check on build 0.2.0 (15):
 5. Continue to the river while still viewing the park plaque. The destination must stay at
    the river. Explicitly reopen Greystone’s Start AR to revisit; saved visits must remain.
 6. Leave AR and confirm normal map walking/GPS advancement; test denied camera permission too.
+
+
+## Mill public viewing point — 0.2.0 (16)
+
+Stop 1 now routes to the creator-confirmed public viewing area at 40.650249, -74.301047,
+replacing 40.6503, -74.3012. The supplied Device GPS screenshot reports ±5.0 m accuracy,
+a 2-second fix age, Precise Location on and simulation off. Capture date is unknown; the
+reading was received October 22, 2026. Provenance: docs/field-references/mill-public-viewing-location.json.
+This is a field GPS reading, so coordinatesUnverified remains true (not a surveyed position).
+The shared catalog supplies the map marker, walking destination and AR geographic target;
+the preview catalog and independent position expectations use the same supplied point.
+Plaque reference images, bonus layout and arrival/departure radii are unchanged. A locally
+saved developer viewing-point override still affects story arrival only; clear that override
+in Developer Controls to use this bundled point for story arrival too.

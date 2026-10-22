@@ -202,7 +202,7 @@ final class TourCompletionFlowTests: XCTestCase {
 
     func testSuppliedFieldPositionsAgreeWithMapMarkersAndFirstToSecondStopRouting() async throws {
         let fieldPositions = [
-            GeoCoordinate(latitude: 40.6503, longitude: -74.3012),
+            GeoCoordinate(latitude: 40.650249, longitude: -74.301047),
             GeoCoordinate(latitude: 40.6524, longitude: -74.2990)
         ]
         let map = MapViewModel()

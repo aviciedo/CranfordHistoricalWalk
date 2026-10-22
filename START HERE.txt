@@ -1,6 +1,6 @@
 Cranford Historical AR — Xcode project
 
-Release 0.2.0 (15) — Greystone AR plaque recognition and correct site selection
+Release 0.2.0 (16) — Stop 1 public viewing point and Greystone AR fixes
 
 1. Close the previous Xcode project. Extract the entire ZIP into a fresh folder on the Mac. Keep its folders together.
    Copy your existing Config/Secrets.xcconfig into this new folder’s Config folder.
@@ -10,7 +10,7 @@ Release 0.2.0 (15) — Greystone AR plaque recognition and correct site selectio
 5. In Xcode select the blue project icon, then Targets > CranfordHistoricalAR > Signing & Capabilities.
 6. Turn on Automatically manage signing and select your Apple account under Team.
 7. Select your iPhone in the top toolbar. Choose Product > Clean Build Folder, then click Run.
-8. On the iPhone open Home > Developer. Installed build and narration must show 0.2.0 (15), audio release cedar-2.
+8. On the iPhone open Home > Developer. Installed build and narration must show 0.2.0 (16), audio release cedar-2.
    After tapping Play, Prepared audio should say bundledAudio with stop_01 or stop_02, never synthesizedSpeech.
 
 Homebrew and XcodeGen are not needed to open this generated project.
@@ -26,7 +26,7 @@ New interface quick check:
 - Open Stop details for the address, recording, photo and View in AR. Start AR targets the selected site; the Map AR button resumes the guided destination.
 - Test light and dark appearance and larger text before relying on the layout outdoors.
 
-Stop 2 AR check for build 15:
+Stop 2 AR check for build 16:
 - Open Stops > Greystone > Start AR. The camera header should say Greystone.
 - Read/listen to the story, then choose Find the plaque in AR.
 - Frame the entire Cranford Park plaque and some surrounding stone in good light.

@@ -1,0 +1,17 @@
+{
+  "stop_id": "hpab-001",
+  "name": "Droescher’s Mill",
+  "latitude": 40.650249,
+  "longitude": -74.301047,
+  "reported_horizontal_accuracy_meters": 5.0,
+  "source": "User-provided Developer Controls screenshot: Device GPS, Precise Location On, Simulated location Off",
+  "viewing_location": "Public viewing area, confirmed by the tour creator",
+  "received_date_utc": "2026-10-22",
+  "capture_date": null,
+  "fix_age_at_screenshot_seconds": 2,
+  "previous_catalog_coordinate": {
+    "latitude": 40.6503,
+    "longitude": -74.3012
+  },
+  "limitations": "Single device GPS reading, not a surveyed point. Reported accuracy describes this fix and is not guaranteed for future fixes."
+}
