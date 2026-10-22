@@ -58,3 +58,35 @@ public enum ARChevronGeometry {
         }
     }
 }
+
+/// How far in front of the visitor the chevrons sit, and when a pose is already current.
+/// Near a stop the arrows stop short of the marker and disappear inside the last 0.9 m.
+public enum ARChevronPlacement {
+    public static let preferredDistance: Float = 3.8
+    public static let minimumVisibleDistance: Float = 0.9
+    private static let markerClearance: Float = 1.2
+
+    public static func canAim(flatLength: Float, relativeBearing: Double?) -> Bool {
+        flatLength > 0.001 && relativeBearing?.isFinite == true
+    }
+
+    public static func travelDistance(maximumDistance: Float?) -> Float {
+        let limit = maximumDistance.map { max(0, $0 - markerClearance) } ?? preferredDistance
+        return min(preferredDistance, limit)
+    }
+
+    public static func isVisible(isShowing: Bool, travelDistance: Float) -> Bool {
+        isShowing && travelDistance >= minimumVisibleDistance
+    }
+
+    /// Smallest absolute change in degrees, including the wrap from 359° to 1°.
+    public static func bearingChangeDegrees(from previous: Double, to current: Double) -> Double {
+        let radians = (current - previous) * .pi / 180
+        return abs(atan2(sin(radians), cos(radians)) * 180 / .pi)
+    }
+
+    public static func shouldKeepPreviousPose(positionDelta: Float, facingDot: Float,
+                                               bearingChange: Double, force: Bool) -> Bool {
+        !force && positionDelta < 0.25 && abs(facingDot) > 0.999 && bearingChange < 2
+    }
+}

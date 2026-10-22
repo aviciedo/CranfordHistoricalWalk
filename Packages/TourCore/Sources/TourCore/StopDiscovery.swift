@@ -64,6 +64,28 @@ public struct StopDiscovery: Equatable, Sendable {
     public var canOfferDiscovery: Bool { hasFinishedStory && !hasVerifiedPlaque }
 }
 
+/// Remembers each site's story and plaque progress when the guided walk changes targets.
+/// Resetting the walk drops that memory before the first stop is adopted again.
+public struct StopDiscoveryMemory: Equatable, Sendable {
+    public private(set) var byStopID: [String: StopDiscovery] = [:]
+    public private(set) var activeStopID: String?
+
+    public init() {}
+
+    public mutating func reset() {
+        byStopID = [:]
+        activeStopID = nil
+    }
+
+    public mutating func transition(to stopID: String?, saving current: StopDiscovery) -> StopDiscovery {
+        if let activeStopID {
+            byStopID[activeStopID] = current
+        }
+        activeStopID = stopID
+        return stopID.flatMap { byStopID[$0] } ?? StopDiscovery()
+    }
+}
+
 /// Estimated bounds of the TWO glass panes in the mill's red doors, measured in plaque widths.
 /// This is a plaque-relative placement, not independent window recognition or surveyed geometry.
 /// Developer calibration refines the four ratios on site; the actual plaque width is unmeasured.

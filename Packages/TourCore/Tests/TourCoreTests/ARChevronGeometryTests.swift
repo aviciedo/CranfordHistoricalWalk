@@ -56,6 +56,49 @@ final class ARChevronGeometryTests: XCTestCase {
         XCTAssertEqual(ARChevronGeometry.rotationDegrees(direction: .turnAround), 270)
     }
 
+    func testChevronStopsShortOfTheMarkerAndHidesInsideTheLastClearance() {
+        XCTAssertEqual(ARChevronPlacement.travelDistance(maximumDistance: nil), 3.8)
+        XCTAssertEqual(ARChevronPlacement.travelDistance(maximumDistance: 10), 3.8)
+        XCTAssertEqual(ARChevronPlacement.travelDistance(maximumDistance: 5), 3.8)
+        XCTAssertEqual(ARChevronPlacement.travelDistance(maximumDistance: 4), 2.8, accuracy: 0.00001)
+        XCTAssertEqual(ARChevronPlacement.travelDistance(maximumDistance: 2.1), 0.9, accuracy: 0.00001)
+        XCTAssertTrue(ARChevronPlacement.isVisible(isShowing: true, travelDistance: 0.9))
+        XCTAssertFalse(ARChevronPlacement.isVisible(isShowing: true,
+                                                    travelDistance: ARChevronPlacement.travelDistance(maximumDistance: 2.09)))
+        for hidden in [Float(1.2), 0, -4, -.infinity, .nan] {
+            XCTAssertEqual(ARChevronPlacement.travelDistance(maximumDistance: hidden), 0)
+            XCTAssertFalse(ARChevronPlacement.isVisible(isShowing: true, travelDistance: 0))
+        }
+        XCTAssertEqual(ARChevronPlacement.travelDistance(maximumDistance: .infinity), 3.8)
+        XCTAssertFalse(ARChevronPlacement.isVisible(isShowing: false, travelDistance: 3.8))
+    }
+
+    func testAimAndPoseSettleAcrossTheBearingWrap() {
+        XCTAssertFalse(ARChevronPlacement.canAim(flatLength: 0.001, relativeBearing: 0))
+        XCTAssertTrue(ARChevronPlacement.canAim(flatLength: 0.0011, relativeBearing: 0))
+        XCTAssertFalse(ARChevronPlacement.canAim(flatLength: 1, relativeBearing: nil))
+        XCTAssertFalse(ARChevronPlacement.canAim(flatLength: 1, relativeBearing: .nan))
+        XCTAssertFalse(ARChevronPlacement.canAim(flatLength: .nan, relativeBearing: 10))
+
+        XCTAssertEqual(ARChevronPlacement.bearingChangeDegrees(from: 359, to: 1), 2, accuracy: 0.00001)
+        XCTAssertEqual(ARChevronPlacement.bearingChangeDegrees(from: 1, to: 359), 2, accuracy: 0.00001)
+        XCTAssertEqual(ARChevronPlacement.bearingChangeDegrees(from: 0, to: 180), 180, accuracy: 0.00001)
+        XCTAssertEqual(ARChevronPlacement.bearingChangeDegrees(from: 10, to: 11.5), 1.5, accuracy: 0.00001)
+
+        XCTAssertTrue(ARChevronPlacement.shouldKeepPreviousPose(positionDelta: 0.249, facingDot: 0.9991,
+                                                                bearingChange: 1.999, force: false))
+        XCTAssertFalse(ARChevronPlacement.shouldKeepPreviousPose(positionDelta: 0.25, facingDot: 1,
+                                                                 bearingChange: 0, force: false))
+        XCTAssertFalse(ARChevronPlacement.shouldKeepPreviousPose(positionDelta: 0, facingDot: 0.999,
+                                                                 bearingChange: 0, force: false))
+        XCTAssertFalse(ARChevronPlacement.shouldKeepPreviousPose(positionDelta: 0, facingDot: 1,
+                                                                 bearingChange: 2, force: false))
+        XCTAssertFalse(ARChevronPlacement.shouldKeepPreviousPose(positionDelta: 0, facingDot: -1,
+                                                                 bearingChange: 0, force: true))
+        XCTAssertFalse(ARChevronPlacement.shouldKeepPreviousPose(positionDelta: 0, facingDot: 1,
+                                                                 bearingChange: .nan, force: false))
+    }
+
     func testInvalidDepthAndBearingCannotCreateNonfiniteGeometry() {
         for depth: Float in [.nan, -.infinity, -1, 0, 5] {
             let mesh = ARChevronGeometry.body(depth: depth)

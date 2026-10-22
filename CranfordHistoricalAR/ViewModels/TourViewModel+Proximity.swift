@@ -37,9 +37,7 @@ extension TourViewModel {
     func resetProximityForCurrentStop() {
         plaqueConfirmedStopID = nil
         activeVisitEvidence = nil
-        if let discoveryStopID { discoveriesByStopID[discoveryStopID] = discovery }
-        discoveryStopID = currentStop?.id
-        discovery = discoveryStopID.flatMap { discoveriesByStopID[$0] } ?? StopDiscovery()
+        discovery = discoveryMemory.transition(to: currentStop?.id, saving: discovery)
         arrivalStoryStopID = nil
         presentedSignStopID = nil
         signPresentationSource = nil
@@ -66,11 +64,17 @@ extension TourViewModel {
         // Hold plaque sites during AR so GPS cannot reset the story or discovery mid-scan.
         // Evaluate each location fix at most once, so a stop change cannot reuse the same
         // stationary fix to cascade through two nearby tour destinations.
-        if !(stop.hasPlaqueReference && (isARSessionActive || arDiscoveryStopID == stop.id)),
-           lastAutomaticVisitSampleTimestamp != sample.timestamp,
-           sample.horizontalAccuracy <= StopActivationPolicy.maximumAccuracyMeters,
-           distance + sample.horizontalAccuracy <= stop.arrivalRadius {
-            lastAutomaticVisitSampleTimestamp = sample.timestamp
+        if let evaluatedAt = AutomaticVisitPolicy.evaluationTimestamp(
+            hasPlaqueReference: stop.hasPlaqueReference,
+            arSessionActive: isARSessionActive,
+            discoveryPinnedToThisStop: arDiscoveryStopID == stop.id,
+            sampleTimestamp: sample.timestamp,
+            lastEvaluatedTimestamp: lastAutomaticVisitSampleTimestamp,
+            horizontalAccuracy: sample.horizontalAccuracy,
+            distanceMeters: distance,
+            arrivalRadius: stop.arrivalRadius
+        ) {
+            lastAutomaticVisitSampleTimestamp = evaluatedAt
             let decision = StopActivationPolicy.decide(
                 trackingReady: true, // Core Location arrival needs no AR camera session.
                 plaqueIsTracked: false,

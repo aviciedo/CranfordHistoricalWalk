@@ -107,8 +107,7 @@ final class TourViewModel {
     var lastAutomaticVisitSampleTimestamp: Date?
     let visitStore: any StopVisitStore
     var discovery = StopDiscovery()
-    var discoveryStopID: String?
-    var discoveriesByStopID: [String: StopDiscovery] = [:]
+    var discoveryMemory = StopDiscoveryMemory()
     /// Hold a selected site's story/discovery through GPS fixes and AR presentation.
     var arDiscoveryStopID: String?
     var isARSessionActive = false
@@ -228,9 +227,8 @@ final class TourViewModel {
 
     func resetTour() {
         cancelRouting()
-        discoveriesByStopID = [:]
+        discoveryMemory.reset()
         continuedARStopIDs = []
-        discoveryStopID = nil
         arDiscoveryStopID = nil
         lastAutomaticVisitSampleTimestamp = nil
         progress.reset()

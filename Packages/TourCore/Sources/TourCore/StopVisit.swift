@@ -73,3 +73,28 @@ public enum StopActivationPolicy {
         return age.isFinite && age >= -5 && age < maximumLocationAge
     }
 }
+
+/// Map-only GPS arrival. One fix may complete the current stop, but must not be reused
+/// when that completion immediately retargets a nearby stop. Plaque sites stay put while
+/// AR discovery is active or the visitor has explicitly selected that site.
+public enum AutomaticVisitPolicy {
+    /// Timestamp to remember, or nil when this fix must not be evaluated.
+    /// Nil must not replace the stored timestamp: a plaque hold stays eligible for the
+    /// same fix after discovery ends, and a consumed fix cannot cascade.
+    public static func evaluationTimestamp(
+        hasPlaqueReference: Bool,
+        arSessionActive: Bool,
+        discoveryPinnedToThisStop: Bool,
+        sampleTimestamp: Date,
+        lastEvaluatedTimestamp: Date?,
+        horizontalAccuracy: Double,
+        distanceMeters: Double,
+        arrivalRadius: Double
+    ) -> Date? {
+        if hasPlaqueReference && (arSessionActive || discoveryPinnedToThisStop) { return nil }
+        if lastEvaluatedTimestamp == sampleTimestamp { return nil }
+        guard horizontalAccuracy <= StopActivationPolicy.maximumAccuracyMeters,
+              distanceMeters + horizontalAccuracy <= arrivalRadius else { return nil }
+        return sampleTimestamp
+    }
+}
