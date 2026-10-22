@@ -1,0 +1,16 @@
+{
+  "stop_id": "hpab-004",
+  "name": "First Baptist Church",
+  "latitude": 40.653165,
+  "longitude": -74.302768,
+  "reported_horizontal_accuracy_meters": 6.3,
+  "source": "User-provided Developer Controls screenshot, Device GPS with Precise Location On and Simulated location Off",
+  "received_date_utc": "2026-10-22",
+  "capture_date": null,
+  "fix_age_at_screenshot_seconds": 3,
+  "previous_catalog_coordinate": {
+    "latitude": 40.6534498,
+    "longitude": -74.3027952
+  },
+  "limitations": "Single device GPS reading, not a surveyed point or certification of public access. Reported accuracy is from this fix and is not a guarantee for future fixes."
+}

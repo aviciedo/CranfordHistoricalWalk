@@ -175,7 +175,7 @@ extension HistoricalStop {
             order: 3, isSample: false, coordinatesUnverified: true
         ),
         HistoricalStop(
-            id: "hpab-004", name: "First Baptist Church", latitude: 40.6534498, longitude: -74.3027952,
+            id: "hpab-004", name: "First Baptist Church", latitude: 40.653165, longitude: -74.302768,
             address: "100 High St, Cranford, NJ",
             shortDescription: "HPAB audio-tour stop. Play the recording for the site description. No transcript is bundled.",
             longDescription: "",

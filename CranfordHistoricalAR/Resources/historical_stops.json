@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "tourName": "HPAB Historic Cranford Audio Tour",
   "tourSubtitle": "Names, addresses, and recordings from the Cranford Historic Preservation Advisory Board",
-  "dataStatus": "Tour stops are based on the HPAB Historic Cranford QR Code Audio Tour brochure (May 2020), www.preservecranford.com. The tour creator supplied the updated Droescher’s Mill and Greystone marker text, descriptions and narration scripts. Stops 1 and 2 use bundled AI-generated OpenAI cedar recordings of their approved scripts. Stops 3–5 retain their HPAB recordings by Bernie Wagenblast. Greystone was later known as Cranford Hall. Stops 1 and 2 use coordinates supplied by the tour creator on October 18, 2026 after on-site testing (mill: 40.6503, -74.3012; Greystone: 40.6524, -74.2990). These are approximate, not surveyed positions. Stops 3–5 retain unverified OpenStreetMap Nominatim geocodes. GPS accuracy varies on site. The mill’s physical door plaque reads “c. 1737”; that inscription is retained as a marker reference and is separate from the supplied construction history (after 1821; mill site documented by 1779). Greystone’s separate Cranford Park plaque reference uses the supplied original photograph, including its stone surround; its 0.75 m full-frame reference width is an unmeasured testing estimate.",
+  "dataStatus": "Tour stops are based on the HPAB Historic Cranford QR Code Audio Tour brochure (May 2020), www.preservecranford.com. The tour creator supplied the updated Droescher’s Mill and Greystone marker text, descriptions and narration scripts. Stops 1 and 2 use bundled AI-generated OpenAI cedar recordings of their approved scripts. Stops 3–5 retain their HPAB recordings by Bernie Wagenblast. Greystone was later known as Cranford Hall. Stops 1 and 2 use coordinates supplied by the tour creator on October 18, 2026 after on-site testing (mill: 40.6503, -74.3012; Greystone: 40.6524, -74.2990). These are approximate, not surveyed positions. First Baptist Church uses the creator’s on-site Device GPS reading supplied on October 22, 2026 (40.653165, -74.302768; reported accuracy ±6.3 m). Its capture date is not established by the screenshot. This remains an approximate GPS position, not a survey. Stops 3 and 5 retain unverified OpenStreetMap Nominatim geocodes. GPS accuracy varies on site. The mill’s physical door plaque reads “c. 1737”; that inscription is retained as a marker reference and is separate from the supplied construction history (after 1821; mill site documented by 1779). Greystone’s separate Cranford Park plaque reference uses the supplied original photograph, including its stone surround; its 0.75 m full-frame reference width is an unmeasured testing estimate.",
   "stops": [
     {
       "id": "hpab-001",
@@ -144,8 +144,8 @@
     {
       "id": "hpab-004",
       "name": "First Baptist Church",
-      "latitude": 40.6534498,
-      "longitude": -74.3027952,
+      "latitude": 40.653165,
+      "longitude": -74.302768,
       "address": "100 High St, Cranford, NJ",
       "shortDescription": "HPAB audio-tour stop. Play the recording for the site description. No transcript is bundled.",
       "longDescription": "",

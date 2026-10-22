@@ -344,3 +344,15 @@ The generated PNG was visually inspected and has real alpha transparency. Asset 
 registration and row source mapping were checked; existing row dimensions/actions are preserved.
 Debug/Release syntax passed. Native asset compilation, small-icon legibility and device visual
 QA remain unverified without Xcode/iPhone.
+
+
+## Church on-site coordinate update
+
+Build 0.2.0 (12) replaces stop 4’s geocode with the supplied field GPS reading 40.653165,
+-74.302768 (reported ±6.3 m). Catalog, fixture and previews match; provenance retains the
+previous value and snapshot limitations. Coordinates remain approximate. Actual outdoor
+route/arrival alignment still requires field confirmation.
+
+Validation for this update: 154 TourCore tests passed, Debug/Release Swift syntax passed,
+and a data comparison confirmed all other stop records and church non-coordinate fields
+are unchanged. Native field-route/arrival behavior is not exercised by these portable checks.

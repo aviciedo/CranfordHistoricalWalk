@@ -45,7 +45,7 @@ Follow AR walking arrows, activate a stop marker on site, and discover its histo
 > The bundled walking tour is **five** HPAB audio-tour stops (Droescher's Mill, Greystone, Rahway River,
 > First Baptist Church, Cranford Hotel). The tour began with the HPAB May 2020 brochure; stop 1 now uses
 > the tour creator’s supplied descriptions and narration script. Stops 2–5 keep their HPAB recordings.
-> Stops 1 and 2 use creator-supplied on-site coordinates; stops 3–5 retain unverified geocodes.
+> Stops 1, 2 and 4 use creator-supplied coordinates; stops 3 and 5 retain unverified geocodes.
 > None of these positions is surveyed. Read or listen to any stop from
 > anywhere; AR visit recording has separate on-site checks.
 
@@ -318,7 +318,7 @@ and Xcode asset compilation remain required checks; Linux tests cannot validate 
 (Droescher's Mill, Greystone, Rahway River, First Baptist Church, Cranford Hotel). `audioURL`
 values for stops 3–5 remain the QR destinations. Stops 1 and 2 use bundled cedar recordings of their creator-supplied narration.
 First Baptist uses the QR file
-`First Baptist.mp3` (not `First Baptist Church.mp3`). Greystone no longer plays the earlier `Greystone.mp3` recording. Stops 1 and 2 use the creator-supplied on-site coordinates documented below; stops 3–5 remain
+`First Baptist.mp3` (not `First Baptist Church.mp3`). Greystone no longer plays the earlier `Greystone.mp3` recording. Stops 1, 2 and 4 use the creator-supplied coordinates documented below; stops 3 and 5 remain
 **unverified Nominatim geocodes**. All retain `coordinatesUnverified: true` because they are not surveyed positions. A three-stop SAMPLE fixture
 remains in TourCore tests only (`sample_historical_stops.json`).
 
@@ -590,6 +590,7 @@ After on-site testing, the tour creator supplied these replacement coordinates o
 | --- | --- | --- |
 | Droescher’s Mill (`hpab-001`) | 40.6503 | -74.3012 |
 | Greystone (`hpab-002`) | 40.6524 | -74.2990 |
+| First Baptist Church (`hpab-004`) | 40.653165 | -74.302768 |
 
 The previous mill geocode was about 902 m from the supplied mill position; Greystone’s was
 about 66 m from its supplied position. These replacements are in the bundled catalog, its
@@ -816,3 +817,15 @@ the generic river symbol in this row. Its view keeps the existing 82×76-point f
 label, full-row detail action and visit states. This is decorative artwork; tour coordinates,
 photo gallery, map icons and AR recognition targets are unchanged. Alpha/asset registration
 and Debug/Release Swift syntax checks passed; native rendering still needs Xcode/iPhone.
+
+
+## Church field GPS reading — 0.2.0 (12)
+
+First Baptist Church now uses **40.653165, -74.302768**, from the creator’s Developer Controls
+screenshot received October 22, 2026. The displayed fix was three seconds old, Device GPS,
+Precise Location On, Simulated location Off, with reported accuracy ±6.3 m. The capture date
+is not visible. This replaces the previous geocode about 32 m north; it remains approximate,
+so coordinatesUnverified stays true. Provenance is in docs/field-references/church-location.json.
+The bundled catalog, test fixture and native previews agree. Map position, walking-route
+destination, proximity and AR geographic target use this shared coordinate. Stop identity,
+visit records, arrival radii, narration, artwork and other stops are unchanged.
