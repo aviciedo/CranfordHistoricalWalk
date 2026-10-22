@@ -248,7 +248,10 @@ struct GoogleMapView: UIViewRepresentable {
                 landmarkMarkers[stop.id]?.title = stop.name
                 landmarkMarkers[stop.id]?.snippet = stop.information
                 landmarkMarkers[stop.id]?.position = stop.coordinate
-                landmarkMarkers[stop.id]?.map = (parent.keepsLandmarksVisible || mapView.camera.zoom >= 14.5) ? mapView : nil
+                landmarkMarkers[stop.id]?.map = HomeMapFraming.showsLandmark(
+                    keepsLandmarksVisible: parent.keepsLandmarksVisible,
+                    zoom: Double(mapView.camera.zoom)
+                ) ? mapView : nil
             }
         }
 
@@ -367,8 +370,11 @@ struct GoogleMapView: UIViewRepresentable {
             let update: GMSCameraUpdate
             switch request.kind {
             case .fitAll:
-                let coordinates = markerModels.values.map(\.coordinate)
-                    + (parent.overviewIncludesUserLocation ? (lastPuck.map { [$0.coordinate] } ?? []) : [])
+                let coordinates = HomeMapFraming.overviewCoordinates(
+                    stops: markerModels.values.map { $0.coordinate.geoCoordinate },
+                    user: lastPuck?.coordinate.geoCoordinate,
+                    includesUserLocation: parent.overviewIncludesUserLocation
+                ).map(\.clLocationCoordinate)
                 guard var bounds = coordinates.first.map({ GMSCoordinateBounds(coordinate: $0, coordinate: $0) }) else {
                     mapView.animate(to: GoogleMapView.cranfordFallbackCamera)
                     return
