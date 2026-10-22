@@ -88,6 +88,31 @@ final class TourProgressTests: XCTestCase {
         XCTAssertEqual(p.walkedMeters, 10)
     }
 
+    func testSelectRecognizedSiteDoesNotAwardSkippedStops() {
+        var p = TourProgress(stopIDs: ids)
+        XCTAssertTrue(p.selectStop(withID: "b"))
+        XCTAssertEqual(p.currentStopID, "b")
+        XCTAssertEqual(p.completedCount, 0)
+        XCTAssertEqual(p.completeCurrentStop(), "c")
+        XCTAssertFalse(p.isCompleted("a"))
+        XCTAssertTrue(p.isCompleted("b"))
+    }
+
+    func testRevisitPreservesAllVisitHistoryAndWalkedDistance() {
+        var p = TourProgress(stopIDs: ids)
+        p.start()
+        p.recordWalked(meters: 123)
+        while p.phase == .inProgress { p.completeCurrentStop() }
+        XCTAssertTrue(p.selectStop(withID: "b"))
+        XCTAssertEqual(p.currentStopID, "b")
+        XCTAssertEqual(p.completedStopIDs, ids)
+        XCTAssertEqual(p.walkedMeters, 123)
+        XCTAssertNil(p.completedAt)
+        let snapshot = p
+        XCTAssertFalse(p.selectStop(withID: "unknown"))
+        XCTAssertEqual(p, snapshot)
+    }
+
     func testResetAndCodable() throws {
         var p = TourProgress(stopIDs: ids)
         p.start()

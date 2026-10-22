@@ -37,7 +37,9 @@ extension TourViewModel {
     func resetProximityForCurrentStop() {
         plaqueConfirmedStopID = nil
         activeVisitEvidence = nil
-        discovery = StopDiscovery()
+        if let discoveryStopID { discoveriesByStopID[discoveryStopID] = discovery }
+        discoveryStopID = currentStop?.id
+        discovery = discoveryStopID.flatMap { discoveriesByStopID[$0] } ?? StopDiscovery()
         arrivalStoryStopID = nil
         presentedSignStopID = nil
         signPresentationSource = nil
@@ -60,10 +62,12 @@ extension TourViewModel {
         let effects = machine.handle(.distanceUpdated(meters: distance))
         proximityMachine = machine
         apply(effects, for: stop, source: .automatic)
-        // A reliable physical GPS arrival completes this destination without AR or audio.
+        // Outside AR discovery, a reliable GPS arrival completes the destination.
+        // Hold plaque sites during AR so GPS cannot reset the story or discovery mid-scan.
         // Evaluate each location fix at most once, so a stop change cannot reuse the same
         // stationary fix to cascade through two nearby tour destinations.
-        if lastAutomaticVisitSampleTimestamp != sample.timestamp,
+        if !(stop.hasPlaqueReference && (isARSessionActive || arDiscoveryStopID == stop.id)),
+           lastAutomaticVisitSampleTimestamp != sample.timestamp,
            sample.horizontalAccuracy <= StopActivationPolicy.maximumAccuracyMeters,
            distance + sample.horizontalAccuracy <= stop.arrivalRadius {
             lastAutomaticVisitSampleTimestamp = sample.timestamp
@@ -128,7 +132,8 @@ extension TourViewModel {
     @discardableResult
     func activateCurrentStop(stopID: String, trackingReady: Bool, plaqueIsTracked: Bool, now: Date = Date()) -> StopActivationDecision {
         guard progress.phase == .inProgress, let stop = currentStop, stop.id == stopID else { return .deny(.wrongStop) }
-        if isCurrentStopVisited { return .alreadyActivated }
+        // A GPS visit must not prevent a subsequent, stronger plaque verification.
+        if isCurrentStopVisited && (!stop.hasPlaqueReference || discovery.hasVerifiedPlaque) { return .alreadyActivated }
         guard isSignPresented else { return .deny(.markerNotReady) }
         if stop.hasPlaqueReference,
            discovery.stage != .searching || !plaqueIsTracked || !hasPlaqueConfirmedArrival {
@@ -164,19 +169,45 @@ extension TourViewModel {
         return decision
     }
 
+    /// A tracked bundled plaque identifies its own site, even when the guided walk is stale.
+    /// Selection offers that site's story; verification still requires the discovery flow.
+    @discardableResult
+    func selectRecognizedPlaque(imageName: String?, isTracked: Bool, trackingReady: Bool) -> Bool {
+        guard let stop = SignPlacementPolicy.recognizedStop(imageName: imageName, isTracked: isTracked,
+                                                           trackingReady: trackingReady, stops: stops),
+              !continuedARStopIDs.contains(stop.id) else { return false }
+        if arDiscoveryStopID != stop.id { arDiscoveryStopID = stop.id }
+        if currentStop?.id != stop.id {
+            guard progress.selectStop(withID: stop.id) else { return false }
+            destinationDidChange()
+        }
+        return true
+    }
+
+    /// Also called when the camera cannot start, so a denied/unsupported AR screen
+    /// cannot leave ordinary GPS arrival suspended after the visitor returns to the map.
+    func endARDiscoverySession() {
+        isARSessionActive = false
+        arDiscoveryStopID = nil
+        continuedARStopIDs = []
+    }
+
     func lastRecordedVisit(for stop: HistoricalStop) -> StopVisitRecord? {
         visitRecords.filter { $0.stopID == stop.id }.max { $0.activatedAt < $1.activatedAt }
     }
 
     var isCurrentStopVisited: Bool { progress.isCurrentStopVisited }
 
-    /// Continue is explicit: closing a card or receiving another GPS fix never skips a stop.
+    /// Explicit Continue releases the site's discovery hold and advances. Map-only reliable
+    /// GPS arrival also uses this path; closing a story card never advances the walk.
     func completeCurrentStopAndAdvance() {
         guard progress.phase == .inProgress, let stop = currentStop,
               isCurrentStopVisited || (stop.hasPlaqueReference && discovery.canContinue) else { return }
         proximityMachine?.handle(.markCompleted)
         presentedSignStopID = nil
         signPresentationSource = nil
+        if isARSessionActive { continuedARStopIDs.insert(stop.id) }
+        arDiscoveryStopID = nil
         progress.completeCurrentStop()
         destinationDidChange()
     }
@@ -202,6 +233,7 @@ extension TourViewModel {
         guard isPlaqueDiscoveryStop, discovery.beginDiscovery() else { return false }
         if discovery.hasVerifiedPlaque { return true }
         arrivalStoryStopID = nil
+        arDiscoveryStopID = currentStop?.id
         // Re-arm a dismissed generic marker; the discovery camera will not show that marker.
         proximityMachine = currentStop.map { StopProximityStateMachine(stop: $0) }
         if let userLocation { handleLocationForProximity(userLocation) }

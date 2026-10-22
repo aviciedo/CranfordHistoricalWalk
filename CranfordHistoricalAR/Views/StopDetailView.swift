@@ -1,7 +1,7 @@
 import SwiftUI
 import TourCore
 
-/// Browsing never retargets the tour. AR entry guides to the first/current destination.
+/// Browsing preserves the walk; Start AR explicitly targets the selected site.
 struct StopDetailView: View {
     @Environment(TourViewModel.self) private var tour
     @Environment(AppNavigation.self) private var navigation
@@ -22,7 +22,7 @@ struct StopDetailView: View {
     }
 
     private func enterAR() {
-        guard tour.prepareForARFromDetails() else { return }
+        guard tour.prepareForARFromDetails(stopID: stop.id) else { return }
         if dependencies.narrationPlayer.isPlaying { dependencies.narrationPlayer.pause() }
         let shouldDiscover = tour.currentStop?.id == stop.id && stop.hasPlaqueReference
             && tour.discovery.hasFinishedStory

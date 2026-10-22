@@ -138,7 +138,10 @@ struct ARTourView: View {
             }
         }
         .onAppear { beginPhoneOrientationMonitoring() }
-        .onDisappear { motionManager.stopDeviceMotionUpdates() }
+        .onDisappear {
+            motionManager.stopDeviceMotionUpdates()
+            tour.endARDiscoverySession()
+        }
         .sheet(isPresented: Binding(get: { model.isShowingSignDetails }, set: { model.isShowingSignDetails = $0 })) {
             if let stop = tour.presentedSignStop ?? tour.currentStop {
                 HistoricalSignSheet(stop: stop, onContinue: { model.isShowingSignDetails = false },

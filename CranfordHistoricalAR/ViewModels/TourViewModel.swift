@@ -107,6 +107,12 @@ final class TourViewModel {
     var lastAutomaticVisitSampleTimestamp: Date?
     let visitStore: any StopVisitStore
     var discovery = StopDiscovery()
+    var discoveryStopID: String?
+    var discoveriesByStopID: [String: StopDiscovery] = [:]
+    /// Hold a selected site's story/discovery through GPS fixes and AR presentation.
+    var arDiscoveryStopID: String?
+    var isARSessionActive = false
+    var continuedARStopIDs: Set<String> = []
     var arrivalStoryStopID: String?
     var windowBonusLayout = WindowBonusLayout()
     var parkBonusLayout = WindowBonusLayout.abovePlaque
@@ -199,12 +205,19 @@ final class TourViewModel {
         if proximityMachine == nil { resetProximityForCurrentStop() }
     }
 
-    /// Explicit AR entry starts the first destination, resumes the current one, or restarts
-    /// a completed walk. Browsing a different detail never jumps the guided destination.
+    /// Map entry resumes the walk; an explicit detail entry targets that selected site.
+    /// Browsing details alone still never changes the destination.
     @discardableResult
-    func prepareForARFromDetails() -> Bool {
+    func prepareForARFromDetails(stopID: String? = nil) -> Bool {
         guard loadState == .loaded, !stops.isEmpty else { return false }
-        if phase == .complete { resetTour() }
+        if let stopID {
+            guard stop(withID: stopID) != nil else { return false }
+            arDiscoveryStopID = stopID
+            continuedARStopIDs.remove(stopID)
+            let previousID = currentStop?.id
+            guard progress.selectStop(withID: stopID) else { return false }
+            if previousID != stopID || proximityMachine == nil { destinationDidChange() }
+        } else if phase == .complete { resetTour() }
         startTour()
         return phase == .inProgress && currentStop != nil
     }
@@ -215,6 +228,11 @@ final class TourViewModel {
 
     func resetTour() {
         cancelRouting()
+        discoveriesByStopID = [:]
+        continuedARStopIDs = []
+        discoveryStopID = nil
+        arDiscoveryStopID = nil
+        lastAutomaticVisitSampleTimestamp = nil
         progress.reset()
         progress.start()
         destinationDidChange()

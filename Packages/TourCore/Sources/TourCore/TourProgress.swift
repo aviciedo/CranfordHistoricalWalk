@@ -107,6 +107,17 @@ public struct TourProgress: Sendable, Equatable, Codable {
         completedStopIDs.removeAll { stopIDs.firstIndex(of: $0).map { $0 >= index } ?? true }
     }
 
+    /// Explicit site selection (or a recognized physical plaque) preserves existing visits.
+    /// Unlike the developer jump, this never clears visits or awards skipped stops.
+    @discardableResult
+    public mutating func selectStop(withID stopID: String) -> Bool {
+        guard let index = stopIDs.firstIndex(of: stopID) else { return false }
+        if phase == .notStarted { start() }
+        if phase == .complete { phase = .inProgress; completedAt = nil }
+        currentIndex = index
+        return true
+    }
+
     public mutating func recordWalked(meters: Double) {
         guard phase == .inProgress, meters.isFinite, meters > 0 else { return }
         walkedMeters += meters

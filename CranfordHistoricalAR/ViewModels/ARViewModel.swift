@@ -169,6 +169,7 @@ final class ARViewModel {
         imageTask?.cancel()
         imageTask = nil
         isSessionRunning = false
+        tour.endARDiscoverySession()
         imageTrackingAvailable = false
         placementMode = .hidden
         plaqueHint = nil
@@ -188,6 +189,7 @@ final class ARViewModel {
         imageTrackingAvailable = PlaqueAnchorController.applyDetectionImages(to: configuration)
         arView.session.run(configuration, options: [.resetTracking, .removeExistingAnchors])
         isSessionRunning = true
+        tour.isARSessionActive = true
         isShowingWalkingOrientation = true
         walkingOrientation = ARWalkingGuidance.OrientationState()
         geoAnchors.sessionDidStart(arView.session, arView: arView)
@@ -372,15 +374,23 @@ final class ARViewModel {
     /// A current image match verifies only after the visitor has read/listened and explicitly
     /// chosen discovery. The normal story is never auto-played by an image callback.
     private func handleRecognizedPlaque(_ imageAnchor: ARImageAnchor) {
-        guard imageAnchor.isTracked, let expected = expectedPlaqueImageName,
+        guard isSessionRunning,
+              tour.selectRecognizedPlaque(imageName: imageAnchor.referenceImage.name,
+                                          isTracked: imageAnchor.isTracked,
+                                          trackingReady: geoAnchors.isTrackingReady),
+              let expected = expectedPlaqueImageName,
               geoAnchors.plaqueAnchors.matches(imageAnchor, expectedName: expected) else { return }
+        // Apply a recovered destination before presenting its story or bonus. Otherwise the
+        // observation loop's destination-change cleanup could hide the new site's sheet.
+        if observedStopID != tour.currentStop?.id { pushTourStateToAnchors() }
         if tour.proximityMachine?.hasManuallyDismissed == true { return }
         if tour.proximityState == .completed { return }
         guard let stop = tour.currentStop else { return }
         if stop.hasPlaqueReference {
             guard isSessionRunning, geoAnchors.isTrackingReady else { return }
+            let shouldOfferStory = tour.discovery.arrive()
             if !tour.discovery.hasFinishedStory {
-                if tour.discovery.arrive() { tour.arrivalStoryStopID = stop.id }
+                if shouldOfferStory { tour.arrivalStoryStopID = stop.id }
                 return
             }
             guard tour.discovery.stage == .searching || tour.discovery.hasVerifiedPlaque else { return }
@@ -425,6 +435,11 @@ final class ARViewModel {
         guard tour.beginPlaqueDiscovery() else { return }
         isShowingSignDetails = false
         pushTourStateToAnchors()
+        // ARKit may keep the plaque continuously tracked while the story sheet is open.
+        // Reuse its current tracked anchor instead of requiring a new didAdd callback.
+        if let anchors = arView?.session.currentFrame?.anchors {
+            imageAnchorsDidUpdate(anchors)
+        }
     }
 
     func openBonus() {

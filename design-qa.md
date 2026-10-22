@@ -382,3 +382,50 @@ concave outline coverage, watertight body edges, unit normals, depth and all dir
 Native RealityKit compilation, actual green shading, photo-reference resemblance, outdoor
 contrast, perceived scale and smoothness are unverified without Xcode/iPhone rendering.
 No new native screenshot or device verification is claimed.
+
+
+## Greystone plaque recovery — 0.2.0 (15)
+
+The field screenshot showed the Cranford Park plaque while the HUD still named Droescher’s
+Mill. The reference group already contained both plaques, but recognition first filtered
+against the guided destination; a park match while the mill was current was discarded.
+Start AR in a browsed stop’s detail also resumed that old destination. Separately, automatic
+GPS completion could change destinations/reset discovery, and an existing GPS visit could
+block later plaque verification.
+
+Start AR in stop details now explicitly selects that site. The Map AR control still resumes
+the guided destination; simply browsing remains passive. A currently tracked, uniquely
+registered reference under normal tracking resolves its actual site before the destination
+comparison. Selection preserves visit history and walked distance and never credits skipped
+stops. It offers the correct story; reading/listening and explicitly starting discovery are
+still required before the bonus unlocks. Unknown, ambiguous, untracked and limited-tracking
+references are rejected. Greystone retains its own pillar bonus layout and mill-only panes
+remain isolated.
+
+GPS cannot advance a plaque stop during an active AR session or a pending explicit discovery
+entry. Ordinary map-only GPS advancement remains. Finishing/continuing releases the hold;
+exiting even an unsupported/permission-denied camera screen releases it too. A previous GPS
+visit can be upgraded by a matching plaque. Discovery/story state is retained per stop during
+the walk, cleared by Reset. Continue suppresses that old plaque for the remaining camera
+session so a still-visible image cannot pull the destination back; an explicit site revisit
+re-arms it. Starting discovery also checks the current frame, avoiding dependence on another
+ARKit image-add callback when the plaque stayed tracked behind the story sheet.
+
+Validation: 162 TourCore tests pass, including real-catalog park-to-Greystone resolution,
+unknown/ambiguous/untracked/limited rejection and selection without lost or invented visits.
+Debug/Release Swift syntax checks pass. Five host-app regression flows cover selected-site
+entry, stale-destination recovery, GPS holds/advancement, prior-GPS plaque upgrades, Continue
+suppression/revisit and camera-exit cleanup. Host-app tests and native ARKit recognition have
+not run here: Linux has no Xcode/iOS SDK. Physical image width remains an unmeasured estimate;
+this change does not claim calibrated AR placement.
+
+Field check on build 0.2.0 (15):
+1. Leave the walk at the mill. Open Stops > Greystone > Start AR. Confirm the HUD says Greystone.
+2. Alternatively enter AR from Map while the mill is current, then frame the full Cranford Park
+   plaque and stone surround. Confirm recognized-site recovery offers Greystone’s story.
+3. Read or listen, choose Find the plaque in AR, and keep the plaque in view. Only Greystone’s
+   pillar extra should unlock. GPS updates must not change the destination during this flow.
+4. Repeat after Greystone was already marked visited by GPS. The plaque bonus must still work.
+5. Continue to the river while still viewing the park plaque. The destination must stay at
+   the river. Explicitly reopen Greystone’s Start AR to revisit; saved visits must remain.
+6. Leave AR and confirm normal map walking/GPS advancement; test denied camera permission too.

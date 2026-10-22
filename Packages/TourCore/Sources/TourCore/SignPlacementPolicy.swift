@@ -74,6 +74,15 @@ public enum SignPlacementPolicy {
         }
     }
 
+    /// Resolve physical site identity before comparing against the guided destination.
+    /// Unknown or ambiguous reference names must never unlock a different stop.
+    public static func recognizedStop(imageName: String?, isTracked: Bool,
+                                      trackingReady: Bool, stops: [HistoricalStop]) -> HistoricalStop? {
+        guard isTracked, trackingReady, let imageName, !imageName.isEmpty else { return nil }
+        let matches = stops.filter { $0.hasPlaqueReference && $0.plaque?.referenceImageName == imageName }
+        return matches.count == 1 ? matches[0] : nil
+    }
+
     public static func matchesReference(_ detectedName: String?, expectedName: String?) -> Bool {
         guard let expectedName, !expectedName.isEmpty else { return false }
         return detectedName == expectedName

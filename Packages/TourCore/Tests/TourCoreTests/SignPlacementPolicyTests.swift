@@ -2,6 +2,33 @@ import XCTest
 @testable import TourCore
 
 final class SignPlacementPolicyTests: XCTestCase {
+    func testParkPlaqueResolvesToGreystoneRatherThanStaleMillDestination() throws {
+        let stops = try HistoricalStopDecoder.decode(Fixtures.data("historical_stops")).stops
+        let park = try XCTUnwrap(SignPlacementPolicy.recognizedStop(
+            imageName: SignPlacementPolicy.parkReferenceImageName, isTracked: true,
+            trackingReady: true, stops: stops))
+        var walk = TourProgress(stopIDs: stops.map(\.id))
+        walk.start()
+        XCTAssertNotEqual(walk.currentStopID, park.id)
+        XCTAssertTrue(walk.selectStop(withID: park.id))
+        XCTAssertEqual(walk.currentStopID, "hpab-002")
+        XCTAssertEqual(walk.completedCount, 0)
+        XCTAssertFalse(SignPlacementPolicy.matchesReference(park.plaque?.referenceImageName,
+                        expectedName: SignPlacementPolicy.millReferenceImageName))
+    }
+
+    func testUntrackedUnknownAmbiguousOrLimitedTrackingCannotSelectSite() throws {
+        let stops = try HistoricalStopDecoder.decode(Fixtures.data("historical_stops")).stops
+        let name = SignPlacementPolicy.parkReferenceImageName
+        XCTAssertNil(SignPlacementPolicy.recognizedStop(imageName: name, isTracked: false, trackingReady: true, stops: stops))
+        XCTAssertNil(SignPlacementPolicy.recognizedStop(imageName: name, isTracked: true, trackingReady: false, stops: stops))
+        for invalid in [nil, "", "unregistered-plaque"] as [String?] {
+            XCTAssertNil(SignPlacementPolicy.recognizedStop(imageName: invalid, isTracked: true, trackingReady: true, stops: stops))
+        }
+        let park = try XCTUnwrap(stops.first { $0.plaque?.referenceImageName == name })
+        XCTAssertNil(SignPlacementPolicy.recognizedStop(imageName: name, isTracked: true, trackingReady: true, stops: stops + [park]))
+    }
+
     func testSearchingUntilTimeoutThenGeoFallback() {
         var input = presentedMill()
         XCTAssertEqual(SignPlacementPolicy.mode(input), .searchingForPlaque)

@@ -21,7 +21,81 @@ final class TourCompletionFlowTests: XCTestCase {
         await tour.loadStopsIfNeeded()
         XCTAssertEqual(tour.loadState, .loaded)
         tour.startTour()
+        // These flows exercise the camera/story lifecycle. Ordinary map-only GPS advance
+        // is tested separately with this flag disabled.
+        tour.isARSessionActive = true
         try await waitUntil("first location arrives") { self.tour.userLocation != nil }
+    }
+
+    func testGreystoneDetailARTargetsSelectedSiteAndDoesNotCompleteMill() {
+        XCTAssertTrue(tour.prepareForARFromDetails(stopID: stops[1].id))
+        XCTAssertEqual(tour.currentStop?.id, stops[1].id)
+        XCTAssertEqual(tour.progress.completedCount, 0)
+        tour.handleLocationForProximity(LocationSample(coordinate: stops[1].coordinate, horizontalAccuracy: 3))
+        XCTAssertEqual(tour.currentStop?.id, stops[1].id, "GPS must not skip the selected discovery")
+        XCTAssertFalse(tour.discovery.hasVerifiedPlaque)
+    }
+
+    func testRecognizedParkPlaqueRecoversStaleDestinationWithoutUnlockingEitherBonus() {
+        XCTAssertTrue(tour.selectRecognizedPlaque(imageName: SignPlacementPolicy.parkReferenceImageName,
+                                                isTracked: true, trackingReady: true))
+        XCTAssertEqual(tour.currentStop?.id, stops[1].id)
+        XCTAssertEqual(tour.currentBonusLayout, .abovePlaque)
+        XCTAssertEqual(tour.progress.completedCount, 0)
+        XCTAssertFalse(tour.discovery.hasFinishedStory)
+        XCTAssertFalse(tour.beginPlaqueDiscovery())
+        XCTAssertFalse(tour.discovery.hasVerifiedPlaque)
+        tour.finishStory(for: stops[1].id)
+        XCTAssertTrue(tour.beginPlaqueDiscovery())
+        tour.confirmPlaqueArrival(for: stops[1].id)
+        XCTAssertEqual(activateCurrent(plaqueIsTracked: true), .allow(.simulation))
+        XCTAssertTrue(tour.discovery.hasVerifiedPlaque)
+        XCTAssertFalse(tour.progress.isCompleted(stops[0].id))
+    }
+
+    func testGPSVisitCanBeUpgradedToPlaqueAndContinueCannotBounceBack() {
+        XCTAssertTrue(tour.prepareForARFromDetails(stopID: stops[1].id))
+        tour.progress.markCurrentStopVisited() // Existing GPS visit, no plaque verification.
+        tour.isARSessionActive = true
+        tour.finishStory(for: stops[1].id)
+        XCTAssertTrue(tour.beginPlaqueDiscovery())
+        tour.confirmPlaqueArrival(for: stops[1].id)
+        XCTAssertEqual(activateCurrent(plaqueIsTracked: true), .allow(.simulation))
+        XCTAssertTrue(tour.discovery.hasVerifiedPlaque)
+        XCTAssertEqual(tour.progress.completedCount, 1)
+        tour.completeCurrentStopAndAdvance()
+        XCTAssertEqual(tour.currentStop?.id, stops[2].id)
+        XCTAssertFalse(tour.selectRecognizedPlaque(imageName: SignPlacementPolicy.parkReferenceImageName,
+                                                 isTracked: true, trackingReady: true))
+        XCTAssertEqual(tour.currentStop?.id, stops[2].id)
+        XCTAssertTrue(tour.prepareForARFromDetails(stopID: stops[1].id), "Explicit revisit re-arms this site")
+        XCTAssertTrue(tour.discovery.hasVerifiedPlaque)
+    }
+
+    func testGPSStillAdvancesOutsideARButHoldsPlaqueStopInActiveAR() {
+        tour.isARSessionActive = true
+        tour.handleLocationForProximity(LocationSample(coordinate: stops[0].coordinate, horizontalAccuracy: 3))
+        XCTAssertEqual(tour.currentStop?.id, stops[0].id)
+        XCTAssertTrue(tour.discovery.hasArrived)
+        XCTAssertFalse(tour.discovery.hasVerifiedPlaque)
+        tour.isARSessionActive = false
+        tour.handleLocationForProximity(LocationSample(coordinate: stops[0].coordinate, horizontalAccuracy: 3))
+        XCTAssertEqual(tour.currentStop?.id, stops[1].id)
+        XCTAssertTrue(tour.progress.isCompleted(stops[0].id))
+    }
+
+    func testUnknownOrUntrackedPlaqueCannotRetargetAndDismissedCameraReleasesGPSHold() {
+        let initial = tour.currentStop?.id
+        XCTAssertFalse(tour.selectRecognizedPlaque(imageName: "unknown", isTracked: true, trackingReady: true))
+        XCTAssertFalse(tour.selectRecognizedPlaque(imageName: SignPlacementPolicy.parkReferenceImageName,
+                                                 isTracked: false, trackingReady: true))
+        XCTAssertEqual(tour.currentStop?.id, initial)
+        XCTAssertTrue(tour.prepareForARFromDetails(stopID: stops[1].id))
+        tour.endARDiscoverySession() // Includes a camera permission/unsupported-device exit.
+        XCTAssertNil(tour.arDiscoveryStopID)
+        tour.handleLocationForProximity(LocationSample(coordinate: stops[1].coordinate, horizontalAccuracy: 3))
+        XCTAssertEqual(tour.currentStop?.id, stops[2].id)
+        XCTAssertFalse(tour.discovery.hasVerifiedPlaque)
     }
 
     func testBrowsingAndSwitchingTabsDoNotRetargetTheGuidedWalk() {
