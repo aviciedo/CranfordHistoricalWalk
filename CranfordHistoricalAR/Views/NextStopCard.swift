@@ -28,7 +28,7 @@ struct NextStopCard: View {
             }
             .fixedSize(horizontal: false, vertical: true)
             .foregroundStyle(AppTheme.ink)
-            .padding(.horizontal, 22).padding(.vertical, 12)
+            .padding(.horizontal, 24).padding(.bottom, 8)
             .background(AppTheme.parchment)
         }
     }

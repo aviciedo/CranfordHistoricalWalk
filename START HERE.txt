@@ -1,6 +1,6 @@
 Cranford Historical AR — Xcode project
 
-Release 0.2.0 (41) — Home map zoom controls
+Release 0.2.0 (42) — Smaller rounded Map with visible destination actions
 
 1. Close the previous Xcode project. Extract the entire ZIP into a fresh folder on the Mac. Keep its folders together.
    Copy your existing Config/Secrets.xcconfig into this new folder’s Config folder.
@@ -10,7 +10,7 @@ Release 0.2.0 (41) — Home map zoom controls
 5. In Xcode select the blue project icon, then Targets > CranfordHistoricalAR > Signing & Capabilities.
 6. Turn on Automatically manage signing and select your Apple account under Team.
 7. Select your iPhone in the top toolbar. Choose Product > Clean Build Folder, then click Run.
-8. On the iPhone open Home > Developer. Installed build and narration must show 0.2.0 (41), audio release cedar-2.
+8. On the iPhone open Home > Developer. Installed build and narration must show 0.2.0 (42), audio release cedar-2.
    After tapping Play, Prepared audio should say bundledAudio with stop_01 or stop_02, never synthesizedSpeech.
 
 Homebrew and XcodeGen are not needed to open this generated project.
@@ -349,3 +349,20 @@ Build 41 Home map zoom controls:
   invalid input, pinch reports, Apple scale conversion and independent walking state.
   Debug/Release Swift syntax checks pass. Actual native rendering and camera behavior
   still need iPhone/Xcode verification, for both configured Google and Apple fallback.
+
+Build 42 smaller Map and visible destination actions:
+- Map now uses the Home screen's 24-point side margins, 16-point rounded corners and
+  ivory spacing. Back/title, map, destination and actions align on the same margins.
+- Removed the destination-height PreferenceKey feedback loop. A synchronous SwiftUI
+  layout measures the complete destination panel first, then allocates remaining
+  viewport space to a 160–400 point map. Player/tabs/header already lie outside that
+  viewport. Normal fitting content no longer needs scrolling to reach View stop/Continue.
+- On shorter maps, the three 48-point camera/recenter/route controls form a bottom-right
+  row. Both providers reserve the matching area so landmarks stay clear of buttons.
+  Attribution remains visible. Text/touch targets keep their size; oversized accessibility
+  content can still scroll instead of being cropped. Scroll bounce only occurs on overflow.
+- Walking, viewed-stop selection, routes, AR, audio, completion and resume behavior remain.
+- 198 TourCore tests pass, including player-visible, status-loading, large-text, empty
+  destination and zero-size layout cases. Debug/Release Swift syntax checks pass.
+  A native hosting regression measures the new layout with and without player space;
+  run it in Xcode. Native map appearance and device/Simulator builds are unverified here.

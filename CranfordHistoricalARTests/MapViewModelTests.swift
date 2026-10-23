@@ -7,6 +7,19 @@ import TourCore
 
 @MainActor
 final class MapViewModelTests: XCTestCase {
+    func testMapLayoutFitsDestinationWithAndWithoutPlayerSpace() {
+        for availableHeight in [420.0, 580.0] {
+            let available = CGSize(width: 393, height: availableHeight)
+            let content = DestinationFirstMapLayout(availableSize: available) {
+                Color.clear
+                Color.clear.frame(height: 196)
+            }
+            let host = UIHostingController(rootView: content)
+            let measured = host.sizeThatFits(in: available)
+            XCTAssertEqual(measured.height, available.height, accuracy: 1)
+        }
+    }
+
     func testMapStatusReservesDistanceAndLoadingTextHeight() {
         let tour = AppDependencies.preview().tourViewModel
         let sizes: [(DynamicTypeSize, UIContentSizeCategory)] = [

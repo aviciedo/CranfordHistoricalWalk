@@ -7,18 +7,16 @@ struct TourView: View {
     @Environment(TourViewModel.self) private var tour
     @Environment(AppDependencies.self) private var dependencies
     @Environment(AppNavigation.self) private var navigation
-    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var mapModel = MapViewModel()
     @State private var isShowingAR = false
     @State private var isShowingSummary = false
     @State private var isShowingDeveloperControls = false
     @State private var detailStop: HistoricalStop?
-    @State private var destinationHeight: CGFloat = 200
 
     var body: some View {
         VStack(spacing: 0) {
             ScreenReturnBar(onBack: { navigation.goBack() })
-                .padding(.horizontal, 22).padding(.top, 8)
+                .padding(.horizontal, 24).padding(.top, 8)
             header
             if tour.phase == .complete {
                 Button { isShowingSummary = true } label: {
@@ -31,24 +29,17 @@ struct TourView: View {
                     .font(.subheadline).frame(minHeight: 44)
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain).padding(.horizontal, 22)
+                .buttonStyle(.plain).padding(.horizontal, 24)
             }
             GeometryReader { viewport in
                 ScrollView {
-                    VStack(spacing: 0) {
-                        map.frame(height: typeSize.isAccessibilitySize ? 260 : max(260, viewport.size.height - destinationHeight - 24))
+                    DestinationFirstMapLayout(availableSize: viewport.size) {
+                        map.padding(.horizontal, 24)
                         VStack(spacing: 0) { destination }
                             .fixedSize(horizontal: false, vertical: true)
-                            .background {
-                                GeometryReader { panel in
-                                    Color.clear.preference(key: MapDestinationHeight.self, value: panel.size.height)
-                                }
-                            }
                     }
-                    // Keep the last line/actions clear of the persistent player and tabs.
-                    .padding(.bottom, 24)
                 }
-                .onPreferenceChange(MapDestinationHeight.self) { destinationHeight = $0 }
+                .scrollBounceBehavior(.basedOnSize, axes: .vertical)
                 .accessibilityIdentifier("map.scrollContent")
             }
         }
@@ -122,12 +113,12 @@ struct TourView: View {
                 .modifier(WalkDebugGesture(isPresented: $isShowingDeveloperControls))
             Spacer()
         }
-        .padding(.horizontal, 22).padding(.vertical, 12)
+        .padding(.horizontal, 24).padding(.vertical, 12)
     }
 
     private var map: some View {
         TourMapView(mapModel: mapModel, bottomInset: 0, onEnterAR: enterWalkingAR)
-            .clipped()
+            .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
     @ViewBuilder
@@ -146,7 +137,7 @@ struct TourView: View {
                 }
                 .accessibilityLabel("Clear viewed place")
             }
-            .buttonStyle(.plain).padding(.horizontal, 22).padding(.vertical, 8)
+            .buttonStyle(.plain).padding(.horizontal, 24).padding(.vertical, 8)
             if tour.phase == .inProgress { Divider() }
         }
         if tour.phase == .inProgress {
@@ -163,7 +154,7 @@ struct TourView: View {
             .buttonStyle(.plain).foregroundStyle(AppTheme.ivory)
             .background(AppTheme.forest, in: RoundedRectangle(cornerRadius: 14))
             .disabled(tour.loadState != .loaded)
-            .padding(20)
+            .padding(.horizontal, 24).padding(.vertical, 12)
         }
     }
 
@@ -183,9 +174,36 @@ struct TourView: View {
     }
 }
 
-private struct MapDestinationHeight: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+/// Measure the destination directly in the same layout pass, rather than feeding a
+/// PreferenceKey back into a ScrollView's map height. The footer is never compressed.
+struct DestinationFirstMapLayout: Layout {
+    let availableSize: CGSize
+
+    private func metrics(for subviews: Subviews) -> MapScreenSizing.Metrics {
+        guard availableSize.width > 0, availableSize.height > 0 else {
+            return MapScreenSizing.metrics(availableHeight: 0, destinationHeight: 0)
+        }
+        let proposal = ProposedViewSize(width: availableSize.width, height: nil)
+        let footerHeight = subviews[1].sizeThatFits(proposal).height
+        return MapScreenSizing.metrics(availableHeight: Double(availableSize.height),
+                                       destinationHeight: Double(footerHeight))
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard subviews.count == 2 else { return .zero }
+        let sizes = metrics(for: subviews)
+        return CGSize(width: availableSize.width, height: CGFloat(sizes.contentHeight))
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard subviews.count == 2 else { return }
+        let sizes = metrics(for: subviews)
+        subviews[0].place(at: CGPoint(x: bounds.minX, y: bounds.minY), anchor: .topLeading,
+            proposal: ProposedViewSize(width: availableSize.width, height: CGFloat(sizes.mapHeight)))
+        subviews[1].place(at: CGPoint(x: bounds.minX, y: bounds.minY + CGFloat(sizes.mapHeight + sizes.gap)),
+            anchor: .topLeading, proposal: ProposedViewSize(width: availableSize.width,
+                                                          height: CGFloat(sizes.destinationHeight)))
+    }
 }
 
 private struct WalkDebugGesture: ViewModifier {

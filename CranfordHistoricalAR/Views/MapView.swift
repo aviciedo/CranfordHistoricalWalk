@@ -12,49 +12,52 @@ struct TourMapView: View {
     @State private var appleMapError: String?
 
     var body: some View {
-        ZStack(alignment: .top) {
-            if GoogleMapsBootstrap.isConfigured {
-                GoogleMapView(
-                    markers: mapModel.markers(for: tour),
-                    userPuck: mapModel.userPuck(for: tour),
-                    routeCoordinates: tour.isRouteAnEstimate ? [] : (tour.currentRoute?.clCoordinates ?? []),
-                    cameraRequest: mapModel.cameraRequest,
-                    bottomInset: bottomInset,
-                    onUserGesture: { mapModel.userDidMoveCamera() },
-                    onMarkerTap: { mapModel.select(stopID: $0) },
-                    markerStyle: .numberedDot,
-                    selectedStopID: mapModel.viewedStopID,
-                    reservesNavigationControls: true,
-                    showsCompass: false,
-                    fitInsets: UIEdgeInsets(top: 28, left: 30, bottom: 30, right: 74),
-                    onMapTap: { mapModel.clearViewedStop() }
-                )
-            } else {
-                AppleTourMapView(markers: mapModel.markers(for: tour),
-                    userPuck: mapModel.userPuck(for: tour),
-                    routeCoordinates: tour.isRouteAnEstimate ? [] : (tour.currentRoute?.clCoordinates ?? []),
-                    cameraRequest: mapModel.cameraRequest,
-                    onUserGesture: { mapModel.userDidMoveCamera() },
-                    onMarkerTap: { mapModel.select(stopID: $0) },
-                    onMapError: { appleMapError = $0 }, reservesNavigationControls: true)
-            }
+        GeometryReader { viewport in
+            ZStack(alignment: .top) {
+                if GoogleMapsBootstrap.isConfigured {
+                    GoogleMapView(
+                        markers: mapModel.markers(for: tour),
+                        userPuck: mapModel.userPuck(for: tour),
+                        routeCoordinates: tour.isRouteAnEstimate ? [] : (tour.currentRoute?.clCoordinates ?? []),
+                        cameraRequest: mapModel.cameraRequest,
+                        bottomInset: bottomInset,
+                        onUserGesture: { mapModel.userDidMoveCamera() },
+                        onMarkerTap: { mapModel.select(stopID: $0) },
+                        markerStyle: .numberedDot,
+                        selectedStopID: mapModel.viewedStopID,
+                        reservesNavigationControls: true,
+                        showsCompass: false,
+                        fitInsets: UIEdgeInsets(top: 28, left: 30, bottom: 30, right: 74),
+                        onMapTap: { mapModel.clearViewedStop() }
+                    )
+                } else {
+                    AppleTourMapView(markers: mapModel.markers(for: tour),
+                        userPuck: mapModel.userPuck(for: tour),
+                        routeCoordinates: tour.isRouteAnEstimate ? [] : (tour.currentRoute?.clCoordinates ?? []),
+                        cameraRequest: mapModel.cameraRequest,
+                        onUserGesture: { mapModel.userDidMoveCamera() },
+                        onMarkerTap: { mapModel.select(stopID: $0) },
+                        onMapError: { appleMapError = $0 }, reservesNavigationControls: true)
+                }
 
-            if let appleMapError, !GoogleMapsBootstrap.isConfigured {
-                Label(appleMapError, systemImage: "wifi.exclamationmark")
-                    .font(.footnote).padding(12)
-                    .background(AppTheme.parchment, in: RoundedRectangle(cornerRadius: 12))
-                    .padding(.horizontal, 12).padding(.top, tour.locationIssue == nil ? 8 : 110)
-                    .allowsHitTesting(false)
+                if let appleMapError, !GoogleMapsBootstrap.isConfigured {
+                    Label(appleMapError, systemImage: "wifi.exclamationmark")
+                        .font(.footnote).padding(12)
+                        .background(AppTheme.parchment, in: RoundedRectangle(cornerRadius: 12))
+                        .padding(.horizontal, 12).padding(.top, tour.locationIssue == nil ? 8 : 110)
+                        .allowsHitTesting(false)
+                }
+                if let issue = tour.locationIssue, !tour.isWalkPaused {
+                    LocationIssueBanner(issue: issue)
+                        .padding(.top, 8).padding(.trailing, 12)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
             }
-            if let issue = tour.locationIssue, !tour.isWalkPaused {
-                LocationIssueBanner(issue: issue)
-                    .padding(.top, 8).padding(.trailing, 12)
-                    .transition(.move(edge: .top).combined(with: .opacity))
+            .overlay(alignment: .bottomTrailing) {
+                MapControlStack(mapModel: mapModel, onEnterAR: onEnterAR,
+                                horizontal: viewport.size.height < CGFloat(MapScreenSizing.compactControlsThreshold))
+                    .padding(.trailing, 16).padding(.bottom, 20)
             }
-        }
-        .overlay(alignment: .bottomTrailing) {
-            MapControlStack(mapModel: mapModel, onEnterAR: onEnterAR)
-                .padding(.trailing, 16).padding(.bottom, 20)
         }
         .onChange(of: tour.userLocation) { _, _ in mapModel.followIfNeeded(tour: tour) }
         .onAppear { if mapModel.cameraRequest == nil { mapModel.showUserAndDestination(tour: tour) } }
@@ -73,9 +76,11 @@ struct MapControlStack: View {
     @Environment(TourViewModel.self) private var tour
     var mapModel: MapViewModel
     var onEnterAR: () -> Void
+    var horizontal = false
 
     var body: some View {
-        VStack(spacing: 10) {
+        let layout = horizontal ? AnyLayout(HStackLayout(spacing: 10)) : AnyLayout(VStackLayout(spacing: 10))
+        return layout {
             Button { mapModel.requestFollow(tour: tour) } label: {
                 Image(systemName: "location.fill")
                     .frame(width: 48, height: 48).background(.white, in: Circle())

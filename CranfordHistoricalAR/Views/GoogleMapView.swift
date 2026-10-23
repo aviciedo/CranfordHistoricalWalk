@@ -565,7 +565,12 @@ final class StopMapLeaderView: UIView {
     }
 
     static func reservedAreas(in bounds: CGRect, controls: Bool, zoomControls: Bool = false) -> [CGRect] {
-        if controls { return [CGRect(x: bounds.maxX - 76, y: bounds.maxY - 204, width: 68, height: 196)] }
+        if controls {
+            if bounds.height < CGFloat(MapScreenSizing.compactControlsThreshold) {
+                return [CGRect(x: bounds.maxX - 192, y: bounds.maxY - 80, width: 184, height: 72)]
+            }
+            return [CGRect(x: bounds.maxX - 76, y: bounds.maxY - 204, width: 68, height: 196)]
+        }
         if zoomControls { return [CGRect(x: bounds.maxX - 76, y: bounds.maxY - 144, width: 68, height: 136)] }
         return []
     }
