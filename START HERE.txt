@@ -1,6 +1,6 @@
 Cranford Historical AR — Xcode project
 
-Release 0.2.0 (27) — Remove legacy Home resume control
+Release 0.2.0 (28) — Consistent Back and return-Home navigation
 
 1. Close the previous Xcode project. Extract the entire ZIP into a fresh folder on the Mac. Keep its folders together.
    Copy your existing Config/Secrets.xcconfig into this new folder’s Config folder.
@@ -10,7 +10,7 @@ Release 0.2.0 (27) — Remove legacy Home resume control
 5. In Xcode select the blue project icon, then Targets > CranfordHistoricalAR > Signing & Capabilities.
 6. Turn on Automatically manage signing and select your Apple account under Team.
 7. Select your iPhone in the top toolbar. Choose Product > Clean Build Folder, then click Run.
-8. On the iPhone open Home > Developer. Installed build and narration must show 0.2.0 (27), audio release cedar-2.
+8. On the iPhone open Home > Developer. Installed build and narration must show 0.2.0 (28), audio release cedar-2.
    After tapping Play, Prepared audio should say bundledAudio with stop_01 or stop_02, never synthesizedSpeech.
 
 Homebrew and XcodeGen are not needed to open this generated project.
@@ -164,3 +164,19 @@ Build 27 Home cleanup:
   bring back the removed Home row. Saved audio positions are retained for stop-page Resume.
 - No changes to the shared player, playback service or walking destination logic.
 - Verify the Home layout and persistent footer on an iPhone; native UI cannot run on Linux.
+
+Build 28 screen navigation:
+- Non-Home screens have Back at top left and a screen X at top right.
+- Back dismisses one modal level (photo to stop, stop to its opener, AR to Map).
+  At root Map/Stops it returns to the preceding tab. Show on map also remembers
+  the originating stop page so Map Back can reopen it.
+- Header X closes nested presentations and selects Home; it does not stop narration
+  or reset the walk. The separate player's X still pauses/hides the player.
+- Applies to Map, Stops, stop details, photographs, walking AR, plaque scanning,
+  bonus previews, walk summaries and Developer Controls. Home has no header buttons.
+- Test: Stops > mill > photo > Back returns to mill; photo > header X returns Home.
+  Also test Stops > Greystone > Show on map > Back, nested AR bonuses, camera denied,
+  completed-walk summary, Developer Controls and larger text. Repeat header X after
+  opening a stop from Home's map. Camera sessions must close and audio must continue.
+- 44 portable navigation/activity tests and Debug/Release syntax checks. Native nested
+  sheet dismissal, camera cleanup and visual placement need Xcode/iPhone verification.

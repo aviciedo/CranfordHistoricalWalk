@@ -2,6 +2,7 @@ import SwiftUI
 
 /// A photograph opens in place; dismissing it never changes tour or navigation state.
 struct ExpandableStopImage: View {
+    @Environment(AppNavigation.self) private var navigation
     let image: LoadedImage
     let title: String
     var cornerRadius: CGFloat = 14
@@ -16,6 +17,7 @@ struct ExpandableStopImage: View {
         .buttonStyle(.plain)
         .accessibilityLabel("Enlarge image of \(title)")
         .accessibilityHint("Opens a full-screen image with zoom and a Close button")
+        .onChange(of: navigation.homeReturnID) { _, _ in isExpanded = false }
         .fullScreenCover(isPresented: $isExpanded) {
             StopPhotoViewer(image: image, title: title)
         }
@@ -34,18 +36,11 @@ struct StopPhotoViewer: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 16) {
-                Text(title).font(.headline).lineLimit(2)
-                Spacer()
-                Button { dismiss() } label: {
-                    Image(systemName: "xmark").font(.headline)
-                        .frame(width: 48, height: 48)
-                        .background(.white.opacity(0.14), in: Circle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Close photo")
-            }
-            .padding(.horizontal, 20).padding(.vertical, 8)
+            ScreenReturnBar(onBack: { dismiss() })
+                .padding(.horizontal, 20).padding(.vertical, 8)
+            Text(title).font(.headline).fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 20).padding(.bottom, 8)
             if let credit {
                 Text(credit).font(.caption).padding(.horizontal, 20).padding(.bottom, 8)
             }
@@ -90,5 +85,6 @@ struct StopPhotoViewer: View {
         }
         .foregroundStyle(.white).background(.black)
         .preferredColorScheme(.dark)
+        .dismissOnReturnHome()
     }
 }

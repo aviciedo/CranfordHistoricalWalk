@@ -17,6 +17,8 @@ struct TourView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            ScreenReturnBar(onBack: { navigation.goBack() })
+                .padding(.horizontal, 22).padding(.top, 8)
             header
             if tour.phase == .complete {
                 Button { isShowingSummary = true } label: {
@@ -77,17 +79,27 @@ struct TourView: View {
                 .navigationTitle(tour.phase == .complete ? "Walk summary" : "Your walk")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("Back") { isShowingSummary = false }
+                    ToolbarItem(placement: .cancellationAction) {
+                        ScreenBackButton { isShowingSummary = false }
                     }
+                    ToolbarItem(placement: .confirmationAction) { ScreenHomeButton() }
                 }
             }
+            .dismissOnReturnHome()
         }
 
         #if DEVELOPER_MENU
         .sheet(isPresented: $isShowingDeveloperControls) { DeveloperControlsView() }
         #endif
         .fullScreenCover(isPresented: $isShowingAR) { ARTourView() }
+        .onChange(of: navigation.pendingStopReturn) { _, _ in restoreStopReturn() }
+        .onAppear { restoreStopReturn() }
+        .onChange(of: navigation.homeReturnID) { _, _ in
+            detailStop = nil
+            isShowingSummary = false
+            isShowingDeveloperControls = false
+            isShowingAR = false
+        }
         .onChange(of: mapModel.selectedStopID) { _, id in
             if let id { detailStop = tour.stop(withID: id) }
             mapModel.select(stopID: nil)
@@ -163,6 +175,9 @@ struct TourView: View {
         }
     }
 
+    private func restoreStopReturn() {
+        if let id = navigation.takeStopReturn(for: .map) { detailStop = tour.stop(withID: id) }
+    }
     private func enterWalkingAR() {
         // Start/resume the shared destination; opening the camera never skips a stop or story.
         guard tour.prepareForARFromDetails() else { return }

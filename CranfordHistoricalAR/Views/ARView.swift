@@ -20,17 +20,20 @@ struct ARTourView: View {
     var body: some View {
         ZStack {
             if awaitingGeospatialConsent {
-                ARCorePrivacyConsentView(
-                    onAccept: {
-                        ARCoreConsentStore.accept()
-                        awaitingGeospatialConsent = false
-                        startAR()
-                    },
-                    onDecline: {
-                        awaitingGeospatialConsent = false
-                        startAR()
-                    }
-                )
+                VStack(spacing: 0) {
+                    ScreenReturnBar(onBack: returnToMap).padding(16)
+                    ARCorePrivacyConsentView(
+                        onAccept: {
+                            ARCoreConsentStore.accept()
+                            awaitingGeospatialConsent = false
+                            startAR()
+                        },
+                        onDecline: {
+                            awaitingGeospatialConsent = false
+                            startAR()
+                        }
+                    )
+                }
             } else if let model {
                 content(model)
             } else {
@@ -47,6 +50,11 @@ struct ARTourView: View {
         }
         .preferredColorScheme(awaitingGeospatialConsent ? .light : .dark)
         .statusBarHidden(false)
+        .onChange(of: navigation.homeReturnID) { _, _ in
+            model?.isShowingSignDetails = false
+            model?.isShowingBonusPreview = false
+            returnToMap()
+        }
     }
 
     private func returnToMap() {
@@ -160,6 +168,7 @@ struct ARTourView: View {
 
 /// A quiet camera frame with one direction surface and one on-site action.
 struct ARHUDView: View {
+    @Environment(AppNavigation.self) private var navigation
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let model: ARViewModel
     var onClose: () -> Void
@@ -216,18 +225,20 @@ struct ARHUDView: View {
         }
         #if DEVELOPER_MENU
         .sheet(isPresented: $isShowingCalibration) { DeveloperControlsView() }
+        .onChange(of: navigation.homeReturnID) { _, _ in isShowingCalibration = false }
         #endif
     }
 
     private var topBar: some View {
-        HStack(alignment: .top, spacing: 12) {
+        VStack(alignment: .leading, spacing: 8) {
+            ScreenReturnBar(onBack: onClose)
             if let name = model.destinationName {
-                VStack(alignment: .trailing, spacing: 5) {
+                VStack(alignment: .leading, spacing: 5) {
                     Text(model.tour.discovery.hasVerifiedPlaque ? "Bonus found" :
                          (model.tour.isPlaqueDiscoveryStop && model.tour.discovery.hasArrived ? "At this stop" : "Next stop"))
                         .font(.caption.weight(.medium))
                     Text(name).font(.system(.headline, design: .serif))
-                        .multilineTextAlignment(.trailing).fixedSize(horizontal: false, vertical: true)
+                        .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
                     if !model.tour.isARStopVisited && !(model.tour.isPlaqueDiscoveryStop && model.tour.discovery.hasArrived) {
                         HStack(spacing: 10) {
                             Label(model.distanceText, systemImage: "figure.walk")
@@ -240,15 +251,6 @@ struct ARHUDView: View {
                 .foregroundStyle(AppTheme.forest).padding(14)
                 .background(AppTheme.ivory, in: RoundedRectangle(cornerRadius: 18))
             }
-            Spacer(minLength: 0)
-            Button(action: onClose) {
-                Label("Back", systemImage: "chevron.left")
-                    .font(.subheadline.weight(.semibold))
-                    .padding(.horizontal, 14).frame(minHeight: 48)
-                    .background(AppTheme.ivory, in: Capsule())
-            }
-            .buttonStyle(.plain).foregroundStyle(AppTheme.forest)
-            .accessibilityLabel("Return to previous screen")
         }
     }
 
@@ -441,6 +443,7 @@ struct CameraExplanationView: View {
 
 /// Direct, camera-only plaque entry. No walking start, location request or geospatial consent.
 struct PlaqueScannerView: View {
+    @Environment(AppNavigation.self) private var navigation
     @Environment(TourViewModel.self) private var tour
     @Environment(AppDependencies.self) private var dependencies
     @Environment(\.dismiss) private var dismiss
@@ -462,16 +465,10 @@ struct PlaqueScannerView: View {
                 PlaqueScannerHUD(model: model, onClose: { dismiss() })
             } else {
                 VStack {
-                    HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        ScreenReturnBar(onBack: { dismiss() })
                         Text(tour.stop(withID: stopID)?.name ?? "Plaque discovery")
                             .font(.system(.headline, design: .serif))
-                        Spacer()
-                        Button { dismiss() } label: {
-                            Label("Back", systemImage: "chevron.left")
-                                .font(.subheadline.weight(.semibold)).padding(.horizontal, 14)
-                                .frame(minHeight: 48).background(.white, in: Capsule())
-                        }
-                        .buttonStyle(.plain)
                     }
                     .padding(16).foregroundStyle(AppTheme.forest).background(AppTheme.ivory)
                     Spacer()
@@ -495,6 +492,10 @@ struct PlaqueScannerView: View {
             await scanner.requestCameraAccessIfNeeded()
         }
         .onDisappear { tour.endARDiscoverySession() }
+        .onChange(of: navigation.homeReturnID) { _, _ in
+            model?.isShowingBonusPreview = false
+            dismiss()
+        }
         .sheet(isPresented: Binding(get: { model?.isShowingBonusPreview ?? false },
                                    set: { model?.isShowingBonusPreview = $0 })) {
             if let stop = tour.arStop { OnSiteBonusPreview(stop: stop) }
@@ -509,20 +510,12 @@ private struct PlaqueScannerHUD: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            HStack(alignment: .top, spacing: 16) {
-                Text(model.destinationName ?? "Plaque discovery")
-                    .font(.system(.headline, design: .serif))
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(14).background(AppTheme.ivory, in: RoundedRectangle(cornerRadius: 14))
-                    .accessibilityIdentifier("scanner.stopName")
-                Spacer(minLength: 0)
-                Button(action: onClose) {
-                    Label("Back", systemImage: "chevron.left")
-                        .font(.subheadline.weight(.semibold)).padding(.horizontal, 14)
-                        .frame(minHeight: 48).background(.white, in: Capsule())
-                }
-                .buttonStyle(.plain).accessibilityLabel("Return to previous screen")
-            }
+            ScreenReturnBar(onBack: onClose)
+            Text(model.destinationName ?? "Plaque discovery")
+                .font(.system(.headline, design: .serif))
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(14).background(AppTheme.ivory, in: RoundedRectangle(cornerRadius: 14))
+                .accessibilityIdentifier("scanner.stopName")
             Spacer(minLength: 12)
             if model.availability == .ready {
                 VStack(alignment: .leading, spacing: 12) {

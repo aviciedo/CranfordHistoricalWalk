@@ -54,6 +54,7 @@ struct StopPhotoGallery: View {
                     }
                 }
             }
+            .onChange(of: navigation.homeReturnID) { _, _ in expanded = nil }
             .fullScreenCover(item: $expanded) { item in
                 StopPhotoViewer(image: item.image, title: item.photo.caption, credit: item.photo.credit)
             }

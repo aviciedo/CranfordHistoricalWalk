@@ -40,20 +40,17 @@ struct StopDetailView: View {
             .sheet(isPresented: $isShowingBonus) { OnSiteBonusPreview(stop: stop) }
             .onAppear { tour.openStory(for: stop.id) }
         }
+        .onChange(of: navigation.homeReturnID) { _, _ in
+            isShowingScanner = false
+            isShowingBonus = false
+        }
+        .dismissOnReturnHome()
         .environment(\.colorScheme, .light)
     }
 
     private var returnControl: some View {
-        HStack {
-            Spacer()
-            Button { dismiss() } label: {
-                Label("Back", systemImage: "chevron.left")
-                    .font(.subheadline.weight(.medium)).padding(.horizontal, 16)
-                    .frame(minHeight: 46).background(.white, in: Capsule())
-            }
-            .buttonStyle(.plain).accessibilityLabel("Back to previous screen")
-        }
-        .padding(.horizontal, 24).padding(.vertical, 8)
+        ScreenReturnBar(onBack: { dismiss() })
+            .padding(.horizontal, 24).padding(.vertical, 8)
     }
 
     private var storyContent: some View {

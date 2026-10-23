@@ -11,6 +11,98 @@ import CoreLocation
 /// The same state-flow tests run against the native model and its Linux Foundation harness.
 @MainActor
 final class TourCompletionFlowTests: XCTestCase {
+    func testManualTabVisitDoesNotReuseAnOlderShowOnMapOrigin() async {
+        let navigation = AppNavigation()
+        navigation.selectedTab = .stops
+        navigation.showOnMap(stopID: "hpab-002")
+        navigation.selectedTab = .home
+        navigation.selectedTab = .map
+        navigation.goBack()
+        XCTAssertEqual(navigation.selectedTab, .home)
+        XCTAssertNil(navigation.pendingStopReturn)
+    }
+
+    func testBackFromShowOnMapRestoresStopInItsOriginatingTab() async {
+        let navigation = AppNavigation()
+        navigation.selectedTab = .stops
+        navigation.showOnMap(stopID: "hpab-002")
+        navigation.goBack()
+        XCTAssertEqual(navigation.selectedTab, .stops)
+        XCTAssertNil(navigation.takeStopReturn(for: .home))
+        XCTAssertEqual(navigation.takeStopReturn(for: .stops), "hpab-002")
+        XCTAssertNil(navigation.takeStopReturn(for: .stops), "Consume only once")
+        navigation.goBack()
+        XCTAssertEqual(navigation.selectedTab, .home)
+    }
+
+    func testBackFromMapOpenedByItsOwnStopRestoresDetailWithoutChangingTabs() async {
+        let navigation = AppNavigation()
+        navigation.selectedTab = .map
+        navigation.showOnMap(stopID: "hpab-001")
+        navigation.goBack()
+        XCTAssertEqual(navigation.selectedTab, .map)
+        XCTAssertEqual(navigation.takeStopReturn(for: .map), "hpab-001")
+        navigation.goBack()
+        XCTAssertEqual(navigation.selectedTab, .home)
+    }
+
+    func testHomeCancelsPendingStopReopening() async {
+        let navigation = AppNavigation()
+        navigation.showOnMap(stopID: "hpab-001")
+        navigation.goBack()
+        navigation.goHome()
+        XCTAssertNil(navigation.pendingStopReturn)
+        XCTAssertNil(navigation.takeStopReturn(for: .home))
+    }
+
+    func testBackUnwindsPreviouslyOpenedTabsWithoutLooping() async {
+        let navigation = AppNavigation()
+        navigation.selectedTab = .map
+        navigation.selectedTab = .map // Reselecting a tab is not another screen.
+        navigation.selectedTab = .stops
+        navigation.goBack()
+        XCTAssertEqual(navigation.selectedTab, .map)
+        navigation.goBack()
+        XCTAssertEqual(navigation.selectedTab, .home)
+        navigation.goBack()
+        XCTAssertEqual(navigation.selectedTab, .home)
+    }
+
+    func testHomeClearsBackHistoryAndPendingMapFocus() async {
+        let navigation = AppNavigation()
+        navigation.selectedTab = .stops
+        navigation.showOnMap(stopID: "hpab-002")
+        navigation.goHome()
+        XCTAssertEqual(navigation.selectedTab, .home)
+        XCTAssertNil(navigation.focusedStopID)
+        navigation.goBack()
+        XCTAssertEqual(navigation.selectedTab, .home)
+    }
+
+    func testNestedHomeCloseEmitsNewSignalEvenWhenHomeIsAlreadySelected() async {
+        let navigation = AppNavigation()
+        let initial = navigation.homeReturnID
+        navigation.goHome()
+        XCTAssertEqual(navigation.homeReturnID, initial + 1)
+        navigation.goHome()
+        XCTAssertEqual(navigation.homeReturnID, initial + 2)
+    }
+
+    func testReturningHomePreservesIndependentWalkingAndPhotoProgress() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.startTour()
+        tour.completeCurrentStopAndAdvance()
+        let destination = tour.currentStop?.id
+        let navigation = AppNavigation()
+        navigation.photoSelections[stops[0].id] = 3
+        navigation.selectedTab = .stops
+        tour.openStory(for: stops[0].id)
+        navigation.goHome()
+        XCTAssertEqual(tour.currentStop?.id, destination)
+        XCTAssertEqual(tour.phase, .inProgress)
+        XCTAssertEqual(navigation.photoSelections[stops[0].id], 3)
+    }
+
     private var stops: [HistoricalStop] { HistoricalStop.previewStops }
     private func makeTour(visitStore: (any StopVisitStore)? = nil, activityStore: (any StopActivityStore)? = nil) async -> TourViewModel {
         let model = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),

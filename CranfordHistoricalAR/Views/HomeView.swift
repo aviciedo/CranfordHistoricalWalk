@@ -87,12 +87,14 @@ struct HomeView: View {
 }
 
 private struct DebugMenuGesture: ViewModifier {
+    @Environment(AppNavigation.self) private var navigation
     @Binding var isPresented: Bool
 
     func body(content: Content) -> some View {
         #if DEVELOPER_MENU
         content
             .onLongPressGesture(minimumDuration: 1.2) { isPresented = true }
+            .onChange(of: navigation.homeReturnID) { _, _ in isPresented = false }
             .sheet(isPresented: $isPresented) {
                 DeveloperControlsView()
                     .presentationDetents([.large])
@@ -422,4 +424,5 @@ enum IllustratedMapProjection {
     return HomeView()
         .environment(deps)
         .environment(deps.tourViewModel)
+        .environment(AppNavigation())
 }

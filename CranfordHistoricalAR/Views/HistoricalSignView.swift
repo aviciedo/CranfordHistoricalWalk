@@ -236,12 +236,11 @@ struct OnSiteBonusPreview: View {
             .padding(24).foregroundStyle(AppTheme.ink).background(AppTheme.parchment)
             .navigationTitle("On-site extra").navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button { dismiss() } label: { Image(systemName: "xmark").frame(width: 44, height: 44) }
-                        .accessibilityLabel("Close on-site extra")
-                }
+                ToolbarItem(placement: .cancellationAction) { ScreenBackButton { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) { ScreenHomeButton() }
             }
         }
+        .dismissOnReturnHome()
     }
 }
 

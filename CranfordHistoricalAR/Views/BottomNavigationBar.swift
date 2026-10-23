@@ -43,3 +43,56 @@ struct BottomNavigationBar: View {
 #Preview {
     BottomNavigationBar(selection: .constant(.map))
 }
+
+/// Shared screen navigation. The audio player's X remains a separate transport action.
+struct ScreenBackButton: View {
+    var action: () -> Void
+    var body: some View {
+        Button(action: action) {
+            Label("Back", systemImage: "chevron.left")
+                .font(.subheadline.weight(.medium)).padding(.horizontal, 14)
+                .frame(minHeight: 44).background(.white, in: Capsule())
+        }
+        .buttonStyle(.plain).foregroundStyle(AppTheme.forest)
+        .accessibilityLabel("Back to previous screen")
+        .accessibilityIdentifier("screen.back")
+    }
+}
+
+struct ScreenHomeButton: View {
+    @Environment(AppNavigation.self) private var navigation
+    var body: some View {
+        Button { navigation.goHome() } label: {
+            Image(systemName: "xmark").font(.system(size: 17, weight: .medium))
+                .frame(width: 44, height: 44).background(.white, in: Circle())
+        }
+        .buttonStyle(.plain).foregroundStyle(AppTheme.forest)
+        .accessibilityLabel("Close and return Home")
+        .accessibilityHint("Keeps your audio position and walking progress")
+        .accessibilityIdentifier("screen.home")
+    }
+}
+
+struct ScreenReturnBar: View {
+    var onBack: () -> Void
+    var body: some View {
+        HStack {
+            ScreenBackButton(action: onBack)
+            Spacer(minLength: 12)
+            ScreenHomeButton()
+        }
+    }
+}
+
+/// Each modal dismisses its own level; parent hosts also clear their presentation bindings.
+private struct ReturnHomeDismissal: ViewModifier {
+    @Environment(AppNavigation.self) private var navigation
+    @Environment(\.dismiss) private var dismiss
+    func body(content: Content) -> some View {
+        content.onChange(of: navigation.homeReturnID) { _, _ in dismiss() }
+    }
+}
+
+extension View {
+    func dismissOnReturnHome() -> some View { modifier(ReturnHomeDismissal()) }
+}

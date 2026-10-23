@@ -20,12 +20,12 @@ struct DeveloperControlsView: View {
             .navigationTitle("Developer Controls")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                }
+                ToolbarItem(placement: .cancellationAction) { ScreenBackButton { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) { ScreenHomeButton() }
             }
         }
         .task { tour.startLocationIfPossible() }
+        .dismissOnReturnHome()
     }
 
     @ViewBuilder

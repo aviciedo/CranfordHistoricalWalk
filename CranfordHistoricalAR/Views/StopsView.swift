@@ -11,11 +11,14 @@ struct StopsView: View {
 }
 
 struct StopsContent: View {
+    @Environment(AppNavigation.self) private var navigation
     @Environment(TourViewModel.self) private var tour
     @State private var detailStop: HistoricalStop?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            ScreenReturnBar(onBack: { navigation.goBack() })
+                .padding(.horizontal, 22).padding(.top, 8)
             Text("Stops")
                 .font(.system(.largeTitle, design: .serif).weight(.semibold))
                 .accessibilityAddTraits(.isHeader)
@@ -61,6 +64,13 @@ struct StopsContent: View {
         }
         .background(AppTheme.parchment).foregroundStyle(AppTheme.ink)
         .sheet(item: $detailStop) { HistoricalSignSheet(stop: $0) }
+        .onChange(of: navigation.pendingStopReturn) { _, _ in restoreStopReturn() }
+        .onAppear { restoreStopReturn() }
+        .onChange(of: navigation.homeReturnID) { _, _ in detailStop = nil }
+    }
+
+    private func restoreStopReturn() {
+        if let id = navigation.takeStopReturn(for: .stops) { detailStop = tour.stop(withID: id) }
     }
 
     private func rowHeight(in availableHeight: CGFloat) -> CGFloat {

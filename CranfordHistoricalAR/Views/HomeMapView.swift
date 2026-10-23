@@ -3,6 +3,7 @@ import TourCore
 
 /// A geographic overview using Google when configured, otherwise Apple; no GPS permission is requested.
 struct HomeMapView: View {
+    @Environment(AppNavigation.self) private var navigation
     @Environment(TourViewModel.self) private var tour
     @State private var mapModel = MapViewModel()
     @State private var detailStop: HistoricalStop?
@@ -40,9 +41,16 @@ struct HomeMapView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 16))
             }
         }
+        .onChange(of: navigation.pendingStopReturn) { _, _ in restoreStopReturn() }
+        .onAppear { restoreStopReturn() }
+        .onChange(of: navigation.homeReturnID) { _, _ in detailStop = nil }
         .sheet(item: $detailStop, onDismiss: { mapModel.select(stopID: nil) }) {
             HistoricalSignSheet(stop: $0)
         }
+    }
+
+    private func restoreStopReturn() {
+        if let id = navigation.takeStopReturn(for: .home) { detailStop = tour.stop(withID: id) }
     }
 }
 
