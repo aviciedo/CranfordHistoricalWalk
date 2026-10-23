@@ -6,7 +6,7 @@ struct HomeView: View {
     @Environment(AppNavigation.self) private var navigation
     @State private var isShowingDeveloperControls = false
     @State private var scrollBaseline: CGFloat?
-    @ScaledMetric(relativeTo: .body) private var homeContentReserve: CGFloat = 238
+    @ScaledMetric(relativeTo: .body) private var homeContentReserve: CGFloat = 280
 
     var body: some View {
         GeometryReader { viewport in
@@ -36,16 +36,8 @@ struct HomeView: View {
                     HStack {
                         Label("\(tour.stops.count) stops", systemImage: "mappin.and.ellipse")
                         Spacer()
-                        Button { navigation.selectedTab = .stops } label: {
-                            HStack(spacing: 6) {
-                                Text("Browse the stops")
-                                Image(systemName: "chevron.right").font(.caption.weight(.semibold))
-                            }
-                            .frame(minHeight: 44)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain).font(.subheadline.weight(.semibold))
-                        .foregroundStyle(AppTheme.ink)
+                        Text("Listen, read and browse photos")
+                            .font(.footnote)
                     }
                     .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
                     Button {
@@ -53,7 +45,7 @@ struct HomeView: View {
                         tour.startTour()
                         navigation.selectedTab = .map
                     } label: {
-                        Label(tour.phase == .inProgress ? "Continue your walk" : (tour.phase == .complete ? "Walk it again" : "Start walking tour"), systemImage: "figure.walk")
+                        Label(tour.phase == .inProgress ? "Continue your walk" : (tour.phase == .complete ? "Walk it again" : "Start a walk"), systemImage: "figure.walk")
                             .frame(maxWidth: .infinity).padding(.vertical, 17)
                     }
                     .buttonStyle(.plain).font(.headline)
@@ -61,6 +53,17 @@ struct HomeView: View {
                     .background(AppTheme.forest, in: RoundedRectangle(cornerRadius: 14))
                     .disabled(tour.loadState != .loaded)
                     .opacity(tour.loadState == .loaded ? 1 : 0.5)
+
+                    Button { navigation.selectedTab = .stops } label: {
+                        HStack {
+                            Text("Explore the stops")
+                            Spacer()
+                            Image(systemName: "chevron.right").font(.caption.weight(.semibold))
+                        }
+                        .frame(minHeight: 44).contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain).font(.subheadline.weight(.medium))
+                    .accessibilityHint("Listen, read and view photographs without starting a walk or enabling location")
 
                     if case .failed(let message) = tour.loadState {
                         Text(message).font(.footnote).foregroundStyle(AppTheme.warning)
@@ -89,7 +92,7 @@ struct HomeView: View {
         }
         .background(AppTheme.parchment).foregroundStyle(AppTheme.ink)
         .task {
-            if tour.locationAuthorization == .authorized { tour.startLocationIfPossible() }
+            if tour.phase == .inProgress && tour.locationAuthorization == .authorized { tour.startLocationIfPossible() }
         }
     }
 
@@ -102,7 +105,7 @@ struct HomeView: View {
         #else
         let reserved = homeContentReserve
         #endif
-        return max(310, min(350, availableHeight - reserved))
+        return max(220, min(350, availableHeight - reserved))
     }
 }
 

@@ -1,453 +1,248 @@
+import Foundation
 import TourCore
 import XCTest
+#if canImport(CranfordHistoricalAR)
 @testable import CranfordHistoricalAR
+#else
+@testable import ActivityModelHarness
+#endif
 
-/// End-to-end view-model flow on the host app (spec §9, §11, §12), driven through the simulated
-/// location source exactly as Developer Mode drives it. Runs on a Mac via Product > Test.
+/// The same state-flow tests run against the native model and its Linux Foundation harness.
 @MainActor
 final class TourCompletionFlowTests: XCTestCase {
-    private var tour: TourViewModel!
-    private var simulator: SimulatedLocationService!
     private var stops: [HistoricalStop] { HistoricalStop.previewStops }
+    private func makeTour(visitStore: (any StopVisitStore)? = nil, activityStore: (any StopActivityStore)? = nil) async -> TourViewModel {
+        let model = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),
+            locationService: ActivityTestLocationService(), directionsService: PreviewDirectionsService(),
+            visitStore: visitStore, activityStore: activityStore)
+        await model.loadStopsIfNeeded()
+        return model
+    }
+    private func cleanUp(_ model: TourViewModel) { model.stopLocation(); model.cancelRouting() }
 
-    override func setUp() async throws {
-        let start = GeoMath.destination(from: stops[0].coordinate, bearing: 225, distance: 300)
-        simulator = SimulatedLocationService(start: start)
-        tour = TourViewModel(
-            stopService: InMemoryHistoricalStopService(stops: stops),
-            locationService: simulator,
-            directionsService: PreviewDirectionsService()
-        )
+    func testExploringDoesNotRequestPermissionsOrStartLocation() async {
+        let source = ActivityTestLocationService(status: .notDetermined)
+        let tour = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),
+            locationService: source, directionsService: PreviewDirectionsService())
         await tour.loadStopsIfNeeded()
-        XCTAssertEqual(tour.loadState, .loaded)
+        defer { cleanUp(tour) }
+        tour.openStory(for: stops[0].id)
+        tour.finishListening(for: stops[0].id)
+        tour.finishStory(for: stops[1].id)
+        XCTAssertEqual(source.permissionRequests, 0)
+        XCTAssertEqual(source.startRequests, 0)
+        XCTAssertEqual(tour.phase, .notStarted)
         tour.startTour()
-        // These flows exercise the camera/story lifecycle. Ordinary map-only GPS advance
-        // is tested separately with this flag disabled.
-        tour.isARSessionActive = true
-        try await waitUntil("first location arrives") { self.tour.userLocation != nil }
+        XCTAssertEqual(source.permissionRequests, 1)
     }
-
-    func testGreystoneDetailARTargetsSelectedSiteAndDoesNotCompleteMill() {
+    func testArrivalWhileInspectingAnotherSitePreservesBothSubjects() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.startTour()
         XCTAssertTrue(tour.prepareForARFromDetails(stopID: stops[1].id))
-        XCTAssertEqual(tour.currentStop?.id, stops[1].id)
-        XCTAssertEqual(tour.progress.completedCount, 0)
-        tour.handleLocationForProximity(LocationSample(coordinate: stops[1].coordinate, horizontalAccuracy: 3))
-        XCTAssertEqual(tour.currentStop?.id, stops[1].id, "GPS must not skip the selected discovery")
-        XCTAssertFalse(tour.discovery.hasVerifiedPlaque)
+        tour.handleLocationForProximity(LocationSample(coordinate: stops[0].coordinate))
+        XCTAssertEqual(tour.currentStop?.id, stops[0].id)
+        XCTAssertEqual(tour.arStop?.id, stops[1].id)
+        XCTAssertNotNil(tour.activities[stops[0].id].visitedAt)
+        XCTAssertFalse(tour.activities[stops[0].id].learningCompleted)
+        XCTAssertNil(tour.activities[stops[1].id].bonusFoundAt)
     }
-
-    func testRecognizedParkPlaqueRecoversStaleDestinationWithoutUnlockingEitherBonus() {
+    func testMissingReadingTextCannotFalselyCompleteLearning() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.finishStory(for: stops[2].id)
+        XCTAssertFalse(tour.activities[stops[2].id].learningCompleted)
+        tour.finishListening(for: stops[2].id)
+        XCTAssertFalse(tour.activities[stops[2].id].learningCompleted, "Pending narration cannot be completed")
+    }
+    func testSelectingPlaqueClearsOldSignButPreservesWalkingDestination() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.startTour()
+        tour.presentedSignStopID = stops[0].id
+        XCTAssertTrue(tour.prepareForARFromDetails(stopID: stops[1].id))
+        XCTAssertNil(tour.presentedSignStopID)
+        XCTAssertEqual(tour.arStop?.id, stops[1].id)
+        XCTAssertEqual(tour.currentStop?.id, stops[0].id)
+    }
+    func testRemoteListeningAndReadingCompleteOnlyTheirOwnLearningActivities() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.finishListening(for: stops[0].id)
+        tour.finishStory(for: stops[1].id)
+        XCTAssertEqual(tour.phase, .notStarted)
+        XCTAssertNil(tour.currentStop)
+        XCTAssertTrue(tour.activities[stops[0].id].learningCompleted)
+        XCTAssertTrue(tour.activities[stops[1].id].learningCompleted)
+        XCTAssertNil(tour.activities[stops[0].id].visitedAt)
+        XCTAssertNil(tour.activities[stops[1].id].bonusFoundAt)
+    }
+    func testListeningToMillWhileWalkingToParkDoesNotChangeDestination() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.startTour()
+        tour.completeCurrentStopAndAdvance()
+        let destination = tour.currentStop?.id
+        let navigation = AppNavigation()
+        navigation.storyModes[stops[0].id] = .read
+        navigation.photoSelections[stops[0].id] = 3
+        navigation.selectedTab = .stops
+        tour.openStory(for: stops[0].id)
+        tour.finishListening(for: stops[0].id)
+        tour.finishStory(for: stops[0].id)
+        tour.openStory(for: stops[4].id)
+        navigation.selectedTab = .map
+        XCTAssertEqual(tour.currentStop?.id, destination)
+        XCTAssertEqual(destination, stops[1].id)
+        XCTAssertFalse(tour.activities[stops[1].id].learningCompleted)
+        XCTAssertNil(tour.activities[stops[0].id].visitedAt)
+        XCTAssertEqual(navigation.photoSelections[stops[0].id], 3)
+        XCTAssertEqual(navigation.storyModes[stops[0].id], .read)
+    }
+    func testGPSRecordsVisitWithoutCompletingLearningBonusOrAdvancing() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.startTour()
+        let sample = LocationSample(coordinate: stops[0].coordinate, horizontalAccuracy: 3)
+        tour.handleLocationForProximity(sample)
+        XCTAssertEqual(tour.currentStop?.id, stops[0].id)
+        XCTAssertNotNil(tour.activities[stops[0].id].visitedAt)
+        XCTAssertFalse(tour.activities[stops[0].id].learningCompleted)
+        XCTAssertNil(tour.activities[stops[0].id].bonusFoundAt)
+        tour.handleLocationForProximity(sample)
+        XCTAssertEqual(tour.visitRecords.count, 1)
+        tour.completeCurrentStopAndAdvance()
+        XCTAssertEqual(tour.currentStop?.id, stops[1].id)
+    }
+    func testSkippedStopDoesNotReceiveVisitOrLearningCredit() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.startTour()
+        tour.completeCurrentStopAndAdvance()
+        XCTAssertEqual(tour.progress.completedCount, 0)
+        XCTAssertEqual(tour.activities[stops[0].id], StopActivities())
+    }
+    func testWeakStaleAndSimulatedGPSNeverPersistRealActivity() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        for sample in [
+            LocationSample(coordinate: stops[0].coordinate, horizontalAccuracy: 80),
+            LocationSample(coordinate: stops[0].coordinate, horizontalAccuracy: -1),
+            LocationSample(coordinate: stops[0].coordinate, timestamp: Date().addingTimeInterval(-100)),
+            LocationSample(coordinate: stops[0].coordinate, isSimulated: true)
+        ] { tour.handleLocationForProximity(sample) }
+        XCTAssertEqual(tour.activities[stops[0].id], StopActivities())
+        XCTAssertTrue(tour.visitRecords.isEmpty)
+    }
+    func testGPSCanRecordPhysicalSiteWithoutStartingAnItinerary() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.handleLocationForProximity(LocationSample(coordinate: stops[3].coordinate))
+        XCTAssertNotNil(tour.activities[stops[3].id].visitedAt)
+        XCTAssertEqual(tour.phase, .notStarted)
+    }
+    func testPlaqueSelectionAndRecognitionDoNotRetargetWalkOrRequireLearning() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.startTour()
         XCTAssertTrue(tour.selectRecognizedPlaque(imageName: SignPlacementPolicy.parkReferenceImageName,
                                                 isTracked: true, trackingReady: true))
-        XCTAssertEqual(tour.currentStop?.id, stops[1].id)
-        XCTAssertEqual(tour.currentBonusLayout, .abovePlaque)
-        XCTAssertEqual(tour.progress.completedCount, 0)
-        XCTAssertFalse(tour.discovery.hasFinishedStory)
-        XCTAssertFalse(tour.beginPlaqueDiscovery())
-        XCTAssertFalse(tour.discovery.hasVerifiedPlaque)
-        tour.finishStory(for: stops[1].id)
+        XCTAssertEqual(tour.currentStop?.id, stops[0].id)
+        XCTAssertEqual(tour.arStop?.id, stops[1].id)
         XCTAssertTrue(tour.beginPlaqueDiscovery())
         tour.confirmPlaqueArrival(for: stops[1].id)
-        XCTAssertEqual(activateCurrent(plaqueIsTracked: true), .allow(.simulation))
-        XCTAssertTrue(tour.discovery.hasVerifiedPlaque)
-        XCTAssertFalse(tour.progress.isCompleted(stops[0].id))
+        XCTAssertEqual(tour.activateCurrentStop(stopID: stops[1].id, trackingReady: true, plaqueIsTracked: true), .allow(.recognizedPlaque))
+        XCTAssertNotNil(tour.activities[stops[1].id].bonusFoundAt)
+        XCTAssertNotNil(tour.activities[stops[1].id].visitedAt)
+        XCTAssertFalse(tour.activities[stops[1].id].learningCompleted)
+        XCTAssertFalse(tour.activities[stops[0].id].learningCompleted)
+        XCTAssertEqual(tour.currentStop?.id, stops[0].id)
     }
-
-    func testGPSVisitCanBeUpgradedToPlaqueAndContinueCannotBounceBack() {
+    func testPlaqueCanBeDiscoveredWithoutStartingWalkOrRequestingGPS() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
         XCTAssertTrue(tour.prepareForARFromDetails(stopID: stops[1].id))
-        tour.progress.markCurrentStopVisited() // Existing GPS visit, no plaque verification.
-        tour.isARSessionActive = true
-        tour.finishStory(for: stops[1].id)
+        XCTAssertEqual(tour.phase, .notStarted)
+        XCTAssertFalse(tour.isShowingTour)
         XCTAssertTrue(tour.beginPlaqueDiscovery())
         tour.confirmPlaqueArrival(for: stops[1].id)
-        XCTAssertEqual(activateCurrent(plaqueIsTracked: true), .allow(.simulation))
-        XCTAssertTrue(tour.discovery.hasVerifiedPlaque)
-        XCTAssertEqual(tour.progress.completedCount, 1)
-        tour.completeCurrentStopAndAdvance()
-        XCTAssertEqual(tour.currentStop?.id, stops[2].id)
-        XCTAssertFalse(tour.selectRecognizedPlaque(imageName: SignPlacementPolicy.parkReferenceImageName,
-                                                 isTracked: true, trackingReady: true))
-        XCTAssertEqual(tour.currentStop?.id, stops[2].id)
-        XCTAssertTrue(tour.prepareForARFromDetails(stopID: stops[1].id), "Explicit revisit re-arms this site")
-        XCTAssertTrue(tour.discovery.hasVerifiedPlaque)
-    }
-
-    func testGPSStillAdvancesOutsideARButHoldsPlaqueStopInActiveAR() {
-        tour.isARSessionActive = true
-        tour.handleLocationForProximity(LocationSample(coordinate: stops[0].coordinate, horizontalAccuracy: 3))
-        XCTAssertEqual(tour.currentStop?.id, stops[0].id)
-        XCTAssertTrue(tour.discovery.hasArrived)
-        XCTAssertFalse(tour.discovery.hasVerifiedPlaque)
-        tour.isARSessionActive = false
-        tour.handleLocationForProximity(LocationSample(coordinate: stops[0].coordinate, horizontalAccuracy: 3))
-        XCTAssertEqual(tour.currentStop?.id, stops[1].id)
-        XCTAssertTrue(tour.progress.isCompleted(stops[0].id))
-    }
-
-    func testUnknownOrUntrackedPlaqueCannotRetargetAndDismissedCameraReleasesGPSHold() {
-        let initial = tour.currentStop?.id
-        XCTAssertFalse(tour.selectRecognizedPlaque(imageName: "unknown", isTracked: true, trackingReady: true))
-        XCTAssertFalse(tour.selectRecognizedPlaque(imageName: SignPlacementPolicy.parkReferenceImageName,
-                                                 isTracked: false, trackingReady: true))
-        XCTAssertEqual(tour.currentStop?.id, initial)
-        XCTAssertTrue(tour.prepareForARFromDetails(stopID: stops[1].id))
-        tour.endARDiscoverySession() // Includes a camera permission/unsupported-device exit.
-        XCTAssertNil(tour.arDiscoveryStopID)
-        tour.handleLocationForProximity(LocationSample(coordinate: stops[1].coordinate, horizontalAccuracy: 3))
-        XCTAssertEqual(tour.currentStop?.id, stops[2].id)
-        XCTAssertFalse(tour.discovery.hasVerifiedPlaque)
-    }
-
-    func testBrowsingAndSwitchingTabsDoNotRetargetTheGuidedWalk() {
-        let originalStop = tour.currentStop?.id
-        let originalPhase = tour.phase
-        let navigation = AppNavigation()
-        let map = MapViewModel()
-
-        navigation.showOnMap(stopID: stops[2].id)
-        map.show(stop: stops[2])
-        XCTAssertEqual(navigation.selectedTab, .map)
-        XCTAssertEqual(navigation.focusedStopID, stops[2].id)
-        XCTAssertEqual(map.cameraMode, .free)
-        XCTAssertEqual(tour.currentStop?.id, originalStop)
-
-        navigation.selectedTab = .stops
-        navigation.selectedTab = .home
-        navigation.selectedTab = .map
-        XCTAssertEqual(tour.phase, originalPhase)
-        XCTAssertEqual(tour.currentStop?.id, originalStop)
-        XCTAssertEqual(tour.progress.completedCount, 0)
-    }
-
-    func testDetailAREntryStartsFirstStopWithoutClaimingAVisit() {
-        tour.progress.reset()
-        XCTAssertTrue(tour.prepareForARFromDetails())
-        XCTAssertEqual(tour.currentStop?.id, stops[0].id)
-        XCTAssertTrue(tour.isShowingTour)
-        XCTAssertFalse(tour.discovery.hasFinishedStory)
-        XCTAssertFalse(tour.discovery.hasVerifiedPlaque)
-        XCTAssertTrue(tour.visitRecords.isEmpty)
-    }
-
-    func testDetailAREntryResumesNextStopWithoutSkippingStoryOrUnlockingPlaque() async throws {
-        try await arrive(at: 0)
-        tour.finishStory(for: stops[0].id)
-        tour.completeCurrentStopAndAdvance()
-        XCTAssertEqual(tour.currentStop?.id, stops[1].id)
-        let progress = tour.progress
-        XCTAssertTrue(tour.prepareForARFromDetails())
-        XCTAssertEqual(tour.progress, progress)
-        XCTAssertEqual(tour.currentStop?.id, stops[1].id)
-        XCTAssertFalse(tour.discovery.hasFinishedStory)
-        XCTAssertFalse(tour.beginPlaqueDiscovery())
-        XCTAssertFalse(tour.discovery.hasVerifiedPlaque)
-    }
-
-    func testDetailAREntryExplicitlyRestartsCompletedTour() {
-        while tour.phase == .inProgress { tour.progress.completeCurrentStop() }
-        XCTAssertTrue(tour.prepareForARFromDetails())
-        XCTAssertEqual(tour.currentStop?.id, stops[0].id)
-        XCTAssertEqual(tour.progress.completedCount, 0)
-        XCTAssertFalse(tour.discovery.hasVerifiedPlaque)
-    }
-
-    override func tearDown() async throws {
-        simulator.stop()
-        tour.stopLocation()
-        tour.cancelRouting()
-    }
-
-    func testArrivalRevealsMarkerWithoutRecordingOrAdvancing() async throws {
-        try await arrive(at: 0)
-        XCTAssertFalse(tour.isCurrentStopVisited)
-        XCTAssertEqual(tour.proximityState, .signPresented)
-        XCTAssertTrue(tour.hasArrivedAtCurrentStop)
-        XCTAssertNil(tour.lastCompletedStop)
-        XCTAssertTrue(tour.visitRecords.isEmpty)
-
-        tour.completeCurrentStopAndAdvance()
-        XCTAssertEqual(tour.currentStop?.id, stops[0].id, "Continue cannot bypass activation")
-        tour.closeSign()
-        XCTAssertNil(tour.presentedSignStop)
-        XCTAssertEqual(tour.currentStop?.id, stops[0].id, "Closing a marker cannot skip this stop")
-    }
-
-    func testFirstActivationThenExplicitContinueRoutesToSecondStop() async throws {
-        try await arrive(at: 0)
-        preparePlaqueDiscovery()
-        XCTAssertEqual(activateCurrent(plaqueIsTracked: true), .allow(.simulation))
-        XCTAssertTrue(tour.isCurrentStopVisited)
-        XCTAssertEqual(activateCurrent(), .alreadyActivated)
-        XCTAssertEqual(tour.progress.completedCount, 1)
-        XCTAssertTrue(tour.visitRecords.isEmpty, "Practice must not persist as a real visit")
-
-        tour.closeSign()
-        XCTAssertEqual(tour.currentStop?.id, stops[0].id)
-        tour.completeCurrentStopAndAdvance()
-        XCTAssertEqual(tour.currentStop?.id, stops[1].id)
-        XCTAssertEqual(tour.lastCompletedStop?.id, stops[0].id)
-        XCTAssertFalse(tour.isCurrentStopVisited)
-        XCTAssertNil(tour.activeVisitEvidence)
-        try await waitUntil("walking route to second stop") { self.tour.currentRoute?.destination == self.stops[1].coordinate }
-
-        try await arrive(at: 1)
-        XCTAssertTrue(stops[1].hasPlaqueReference)
-        XCTAssertFalse(tour.isCurrentStopVisited)
-        XCTAssertEqual(activateCurrent(), .deny(.markerNotReady), "GPS alone cannot unlock the Greystone extra")
-        preparePlaqueDiscovery()
-        XCTAssertEqual(activateCurrent(plaqueIsTracked: true), .allow(.simulation))
-        tour.completeCurrentStopAndAdvance()
-        XCTAssertEqual(tour.currentStop?.id, stops[2].id)
-    }
-
-    func testSuppliedFieldPositionsAgreeWithMapMarkersAndFirstToSecondStopRouting() async throws {
-        let fieldPositions = [
-            GeoCoordinate(latitude: 40.650249, longitude: -74.301047),
-            GeoCoordinate(latitude: 40.6524, longitude: -74.2990)
-        ]
-        let map = MapViewModel()
-        for (index, fieldPosition) in fieldPositions.enumerated() {
-            XCTAssertEqual(tour.currentStop?.id, stops[index].id)
-            simulator.teleport(to: fieldPosition)
-            try await waitUntil("field location reveals stop \(index + 1)") {
-                self.tour.userLocation?.coordinate == fieldPosition
-                    && self.tour.presentedSignStopID == self.stops[index].id
-            }
-            let marker = try XCTUnwrap(map.markers(for: tour).first { $0.id == stops[index].id })
-            let puck = try XCTUnwrap(map.userPuck(for: tour))
-            XCTAssertEqual(puck.coordinate.latitude, fieldPosition.latitude)
-            XCTAssertEqual(puck.coordinate.longitude, fieldPosition.longitude)
-            XCTAssertEqual(marker.coordinate.latitude, puck.coordinate.latitude)
-            XCTAssertEqual(marker.coordinate.longitude, puck.coordinate.longitude)
-            XCTAssertEqual(try XCTUnwrap(tour.straightLineDistanceToCurrentStop), 0, accuracy: 0.1)
-            XCTAssertFalse(tour.isCurrentStopVisited, "A GPS arrival alone cannot record a visit")
-            if stops[index].hasPlaqueReference { preparePlaqueDiscovery() }
-            XCTAssertEqual(activateCurrent(plaqueIsTracked: stops[index].hasPlaqueReference), .allow(.simulation))
-            if index == 0 {
-                tour.completeCurrentStopAndAdvance()
-                try await waitUntil("walking route targets the supplied Greystone coordinate") {
-                    self.tour.currentRoute?.destination == fieldPositions[1]
-                }
-            }
-        }
-    }
-
-    func testPlaqueVerificationAfterStoryRequiresACurrentlyTrackedMatch() {
-        let mill = stops[0]
-        preparePlaqueDiscovery()
-        XCTAssertTrue(tour.hasPlaqueConfirmedArrival)
-        XCTAssertFalse(tour.isCurrentStopVisited)
-        XCTAssertEqual(activateCurrent(), .deny(.markerNotReady), "A latched recognition is not a currently tracked plaque")
-        XCTAssertEqual(activateCurrent(plaqueIsTracked: true), .allow(.simulation))
-
-        let wrongGPS = GeoMath.destination(from: mill.coordinate, bearing: 90, distance: 320)
-        tour.handleLocationForProximity(LocationSample(coordinate: wrongGPS, horizontalAccuracy: 5))
-        XCTAssertTrue(tour.isSignPresented)
-        tour.closeSign()
-        XCTAssertEqual(tour.currentStop?.id, mill.id)
-        tour.completeCurrentStopAndAdvance()
-        XCTAssertEqual(tour.currentStop?.id, stops[1].id)
-        XCTAssertFalse(tour.hasPlaqueConfirmedArrival)
-    }
-
-    func testWrongStopCannotRecognizeOrActivate() {
-        tour.confirmPlaqueArrival(for: stops[1].id)
-        XCTAssertFalse(tour.hasPlaqueConfirmedArrival)
-        XCTAssertFalse(tour.isSignPresented)
-        XCTAssertEqual(tour.activateCurrentStop(stopID: stops[1].id, trackingReady: true, plaqueIsTracked: true), .deny(.wrongStop))
-    }
-
-    func testManualSignFarAwayCannotActivateOrAdvance() {
-        tour.openSignManually()
-        XCTAssertTrue(tour.isSignPresented)
-        XCTAssertEqual(activateCurrent(), .deny(.markerNotReady))
-        tour.completeCurrentStopAndAdvance()
-        XCTAssertFalse(tour.isCurrentStopVisited)
-        XCTAssertEqual(tour.currentStop?.id, stops[0].id)
-    }
-
-    func testTrackingMustBeReadyBeforeActivation() async throws {
-        try await arrive(at: 0)
-        preparePlaqueDiscovery()
-        XCTAssertEqual(tour.activateCurrentStop(stopID: stops[0].id, trackingReady: false, plaqueIsTracked: true), .deny(.trackingNotReady))
-        XCTAssertFalse(tour.isCurrentStopVisited)
-    }
-
-    func testWalkingAwayFromUnactivatedMarkerDoesNotVisitOrAdvance() async throws {
-        try await arrive(at: 0)
-        simulator.teleport(to: GeoMath.destination(from: stops[0].coordinate, bearing: 90, distance: 42))
-        try await waitUntil("GPS reaches hysteresis band") { (self.tour.straightLineDistanceToCurrentStop ?? 0) > 40 }
-        XCTAssertTrue(tour.isSignPresented)
-        simulator.teleport(to: GeoMath.destination(from: stops[0].coordinate, bearing: 90, distance: 60))
-        try await waitUntil("marker dismissed outside departure radius") { !self.tour.isSignPresented }
-        XCTAssertEqual(tour.currentStop?.id, stops[0].id)
-        XCTAssertFalse(tour.isCurrentStopVisited)
-    }
-
-    func testFullWalkWithOptionalMillDiscoveryAndOtherMarkerActivations() async throws {
-        for index in stops.indices {
-            try await arrive(at: index)
-            if stops[index].hasPlaqueReference { preparePlaqueDiscovery() }
-            XCTAssertEqual(activateCurrent(plaqueIsTracked: stops[index].hasPlaqueReference), .allow(.simulation))
-            tour.completeCurrentStopAndAdvance()
-        }
-        XCTAssertEqual(tour.phase, .complete)
+        XCTAssertEqual(tour.activateCurrentStop(stopID: stops[1].id, trackingReady: true, plaqueIsTracked: true), .allow(.recognizedPlaque))
+        tour.endARDiscoverySession()
         XCTAssertNil(tour.currentStop)
-        XCTAssertNil(tour.proximityMachine)
-        XCTAssertNil(tour.currentRoute)
-        XCTAssertEqual(tour.completionFigures.visitedCount, stops.count)
-        XCTAssertTrue(tour.visitRecords.isEmpty)
-        tour.resetTour()
-        XCTAssertEqual(tour.currentStop?.id, stops[0].id)
-        XCTAssertEqual(tour.progress.completedCount, 0)
+        XCTAssertNotNil(tour.activities[stops[1].id].bonusFoundAt)
     }
-
-    func testGreystoneRequiresItsOwnPlaqueAndIgnoresMillCalibration() async throws {
-        try await arrive(at: 0)
-        tour.finishStory(for: stops[0].id)
-        tour.completeCurrentStopAndAdvance()
-        #if DEVELOPER_MENU
-        tour.viewingPointOverride = stops[0].coordinate
-        #endif
-        tour.windowBonusLayout = WindowBonusLayout(right: 8, up: 5, width: 9, height: 7)
-        try await arrive(at: 1)
-        XCTAssertTrue(tour.discovery.hasArrived, "Mill viewing-point override must not affect Greystone arrival")
-        XCTAssertEqual(tour.arrivalStoryStopID, stops[1].id)
-        XCTAssertEqual(tour.currentBonusLayout, .abovePlaque)
-        XCTAssertFalse(tour.isMillDiscoveryStop)
-        XCTAssertEqual(stops[1].plaque?.referenceImageName, SignPlacementPolicy.parkReferenceImageName)
-        XCTAssertEqual(activateCurrent(), .deny(.markerNotReady))
-        tour.finishStory(for: stops[1].id)
-        XCTAssertTrue(tour.beginPlaqueDiscovery())
-        tour.confirmPlaqueArrival(for: stops[0].id)
-        XCTAssertFalse(tour.hasPlaqueConfirmedArrival)
-        XCTAssertEqual(activateCurrent(plaqueIsTracked: true), .deny(.markerNotReady))
+    func testKnownUnknownUntrackedAndLimitedReferencesAreIsolated() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.startTour()
+        for (name, tracked, ready) in [("unknown", true, true), (SignPlacementPolicy.parkReferenceImageName, false, true), (SignPlacementPolicy.parkReferenceImageName, true, false)] {
+            XCTAssertFalse(tour.selectRecognizedPlaque(imageName: name, isTracked: tracked, trackingReady: ready))
+        }
+        XCTAssertEqual(tour.arStop?.id, stops[0].id)
+        XCTAssertEqual(tour.activities[stops[1].id], StopActivities())
+    }
+    func testGPSVisitCanLaterUnlockBonusWithoutInventingStoryCompletion() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.handleLocationForProximity(LocationSample(coordinate: stops[1].coordinate))
+        XCTAssertNil(tour.activities[stops[1].id].bonusFoundAt)
+        XCTAssertTrue(tour.prepareForARFromDetails(stopID: stops[1].id))
+        tour.beginPlaqueDiscovery()
         tour.confirmPlaqueArrival(for: stops[1].id)
-        XCTAssertEqual(activateCurrent(plaqueIsTracked: true), .allow(.simulation))
-        XCTAssertTrue(tour.discovery.hasVerifiedPlaque)
-        XCTAssertTrue(tour.discovery.isPracticeUnlock)
-        XCTAssertEqual(activateCurrent(plaqueIsTracked: true), .alreadyActivated)
-        XCTAssertTrue(tour.visitRecords.isEmpty, "Practice discovery must not persist a real visit")
-        tour.completeCurrentStopAndAdvance()
-        XCTAssertEqual(tour.currentStop?.id, stops[2].id)
-        XCTAssertFalse(tour.discovery.hasVerifiedPlaque)
+        XCTAssertEqual(tour.activateCurrentStop(stopID: stops[1].id, trackingReady: true, plaqueIsTracked: true), .allow(.recognizedPlaque))
+        XCTAssertFalse(tour.activities[stops[1].id].learningCompleted)
+        XCTAssertEqual(tour.visitRecords.count, 1)
     }
-
-    func testGreystoneCanContinueAfterReadingWithoutPlaqueVerification() async throws {
-        try await arrive(at: 0)
-        tour.finishStory(for: stops[0].id)
-        tour.completeCurrentStopAndAdvance()
-        try await arrive(at: 1)
+    func testReadingAndListeningSurviveResetAndStorageReload() async {
+        let store = InMemoryStopActivityStore()
+        let tour = await makeTour(activityStore: store); defer { cleanUp(tour) }
+        tour.finishListening(for: stops[0].id)
         tour.finishStory(for: stops[1].id)
-        XCTAssertTrue(tour.canContinueCurrentStop)
-        XCTAssertFalse(tour.discovery.hasVerifiedPlaque)
-        tour.completeCurrentStopAndAdvance()
-        XCTAssertEqual(tour.currentStop?.id, stops[2].id)
-        XCTAssertNil(tour.lastRecordedVisit(for: stops[1]))
-    }
-
-    private func arrive(at index: Int) async throws {
-        XCTAssertEqual(tour.currentStop?.id, stops[index].id)
-        simulator.teleport(to: stops[index].coordinate)
-        try await waitUntil("current location and marker at stop \(index + 1)") {
-            self.tour.presentedSignStopID == self.stops[index].id
-                && self.tour.userLocation?.coordinate == self.stops[index].coordinate
-        }
-    }
-
-    private func activateCurrent(plaqueIsTracked: Bool = false) -> StopActivationDecision {
-        tour.activateCurrentStop(stopID: tour.currentStop!.id, trackingReady: true, plaqueIsTracked: plaqueIsTracked)
-    }
-
-    private func preparePlaqueDiscovery() {
-        let id = tour.currentStop!.id
-        tour.finishStory(for: id)
-        XCTAssertTrue(tour.beginPlaqueDiscovery())
-        tour.confirmPlaqueArrival(for: id)
-    }
-
-    func testArrivalOffersStoryOnceAndGPSCannotUnlockBonus() async throws {
-        try await arrive(at: 0)
-        XCTAssertEqual(tour.arrivalStoryStopID, stops[0].id)
-        XCTAssertEqual(tour.discovery.stage, .story)
-        tour.openStory(for: stops[0].id)
-        XCTAssertNil(tour.arrivalStoryStopID)
-        tour.handleLocationForProximity(LocationSample(coordinate: stops[0].coordinate))
-        XCTAssertNil(tour.arrivalStoryStopID, "GPS updates cannot repeatedly reopen the story")
-        tour.finishStory(for: stops[0].id)
-        XCTAssertTrue(tour.beginPlaqueDiscovery())
-        XCTAssertEqual(activateCurrent(), .deny(.markerNotReady))
-        XCTAssertFalse(tour.discovery.hasVerifiedPlaque)
-        XCTAssertTrue(tour.visitRecords.isEmpty)
-    }
-
-    func testReadStoryCanContinueWithoutPlaqueAndWithoutSavingAVerifiedVisit() async throws {
-        try await arrive(at: 0)
-        tour.finishStory(for: stops[0].id)
-        XCTAssertTrue(tour.canContinueCurrentStop)
-        XCTAssertFalse(tour.isCurrentStopVisited)
-        tour.completeCurrentStopAndAdvance()
-        XCTAssertEqual(tour.currentStop?.id, stops[1].id)
-        XCTAssertTrue(tour.visitRecords.isEmpty)
-        XCTAssertFalse(tour.discovery.hasVerifiedPlaque)
-        try await waitUntil("route advances after optional discovery is declined") {
-            self.tour.currentRoute?.destination == self.stops[1].coordinate
-        }
-    }
-
-    #if canImport(ARKit)
-    func testMillActivationActionOpensStoryWithoutPlayingOrRecording() {
-        let player = NarrationPlayer()
-        let model = ARViewModel(tour: tour, provider: CoreLocationGeoSpatialProvider(hasCompass: false),
-                                imageLoader: CompositeImageLoader(), narrationPlayer: player)
-        model.activateMarker()
-        XCTAssertTrue(model.isShowingSignDetails)
-        XCTAssertEqual(player.status, .idle)
-        XCTAssertNil(player.stopID)
-        XCTAssertTrue(tour.visitRecords.isEmpty)
-        XCTAssertFalse(tour.discovery.hasVerifiedPlaque)
-    }
-    #endif
-
-    func testResetClearsDiscoveryForAnotherTestWalk() async throws {
-        try await arrive(at: 0)
-        preparePlaqueDiscovery()
-        XCTAssertEqual(activateCurrent(plaqueIsTracked: true), .allow(.simulation))
-        XCTAssertTrue(tour.discovery.hasVerifiedPlaque)
         tour.resetTour()
-        XCTAssertFalse(tour.discovery.hasVerifiedPlaque)
+        let reloaded = await makeTour(activityStore: store); defer { cleanUp(reloaded) }
+        XCTAssertNotNil(reloaded.activities[stops[0].id].listenedAt)
+        XCTAssertNotNil(reloaded.activities[stops[1].id].readAt)
+        XCTAssertNil(reloaded.activities[stops[1].id].visitedAt)
+    }
+    func testLegacyPlaqueVisitsMigrateOnlyVisitAndBonus() async {
+        let visits = InMemoryStopVisitStore()
+        visits.record(StopVisitRecord(stopID: stops[0].id, activatedAt: Date(), evidence: .recognizedPlaque))
+        let tour = await makeTour(visitStore: visits); defer { cleanUp(tour) }
+        XCTAssertNotNil(tour.activities[stops[0].id].visitedAt)
+        XCTAssertNotNil(tour.activities[stops[0].id].bonusFoundAt)
+        XCTAssertFalse(tour.activities[stops[0].id].learningCompleted)
+    }
+    func testPersistentActivityStoreHandlesCorruptionAndReload() async {
+        let suite = "cranford.activities.tests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(Data("broken".utf8), forKey: "cranford.stop-activities.v1")
+        let store = LocalStopActivityStore(defaults: defaults)
+        XCTAssertEqual(store.load(), StopActivityLedger())
+        var ledger = StopActivityLedger()
+        ledger.read("park")
+        ledger.visited("mill")
+        ledger.foundBonus(at: "mill")
+        store.save(ledger)
+        XCTAssertEqual(LocalStopActivityStore(defaults: defaults).load(), ledger)
+    }
+    func testBonusRestoredAfterReopenRemainsIndependent() async {
+        let store = InMemoryStopActivityStore()
+        var ledger = StopActivityLedger(); ledger.foundBonus(at: stops[1].id)
+        store.save(ledger)
+        let tour = await makeTour(activityStore: store); defer { cleanUp(tour) }
+        XCTAssertTrue(tour.prepareForARFromDetails(stopID: stops[1].id))
+        XCTAssertTrue(tour.discovery.hasVerifiedPlaque)
         XCTAssertFalse(tour.discovery.hasFinishedStory)
-        XCTAssertFalse(tour.canContinueCurrentStop)
-        XCTAssertEqual(tour.currentStop?.id, stops[0].id)
-        XCTAssertEqual(tour.arrivalStoryStopID, stops[0].id)
-    }
-
-    func testSimulatedWalkerReachesStopAndRecordsDistance() async throws {
-        simulator.speedMultiplier = 10
-        simulator.routeProvider = { [tour] in
-            guard let tour, let stop = tour.currentStop else { return nil }
-            return SimulatedLocationService.Route(path: tour.currentRoute?.routeCoordinates ?? [], target: stop.coordinate)
-        }
-        simulator.startWalking()
-        try await waitUntil("walker arrives", timeout: 40) { !self.simulator.isWalking }
-        XCTAssertTrue(tour.isSignPresented, "crossing the arrival radius presented the sign")
-        XCTAssertFalse(tour.isCurrentStopVisited, "Walking alone does not activate the stop")
-        XCTAssertGreaterThan(tour.progress.walkedMeters, 200)
-        XCTAssertLessThan(tour.remainingDistanceMeters ?? .infinity, 5)
-    }
-
-    // MARK: Helpers
-
-    private func waitUntil(_ description: String, timeout: TimeInterval = 5, _ condition: @escaping @MainActor () -> Bool) async throws {
-        let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
-            if condition() { return }
-            try await Task.sleep(for: .milliseconds(20))
-        }
-        XCTFail("Timed out waiting for: \(description)")
+        XCTAssertNil(tour.activities[stops[1].id].visitedAt)
     }
 }
 
+@MainActor
+private final class ActivityTestLocationService: LocationService {
+    private let status: LocationAuthorization
+    private(set) var permissionRequests = 0
+    private(set) var startRequests = 0
+    init(status: LocationAuthorization = .denied) { self.status = status }
+    var authorization: LocationAuthorization { status }
+    var isPreciseLocationAuthorized: Bool { true }
+    var isHeadingAvailable: Bool { false }
+    func events() -> AsyncStream<LocationEvent> { AsyncStream { $0.finish() } }
+    func requestWhenInUseAuthorization() { permissionRequests += 1 }
+    func requestTemporaryPreciseLocationIfNeeded() {}
+    func start() { startRequests += 1 }
+    func requestFreshLocation() {}
+    func stop() {}
+}
+
+#if canImport(CranfordHistoricalAR)
 @MainActor
 final class StopVisitStoreTests: XCTestCase {
     #if DEVELOPER_MENU
@@ -717,4 +512,6 @@ private final class DeveloperTestLocationService: LocationService {
     func requestFreshLocation() { refreshRequests += 1 }
     func stop() {}
 }
+#endif
+
 #endif

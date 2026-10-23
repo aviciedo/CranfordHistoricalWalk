@@ -3,29 +3,25 @@ import TourCore
 
 /// One shared gallery for stop details reached from Home, Map, Stops or AR.
 struct StopPhotoGallery: View {
-    @Environment(\.scenePhase) private var scenePhase
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
+    @Environment(AppNavigation.self) private var navigation
     let stop: HistoricalStop
     var isObscured = false
-    @State private var selection = 0
-    @State private var isPaused = false
-    @State private var isVisible = false
     @State private var expanded: ExpandedPhoto?
-
     private var photos: [HistoricalStopPhoto] { stop.galleryPhotos }
-    private var rotates: Bool {
-        photos.count > 1 && isVisible && !isObscured && !isPaused && expanded == nil
-            && scenePhase == .active && !reduceMotion && !voiceOver
+    private var selection: Int {
+        get { min(max(0, navigation.photoSelections[stop.id] ?? 0), max(0, photos.count - 1)) }
+        nonmutating set { navigation.photoSelections[stop.id] = newValue }
     }
-    private var rotationKey: String { "\(stop.id)|\(selection)|\(rotates)" }
 
     var body: some View {
         if photos.count < 2 {
-            StopPhoto(stop: stop, height: 240, cornerRadius: 16)
+            VStack(alignment: .leading, spacing: 8) {
+                StopPhoto(stop: stop, height: 240, cornerRadius: 16)
+                if let photo = photos.first { Text(photo.caption).font(.subheadline) }
+            }
         } else {
             VStack(alignment: .leading, spacing: 8) {
-                TabView(selection: $selection) {
+                TabView(selection: Binding(get: { selection }, set: { selection = $0 })) {
                     ForEach(Array(photos.enumerated()), id: \.element.id) { index, photo in
                         GalleryPhotoPage(stop: stop, photo: photo, isSelected: index == selection) { image in
                             expanded = ExpandedPhoto(image: image, photo: photo)
@@ -37,27 +33,17 @@ struct StopPhotoGallery: View {
                 .frame(height: 240)
                 .background(AppTheme.playerSurface, in: RoundedRectangle(cornerRadius: 16))
                 .clipShape(RoundedRectangle(cornerRadius: 16))
-                HStack(spacing: 8) {
-                    Button { move(by: -1) } label: {
-                        Image(systemName: "chevron.left").frame(width: 44, height: 44)
-                    }.accessibilityLabel("Previous photo")
-                    Text("\(selection + 1) of \(photos.count)")
-                        .font(.subheadline).monospacedDigit()
-                        .accessibilityLabel("Photo \(selection + 1) of \(photos.count)")
-                    Button { move(by: 1) } label: {
-                        Image(systemName: "chevron.right").frame(width: 44, height: 44)
-                    }.accessibilityLabel("Next photo")
-                    Spacer(minLength: 0)
-                    // With VoiceOver or Reduce Motion enabled, photos are always advanced manually.
-                    if !reduceMotion && !voiceOver {
-                        Button { isPaused.toggle() } label: {
-                            Image(systemName: isPaused ? "play.fill" : "pause.fill")
-                                .frame(width: 44, height: 44)
-                        }
-                        .accessibilityLabel(isPaused ? "Play slideshow" : "Pause slideshow")
+                .overlay {
+                    HStack {
+                        photoArrow("chevron.left", label: "Previous photo", amount: -1)
+                        Spacer()
+                        photoArrow("chevron.right", label: "Next photo", amount: 1)
                     }
+                    .padding(.horizontal, 8)
                 }
-                .buttonStyle(.plain)
+                Text("\(selection + 1) of \(photos.count)")
+                    .font(.caption).foregroundStyle(AppTheme.secondaryInk)
+                    .accessibilityLabel("Photo \(selection + 1) of \(photos.count)")
                 if photos.indices.contains(selection) {
                     let photo = photos[selection]
                     Text(photo.caption).font(.subheadline)
@@ -66,24 +52,25 @@ struct StopPhotoGallery: View {
                     }
                 }
             }
-            .onAppear { isVisible = true }
-            .onDisappear { isVisible = false }
-            .onChange(of: stop.id) { _, _ in selection = 0; isPaused = false }
-            .task(id: rotationKey) {
-                guard rotates else { return }
-                do { try await Task.sleep(for: .seconds(6)) } catch { return }
-                guard !Task.isCancelled, rotates else { return }
-                // Changing the selected page restarts the delay, including after a manual swipe.
-                selection = (selection + 1) % photos.count
-            }
             .fullScreenCover(item: $expanded) { item in
                 StopPhotoViewer(image: item.image, title: item.photo.caption, credit: item.photo.credit)
             }
         }
     }
 
+    private func photoArrow(_ symbol: String, label: String, amount: Int) -> some View {
+        Button { move(by: amount) } label: {
+            Image(systemName: symbol)
+                .font(.system(size: 24, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 48, height: 52)
+                .background(.black.opacity(0.24), in: RoundedRectangle(cornerRadius: 12))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain).accessibilityLabel(label)
+    }
+
     private func move(by amount: Int) {
-        isPaused = true
         selection = (selection + amount + photos.count) % photos.count
     }
 

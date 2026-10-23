@@ -20,21 +20,27 @@ final class HistoricalStopTests: XCTestCase {
         XCTAssertTrue(document.stops[0].hasPlaqueReference)
         XCTAssertFalse((document.stops[0].plaque?.transcription ?? "").contains("1797"))
         XCTAssertEqual(document.stops[1].plaque?.referenceImageName, SignPlacementPolicy.parkReferenceImageName)
-        let audioFiles = ["Rahway River.mp3", "First Baptist.mp3", "Cranford Hotel.mp3"]
-        for (stop, file) in zip(document.stops.dropFirst(2), audioFiles) {
+        for stop in document.stops.dropFirst(2) {
             XCTAssertFalse(stop.isSample)
             XCTAssertTrue(stop.coordinatesUnverified)
             XCTAssertEqual(stop.arrivalRadius, 35)
             XCTAssertEqual(stop.effectiveDepartureRadius, 50)
-            guard case .remoteAudio(let url) = stop.narrationSource else {
-                return XCTFail("\(stop.id) must play the HPAB QR recording")
-            }
-            XCTAssertEqual(url.scheme, "http")
-            XCTAssertTrue(url.host?.contains("preservecranford.com") == true)
-            XCTAssertEqual(url.lastPathComponent, file)
+            XCTAssertTrue(stop.narrationPending)
+            XCTAssertNil(stop.audioURL)
+            XCTAssertNil(stop.narrationSource, "Placeholders must not play a legacy clip or synthesize metadata")
             XCTAssertNil(stop.narrationText)
             XCTAssertEqual(stop.narrationVoicePreference, .systemDefault)
         }
+    }
+
+    func testPendingNarrationCannotAccidentallyPlayOrSpeakPlaceholderCopy() {
+        var stop = makeStop()
+        stop.audioURL = URL(string: "https://example.org/legacy.mp3")
+        stop.narrationText = "Dummy narration placeholder"
+        stop.narrationPending = true
+        XCTAssertNil(stop.narrationSource)
+        stop.narrationPending = false
+        XCTAssertEqual(stop.narrationSource, .remoteAudio(stop.audioURL!))
     }
 
     func testGreystoneUsesCreatorContentAndPreservesTheExistingTourDestination() throws {

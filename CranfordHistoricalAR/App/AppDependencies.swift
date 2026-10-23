@@ -28,6 +28,9 @@ final class AppDependencies {
         self.imageLoader = imageLoader
         self.narrationPlayer = narrationPlayer ?? NarrationPlayer()
         self.tourViewModel = tourViewModel
+        self.narrationPlayer.onCompletion = { [weak tourViewModel] stopID in
+            tourViewModel?.finishListening(for: stopID)
+        }
     }
 
     /// One provider per AR session. Selection uses the existing LocationService state — no extra manager.
@@ -44,7 +47,7 @@ final class AppDependencies {
         let stopService = BundledJSONHistoricalStopService()
         let locationService = CoreLocationService()
         let directionsService = DirectionsServiceFactory.make(configuration: configuration)
-        let tour = TourViewModel(stopService: stopService, locationService: locationService, directionsService: directionsService, visitStore: LocalStopVisitStore())
+        let tour = TourViewModel(stopService: stopService, locationService: locationService, directionsService: directionsService, visitStore: LocalStopVisitStore(), activityStore: LocalStopActivityStore())
         let dependencies = AppDependencies(configuration: configuration, stopService: stopService, locationService: locationService, directionsService: directionsService, imageLoader: CompositeImageLoader(), narrationPlayer: NarrationPlayer(), tourViewModel: tour)
         dependencies.installDeveloperMode()
         return dependencies

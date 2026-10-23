@@ -87,8 +87,8 @@ struct NextStopCard: View {
 
     private func stopInformation(_ stop: HistoricalStop) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(tour.isCurrentStopVisited ? "DISCOVERED" :
-                 (stop.hasPlaqueReference && tour.discovery.hasArrived ? "AT THE MILL" : (tour.isSignPresented ? "READY TO DISCOVER" : "NEXT STOP")))
+            Text(tour.isCurrentStopVisited ? "VISITED" :
+                 (stop.hasPlaqueReference && tour.discovery.hasArrived ? "AT THIS STOP" : (tour.isSignPresented ? "READY TO DISCOVER" : "NEXT STOP")))
                 .font(.caption.weight(.medium)).tracking(0.8)
                 .foregroundStyle(AppTheme.secondaryInk)
             Text(stop.name)

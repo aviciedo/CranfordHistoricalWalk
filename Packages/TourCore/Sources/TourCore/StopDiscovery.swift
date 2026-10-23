@@ -42,7 +42,6 @@ public struct StopDiscovery: Equatable, Sendable {
 
     @discardableResult
     public mutating func beginDiscovery() -> Bool {
-        guard hasFinishedStory else { return false }
         hasOfferedArrivalStory = true
         if stage != .unlocked { stage = .searching }
         return true
@@ -61,7 +60,7 @@ public struct StopDiscovery: Equatable, Sendable {
     }
 
     public var canContinue: Bool { hasFinishedStory }
-    public var canOfferDiscovery: Bool { hasFinishedStory && !hasVerifiedPlaque }
+    public var canOfferDiscovery: Bool { !hasVerifiedPlaque }
 }
 
 /// Estimated bounds of the TWO glass panes in the mill's red doors, measured in plaque widths.

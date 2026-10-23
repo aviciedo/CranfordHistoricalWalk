@@ -53,8 +53,6 @@ struct ARTourView: View {
         guard !isLeavingAR else { return }
         isLeavingAR = true
         motionManager.stopDeviceMotionUpdates()
-        if let stop = tour.currentStop { navigation.showOnMap(stopID: stop.id) }
-        else { navigation.selectedTab = .map }
         dismiss()
     }
 
@@ -143,7 +141,7 @@ struct ARTourView: View {
             tour.endARDiscoverySession()
         }
         .sheet(isPresented: Binding(get: { model.isShowingSignDetails }, set: { model.isShowingSignDetails = $0 })) {
-            if let stop = tour.presentedSignStop ?? tour.currentStop {
+            if let stop = tour.arStop {
                 HistoricalSignSheet(stop: stop, onContinue: { model.isShowingSignDetails = false },
                                     onStartDiscovery: model.startPlaqueDiscovery,
                                     onEnterAR: { model.isShowingSignDetails = false })
@@ -152,7 +150,7 @@ struct ARTourView: View {
             }
         }
         .sheet(isPresented: Binding(get: { model.isShowingBonusPreview }, set: { model.isShowingBonusPreview = $0 })) {
-            if let stop = tour.currentStop { OnSiteBonusPreview(stop: stop).presentationDetents([.large]) }
+            if let stop = tour.arStop { OnSiteBonusPreview(stop: stop).presentationDetents([.large]) }
         }
     }
 }
@@ -171,12 +169,12 @@ struct ARHUDView: View {
             VStack(spacing: 10) {
                 topBar
                 if let message = model.statusMessage { notice(message, symbol: "viewfinder") }
-                if let hint = model.plaqueHint, !model.tour.isCurrentStopVisited {
+                if let hint = model.plaqueHint, !model.tour.isARStopVisited {
                     notice(hint, symbol: "viewfinder.circle")
                 }
                 Spacer(minLength: 8)
                 if model.availability == .ready, model.isShowingWalkingOrientation,
-                   !model.isMarkerAvailable, !model.tour.isCurrentStopVisited, model.tour.phase == .inProgress,
+                   !model.isMarkerAvailable, !model.tour.isARStopVisited, model.tour.phase == .inProgress,
                    !(model.tour.isPlaqueDiscoveryStop && model.tour.discovery.hasArrived) {
                     ARWalkingOrientationView(relativeBearing: model.relativeBearingToWaypoint,
                                              street: model.orientationStreet,
@@ -220,23 +218,14 @@ struct ARHUDView: View {
 
     private var topBar: some View {
         HStack(alignment: .top, spacing: 12) {
-            Button(action: onClose) {
-                Label("Map", systemImage: "chevron.left")
-                    .font(.subheadline.weight(.semibold))
-                    .padding(.horizontal, 14).frame(minHeight: 48)
-                    .background(AppTheme.ivory, in: Capsule())
-            }
-            .buttonStyle(.plain).foregroundStyle(AppTheme.forest)
-            .accessibilityLabel("Return to walking map")
-            Spacer(minLength: 0)
             if let name = model.destinationName {
                 VStack(alignment: .trailing, spacing: 5) {
-                    Text(model.tour.isCurrentStopVisited ? "Discovered" :
+                    Text(model.tour.discovery.hasVerifiedPlaque ? "Bonus found" :
                          (model.tour.isPlaqueDiscoveryStop && model.tour.discovery.hasArrived ? "At this stop" : "Next stop"))
                         .font(.caption.weight(.medium))
                     Text(name).font(.system(.headline, design: .serif))
                         .multilineTextAlignment(.trailing).fixedSize(horizontal: false, vertical: true)
-                    if !model.tour.isCurrentStopVisited && !(model.tour.isPlaqueDiscoveryStop && model.tour.discovery.hasArrived) {
+                    if !model.tour.isARStopVisited && !(model.tour.isPlaqueDiscoveryStop && model.tour.discovery.hasArrived) {
                         HStack(spacing: 10) {
                             Label(model.distanceText, systemImage: "figure.walk")
                             Label(model.timeText, systemImage: "clock")
@@ -248,6 +237,15 @@ struct ARHUDView: View {
                 .foregroundStyle(AppTheme.forest).padding(14)
                 .background(AppTheme.ivory, in: RoundedRectangle(cornerRadius: 18))
             }
+            Spacer(minLength: 0)
+            Button(action: onClose) {
+                Label("Back", systemImage: "chevron.left")
+                    .font(.subheadline.weight(.semibold))
+                    .padding(.horizontal, 14).frame(minHeight: 48)
+                    .background(AppTheme.ivory, in: Capsule())
+            }
+            .buttonStyle(.plain).foregroundStyle(AppTheme.forest)
+            .accessibilityLabel("Return to previous screen")
         }
     }
 
@@ -267,17 +265,17 @@ struct ARHUDView: View {
 
     @ViewBuilder
     private var bottomPanel: some View {
-        if model.tour.phase == .complete {
+        if model.tour.phase == .complete && model.tour.arStop == nil {
             VStack(alignment: .leading, spacing: 14) {
                 Text("Walk complete").font(.system(.title2, design: .serif).weight(.semibold))
-                Text("You've discovered every stop on this walk.").font(.subheadline)
+                Text("You’ve reached the end of your itinerary. Your stories and bonuses remain available.").font(.subheadline)
                 primaryButton("See your summary", symbol: "checkmark.circle", action: onClose)
             }
             .foregroundStyle(AppTheme.forest).padding(18)
             .background(AppTheme.ivory, in: RoundedRectangle(cornerRadius: 20))
-        } else if model.tour.isPlaqueDiscoveryStop && (model.tour.discovery.hasArrived || model.tour.discovery.hasVerifiedPlaque) {
+        } else if model.tour.isPlaqueDiscoveryStop && (model.tour.discovery.hasArrived || model.tour.discovery.stage == .searching || model.tour.discovery.hasVerifiedPlaque) {
             discoveryControls
-        } else if model.tour.isCurrentStopVisited {
+        } else if model.tour.isARStopVisited {
             storyControls
         } else {
             VStack(spacing: 10) {
@@ -311,12 +309,10 @@ struct ARHUDView: View {
                 Text(model.discoverySearchHint).font(.headline)
                 Text(model.discoveryPlacementInstruction)
                     .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
-            } else if model.tour.discovery.hasFinishedStory {
-                primaryButton("Find the plaque in AR", symbol: "viewfinder", action: model.startPlaqueDiscovery)
             } else {
-                primaryButton("Read or listen to the story", symbol: "book", action: { model.isShowingSignDetails = true })
+                primaryButton("Find the plaque in AR", symbol: "viewfinder", action: model.startPlaqueDiscovery)
             }
-            if model.tour.canContinueCurrentStop {
+            if model.tour.canContinueARStop {
                 Button(action: model.continueToNextStop) {
                     Label(model.tour.nextStop.map { "Continue to \($0.name)" } ?? "Finish walk", systemImage: "arrow.right")
                         .font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 44)

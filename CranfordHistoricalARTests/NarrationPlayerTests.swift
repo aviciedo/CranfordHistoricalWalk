@@ -5,6 +5,52 @@ import XCTest
 
 @MainActor
 final class NarrationPlayerTests: XCTestCase {
+    func testCompletionOfMillRecordingWhileWalkingToParkRecordsOnlyMillLearning() async throws {
+        let dependencies = AppDependencies.preview()
+        let tour = dependencies.tourViewModel
+        await tour.loadStopsIfNeeded()
+        let mill = HistoricalStop.previewStops[0]
+        let park = HistoricalStop.previewStops[1]
+        tour.progress.selectStop(withID: park.id)
+        let player = dependencies.narrationPlayer
+        defer { player.stop(); tour.stopLocation(); tour.cancelRouting() }
+        XCTAssertTrue(player.prepare(mill))
+        try await waitForAudio { player.canSeek }
+        let duration = try XCTUnwrap(player.duration)
+        player.seek(to: max(0, duration - 0.15))
+        player.play()
+        try await waitForAudio { player.status == .finished }
+        XCTAssertEqual(tour.currentStop?.id, park.id)
+        XCTAssertNotNil(tour.activities[mill.id].listenedAt)
+        XCTAssertFalse(tour.activities[park.id].learningCompleted)
+        XCTAssertNil(tour.activities[mill.id].visitedAt)
+        XCTAssertNil(tour.activities[mill.id].bonusFoundAt)
+    }
+
+    func testRecordingBookmarkSurvivesExplicitSwitchToAnotherStory() async throws {
+        let player = NarrationPlayer()
+        defer { player.stop() }
+        let stops = HistoricalStop.previewStops
+        XCTAssertTrue(player.prepare(stops[0]))
+        XCTAssertFalse(player.hasStartedPlayback)
+        try await waitForAudio { player.canSeek }
+        player.seek(to: 42)
+        XCTAssertTrue(player.prepare(stops[1]))
+        try await waitForAudio { player.canSeek }
+        XCTAssertTrue(player.prepare(stops[0]))
+        try await waitForAudio { player.canSeek && abs(player.elapsed - 42) < 1 }
+        XCTAssertEqual(player.elapsed, 42, accuracy: 1)
+        XCTAssertFalse(player.isPlaying, "Returning to a recording must not autoplay")
+    }
+
+    private func waitForAudio(_ predicate: @escaping @MainActor () -> Bool) async throws {
+        for _ in 0..<200 {
+            if predicate() { return }
+            try await Task.sleep(for: .milliseconds(25))
+        }
+        XCTFail("Audio did not reach the expected state within five seconds")
+    }
+
     func testProducedNarrationsAreBundledPlayableAndDoNotAutoStart() async throws {
         for (index, filename) in [(0, "stop_01_droeschers_mill"), (1, "stop_02_greystone")] {
             let stop = HistoricalStop.previewStops[index]

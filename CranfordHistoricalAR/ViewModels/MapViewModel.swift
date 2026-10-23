@@ -92,7 +92,7 @@ final class MapViewModel {
     func markers(for tour: TourViewModel) -> [StopMarkerModel] {
         tour.stops.map { stop in
             let state: StopMarkerModel.State
-            if tour.isCompleted(stop) {
+            if tour.activities[stop.id].visitedAt != nil || tour.isCompleted(stop) {
                 state = .visited
             } else if stop.id == tour.currentStop?.id {
                 state = .current

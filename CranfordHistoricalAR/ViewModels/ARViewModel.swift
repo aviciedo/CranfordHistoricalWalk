@@ -70,9 +70,15 @@ final class ARViewModel {
         }
         return geoAnchors.userFacingNotice
     }
-    var destinationName: String? { tour.currentStop?.name }
-    var distanceText: String { tour.hasPlaqueConfirmedArrival ? "At plaque" : tour.remainingDistanceText }
-    var timeText: String { tour.hasPlaqueConfirmedArrival ? "Arrived" : tour.remainingTimeText }
+    var destinationName: String? { tour.arStop?.name }
+    var distanceText: String {
+        if tour.arStop?.id != tour.currentStop?.id { return "On-site bonus" }
+        return tour.hasPlaqueConfirmedArrival ? "At plaque" : tour.remainingDistanceText
+    }
+    var timeText: String {
+        if tour.arStop?.id != tour.currentStop?.id { return "Optional" }
+        return tour.hasPlaqueConfirmedArrival ? "Arrived" : tour.remainingTimeText
+    }
 
     /// Uses the actual camera facing, including when the phone is turned away from the walk.
     /// GPS course describes movement, so it must not be used as the camera's heading.
@@ -225,18 +231,18 @@ final class ARViewModel {
 
     private func pushTourStateToAnchors() {
         // Reads tracked properties: userLocation, heading, currentStop, routeProgress, presentedSignStopID.
-        if observedStopID != tour.currentStop?.id {
+        if observedStopID != tour.arStop?.id {
             geoAnchors.clearWindowBonus()
             confirmationTask?.cancel()
             isShowingDiscoveryConfirmation = false
             isShowingBonusPreview = false
-            observedStopID = tour.currentStop?.id
+            observedStopID = tour.arStop?.id
             activationMessage = nil
             isShowingSignDetails = false
             isShowingWalkingOrientation = true
             walkingOrientation = ARWalkingGuidance.OrientationState()
         }
-        geoAnchors.hasActivatedStop = tour.isCurrentStopVisited
+        geoAnchors.hasActivatedStop = tour.isARStopVisited
         if !tour.discovery.hasVerifiedPlaque {
             geoAnchors.clearWindowBonus()
             if isShowingBonusPreview { isShowingBonusPreview = false }
@@ -245,7 +251,7 @@ final class ARViewModel {
                 isShowingDiscoveryConfirmation = false
             }
         }
-        if tour.isPlaqueDiscoveryStop, tour.arrivalStoryStopID == tour.currentStop?.id,
+        if tour.isPlaqueDiscoveryStop, tour.arrivalStoryStopID == tour.arStop?.id,
            tour.discovery.stage != .searching, tour.discovery.stage != .unlocked {
             isShowingSignDetails = true
         }
@@ -254,7 +260,7 @@ final class ARViewModel {
         #if DEVELOPER_MENU
         // Apply slider changes even if the phone is still and ARKit sends no new anchor pose.
         if tour.discovery.hasVerifiedPlaque, geoAnchors.isTrackingReady,
-           let stop = tour.currentStop, let anchor = geoAnchors.plaqueAnchors.trackedAnchor,
+           let stop = tour.arStop, let anchor = geoAnchors.plaqueAnchors.trackedAnchor,
            anchor.isTracked, geoAnchors.plaqueAnchors.matches(anchor, expectedName: stop.plaque?.referenceImageName) {
             geoAnchors.presentWindowBonus(for: stop, imageAnchor: anchor,
                                           layout: tour.currentBonusLayout, displayScale: displayScale)
@@ -265,9 +271,10 @@ final class ARViewModel {
         } else if let signStop = tour.presentedSignStop, imageLoader.cachedImage(for: signStop) == nil, signStop.hasAnyImage {
             loadSignImage(for: signStop)
         }
-        guard !tour.hasPlaqueConfirmedArrival, !tour.isRouteAnEstimate,
+        guard tour.arStop?.id == tour.currentStop?.id,
+              !tour.hasPlaqueConfirmedArrival, !tour.isRouteAnEstimate,
               !(tour.isPlaqueDiscoveryStop && tour.discovery.hasArrived),
-              tour.currentRoute != nil, let stop = tour.currentStop, let user = tour.userLocation else {
+              tour.currentRoute != nil, let stop = tour.arStop, let user = tour.userLocation else {
             geoAnchors.setNavigationTarget(nil)
             return
         }
@@ -302,7 +309,7 @@ final class ARViewModel {
     // MARK: Plaque discovery and bonus placement
 
     var discoverySearchHint: String {
-        SignPlacementPolicy.discoveryHint(referenceImageName: tour.currentStop?.plaque?.referenceImageName)
+        SignPlacementPolicy.discoveryHint(referenceImageName: tour.arStop?.plaque?.referenceImageName)
     }
 
     var discoveryPlacementInstruction: String {
@@ -329,13 +336,13 @@ final class ARViewModel {
         if geoAnchors.placementMode != mode { geoAnchors.placementMode = mode }
         if plaqueHint != nil { plaqueHint = nil }
         guard let stop = tour.presentedSignStop else { geoAnchors.dismissSign(); return }
-        let image = tour.isCurrentStopVisited ? imageLoader.cachedImage(for: stop) : nil
+        let image = tour.isARStopVisited ? imageLoader.cachedImage(for: stop) : nil
         geoAnchors.presentSign(for: stop, image: image, displayScale: displayScale,
-                               appearance: tour.isCurrentStopVisited ? .geoPost : .visitMarker)
+                               appearance: tour.isARStopVisited ? .geoPost : .visitMarker)
     }
 
     private var expectedPlaqueImageName: String? {
-        (tour.presentedSignStop ?? tour.currentStop)?.plaque?.referenceImageName
+        tour.arStop?.plaque?.referenceImageName
     }
 
     func imageAnchorsDidAdd(_ anchors: [ARAnchor]) {
@@ -382,18 +389,13 @@ final class ARViewModel {
               geoAnchors.plaqueAnchors.matches(imageAnchor, expectedName: expected) else { return }
         // Apply a recovered destination before presenting its story or bonus. Otherwise the
         // observation loop's destination-change cleanup could hide the new site's sheet.
-        if observedStopID != tour.currentStop?.id { pushTourStateToAnchors() }
-        if tour.proximityMachine?.hasManuallyDismissed == true { return }
-        if tour.proximityState == .completed { return }
-        guard let stop = tour.currentStop else { return }
+        if observedStopID != tour.arStop?.id { pushTourStateToAnchors() }
+        guard let stop = tour.arStop else { return }
         if stop.hasPlaqueReference {
             guard isSessionRunning, geoAnchors.isTrackingReady else { return }
-            let shouldOfferStory = tour.discovery.arrive()
-            if !tour.discovery.hasFinishedStory {
-                if shouldOfferStory { tour.arrivalStoryStopID = stop.id }
-                return
-            }
-            guard tour.discovery.stage == .searching || tour.discovery.hasVerifiedPlaque else { return }
+            tour.discovery.arrive()
+            // The physical plaque is the evidence. Reading/listening is independent.
+            if !tour.discovery.hasVerifiedPlaque { _ = tour.beginPlaqueDiscovery() }
             geoAnchors.plaqueAnchors.observe(imageAnchor)
             if !tour.discovery.hasVerifiedPlaque {
                 tour.confirmPlaqueArrival(for: stop.id)
@@ -426,7 +428,7 @@ final class ARViewModel {
         isShowingDiscoveryConfirmation = true
         confirmationTask = Task { @MainActor [weak self] in
             try? await Task.sleep(for: .milliseconds(1600))
-            guard !Task.isCancelled, let self, self.tour.currentStop?.id == stopID else { return }
+            guard !Task.isCancelled, let self, self.tour.arStop?.id == stopID else { return }
             self.isShowingDiscoveryConfirmation = false
         }
     }
@@ -450,7 +452,7 @@ final class ARViewModel {
 
     private func updateWalkingOrientation(timestamp: TimeInterval) {
         let visible = walkingOrientation.update(relativeBearing: relativeBearingToWaypoint, timestamp: timestamp,
-                                                isAtStop: tour.isCurrentStopVisited || isMarkerAvailable || tour.phase == .complete
+                                                isAtStop: tour.isARStopVisited || isMarkerAvailable || tour.phase == .complete
                                                     || (tour.isPlaqueDiscoveryStop && tour.discovery.hasArrived))
         if isShowingWalkingOrientation != visible { isShowingWalkingOrientation = visible }
     }
@@ -512,7 +514,7 @@ final class ARViewModel {
             return
         }
         guard geoAnchors.isSignEntity(entity), tour.isSignPresented else { return }
-        if tour.isCurrentStopVisited {
+        if tour.isARStopVisited {
             isShowingSignDetails = true
         } else {
             activateMarker()
@@ -521,7 +523,7 @@ final class ARViewModel {
 
     /// The on-screen accessibility button and a tap on the 3D marker use the same checks.
     func activateMarker() {
-        guard let stop = tour.currentStop else { return }
+        guard let stop = tour.arStop else { return }
         if stop.hasPlaqueReference { isShowingSignDetails = true; return }
         guard isMarkerAvailable, geoAnchors.anchors.sign.isPresented else {
             activationMessage = StopActivationIssue.markerNotReady.message
@@ -539,7 +541,7 @@ final class ARViewModel {
             activationMessage = nil
             geoAnchors.hasActivatedStop = true
             applySignPlacement()
-            if narrationPlayer.prepare(stop) { narrationPlayer.play() }
+            isShowingSignDetails = true
         case .deny(let issue):
             activationMessage = issue.message
         case .alreadyActivated:
@@ -554,7 +556,7 @@ final class ARViewModel {
     }
 
     func continueToNextStop() {
-        guard tour.canContinueCurrentStop else { return }
+        guard tour.canContinueARStop else { return }
         isShowingBonusPreview = false
         geoAnchors.clearWindowBonus()
         isShowingSignDetails = false
@@ -571,7 +573,7 @@ final class ARViewModel {
     var canShowSignManually: Bool {
         if tour.isPlaqueDiscoveryStop { return false }
         guard let state = tour.proximityState else { return false }
-        return tour.isCurrentStopVisited || state == .signDismissed || state == .nearby
+        return tour.isARStopVisited || state == .signDismissed || state == .nearby
             || (state == .approaching && tour.isWithinArrivalRadius)
     }
 }

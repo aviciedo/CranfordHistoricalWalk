@@ -169,26 +169,23 @@ extension HistoricalStop {
         HistoricalStop(
             id: "hpab-003", name: "Rahway River", latitude: 40.6659731, longitude: -74.3108614,
             address: "Rahway River, Cranford, NJ",
-            shortDescription: "HPAB audio-tour stop. Play the recording for the site description. No transcript is bundled.",
+            shortDescription: "New narration is coming soon.",
             longDescription: "",
-            audioURL: URL(string: "http://preservecranford.com/Audio/Rahway%20River.mp3"),
-            order: 3, isSample: false, coordinatesUnverified: true
+            order: 3, isSample: false, coordinatesUnverified: true, narrationPending: true
         ),
         HistoricalStop(
             id: "hpab-004", name: "First Baptist Church", latitude: 40.653165, longitude: -74.302768,
             address: "100 High St, Cranford, NJ",
-            shortDescription: "HPAB audio-tour stop. Play the recording for the site description. No transcript is bundled.",
+            shortDescription: "New narration is coming soon.",
             longDescription: "",
-            audioURL: URL(string: "http://preservecranford.com/Audio/First%20Baptist.mp3"),
-            order: 4, isSample: false, coordinatesUnverified: true
+            order: 4, isSample: false, coordinatesUnverified: true, narrationPending: true
         ),
         HistoricalStop(
             id: "hpab-005", name: "Cranford Hotel", latitude: 40.65513, longitude: -74.304765,
             address: "1 S Union Ave, Cranford, NJ",
-            shortDescription: "HPAB audio-tour stop. Play the recording for the site description. No transcript is bundled.",
+            shortDescription: "New narration is coming soon.",
             longDescription: "",
-            audioURL: URL(string: "http://preservecranford.com/Audio/Cranford%20Hotel.mp3"),
-            order: 5, isSample: false, coordinatesUnverified: true
+            order: 5, isSample: false, coordinatesUnverified: true, narrationPending: true
         )
     ]
 }

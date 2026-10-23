@@ -103,11 +103,15 @@ final class TourViewModel {
     var signPresentationSource: SignPresentationSource?
     var visitRecords: [StopVisitRecord]
     var activeVisitEvidence: StopVisitEvidence?
-    /// Prevent one GPS fix from advancing multiple tour stops.
-    var lastAutomaticVisitSampleTimestamp: Date?
     let visitStore: any StopVisitStore
-    var discovery = StopDiscovery()
-    var discoveryStopID: String?
+    let activityStore: any StopActivityStore
+    var activities: StopActivityLedger
+    /// AR may inspect a different physical site without changing the walking destination.
+    var arStop: HistoricalStop? { arDiscoveryStopID.flatMap(stop(withID:)) ?? currentStop }
+    var discovery: StopDiscovery {
+        get { arStop.map { discoveriesByStopID[$0.id] ?? StopDiscovery() } ?? StopDiscovery() }
+        set { if let id = arStop?.id { discoveriesByStopID[id] = newValue } }
+    }
     var discoveriesByStopID: [String: StopDiscovery] = [:]
     /// Hold a selected site's story/discovery through GPS fixes and AR presentation.
     var arDiscoveryStopID: String?
@@ -130,10 +134,16 @@ final class TourViewModel {
     private(set) var locationService: any LocationService
     private var locationTask: Task<Void, Never>?
 
-    init(stopService: any HistoricalStopService, locationService: any LocationService, directionsService: any DirectionsService, visitStore: (any StopVisitStore)? = nil) {
+    init(stopService: any HistoricalStopService, locationService: any LocationService, directionsService: any DirectionsService, visitStore: (any StopVisitStore)? = nil, activityStore: (any StopActivityStore)? = nil) {
         let store = visitStore ?? InMemoryStopVisitStore()
         self.visitStore = store
         self.visitRecords = store.records()
+        let activityStorage = activityStore ?? InMemoryStopActivityStore()
+        self.activityStore = activityStorage
+        var savedActivities = activityStorage.load()
+        savedActivities.importVisits(store.records())
+        self.activities = savedActivities
+        activityStorage.save(savedActivities)
         self.stopService = stopService
         self.locationService = locationService
         self.directionsService = directionsService
@@ -213,11 +223,13 @@ final class TourViewModel {
         if let stopID {
             guard stop(withID: stopID) != nil else { return false }
             arDiscoveryStopID = stopID
+            presentedSignStopID = nil
+            plaqueConfirmedStopID = nil
             continuedARStopIDs.remove(stopID)
-            let previousID = currentStop?.id
-            guard progress.selectStop(withID: stopID) else { return false }
-            if previousID != stopID || proximityMachine == nil { destinationDidChange() }
-        } else if phase == .complete { resetTour() }
+            restoreDiscovery(for: stopID)
+            return arStop != nil
+        }
+        if phase == .complete { resetTour() }
         startTour()
         return phase == .inProgress && currentStop != nil
     }
@@ -230,9 +242,7 @@ final class TourViewModel {
         cancelRouting()
         discoveriesByStopID = [:]
         continuedARStopIDs = []
-        discoveryStopID = nil
         arDiscoveryStopID = nil
-        lastAutomaticVisitSampleTimestamp = nil
         progress.reset()
         progress.start()
         destinationDidChange()

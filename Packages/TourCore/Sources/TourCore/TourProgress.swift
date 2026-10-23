@@ -98,6 +98,19 @@ public struct TourProgress: Sendable, Equatable, Codable {
         return nil
     }
 
+    /// Change the itinerary without crediting a skipped stop as physically visited.
+    @discardableResult
+    public mutating func advanceCurrentStop(at date: Date = Date()) -> String? {
+        guard phase == .inProgress, currentStopID != nil else { return nil }
+        if stopIDs.indices.contains(currentIndex + 1) {
+            currentIndex += 1
+            return stopIDs[currentIndex]
+        }
+        phase = .complete
+        completedAt = date
+        return nil
+    }
+
     /// Developer tool: jump directly to a stop, marking skipped stops neither complete nor current.
     public mutating func jump(toIndex index: Int) {
         guard stopIDs.indices.contains(index) else { return }

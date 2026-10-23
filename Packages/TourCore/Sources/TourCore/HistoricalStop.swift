@@ -31,6 +31,8 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
     public var narrationText: String?
     /// Applies only when narration is read on device; recorded audio keeps its original voice.
     public var narrationVoicePreference: NarrationVoicePreference
+    /// Explicit placeholder: never speak metadata or play a legacy recording while awaiting content.
+    public var narrationPending: Bool
     /// Meters. The AR sign opens when the user is within this radius.
     public var arrivalRadius: Double
     /// Meters. The AR sign closes only once the user is beyond this radius (hysteresis).
@@ -72,7 +74,8 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
         estimatedVisitDuration: TimeInterval = 90,
         isSample: Bool = false,
         coordinatesUnverified: Bool = false,
-        plaque: StopPlaque? = nil
+        plaque: StopPlaque? = nil,
+        narrationPending: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -90,6 +93,7 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
         self.audioURL = audioURL
         self.narrationText = narrationText
         self.narrationVoicePreference = narrationVoicePreference
+        self.narrationPending = narrationPending
         self.arrivalRadius = arrivalRadius
         self.departureRadius = departureRadius
         self.order = order
@@ -157,6 +161,7 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
     }
 
     public var narrationSource: NarrationSource? {
+        guard !narrationPending else { return nil }
         if let audioURL {
             switch audioURL.scheme?.lowercased() {
             case "http", "https", "file":
@@ -182,7 +187,7 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
         case historicalDate, imageName, photos, imageURL, illustrationURL, audioURL
         case narrationText, narrationVoicePreference
         case arrivalRadius, departureRadius, order, estimatedVisitDuration, isSample
-        case coordinatesUnverified, plaque
+        case coordinatesUnverified, plaque, narrationPending
     }
 
     public init(from decoder: Decoder) throws {
@@ -210,6 +215,7 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
         isSample = try c.decodeIfPresent(Bool.self, forKey: .isSample) ?? false
         coordinatesUnverified = try c.decodeIfPresent(Bool.self, forKey: .coordinatesUnverified) ?? false
         plaque = try c.decodeIfPresent(StopPlaque.self, forKey: .plaque)
+        narrationPending = try c.decodeIfPresent(Bool.self, forKey: .narrationPending) ?? false
     }
 }
 

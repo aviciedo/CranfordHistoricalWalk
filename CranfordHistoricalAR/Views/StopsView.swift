@@ -35,14 +35,15 @@ struct StopsContent: View {
                                     VStack(alignment: .leading, spacing: 6) {
                                         Text("Stop \(stop.order)").font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
                                         Text(stop.name).font(.system(.title3, design: .serif).weight(.semibold))
-                                        if let visit = tour.lastRecordedVisit(for: stop) {
-                                            Label("\(visit.evidence == .recognizedPlaque ? "Plaque verified" : "Visited") \(visit.activatedAt.formatted(date: .abbreviated, time: .omitted))", systemImage: "checkmark.circle.fill")
+                                        if tour.activities[stop.id].bonusFoundAt != nil {
+                                            Label("Bonus found", systemImage: "seal.fill")
                                                 .font(.caption).foregroundStyle(AppTheme.visited)
-                                        } else if tour.isCompleted(stop) {
-                                            Label(stop.hasPlaqueReference ? "Story completed · No saved plaque verification" : "Practice visit", systemImage: "checkmark.circle")
-                                                .font(.caption).foregroundStyle(AppTheme.secondaryInk)
                                         } else if stop.id == tour.currentStop?.id {
                                             Text("Next on your walk").font(.caption).foregroundStyle(AppTheme.secondaryInk)
+                                        } else if tour.activities[stop.id].learningCompleted {
+                                            Text("Story completed").font(.caption).foregroundStyle(AppTheme.secondaryInk)
+                                        } else if tour.activities[stop.id].visitedAt != nil {
+                                            Text("Visited").font(.caption).foregroundStyle(AppTheme.secondaryInk)
                                         }
                                     }
                                     Spacer(minLength: 8)

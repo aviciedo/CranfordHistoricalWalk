@@ -277,6 +277,8 @@ final class DeveloperModeController {
     func clearVisitsAndResetTour() {
         tour.visitStore.removeAll()
         tour.visitRecords = tour.visitStore.records()
+        tour.activities.clearVisits()
+        tour.activityStore.save(tour.activities)
         resetTour()
     }
 

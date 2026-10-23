@@ -76,7 +76,7 @@ struct TourView: View {
             dependencies.imageLoader.prefetch([tour.currentStop, tour.nextStop].compactMap { $0 })
         }
         .task {
-            tour.startLocationIfPossible()
+            if tour.phase == .inProgress { tour.startLocationIfPossible() }
             focusRequestedStop()
             if let id = tour.arrivalStoryStopID, !isShowingAR { detailStop = tour.stop(withID: id) }
             dependencies.imageLoader.prefetch([tour.currentStop, tour.nextStop].compactMap { $0 })

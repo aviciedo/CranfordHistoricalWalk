@@ -924,3 +924,52 @@ the preview catalog and independent position expectations use the same supplied 
 Plaque reference images, bonus layout and arrival/departure radii are unchanged. A locally
 saved developer viewing-point override still affects story arrival only; clear that override
 in Developer Controls to use this bundled point for story arrival too.
+
+## Independent activities and remote exploration — 0.2.0 (17)
+
+Learning, physical visits and plaque bonuses now have separate persisted timestamps in
+`StopActivityLedger`. Finishing either listening or reading completes learning; both can
+be recorded. GPS arrival records only a physical visit and never automatically advances the
+itinerary or changes playback. A matching, tracked plaque records its bonus separately and
+can establish physical presence too; it does not finish the story. Practice never persists a
+real visit/bonus. Existing saved plaque visits migrate visit + bonus only, without inventing
+learning completion. Resetting the walk preserves accomplishments; Developer clear-visits
+clears visit activity without deleting learning or bonuses.
+
+Audio completion is attributed by the shared player's completion callback, not the current
+walking destination or visible view. The compact player is restored above the main tabs only
+after playback starts. It expands into transport controls, uses the playing story's title,
+and is not duplicated when that same story's inline player is visible. Read mode and browsing
+another stop retain access to the playing recording. Explicitly playing a different recording
+keeps per-story in-memory bookmarks; changing tabs, photos or Listen/Read does not prepare,
+pause or reset audio. AV callbacks from a replaced item are fenced by item identity.
+
+Stop details preserve the name, photos and historical metadata, add Listen/Read, and use a
+white top-right Back control. Reading requires an explicit acknowledgement, not merely opening
+the tab. Photo arrows overlay the middle left/right of the image on translucent backgrounds;
+manual swipe, caption, count and photo zoom remain. All automatic slideshow timers and slideshow
+play/pause controls are removed. Photo selection and Listen/Read choice survive reopening during
+the app session. Plaque entry is optional, needs no finished story and does not start/retarget a
+walk. AR holds its inspected site separately from the walking destination; exiting returns to
+the presenting screen. A bonus badge appears only after saved plaque evidence.
+
+Home keeps Start a walk (or Continue your walk) as the prominent hunter-green action and puts
+Explore the stops beneath it. Exploring does not start a tour or request location/camera access.
+The Map tab no longer starts location while no walk is active; explicit Allow location, Start a
+walk and AR walking entry can request it when needed. The live-map SDK still needs network access,
+and permission-free browsing is not an offline claim.
+
+Content readiness: stops 1–2 keep their approved recordings and full narration text. At the
+creator's request, stops 3–5 have explicit “Narration coming soon” placeholders, no legacy
+remote audio and no synthesized placeholder speech. Photos, maps and stop browsing remain
+available. Their empty Read views cannot mark learning complete. When approved audio and
+reading text are supplied, add the content and clear `narrationPending` for each stop in both
+the bundled catalog and preview catalog. No recordings were generated in this update.
+
+Validation: 168 TourCore tests and 18 tests against the actual Foundation app models/stores/routing
+pass on Linux. Prepare the latter with `python3 scripts/prepare-activity-model-tests.py`, then
+`swift test --package-path .build/activity-model-harness`. This harness substitutes Apple coordinate
+bridges and external service protocols, not the state/proximity/routing implementation. Native
+store/calibration tests are retained; two new AVFoundation integration tests exercise real recording
+completion attribution and bookmarks on Mac. Debug/Release Swift syntax passes. Xcode compilation,
+SwiftUI layout/gestures, AVFoundation tests and live ARKit still require Mac/iPhone validation.

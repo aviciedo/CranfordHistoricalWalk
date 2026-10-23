@@ -53,3 +53,34 @@ final class InMemoryStopVisitStore: StopVisitStore {
     func removeAll() { visits.removeAll() }
     #endif
 }
+
+
+/// Separate persistence from the legacy visit history; browsing never writes a visit.
+@MainActor
+protocol StopActivityStore: AnyObject {
+    func load() -> StopActivityLedger
+    func save(_ ledger: StopActivityLedger)
+}
+
+@MainActor
+final class LocalStopActivityStore: StopActivityStore {
+    private let defaults: UserDefaults
+    private let key = "cranford.stop-activities.v1"
+    init(defaults: UserDefaults = .standard) { self.defaults = defaults }
+    func load() -> StopActivityLedger {
+        guard let data = defaults.data(forKey: key),
+              let ledger = try? JSONDecoder().decode(StopActivityLedger.self, from: data) else { return StopActivityLedger() }
+        return ledger
+    }
+    func save(_ ledger: StopActivityLedger) {
+        guard let data = try? JSONEncoder().encode(ledger) else { return }
+        defaults.set(data, forKey: key)
+    }
+}
+
+@MainActor
+final class InMemoryStopActivityStore: StopActivityStore {
+    private var ledger = StopActivityLedger()
+    func load() -> StopActivityLedger { ledger }
+    func save(_ ledger: StopActivityLedger) { self.ledger = ledger }
+}

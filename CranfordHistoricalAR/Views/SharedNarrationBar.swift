@@ -1,82 +1,65 @@
 import SwiftUI
 import TourCore
 
-/// Uses the existing single player. Switching tabs never prepares or restarts a recording.
+/// Transport is always bound to the playing story, never the walking destination.
 struct SharedNarrationBar: View {
     @Environment(AppDependencies.self) private var dependencies
     @Environment(TourViewModel.self) private var tour
-    @Environment(AppNavigation.self) private var navigation
-    @State private var detailStop: HistoricalStop?
-
-    private var stop: HistoricalStop? {
-        if let id = dependencies.narrationPlayer.stopID, let playing = tour.stop(withID: id) { return playing }
-        return tour.currentStop
-    }
+    @State private var isExpanded = false
 
     var body: some View {
-        if let stop, stop.narrationSource != nil {
-            VStack(spacing: 0) {
-                Button { navigation.isNarrationMinimized.toggle() } label: {
-                    Capsule()
-                        .fill(AppTheme.secondaryInk.opacity(0.6))
-                        .frame(width: 36, height: 4)
-                        .frame(maxWidth: .infinity, minHeight: navigation.isNarrationMinimized ? 12 : 24)
-                        .contentShape(Rectangle())
+        let player = dependencies.narrationPlayer
+        if player.hasStartedPlayback, let id = player.stopID,
+           let stop = tour.stop(withID: id) {
+            HStack(spacing: 12) {
+                NarrationPlayButton(stop: stop, diameter: 44)
+                Button { isExpanded = true } label: {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(stop.name).font(.subheadline.weight(.semibold)).lineLimit(1)
+                        NarrationTimeline(stop: stop, compact: true)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(navigation.isNarrationMinimized ? "Expand player" : "Minimize player")
-                .accessibilityHint("Tap to toggle the player size, or drag down to minimize and up to expand")
-                HStack(spacing: 14) {
-                    NarrationPlayButton(stop: stop, diameter: navigation.isNarrationMinimized ? 44 : 46)
-                    Button {
-                        if navigation.isNarrationMinimized { navigation.isNarrationMinimized = false }
-                        else { detailStop = stop }
-                    } label: {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(stop.name).font(.subheadline.weight(.semibold))
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .lineLimit(1)
-                            if !navigation.isNarrationMinimized {
-                                NarrationTimeline(stop: stop, compact: true)
+                .accessibilityLabel("Expand player for \(stop.name)")
+                Button { isExpanded = true } label: {
+                    Image(systemName: "chevron.up").frame(width: 44, height: 44)
+                }
+                .buttonStyle(.plain).accessibilityLabel("Expand audio player")
+            }
+            .padding(.horizontal, 16).padding(.vertical, 8)
+            .accessibilityIdentifier("narration.compactPlayer")
+            .foregroundStyle(AppTheme.forest).background(AppTheme.ivory)
+            .overlay(alignment: .top) { Divider() }
+            .sheet(isPresented: $isExpanded) {
+                NavigationStack {
+                    VStack(alignment: .leading, spacing: 24) {
+                        Text(stop.name).font(.system(.title, design: .serif).weight(.semibold))
+                        NarrationControls(stop: stop)
+                        HStack {
+                            Button { player.skip(by: -15) } label: {
+                                Label("Back 15 seconds", systemImage: "gobackward.15").frame(minHeight: 44)
+                            }
+                            Spacer()
+                            Button { player.skip(by: 15) } label: {
+                                Label("Forward 15 seconds", systemImage: "goforward.15").frame(minHeight: 44)
                             }
                         }
-                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                        .contentShape(Rectangle())
+                        .disabled(!player.canSeek)
+                        Spacer(minLength: 0)
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(navigation.isNarrationMinimized
-                        ? "Expand player for \(stop.name)" : "Open details and narration controls for \(stop.name)")
-                    .accessibilityValue(playbackValue(for: stop))
-                    .accessibilityHint(navigation.isNarrationMinimized
-                        ? "Shows playback progress and times" : "Opens the full player and stop information")
-                    if navigation.isNarrationMinimized {
-                        Image(systemName: "chevron.up").font(.caption.weight(.semibold))
-                            .accessibilityHidden(true)
+                    .padding(24).background(AppTheme.ivory)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Back") { isExpanded = false }
+                        }
                     }
                 }
-                .padding(.horizontal, 22)
-                .padding(.bottom, navigation.isNarrationMinimized ? 0 : 10)
+                .environment(\.colorScheme, .light)
+                .presentationDetents([.medium, .large])
             }
-            .background(AppTheme.playerSurface)
-            .foregroundStyle(AppTheme.ink)
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 16).onEnded { value in
-                    guard abs(value.translation.height) > abs(value.translation.width) else { return }
-                    if value.translation.height > 20 { navigation.isNarrationMinimized = true }
-                    else if value.translation.height < -20 { navigation.isNarrationMinimized = false }
-                }
-            )
-            .sheet(item: $detailStop) { HistoricalSignSheet(stop: $0) }
         }
-    }
-
-    private func playbackValue(for stop: HistoricalStop) -> String {
-        let player = dependencies.narrationPlayer
-        guard player.stopID == stop.id else { return "Not started" }
-        if case .failed = player.status { return "Unable to play" }
-        if player.status == .loading { return "Loading" }
-        let progress = player.progress.isFinite ? min(1, max(0, player.progress)) : 0
-        return "\(Int(progress * 100)) percent played"
     }
 }
 

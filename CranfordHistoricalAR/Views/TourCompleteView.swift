@@ -40,7 +40,7 @@ struct TourCompleteView: View {
                         )
                         Divider().padding(.leading, 52)
                         statRow(
-                            label: "Historical stops completed",
+                            label: "Sites visited on this walk",
                             value: "\(figures.visitedCount) of \(figures.totalStops)",
                             detail: nil,
                             systemImage: "building.columns"

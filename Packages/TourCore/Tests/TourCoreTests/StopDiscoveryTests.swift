@@ -44,18 +44,17 @@ final class StopDiscoveryTests: XCTestCase {
         XCTAssertFalse(discovery.arrive(), "Repeated fixes cannot reopen a dismissed reading screen")
     }
 
-    func testRecognitionBeforeReadingAndExplicitDiscoveryCannotUnlock() {
+    func testDiscoveryDoesNotRequireLearningButStillRequiresExplicitSearchAndTrackedMatch() {
         var discovery = StopDiscovery()
-        discovery.arrive()
-        XCTAssertFalse(discovery.beginDiscovery())
         XCTAssertFalse(discovery.recognizePlaque(isMatching: true, trackingReady: true, isSimulated: false))
-        discovery.narrationStarted()
-        XCTAssertEqual(discovery.stage, .listening)
-        XCTAssertFalse(discovery.hasVerifiedPlaque)
-        discovery.finishStory()
-        XCTAssertTrue(discovery.canContinue)
         XCTAssertTrue(discovery.canOfferDiscovery)
-        XCTAssertFalse(discovery.recognizePlaque(isMatching: true, trackingReady: true, isSimulated: false))
+        XCTAssertTrue(discovery.beginDiscovery())
+        XCTAssertFalse(discovery.hasFinishedStory)
+        XCTAssertFalse(discovery.recognizePlaque(isMatching: false, trackingReady: true, isSimulated: false))
+        XCTAssertFalse(discovery.recognizePlaque(isMatching: true, trackingReady: false, isSimulated: false))
+        XCTAssertTrue(discovery.recognizePlaque(isMatching: true, trackingReady: true, isSimulated: false))
+        XCTAssertTrue(discovery.hasVerifiedPlaque)
+        XCTAssertFalse(discovery.hasFinishedStory)
     }
 
     func testOptionalDiscoveryDoesNotPreventContinuingAfterReading() {

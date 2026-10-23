@@ -429,3 +429,26 @@ Field check on build 0.2.0 (15):
 5. Continue to the river while still viewing the park plaque. The destination must stay at
    the river. Explicitly reopen Greystone’s Start AR to revisit; saved visits must remain.
 6. Leave AR and confirm normal map walking/GPS advancement; test denied camera permission too.
+
+
+## Build 17 — independent activities and exploration
+
+Automated checks: 168 TourCore tests and 18 tests compiling the actual Foundation app
+state, persistence and routing sources passed. Debug/Release app and test Swift syntax
+checks passed. Native SwiftUI, AVFoundation and ARKit validation is pending on Mac/iPhone.
+
+Device acceptance checks:
+- Fresh install, deny location/camera: Home > Explore the stops opens photos and stories
+  without starting the walk. Stops 1–2 can play their bundled recordings.
+- Home shows a filled hunter-green Start a walk and a quieter Explore the stops below it.
+- Start walking to Greystone while playing the mill. Browse another stop, change tabs,
+  choose Read and return: the mill retains its position and Greystone stays the destination.
+- The compact player appears above tabs after playback starts, expands, and is hidden
+  when that same recording's full inline player is visible. Test scroll and larger text.
+- Photos change only via swipe/arrows; wait at least 20 seconds to confirm no auto rotation.
+- Listening/explicit reading completes learning only. GPS records a visit only and never
+  advances automatically. Only tracked matching plaques unlock Bonus found.
+- Inspect another plaque in AR: the camera subject changes but the walking target does not.
+  Back returns to the presenting screen without stopping the recording.
+- Stops 3–5 show Narration coming soon and pending Read text. No legacy recording or
+  synthesized placeholder speech plays; neither pending activity can count as completed.

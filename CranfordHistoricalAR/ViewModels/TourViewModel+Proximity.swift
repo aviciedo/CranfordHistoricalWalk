@@ -1,258 +1,222 @@
 import Foundation
 import TourCore
 
-/// Arrival detection and sign open/close behaviour (spec §9) on top of `StopProximityStateMachine`.
 extension TourViewModel {
     enum SignPresentationSource: Equatable { case automatic, manual }
-
-    /// The stop whose sign is currently open, if any.
-    var presentedSignStop: HistoricalStop? {
-        presentedSignStopID.flatMap(stop(withID:))
-    }
-
+    var presentedSignStop: HistoricalStop? { presentedSignStopID.flatMap(stop(withID:)) }
     var isSignPresented: Bool { presentedSignStopID != nil }
-
     var proximityState: StopProximityState? { proximityMachine?.state }
-
-    /// True once arrival has made the marker available; activation is tracked separately.
     var hasArrivedAtCurrentStop: Bool { proximityMachine?.hasPresentedSign ?? false }
-
     var isWithinArrivalRadius: Bool { proximityMachine?.isWithinArrivalRadius ?? false }
+    var hasPlaqueConfirmedArrival: Bool { arStop?.id == plaqueConfirmedStopID && plaqueConfirmedStopID != nil }
+    var isARStopVisited: Bool { arStop.map { activities[$0.id].visitedAt != nil || ($0.id == currentStop?.id && progress.isCurrentStopVisited) } ?? false }
 
-    var hasPlaqueConfirmedArrival: Bool {
-        guard let currentStop else { return false }
-        return plaqueConfirmedStopID == currentStop.id
+    func restoreDiscovery(for stopID: String) {
+        var state = discoveriesByStopID[stopID] ?? StopDiscovery()
+        let saved = activities[stopID]
+        if saved.learningCompleted { state.finishStory() }
+        if saved.bonusFoundAt != nil && !state.hasVerifiedPlaque {
+            state.beginDiscovery()
+            state.recognizePlaque(isMatching: true, trackingReady: true, isSimulated: false)
+        }
+        discoveriesByStopID[stopID] = state
     }
 
-    /// A matching physical plaque is stronger arrival evidence than the unverified GPS geocode.
+    func finishListening(for stopID: String) {
+        guard let stop = stop(withID: stopID), stop.narrationSource != nil else { return }
+        activities.listened(to: stopID)
+        activityStore.save(activities)
+        restoreDiscovery(for: stopID)
+    }
+
+    /// An explicit reading acknowledgement; merely opening Read never claims completion.
+    func finishStory(for stopID: String) {
+        guard let stop = stop(withID: stopID),
+              !(stop.narrationText ?? stop.longDescription).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        activities.read(stopID)
+        activityStore.save(activities)
+        restoreDiscovery(for: stopID)
+    }
+
     func confirmPlaqueArrival(for stopID: String) {
-        guard progress.phase == .inProgress, let stop = currentStop,
-              stop.id == stopID, stop.hasPlaqueReference,
-              proximityMachine?.hasManuallyDismissed == false else { return }
+        guard arStop?.id == stopID, arStop?.hasPlaqueReference == true else { return }
         plaqueConfirmedStopID = stopID
-        if !isSignPresented { openSignManually() }
+        presentedSignStopID = stopID
+        signPresentationSource = .manual
     }
 
-    /// Builds a fresh state machine for the current stop. Called whenever the destination changes.
     func resetProximityForCurrentStop() {
         plaqueConfirmedStopID = nil
         activeVisitEvidence = nil
-        if let discoveryStopID { discoveriesByStopID[discoveryStopID] = discovery }
-        discoveryStopID = currentStop?.id
-        discovery = discoveryStopID.flatMap { discoveriesByStopID[$0] } ?? StopDiscovery()
         arrivalStoryStopID = nil
         presentedSignStopID = nil
         signPresentationSource = nil
         guard let stop = currentStop else { proximityMachine = nil; return }
+        restoreDiscovery(for: stop.id)
         proximityMachine = StopProximityStateMachine(stop: stop)
-        if let userLocation {
-            handleLocationForProximity(userLocation)
-        }
+        if let userLocation { handleLocationForProximity(userLocation) }
     }
 
+    /// Physical visits do not finish stories, find bonuses, change playback or advance routing.
     func handleLocationForProximity(_ sample: LocationSample) {
-        guard progress.phase == .inProgress, let stop = currentStop, var machine = proximityMachine else { return }
-        // Do not immediately dismiss a visually confirmed stop because its bundled geocode is wrong.
-        // Continuing clears this confirmation; simply closing the card never advances.
-        guard !hasPlaqueConfirmedArrival, !isCurrentStopVisited else { return }
-        // Ignore wildly inaccurate fixes so a 200 m GPS jump cannot open/close the sign.
         guard sample.coordinate.isValid, StopActivationPolicy.isFresh(sample.timestamp),
               sample.horizontalAccuracy >= 0, sample.horizontalAccuracy <= 100 else { return }
+        let practice = sample.isSimulated || locationService is SimulatedLocationService
+        for stop in stops {
+            let distance = GeoMath.distance(from: sample.coordinate, to: stop.coordinate)
+            if case .allow = StopActivationPolicy.decide(trackingReady: true, plaqueIsTracked: false,
+                isSimulated: practice, distanceMeters: distance, horizontalAccuracy: sample.horizontalAccuracy,
+                locationTimestamp: sample.timestamp, arrivalRadius: stop.arrivalRadius) {
+                if stop.id == currentStop?.id { progress.markCurrentStopVisited() }
+                if !practice && activities[stop.id].visitedAt == nil {
+                    savePhysicalActivity(for: stop.id, evidence: .onSiteARMarker, now: Date())
+                }
+            }
+        }
+        guard phase == .inProgress, let stop = currentStop, var machine = proximityMachine,
+              arDiscoveryStopID == nil || arDiscoveryStopID == stop.id,
+              !hasPlaqueConfirmedArrival else { return }
         let distance = GeoMath.distance(from: sample.coordinate, to: stop.coordinate)
         let effects = machine.handle(.distanceUpdated(meters: distance))
         proximityMachine = machine
         apply(effects, for: stop, source: .automatic)
-        // Outside AR discovery, a reliable GPS arrival completes the destination.
-        // Hold plaque sites during AR so GPS cannot reset the story or discovery mid-scan.
-        // Evaluate each location fix at most once, so a stop change cannot reuse the same
-        // stationary fix to cascade through two nearby tour destinations.
-        if !(stop.hasPlaqueReference && (isARSessionActive || arDiscoveryStopID == stop.id)),
-           lastAutomaticVisitSampleTimestamp != sample.timestamp,
-           sample.horizontalAccuracy <= StopActivationPolicy.maximumAccuracyMeters,
-           distance + sample.horizontalAccuracy <= stop.arrivalRadius {
-            lastAutomaticVisitSampleTimestamp = sample.timestamp
-            let decision = StopActivationPolicy.decide(
-                trackingReady: true, // Core Location arrival needs no AR camera session.
-                plaqueIsTracked: false,
-                isSimulated: sample.isSimulated || locationService is SimulatedLocationService,
-                distanceMeters: distance,
-                horizontalAccuracy: sample.horizontalAccuracy,
-                locationTimestamp: sample.timestamp,
-                arrivalRadius: stop.arrivalRadius
-            )
-            if case .allow(let evidence) = decision {
-                progress.markCurrentStopVisited()
-                activeVisitEvidence = evidence
-                #if DEVELOPER_MENU
-                if isVisitRecordingEnabled {
-                    visitStore.record(StopVisitRecord(stopID: stop.id, activatedAt: Date(), evidence: evidence))
-                }
-                #else
-                visitStore.record(StopVisitRecord(stopID: stop.id, activatedAt: Date(), evidence: evidence))
-                #endif
-                visitRecords = visitStore.records()
-                completeCurrentStopAndAdvance()
-                return
-            }
-        }
         if stop.hasPlaqueReference {
-            var viewingPoint = stop.coordinate
+            var point = stop.coordinate
             #if DEVELOPER_MENU
             if stop.plaque?.referenceImageName == SignPlacementPolicy.millReferenceImageName {
-                viewingPoint = viewingPointOverride ?? viewingPoint
+                point = viewingPointOverride ?? point
             }
             #endif
-            let viewingDistance = GeoMath.distance(from: sample.coordinate, to: viewingPoint)
+            let viewingDistance = GeoMath.distance(from: sample.coordinate, to: point)
             if sample.horizontalAccuracy <= StopActivationPolicy.maximumAccuracyMeters,
                viewingDistance + sample.horizontalAccuracy <= stop.arrivalRadius,
                discovery.arrive() { arrivalStoryStopID = stop.id }
         }
     }
 
-    /// User tapped the stop / "Show sign" while the sign is closed.
     func openSignManually() {
-        guard let stop = currentStop, var machine = proximityMachine else { return }
+        guard let stop = arStop else { return }
+        if stop.id != currentStop?.id {
+            presentedSignStopID = stop.id
+            signPresentationSource = .manual
+            return
+        }
+        guard var machine = proximityMachine else { return }
         let effects = machine.handle(.userOpenedSign)
         proximityMachine = machine
         apply(effects, for: stop, source: .manual)
     }
 
-    /// Close button on the sign.
     func closeSign() {
-        guard let stop = currentStop, var machine = proximityMachine else { presentedSignStopID = nil; return }
+        guard let stop = arStop, stop.id == currentStop?.id, var machine = proximityMachine else {
+            presentedSignStopID = nil; return
+        }
         let effects = machine.handle(.userClosedSign)
         proximityMachine = machine
         apply(effects, for: stop, source: .manual)
     }
 
-    // MARK: Marker activation / visits
-
-    /// A marker becoming visible is arrival, not a visit. Only an explicit on-site
-    /// activation from the running AR session can mark the current stop visited.
     @discardableResult
     func activateCurrentStop(stopID: String, trackingReady: Bool, plaqueIsTracked: Bool, now: Date = Date()) -> StopActivationDecision {
-        guard progress.phase == .inProgress, let stop = currentStop, stop.id == stopID else { return .deny(.wrongStop) }
-        // A GPS visit must not prevent a subsequent, stronger plaque verification.
-        if isCurrentStopVisited && (!stop.hasPlaqueReference || discovery.hasVerifiedPlaque) { return .alreadyActivated }
+        guard let stop = arStop, stop.id == stopID else { return .deny(.wrongStop) }
+        if stop.hasPlaqueReference && discovery.hasVerifiedPlaque { return .alreadyActivated }
+        if !stop.hasPlaqueReference && isARStopVisited { return .alreadyActivated }
         guard isSignPresented else { return .deny(.markerNotReady) }
         if stop.hasPlaqueReference,
-           discovery.stage != .searching || !plaqueIsTracked || !hasPlaqueConfirmedArrival {
-            return .deny(.markerNotReady)
-        }
+           discovery.stage != .searching || !plaqueIsTracked || !hasPlaqueConfirmedArrival { return .deny(.markerNotReady) }
         let sample = userLocation
-        let matchingPlaque = plaqueIsTracked && stop.hasPlaqueReference && hasPlaqueConfirmedArrival
-        let distance = sample.map { GeoMath.distance(from: $0.coordinate, to: stop.coordinate) }
-        let decision = StopActivationPolicy.decide(
-            trackingReady: trackingReady,
-            plaqueIsTracked: matchingPlaque,
+        let decision = StopActivationPolicy.decide(trackingReady: trackingReady,
+            plaqueIsTracked: plaqueIsTracked && stop.hasPlaqueReference && hasPlaqueConfirmedArrival,
             isSimulated: sample?.isSimulated == true || locationService is SimulatedLocationService,
-            distanceMeters: distance,
-            horizontalAccuracy: sample?.horizontalAccuracy,
-            locationTimestamp: sample?.timestamp,
-            arrivalRadius: stop.arrivalRadius,
-            now: now
-        )
+            distanceMeters: sample.map { GeoMath.distance(from: $0.coordinate, to: stop.coordinate) },
+            horizontalAccuracy: sample?.horizontalAccuracy, locationTimestamp: sample?.timestamp,
+            arrivalRadius: stop.arrivalRadius, now: now)
         guard case .allow(let evidence) = decision else { return decision }
-        progress.markCurrentStopVisited()
+        if stop.id == currentStop?.id { progress.markCurrentStopVisited() }
         activeVisitEvidence = evidence
         if stop.hasPlaqueReference {
             discovery.recognizePlaque(isMatching: true, trackingReady: trackingReady, isSimulated: evidence == .simulation)
         }
-        #if DEVELOPER_MENU
-        if isVisitRecordingEnabled {
-            visitStore.record(StopVisitRecord(stopID: stop.id, activatedAt: now, evidence: evidence))
-        }
-        #else
-        visitStore.record(StopVisitRecord(stopID: stop.id, activatedAt: now, evidence: evidence))
-        #endif
-        visitRecords = visitStore.records()
+        savePhysicalActivity(for: stop.id, evidence: evidence, now: now)
         return decision
     }
 
-    /// A tracked bundled plaque identifies its own site, even when the guided walk is stale.
-    /// Selection offers that site's story; verification still requires the discovery flow.
+    private func savePhysicalActivity(for stopID: String, evidence: StopVisitEvidence, now: Date) {
+        guard evidence != .simulation else { return }
+        #if DEVELOPER_MENU
+        guard isVisitRecordingEnabled else { return }
+        #endif
+        activities.visited(stopID, at: now)
+        if evidence == .recognizedPlaque { activities.foundBonus(at: stopID, date: now) }
+        activityStore.save(activities)
+        visitStore.record(StopVisitRecord(stopID: stopID, activatedAt: now, evidence: evidence))
+        visitRecords = visitStore.records()
+    }
+
+    /// Recognition selects an AR subject, never the guided walking destination.
     @discardableResult
     func selectRecognizedPlaque(imageName: String?, isTracked: Bool, trackingReady: Bool) -> Bool {
         guard let stop = SignPlacementPolicy.recognizedStop(imageName: imageName, isTracked: isTracked,
-                                                           trackingReady: trackingReady, stops: stops),
-              !continuedARStopIDs.contains(stop.id) else { return false }
-        if arDiscoveryStopID != stop.id { arDiscoveryStopID = stop.id }
-        if currentStop?.id != stop.id {
-            guard progress.selectStop(withID: stop.id) else { return false }
-            destinationDidChange()
+            trackingReady: trackingReady, stops: stops), !continuedARStopIDs.contains(stop.id) else { return false }
+        if arDiscoveryStopID != stop.id {
+            arDiscoveryStopID = stop.id
+            plaqueConfirmedStopID = nil
+            presentedSignStopID = nil
         }
+        restoreDiscovery(for: stop.id)
         return true
     }
 
-    /// Also called when the camera cannot start, so a denied/unsupported AR screen
-    /// cannot leave ordinary GPS arrival suspended after the visitor returns to the map.
     func endARDiscoverySession() {
         isARSessionActive = false
         arDiscoveryStopID = nil
+        plaqueConfirmedStopID = nil
         continuedARStopIDs = []
     }
 
     func lastRecordedVisit(for stop: HistoricalStop) -> StopVisitRecord? {
         visitRecords.filter { $0.stopID == stop.id }.max { $0.activatedAt < $1.activatedAt }
     }
+    var isCurrentStopVisited: Bool { currentStop.map { progress.isCurrentStopVisited || activities[$0.id].visitedAt != nil } ?? false }
+    var canContinueCurrentStop: Bool { phase == .inProgress && currentStop != nil }
+    var canContinueARStop: Bool { canContinueCurrentStop && arStop?.id == currentStop?.id }
 
-    var isCurrentStopVisited: Bool { progress.isCurrentStopVisited }
-
-    /// Explicit Continue releases the site's discovery hold and advances. Map-only reliable
-    /// GPS arrival also uses this path; closing a story card never advances the walk.
+    /// Advancing an itinerary is not proof of a physical visit or learning completion.
     func completeCurrentStopAndAdvance() {
-        guard progress.phase == .inProgress, let stop = currentStop,
-              isCurrentStopVisited || (stop.hasPlaqueReference && discovery.canContinue) else { return }
-        proximityMachine?.handle(.markCompleted)
-        presentedSignStopID = nil
-        signPresentationSource = nil
+        guard canContinueCurrentStop, let stop = currentStop else { return }
         if isARSessionActive { continuedARStopIDs.insert(stop.id) }
         arDiscoveryStopID = nil
-        progress.completeCurrentStop()
+        progress.advanceCurrentStop()
         destinationDidChange()
     }
 
-    var isPlaqueDiscoveryStop: Bool { currentStop?.hasPlaqueReference == true }
-    var isMillDiscoveryStop: Bool { currentStop?.plaque?.referenceImageName == SignPlacementPolicy.millReferenceImageName }
+    var isPlaqueDiscoveryStop: Bool { arStop?.hasPlaqueReference == true }
+    var isMillDiscoveryStop: Bool { arStop?.plaque?.referenceImageName == SignPlacementPolicy.millReferenceImageName }
     var currentBonusLayout: WindowBonusLayout { isMillDiscoveryStop ? windowBonusLayout : parkBonusLayout }
-    var canContinueCurrentStop: Bool { isCurrentStopVisited || (isPlaqueDiscoveryStop && discovery.canContinue) }
 
     func openStory(for stopID: String) {
-        guard currentStop?.id == stopID, isPlaqueDiscoveryStop else { return }
-        arrivalStoryStopID = nil
-        discovery.openStory()
-    }
-
-    func finishStory(for stopID: String) {
-        guard currentStop?.id == stopID, isPlaqueDiscoveryStop else { return }
-        discovery.finishStory()
+        guard stop(withID: stopID) != nil else { return }
+        restoreDiscovery(for: stopID)
+        var state = discoveriesByStopID[stopID] ?? StopDiscovery()
+        state.openStory()
+        discoveriesByStopID[stopID] = state
+        if arrivalStoryStopID == stopID { arrivalStoryStopID = nil }
     }
 
     @discardableResult
     func beginPlaqueDiscovery() -> Bool {
-        guard isPlaqueDiscoveryStop, discovery.beginDiscovery() else { return false }
-        if discovery.hasVerifiedPlaque { return true }
+        guard isPlaqueDiscoveryStop else { return false }
         arrivalStoryStopID = nil
-        arDiscoveryStopID = currentStop?.id
-        // Re-arm a dismissed generic marker; the discovery camera will not show that marker.
-        proximityMachine = currentStop.map { StopProximityStateMachine(stop: $0) }
-        if let userLocation { handleLocationForProximity(userLocation) }
-        return true
+        return discovery.beginDiscovery()
     }
 
     private func apply(_ effects: [StopProximityEffect], for stop: HistoricalStop, source: SignPresentationSource) {
         for effect in effects {
             switch effect {
-            case .presentSign:
-                presentedSignStopID = stop.id
-                signPresentationSource = source
+            case .presentSign: presentedSignStopID = stop.id; signPresentationSource = source
             case .dismissSign:
-                if presentedSignStopID == stop.id {
-                    presentedSignStopID = nil
-                    signPresentationSource = nil
-                }
-            case .stopCompleted:
-                break
+                if presentedSignStopID == stop.id { presentedSignStopID = nil; signPresentationSource = nil }
+            case .stopCompleted: break
             }
         }
     }

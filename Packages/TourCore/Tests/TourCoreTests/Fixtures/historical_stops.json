@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "tourName": "HPAB Historic Cranford Audio Tour",
   "tourSubtitle": "Names, addresses, and recordings from the Cranford Historic Preservation Advisory Board",
-  "dataStatus": "Tour stops are based on the HPAB Historic Cranford QR Code Audio Tour brochure (May 2020), www.preservecranford.com. The tour creator supplied the updated Droescher’s Mill and Greystone marker text, descriptions and narration scripts. Stops 1 and 2 use bundled AI-generated OpenAI cedar recordings of their approved scripts. Stops 3–5 retain their HPAB recordings by Bernie Wagenblast. Greystone was later known as Cranford Hall. Droescher’s Mill uses the creator’s Device GPS reading from the public viewing area, supplied on October 22, 2026 (40.650249, -74.301047; reported accuracy ±5.0 m, fix age 2 seconds, Precise Location on, simulation off). This replaces the previous public-search coordinate. The capture date is not established by the screenshot. Greystone retains the creator-supplied approximate coordinate (40.6524, -74.2990). These are approximate GPS/geocoded positions, not surveys. First Baptist Church uses the creator’s on-site Device GPS reading supplied on October 22, 2026 (40.653165, -74.302768; reported accuracy ±6.3 m). Its capture date is not established by the screenshot. This remains an approximate GPS position, not a survey. Stops 3 and 5 retain unverified OpenStreetMap Nominatim geocodes. GPS accuracy varies on site. The mill’s physical door plaque reads “c. 1737”; that inscription is retained as a marker reference and is separate from the supplied construction history (after 1821; mill site documented by 1779). Greystone’s separate Cranford Park plaque reference uses the supplied original photograph, including its stone surround; its 0.75 m full-frame reference width is an unmeasured testing estimate.",
+  "dataStatus": "Tour stops are based on the HPAB Historic Cranford QR Code Audio Tour brochure (May 2020), www.preservecranford.com. The tour creator supplied the updated Droescher’s Mill and Greystone marker text, descriptions and narration scripts. Stops 1 and 2 use bundled AI-generated OpenAI cedar recordings of their approved scripts. Stops 3–5 have narration placeholders pending new creator-provided audio and reading text; legacy HPAB recordings are not played for these stops. Greystone was later known as Cranford Hall. Droescher’s Mill uses the creator’s Device GPS reading from the public viewing area, supplied on October 22, 2026 (40.650249, -74.301047; reported accuracy ±5.0 m, fix age 2 seconds, Precise Location on, simulation off). This replaces the previous public-search coordinate. The capture date is not established by the screenshot. Greystone retains the creator-supplied approximate coordinate (40.6524, -74.2990). These are approximate GPS/geocoded positions, not surveys. First Baptist Church uses the creator’s on-site Device GPS reading supplied on October 22, 2026 (40.653165, -74.302768; reported accuracy ±6.3 m). Its capture date is not established by the screenshot. This remains an approximate GPS position, not a survey. Stops 3 and 5 retain unverified OpenStreetMap Nominatim geocodes. GPS accuracy varies on site. The mill’s physical door plaque reads “c. 1737”; that inscription is retained as a marker reference and is separate from the supplied construction history (after 1821; mill site documented by 1779). Greystone’s separate Cranford Park plaque reference uses the supplied original photograph, including its stone surround; its 0.75 m full-frame reference width is an unmeasured testing estimate.",
   "stops": [
     {
       "id": "hpab-001",
@@ -127,19 +127,20 @@
       "latitude": 40.6659731,
       "longitude": -74.3108614,
       "address": "Rahway River, Cranford, NJ",
-      "shortDescription": "HPAB audio-tour stop. Play the recording for the site description. No transcript is bundled.",
+      "shortDescription": "New narration is coming soon.",
       "longDescription": "",
       "historicalDate": null,
       "imageName": null,
       "imageURL": null,
       "illustrationURL": null,
-      "audioURL": "http://preservecranford.com/Audio/Rahway%20River.mp3",
+      "audioURL": null,
       "arrivalRadius": 35,
       "departureRadius": 50,
       "order": 3,
       "estimatedVisitDuration": 90,
       "isSample": false,
-      "coordinatesUnverified": true
+      "coordinatesUnverified": true,
+      "narrationPending": true
     },
     {
       "id": "hpab-004",
@@ -147,19 +148,20 @@
       "latitude": 40.653165,
       "longitude": -74.302768,
       "address": "100 High St, Cranford, NJ",
-      "shortDescription": "HPAB audio-tour stop. Play the recording for the site description. No transcript is bundled.",
+      "shortDescription": "New narration is coming soon.",
       "longDescription": "",
       "historicalDate": null,
       "imageName": null,
       "imageURL": null,
       "illustrationURL": null,
-      "audioURL": "http://preservecranford.com/Audio/First%20Baptist.mp3",
+      "audioURL": null,
       "arrivalRadius": 35,
       "departureRadius": 50,
       "order": 4,
       "estimatedVisitDuration": 90,
       "isSample": false,
-      "coordinatesUnverified": true
+      "coordinatesUnverified": true,
+      "narrationPending": true
     },
     {
       "id": "hpab-005",
@@ -167,19 +169,20 @@
       "latitude": 40.65513,
       "longitude": -74.304765,
       "address": "1 S Union Ave, Cranford, NJ",
-      "shortDescription": "HPAB audio-tour stop. Play the recording for the site description. No transcript is bundled.",
+      "shortDescription": "New narration is coming soon.",
       "longDescription": "",
       "historicalDate": null,
       "imageName": null,
       "imageURL": null,
       "illustrationURL": null,
-      "audioURL": "http://preservecranford.com/Audio/Cranford%20Hotel.mp3",
+      "audioURL": null,
       "arrivalRadius": 35,
       "departureRadius": 50,
       "order": 5,
       "estimatedVisitDuration": 90,
       "isSample": false,
-      "coordinatesUnverified": true
+      "coordinatesUnverified": true,
+      "narrationPending": true
     }
   ]
 }

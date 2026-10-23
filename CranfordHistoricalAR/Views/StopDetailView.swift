@@ -1,7 +1,7 @@
 import SwiftUI
 import TourCore
 
-/// Browsing preserves the walk; Start AR explicitly targets the selected site.
+/// Browsing, reading and playback never select a walking destination.
 struct StopDetailView: View {
     @Environment(TourViewModel.self) private var tour
     @Environment(AppNavigation.self) private var navigation
@@ -12,168 +12,165 @@ struct StopDetailView: View {
     var onStartDiscovery: (() -> Void)? = nil
     var onEnterAR: (() -> Void)? = nil
     @State private var isShowingAR = false
-    @State private var isDescriptionExpanded = false
+    @State private var inlinePlayerVisible = true
 
     private var isCurrent: Bool { tour.phase == .inProgress && tour.currentStop?.id == stop.id }
-
-    private var stopDescription: String {
-        if !stop.longDescription.isEmpty { return stop.longDescription }
-        return stop.shortDescription.hasPrefix("HPAB audio-tour stop.") ? "" : stop.shortDescription
+    private var mode: Binding<AppNavigation.StoryMode> {
+        Binding(get: { navigation.storyModes[stop.id] ?? .listen },
+                set: { navigation.storyModes[stop.id] = $0 })
+    }
+    private var script: String { stop.narrationText ?? stop.longDescription }
+    private var inlineTransportShown: Bool {
+        mode.wrappedValue == .listen && dependencies.narrationPlayer.stopID == stop.id && inlinePlayerVisible
     }
 
     private func enterAR() {
         guard tour.prepareForARFromDetails(stopID: stop.id) else { return }
-        if dependencies.narrationPlayer.isPlaying { dependencies.narrationPlayer.pause() }
-        let shouldDiscover = tour.currentStop?.id == stop.id && stop.hasPlaqueReference
-            && tour.discovery.hasFinishedStory
-        if shouldDiscover, let onStartDiscovery {
+        if stop.hasPlaqueReference { _ = tour.beginPlaqueDiscovery() }
+        if let onStartDiscovery, stop.hasPlaqueReference {
             onStartDiscovery()
             dismiss()
         } else if let onEnterAR {
-            // The detail sheet is already over the camera: return to that session.
             onEnterAR()
             dismiss()
-        } else {
-            if shouldDiscover { _ = tour.beginPlaqueDiscovery() }
-            isShowingAR = true
-        }
+        } else { isShowingAR = true }
     }
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 22) {
+                VStack(alignment: .leading, spacing: 20) {
                     StopPhotoGallery(stop: stop, isObscured: isShowingAR)
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Stop \(stop.order) of \(tour.stops.count)")
                             .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
                         Text(stop.name).font(.system(.largeTitle, design: .serif).weight(.semibold))
-                        if let date = stop.displayDate {
-                            Text(date).font(.title3).foregroundStyle(AppTheme.secondaryInk)
-                        }
+                        if let date = stop.displayDate { Text(date).font(.title3).foregroundStyle(AppTheme.secondaryInk) }
                         Label(stop.address, systemImage: "mappin.and.ellipse")
                             .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
                     }
-                    HStack(spacing: 12) {
-                        Button {
-                            navigation.showOnMap(stopID: stop.id)
-                            dismiss()
-                        } label: {
-                            Label("Show on map", systemImage: "map")
-                                .frame(maxWidth: .infinity, minHeight: 52)
-                        }
-                        .buttonStyle(.plain)
-                        .background(AppTheme.playerSurface, in: RoundedRectangle(cornerRadius: 12))
-                        Button(action: enterAR) {
-                            Label(tour.phase == .complete ? "Start new walk in AR" : "Start AR", systemImage: "camera.viewfinder")
-                                .frame(maxWidth: .infinity, minHeight: 52)
-                        }
-                        .buttonStyle(.plain).foregroundStyle(AppTheme.ivory)
-                        .background(AppTheme.forest, in: RoundedRectangle(cornerRadius: 12))
-                        .disabled(tour.loadState != .loaded)
-                        .accessibilityHint("Opens the camera with walking directions. On-site plaque discovery is available after listening or reading.")
+                    Button {
+                        navigation.showOnMap(stopID: stop.id)
+                        dismiss()
+                    } label: {
+                        Label("Show on map", systemImage: "map").frame(minHeight: 44)
                     }
-                    .font(.subheadline.weight(.semibold))
-                    if stop.narrationSource != nil {
-                        NarrationControls(stop: stop)
+                    .buttonStyle(.plain)
+                    Picker("Enjoy the story", selection: mode) {
+                        ForEach(AppNavigation.StoryMode.allCases, id: \.self) { value in
+                            Text(value.rawValue).tag(value)
+                        }
                     }
-                    if isCurrent && stop.hasPlaqueReference && tour.discovery.hasArrived {
-                        Text("Pause in a permitted viewing area before listening. The arrival location is approximate until it is confirmed on site.")
+                    .pickerStyle(.segmented)
+                    .accessibilityIdentifier("stop.storyMode")
+                    if mode.wrappedValue == .listen {
+                        if stop.narrationSource == nil {
+                            Label("Narration coming soon", systemImage: "headphones")
+                                .font(.headline).padding(.vertical, 12)
+                            Text("New narration will be added here.")
+                                .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
+                        } else {
+                            NarrationControls(stop: stop)
+                            .background {
+                                GeometryReader { geometry in
+                                    Color.clear.preference(key: InlineNarrationBounds.self, value: geometry.frame(in: .global))
+                                }
+                            }
+                        }
+                    } else {
+                        if script.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Text("Reading text will be added with the narration.")
+                                .font(.body).foregroundStyle(AppTheme.secondaryInk)
+                        } else {
+                            if stop.narrationText == nil {
+                                Text("Stop description").font(.subheadline.weight(.medium))
+                            }
+                            Text(script).font(.body).lineSpacing(5)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            if tour.activities[stop.id].readAt == nil {
+                                Button(stop.narrationText == nil ? "I've read the description" : "I've read the narration") {
+                                    tour.finishStory(for: stop.id)
+                                }
+                                .frame(minHeight: 44)
+                                .accessibilityHint("Marks only reading complete; it does not record a visit or change your walk")
+                            }
+                        }
+                    }
+                    if tour.activities[stop.id].learningCompleted {
+                        Label(learningStatus, systemImage: "checkmark.circle")
                             .font(.footnote).foregroundStyle(AppTheme.secondaryInk)
                     }
-                    if isCurrent && stop.hasPlaqueReference {
-                        if tour.discovery.hasFinishedStory {
-                            if !tour.discovery.hasVerifiedPlaque {
-                                Text("Tap Start AR to find the plaque and unlock an optional on-site extra. Stay outside and keep the entrance clear.")
-                                    .font(.footnote).foregroundStyle(AppTheme.secondaryInk)
+                    if stop.hasPlaqueReference {
+                        Divider()
+                        Button(action: enterAR) {
+                            HStack(spacing: 12) {
+                                Image(systemName: "camera.viewfinder")
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(tour.activities[stop.id].bonusFoundAt == nil ? "Find the plaque" : "View AR bonus")
+                                    Text("Optional · On-site only").font(.footnote).foregroundStyle(AppTheme.secondaryInk)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
                             }
-                        } else {
-                            Text("Start the narration, or read the story below. Afterwards, discover an optional on-site AR bonus.")
-                                .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
+                            .frame(minHeight: 52).contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        if tour.activities[stop.id].bonusFoundAt != nil {
+                            Label("Bonus found", systemImage: "seal.fill")
+                                .font(.subheadline.weight(.medium)).foregroundStyle(AppTheme.forest)
+                                .accessibilityIdentifier("stop.bonusFound")
                         }
                     }
-                    if !stopDescription.isEmpty {
-                        DisclosureGroup("Stop description", isExpanded: $isDescriptionExpanded) {
-                            Text(stopDescription).font(.body).lineSpacing(5)
-                                .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 12)
-                        }
-                        .font(.subheadline.weight(.medium))
-                    }
-                    if let script = stop.narrationText, !script.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        DisclosureGroup("Read narration") {
-                            Text(script).font(.body).lineSpacing(5)
-                                .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 12)
-                        }
-                        .font(.subheadline.weight(.medium))
-                    }
-                    if let visit = tour.lastRecordedVisit(for: stop) {
-                        Label {
-                            Text("\(visit.evidence == .recognizedPlaque ? "Plaque verified" : "Visited") \(visit.activatedAt.formatted(date: .abbreviated, time: .omitted))")
-                        } icon: { Image(systemName: "checkmark.circle.fill") }
-                        .font(.subheadline).foregroundStyle(AppTheme.visited)
-                    }
-                    if isCurrent && stop.hasPlaqueReference && !tour.discovery.hasFinishedStory {
-                        Button("I've read the story") { tour.finishStory(for: stop.id) }
-                            .font(.body.weight(.medium)).frame(minHeight: 44)
-                    }
-                    if isCurrent && tour.canContinueCurrentStop {
+                    if isCurrent {
                         Button {
                             tour.completeCurrentStopAndAdvance()
                             navigation.selectedTab = .map
                             dismiss()
                             onContinue?()
                         } label: {
-                            Label(tour.nextStop == nil ? "Finish tour" : "Continue to next stop", systemImage: "arrow.right")
-                                .frame(maxWidth: .infinity, minHeight: 48)
+                            Label(tour.nextStop == nil ? "Finish walk" : "Continue to next stop", systemImage: "arrow.right")
+                                .frame(minHeight: 48)
                         }
-                        .buttonStyle(.plain).font(.body.weight(.medium))
-                        Divider()
+                        .buttonStyle(.plain)
                     }
-                    DisclosureGroup("About this stop") {
-                        VStack(alignment: .leading, spacing: 10) {
-                            if let plaque = stop.plaque, plaque.isUsable {
-                                Text("\(plaque.quoteLabel): “\(plaque.transcription)”")
-                                Text("The plaque inscription is separate from the building’s construction history above.")
-                            }
-                            if stop.coordinatesUnverified {
-                                Text("The map position is approximate. GPS accuracy can vary at the site.")
-                            }
-                            if stop.isSample { Text("Sample content — not verified history.") }
-                            if let status = tour.dataStatus { Text(status) }
-                        }
-                        .font(.footnote).foregroundStyle(AppTheme.secondaryInk).padding(.top, 8)
-                    }
-                    .font(.subheadline)
                 }
                 .padding(24)
             }
-            .background(AppTheme.parchment).foregroundStyle(AppTheme.ink)
+            .onPreferenceChange(InlineNarrationBounds.self) { bounds in
+                let visible = UIScreen.main.bounds.inset(by: UIEdgeInsets(top: 100, left: 0, bottom: 110, right: 0))
+                inlinePlayerVisible = bounds.intersection(visible).height >= 44
+            }
+            .background(AppTheme.ivory).foregroundStyle(AppTheme.forest)
             .toolbar(.hidden, for: .navigationBar)
             .safeAreaInset(edge: .top, spacing: 0) {
                 HStack {
-                    Button { dismiss() } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 19, weight: .medium))
-                            .foregroundStyle(AppTheme.forest)
-                            .frame(width: 46, height: 46)
-                            .background(.white, in: Circle())
-                            .contentShape(Circle())
-                            .shadow(color: .black.opacity(0.12), radius: 5, y: 3)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Close stop details")
                     Spacer()
+                    Button { dismiss() } label: {
+                        Label("Back", systemImage: "chevron.left")
+                            .font(.subheadline.weight(.medium)).padding(.horizontal, 16)
+                            .frame(minHeight: 46).background(.white, in: Capsule())
+                    }
+                    .buttonStyle(.plain).accessibilityLabel("Back to previous screen")
                 }
-                .padding(.horizontal, 24).padding(.vertical, 8)
-                .background(AppTheme.parchment)
+                .padding(.horizontal, 24).padding(.vertical, 8).background(AppTheme.ivory)
             }
-            .fullScreenCover(isPresented: $isShowingAR, onDismiss: { dismiss() }) { ARTourView() }
-            .onAppear { if isCurrent { tour.openStory(for: stop.id) } }
-            .onChange(of: dependencies.narrationPlayer.status) { _, status in
-                if dependencies.narrationPlayer.stopID == stop.id && status == .finished {
-                    tour.finishStory(for: stop.id)
-                }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if !inlineTransportShown { SharedNarrationBar() }
             }
+            .fullScreenCover(isPresented: $isShowingAR) { ARTourView() }
+            .onAppear { tour.openStory(for: stop.id) }
         }
+        .environment(\.colorScheme, .light)
     }
+
+    private var learningStatus: String {
+        let activity = tour.activities[stop.id]
+        if activity.listenedAt != nil && activity.readAt != nil { return "Listened and read" }
+        return activity.listenedAt != nil ? "Listened" : "Read"
+    }
+}
+
+private struct InlineNarrationBounds: PreferenceKey {
+    static var defaultValue: CGRect = .zero
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) { value = nextValue() }
 }

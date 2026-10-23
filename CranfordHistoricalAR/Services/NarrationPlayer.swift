@@ -22,6 +22,9 @@ final class NarrationPlayer: NSObject {
         case failed(String)
     }
 
+    private(set) var hasStartedPlayback = false
+    @ObservationIgnored private var bookmarks: [String: Double] = [:]
+    @ObservationIgnored private var resumeSeconds: Double = 0
     private(set) var stopID: String?
     private(set) var title: String = ""
     private(set) var kind: Kind?
@@ -75,6 +78,9 @@ final class NarrationPlayer: NSObject {
     var isPlaying: Bool { status == .playing }
     var canSeek: Bool { kind == .recording && duration != nil }
 
+    /// Completion belongs to the recording, independent of the visible screen or route.
+    @ObservationIgnored var onCompletion: ((String) -> Void)?
+
     // MARK: Loading
 
     /// Prepares narration for `stop`. Only the same stop, source and voice are reused; a change
@@ -87,7 +93,10 @@ final class NarrationPlayer: NSObject {
             // Retry refreshes downloaded voices / failed recordings instead of keeping a failure.
             guard case .failed = status else { return true }
         }
+        if let stopID, elapsed.isFinite { bookmarks[stopID] = status == .finished ? 0 : elapsed }
         tearDown()
+        resumeSeconds = bookmarks[stop.id] ?? 0
+        hasStartedPlayback = false
         stopID = stop.id
         title = stop.name
         guard let source else {
@@ -147,6 +156,11 @@ final class NarrationPlayer: NSObject {
                 switch status {
                 case .readyToPlay:
                     if seconds.isFinite, seconds > 0 { self.duration = seconds }
+                    if self.resumeSeconds > 0 {
+                        let resume = min(self.resumeSeconds, self.duration ?? self.resumeSeconds)
+                        self.resumeSeconds = 0
+                        self.seek(to: resume)
+                    }
                     if self.pendingPlayWhenReady {
                         self.player?.play()
                         self.status = .playing
@@ -162,14 +176,23 @@ final class NarrationPlayer: NSObject {
             }
         }
         itemObservers.append(NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: item, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.recordingDidFinish() }
+            MainActor.assumeIsolated {
+                guard self?.player?.currentItem === item else { return }
+                self?.recordingDidFinish()
+            }
         })
         itemObservers.append(NotificationCenter.default.addObserver(forName: .AVPlayerItemFailedToPlayToEndTime, object: item, queue: .main) { [weak self] note in
             let message = (note.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey] as? Error)?.localizedDescription
-            MainActor.assumeIsolated { self?.status = .failed(message ?? "Playback stopped unexpectedly.") }
+            MainActor.assumeIsolated {
+                guard self?.player?.currentItem === item else { return }
+                self?.status = .failed(message ?? "Playback stopped unexpectedly.")
+            }
         })
         timeObserver = player.addPeriodicTimeObserver(forInterval: CMTime(seconds: 0.25, preferredTimescale: 600), queue: .main) { [weak self] time in
-            MainActor.assumeIsolated { self?.recordingTimeDidChange(time.seconds) }
+            MainActor.assumeIsolated {
+                guard self?.player?.currentItem === item else { return }
+                self?.recordingTimeDidChange(time.seconds)
+            }
         }
     }
 
@@ -177,6 +200,7 @@ final class NarrationPlayer: NSObject {
 
     func play() {
         guard kind != nil else { return }
+        hasStartedPlayback = true
         activateSession()
         switch kind {
         case .recording:
@@ -304,6 +328,7 @@ final class NarrationPlayer: NSObject {
 
     private func recordingTimeDidChange(_ seconds: Double) {
         guard seconds.isFinite else { return }
+        if resumeSeconds > 0 { return }
         elapsed = seconds
         if duration == nil, let d = player?.currentItem?.duration.seconds, d.isFinite, d > 0 { duration = d }
         if let duration, duration > 0 { progress = min(seconds / duration, 1) }
@@ -312,6 +337,7 @@ final class NarrationPlayer: NSObject {
     }
 
     private func recordingDidFinish() {
+        if let stopID { onCompletion?(stopID) }
         status = .finished
         progress = 1
         if let duration { elapsed = duration }
@@ -347,6 +373,7 @@ final class NarrationPlayer: NSObject {
         activeUtterance = nil
         progress = 1
         duration = elapsed
+        if let stopID { onCompletion?(stopID) }
         status = .finished
         deactivateSession()
     }
