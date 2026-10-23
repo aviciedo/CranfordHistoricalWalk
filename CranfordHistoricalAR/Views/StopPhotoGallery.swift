@@ -5,6 +5,7 @@ import TourCore
 struct StopPhotoGallery: View {
     @Environment(AppNavigation.self) private var navigation
     let stop: HistoricalStop
+    let height: CGFloat
     var isObscured = false
     @State private var expanded: ExpandedPhoto?
     private var photos: [HistoricalStopPhoto] { stop.galleryPhotos }
@@ -15,13 +16,14 @@ struct StopPhotoGallery: View {
 
     var body: some View {
         if photos.isEmpty {
-            StopPhoto(stop: stop, height: 240, cornerRadius: 16, contentMode: .fit)
+            StopPhoto(stop: stop, height: height, cornerRadius: 16, contentMode: .fit)
         } else {
             VStack(alignment: .leading, spacing: 8) {
                 GeometryReader { viewport in
                     TabView(selection: Binding(get: { selection }, set: { selection = $0 })) {
                         ForEach(Array(photos.enumerated()), id: \.element.id) { index, photo in
-                            GalleryPhotoPage(stop: stop, photo: photo, isSelected: index == selection) { image in
+                            GalleryPhotoPage(stop: stop, photo: photo, isSelected: index == selection,
+                                             positionDescription: "Photo \(index + 1) of \(photos.count)") { image in
                                 expanded = ExpandedPhoto(image: image, photo: photo)
                             }
                             .frame(width: viewport.size.width, height: viewport.size.height)
@@ -30,7 +32,7 @@ struct StopPhotoGallery: View {
                     }
                     .tabViewStyle(.page(indexDisplayMode: .never))
                 }
-                .frame(height: 240)
+                .frame(height: height)
                 .background(AppTheme.playerSurface, in: RoundedRectangle(cornerRadius: 16))
                 .clipShape(RoundedRectangle(cornerRadius: 16))
                 .overlay {
@@ -43,14 +45,15 @@ struct StopPhotoGallery: View {
                         .padding(.horizontal, 12)
                     }
                 }
-                Text("\(selection + 1) of \(photos.count)")
-                    .font(.caption).foregroundStyle(AppTheme.secondaryInk)
-                    .accessibilityLabel("Photo \(selection + 1) of \(photos.count)")
                 if photos.indices.contains(selection) {
                     let photo = photos[selection]
-                    Text(photo.caption).font(.subheadline)
-                    if let credit = photo.credit {
-                        Text(credit).font(.caption).foregroundStyle(AppTheme.secondaryInk)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(photo.caption).font(.subheadline)
+                            .fixedSize(horizontal: false, vertical: true)
+                        if let credit = photo.credit {
+                            Text(credit).font(.caption).foregroundStyle(AppTheme.secondaryInk)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
                 }
             }
@@ -90,6 +93,7 @@ private struct GalleryPhotoPage: View {
     let stop: HistoricalStop
     let photo: HistoricalStopPhoto
     let isSelected: Bool
+    let positionDescription: String
     let onOpen: (LoadedImage) -> Void
     @State private var image: LoadedImage?
     @State private var isLoading = true
@@ -101,12 +105,12 @@ private struct GalleryPhotoPage: View {
                     Button { onOpen(image) } label: {
                         // Keep the whole photograph visible, especially portrait photographs.
                         Image(uiImage: image.image).resizable().scaledToFit()
-                            .frame(width: max(0, proxy.size.width - 16), height: max(0, proxy.size.height - 16))
-                            .padding(8)
+                            .frame(width: proxy.size.width, height: proxy.size.height)
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Enlarge \(photo.caption)")
+                    .accessibilityValue(positionDescription)
                     .accessibilityHint("Opens a photo with pinch to zoom and a Close button")
                 } else if isLoading {
                     ProgressView().frame(width: proxy.size.width, height: proxy.size.height)

@@ -31,7 +31,8 @@ struct StopDetailView: View {
             GeometryReader { viewport in
                 VStack(spacing: 0) {
                     returnControl
-                    storyContent
+                    // Size from the full-width host, not the height left after playback opens.
+                    storyContent(galleryHeight: min(340, max(220, (viewport.size.width - 40) * 0.75)))
                     SharedNarrationBar(availableHeight: viewport.size.height)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -52,86 +53,101 @@ struct StopDetailView: View {
 
     private var returnControl: some View {
         ScreenReturnBar(onBack: { dismiss() })
-            .padding(.horizontal, 24).padding(.vertical, 8)
+            .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 4)
     }
 
-    private var storyContent: some View {
+    private func storyContent(galleryHeight: CGFloat) -> some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                StopPhotoGallery(stop: stop, isObscured: isShowingScanner || isShowingBonus)
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(stop.name).font(.system(.largeTitle, design: .serif).weight(.semibold))
-                    if let date = stop.displayDate { Text(date).font(.subheadline).foregroundStyle(AppTheme.secondaryInk) }
-                    Label(stop.address, systemImage: "mappin.and.ellipse")
-                        .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
-                }
-                Button {
-                    navigation.showOnMap(stopID: stop.id)
-                    dismiss()
-                } label: {
-                    Label("Show on map", systemImage: "map").frame(minHeight: 44)
-                }
-                .buttonStyle(.plain)
-                Picker("Enjoy the story", selection: $mode) {
-                    ForEach(AppNavigation.StoryMode.allCases, id: \.self) { value in
-                        Text(value.rawValue).tag(value)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .accessibilityIdentifier("stop.storyMode")
-                if mode == .listen {
-                    if stop.narrationSource == nil {
-                        Label("Narration coming soon", systemImage: "headphones")
-                            .font(.headline).padding(.vertical, 12)
-                        Text("New narration will be added here.")
-                            .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
-                    } else {
-                        NarrationControls(stop: stop)
-                    }
-                } else {
-                    if script.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        Text("Reading text will be added with the narration.")
-                            .font(.body).foregroundStyle(AppTheme.secondaryInk)
-                    } else {
-                        Text(script).font(.body).lineSpacing(5)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        if tour.activities[stop.id].readAt == nil {
-                            Button("I've read the narration") {
-                                tour.finishStory(for: stop.id)
+            VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 20) {
+                    StopPhotoGallery(stop: stop, height: galleryHeight,
+                                     isObscured: isShowingScanner || isShowingBonus)
+                    VStack(alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(stop.name)
+                                .font(.system(.largeTitle, design: .serif).weight(.semibold))
+                                .fixedSize(horizontal: false, vertical: true)
+                                .accessibilityAddTraits(.isHeader)
+                            if let date = stop.displayDate {
+                                Text(date).font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
                             }
-                            .frame(minHeight: 44)
-                            .accessibilityHint("Marks only reading complete; it does not record a visit or change your walk")
+                            Label(stop.address, systemImage: "mappin.and.ellipse")
+                                .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        Button {
+                            navigation.showOnMap(stopID: stop.id)
+                            dismiss()
+                        } label: {
+                            Label("Show on map", systemImage: "map").frame(minHeight: 44)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                VStack(alignment: .leading, spacing: 16) {
+                    Picker("Enjoy the story", selection: $mode) {
+                        ForEach(AppNavigation.StoryMode.allCases, id: \.self) { value in
+                            Text(value.rawValue).tag(value)
                         }
                     }
-                }
-                if tour.activities[stop.id].learningCompleted {
-                    Label(learningStatus, systemImage: "checkmark.circle")
-                        .font(.footnote).foregroundStyle(AppTheme.secondaryInk)
+                    .pickerStyle(.segmented)
+                    .accessibilityIdentifier("stop.storyMode")
+                    if mode == .listen {
+                        if stop.narrationSource == nil {
+                            Label("Narration coming soon", systemImage: "headphones")
+                                .font(.headline).padding(.vertical, 12)
+                            Text("New narration will be added here.")
+                                .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
+                        } else {
+                            NarrationControls(stop: stop)
+                        }
+                    } else {
+                        if script.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Text("Reading text will be added with the narration.")
+                                .font(.body).foregroundStyle(AppTheme.secondaryInk)
+                        } else {
+                            Text(script).font(.body).lineSpacing(5)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            if tour.activities[stop.id].readAt == nil {
+                                Button("I've read the narration") {
+                                    tour.finishStory(for: stop.id)
+                                }
+                                .frame(minHeight: 44)
+                                .accessibilityHint("Marks only reading complete; it does not record a visit or change your walk")
+                            }
+                        }
+                    }
+                    if tour.activities[stop.id].learningCompleted {
+                        Label(learningStatus, systemImage: "checkmark.circle")
+                            .font(.footnote).foregroundStyle(AppTheme.secondaryInk)
+                    }
                 }
                 if stop.hasPlaqueReference {
-                    Divider()
-                    Button(action: openPlaqueActivity) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "camera.viewfinder")
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(tour.activities[stop.id].bonusFoundAt == nil ? "Find the plaque" : "View the bonus")
-                                Text("Optional bonus · On-site only").font(.footnote).foregroundStyle(AppTheme.secondaryInk)
+                    VStack(alignment: .leading, spacing: 12) {
+                        Divider()
+                        Button(action: openPlaqueActivity) {
+                            HStack(spacing: 12) {
+                                Image(systemName: "camera.viewfinder")
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(tour.activities[stop.id].bonusFoundAt == nil ? "Find the plaque" : "View the bonus")
+                                    Text("Optional bonus · On-site only").font(.footnote).foregroundStyle(AppTheme.secondaryInk)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
                             }
-                            Spacer()
-                            Image(systemName: "chevron.right")
+                            .frame(minHeight: 52).contentShape(Rectangle())
                         }
-                        .frame(minHeight: 52).contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    if tour.activities[stop.id].bonusFoundAt != nil {
-                        Label("Bonus found", systemImage: "seal.fill")
-                            .font(.subheadline.weight(.medium)).foregroundStyle(AppTheme.forest)
-                            .accessibilityIdentifier("stop.bonusFound")
+                        .buttonStyle(.plain)
+                        if tour.activities[stop.id].bonusFoundAt != nil {
+                            Label("Bonus found", systemImage: "seal.fill")
+                                .font(.subheadline.weight(.medium)).foregroundStyle(AppTheme.forest)
+                                .accessibilityIdentifier("stop.bonusFound")
+                        }
                     }
                 }
 
             }
-            .padding(24)
+            .padding(.horizontal, 20).padding(.top, 4).padding(.bottom, 24)
         }
     }
 
