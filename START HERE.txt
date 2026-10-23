@@ -1,6 +1,6 @@
 Cranford Historical AR — Xcode project
 
-Release 0.2.0 (26) — Rounded illustrated hunter-green player
+Release 0.2.0 (27) — Remove legacy Home resume control
 
 1. Close the previous Xcode project. Extract the entire ZIP into a fresh folder on the Mac. Keep its folders together.
    Copy your existing Config/Secrets.xcconfig into this new folder’s Config folder.
@@ -10,7 +10,7 @@ Release 0.2.0 (26) — Rounded illustrated hunter-green player
 5. In Xcode select the blue project icon, then Targets > CranfordHistoricalAR > Signing & Capabilities.
 6. Turn on Automatically manage signing and select your Apple account under Team.
 7. Select your iPhone in the top toolbar. Choose Product > Clean Build Folder, then click Run.
-8. On the iPhone open Home > Developer. Installed build and narration must show 0.2.0 (26), audio release cedar-2.
+8. On the iPhone open Home > Developer. Installed build and narration must show 0.2.0 (27), audio release cedar-2.
    After tapping Play, Prepared audio should say bundledAudio with stop_01 or stop_02, never synthesizedSpeech.
 
 Homebrew and XcodeGen are not needed to open this generated project.
@@ -156,3 +156,11 @@ Build 26 player design:
 - Verify the marquee, rail, X and play/pause on a small iPhone and with larger text.
   Linux checks: 36 activity/navigation tests and Debug/Release syntax. Native appearance,
   animation, gesture hit areas and iOS compilation require Xcode/iPhone verification.
+
+Build 27 Home cleanup:
+- Removed the legacy Resume / Paused at row and its layout reservation from Home.
+- Start or resume narration on a stop page, then return Home: the rounded hunter-green
+  player remains at the bottom with its normal controls. X pauses/hides it; it does not
+  bring back the removed Home row. Saved audio positions are retained for stop-page Resume.
+- No changes to the shared player, playback service or walking destination logic.
+- Verify the Home layout and persistent footer on an iPhone; native UI cannot run on Linux.
