@@ -251,6 +251,7 @@ struct HistoricalSignSheet: View {
 
     var body: some View {
         StopDetailView(stop: stop, onStartDiscovery: onStartDiscovery)
+            .presentationBackground(AppTheme.ivory)
     }
 }
 
