@@ -1,6 +1,6 @@
 Cranford Historical AR — Xcode project
 
-Release 0.2.0 (22) — AR arrow compiler fix and updated plane-size API
+Release 0.2.0 (23) — Cranford Uncovered Home and zoom-aware illustrated markers
 
 1. Close the previous Xcode project. Extract the entire ZIP into a fresh folder on the Mac. Keep its folders together.
    Copy your existing Config/Secrets.xcconfig into this new folder’s Config folder.
@@ -10,7 +10,7 @@ Release 0.2.0 (22) — AR arrow compiler fix and updated plane-size API
 5. In Xcode select the blue project icon, then Targets > CranfordHistoricalAR > Signing & Capabilities.
 6. Turn on Automatically manage signing and select your Apple account under Team.
 7. Select your iPhone in the top toolbar. Choose Product > Clean Build Folder, then click Run.
-8. On the iPhone open Home > Developer. Installed build and narration must show 0.2.0 (22), audio release cedar-2.
+8. On the iPhone open Home > Developer. Installed build and narration must show 0.2.0 (23), audio release cedar-2.
    After tapping Play, Prepared audio should say bundledAudio with stop_01 or stop_02, never synthesizedSpeech.
 
 Homebrew and XcodeGen are not needed to open this generated project.
@@ -98,3 +98,15 @@ Build 21 Map and relaunch checks:
 - Completion summaries and recorded accomplishments survive relaunch. Audio bookmarks are
   saved about every five seconds and on pause/seek/app lifecycle changes.
 - Verify actual AVPlayer seeking and iPhone appearance; Linux model tests do not run native UI.
+
+Build 23 Home and map checks:
+- Home reads Cranford Uncovered, without the former subtitle, tagline or stop-count row.
+- The map uses the available height, with Start a walk and Explore the stops beneath it.
+- On both Google Maps and the Apple fallback, all illustrated stop/number pairs use one
+  common size. Pinch in/out: artwork grows/shrinks with zoom and remains separate.
+- Tap the illustration or its number to open the same stop. Selected/visited markers
+  keep the same footprint; the center of each numbered circle stays at its GPS coordinate.
+- Check a small iPhone, larger text, a saved-story resume row and the shared audio player.
+- Linux verification: 175 TourCore tests, including dense/rotated marker collision cases,
+  plus Debug/Release syntax checks. Native map rendering and full iOS compilation still
+  require Xcode on a Mac; no simulator screenshots were available for this release.

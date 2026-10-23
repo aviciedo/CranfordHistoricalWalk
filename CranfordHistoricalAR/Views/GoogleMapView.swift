@@ -20,7 +20,6 @@ struct GoogleMapView: UIViewRepresentable {
     var selectedStopID: String? = nil
     var showsCompass = true
     var overviewIncludesUserLocation = true
-    var keepsLandmarksVisible = false
     /// Padding used when fitting all stops into view.
     var fitInsets = UIEdgeInsets(top: 90, left: 40, bottom: 40, right: 40)
     /// Tap on the map away from any marker (used to dismiss callouts).
@@ -63,7 +62,7 @@ struct GoogleMapView: UIViewRepresentable {
             mapView.mapStyle = MapStyle.style(for: context.environment.colorScheme)
         }
         context.coordinator.render(markers: markers, style: markerStyle, selectedID: selectedStopID)
-        context.coordinator.renderLandmark(markers: markers)
+        context.coordinator.updateMarkerSizes()
         context.coordinator.render(userPuck: userPuck)
         context.coordinator.render(route: routeCoordinates)
         context.coordinator.apply(cameraRequest: cameraRequest)
@@ -84,8 +83,8 @@ struct GoogleMapView: UIViewRepresentable {
         private var markerColorScheme: ColorScheme?
         private var selectedID: String?
         private var cameraRetryCount = 0
+        private var markerSnapshotTask: Task<Void, Never>?
 
-        private var landmarkMarkers: [String: GMSMarker] = [:]
         private var userMarker: GMSMarker?
         private var accuracyCircle: GMSCircle?
         private var lastPuck: UserPuckModel?
@@ -159,13 +158,19 @@ struct GoogleMapView: UIViewRepresentable {
                 marker.tracksViewChanges = false
                 return
             }
-            let side: CGFloat = 56
+            if markerStyle == .numberedDot {
+                let view = (marker.iconView as? StopMapIconView) ?? StopMapIconView()
+                view.imageView.image = image
+                marker.icon = nil
+                marker.iconView = view
+                marker.tracksViewChanges = false
+                return
+            }
             let view = UIImageView(image: image)
-            view.bounds = CGRect(x: 0, y: 0, width: side, height: side)
+            view.bounds = CGRect(x: 0, y: 0, width: 56, height: 56)
             view.contentMode = .center
             view.isUserInteractionEnabled = false
             marker.icon = nil
-            marker.tracksViewChanges = true
             marker.iconView = view
             marker.tracksViewChanges = false
         }
@@ -202,7 +207,11 @@ struct GoogleMapView: UIViewRepresentable {
             switch markerStyle {
             case .labeledPin:
                 renderer = ImageRenderer(content: AnyView(StopMarkerLabel(model: model).environment(\.colorScheme, scheme)))
-            case .dot, .numberedDot:
+            case .numberedDot:
+                let image = StopMapArtwork.image(for: model, isSelected: isSelected, scheme: scheme)
+                iconCache[key] = image
+                return image
+            case .dot:
                 renderer = ImageRenderer(content: AnyView(StopDotMarker(model: model, isSelected: isSelected, showsNumber: markerStyle == .numberedDot).environment(\.colorScheme, scheme)))
             }
             renderer.scale = UITraitCollection.current.displayScale
@@ -211,46 +220,29 @@ struct GoogleMapView: UIViewRepresentable {
             return image
         }
 
-        /// Tappable artwork beside the real stop coordinate; shares the numbered marker’s stop ID.
-        func renderLandmark(markers: [StopMarkerModel]) {
-            guard let mapView else { return }
-            let artworkByStop = ["hpab-001": "mill-map-landmark", "hpab-002": "greystone-map-landmark", "hpab-003": "rahway-river-illustration"]
-            let visibleIDs = Set(markers.map(\.id))
-            for id in Array(landmarkMarkers.keys) where !visibleIDs.contains(id) {
-                landmarkMarkers.removeValue(forKey: id)?.map = nil
+        /// Recompute during every camera frame, not only after a pinch finishes.
+        func updateMarkerSizes() {
+            guard markerStyle == .numberedDot, let mapView else { return }
+            let models = Array(markerModels.values)
+            let points = models.map { model -> SIMD2<Double> in
+                let point = mapView.projection.point(for: model.coordinate)
+                return SIMD2(Double(point.x), Double(point.y))
             }
-            for stop in markers {
-                if landmarkMarkers[stop.id] == nil {
-                    let renderer = ImageRenderer(content: StopListIllustration(stopID: stop.id).frame(width: 110, height: 82.5))
-                    renderer.scale = 2
-                    guard let artwork = artworkByStop[stop.id].flatMap({ UIImage(named: $0) }) ?? renderer.uiImage else { continue }
-                    let size = CGSize(width: 110, height: 82.5)
-                    let format = UIGraphicsImageRendererFormat()
-                    format.scale = 2
-                    let icon = UIGraphicsImageRenderer(size: size, format: format).image { _ in
-                        let scale = min(size.width / artwork.size.width, size.height / artwork.size.height)
-                        let fitted = CGSize(width: artwork.size.width * scale, height: artwork.size.height * scale)
-                        artwork.draw(in: CGRect(x: (size.width - fitted.width) / 2,
-                                                y: size.height - fitted.height,
-                                                width: fitted.width, height: fitted.height))
-                    }
-                    let marker = GMSMarker(position: stop.coordinate)
-                    let view = UIImageView(image: icon)
-                    view.bounds = CGRect(origin: .zero, size: size)
-                    view.contentMode = .scaleAspectFit
-                    view.isUserInteractionEnabled = false
-                    marker.iconView = view
-                    marker.userData = stop.id
-                    marker.groundAnchor = CGPoint(x: 0.15, y: 0.95)
-                    marker.isTappable = true
-                    marker.zIndex = 0
-                    marker.tracksViewChanges = false
-                    landmarkMarkers[stop.id] = marker
-                }
-                landmarkMarkers[stop.id]?.title = stop.name
-                landmarkMarkers[stop.id]?.snippet = stop.information
-                landmarkMarkers[stop.id]?.position = stop.coordinate
-                landmarkMarkers[stop.id]?.map = (parent.keepsLandmarksVisible || mapView.camera.zoom >= 14.5) ? mapView : nil
+            let latitude = mapView.camera.target.latitude * Double.pi / 180.0
+            let metersPerPoint = 156543.03392 * cos(latitude) / pow(2.0, Double(mapView.camera.zoom))
+            let scale = CGFloat(MapMarkerSizing.scale(points: points, metersPerPoint: metersPerPoint))
+            for marker in markersByID.values {
+                guard let view = marker.iconView as? StopMapIconView else { continue }
+                marker.tracksViewChanges = true
+                view.resize(scale: scale)
+                marker.groundAnchor = CGPoint(x: 0.5, y: 0.5 + 30 * scale / view.bounds.height)
+            }
+            // Leave a render frame for the SDK to capture the resized artwork before freezing it.
+            markerSnapshotTask?.cancel()
+            markerSnapshotTask = Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .milliseconds(100))
+                guard !Task.isCancelled, let self else { return }
+                for marker in self.markersByID.values { marker.tracksViewChanges = false }
             }
         }
 
@@ -428,13 +420,63 @@ struct GoogleMapView: UIViewRepresentable {
             }
         }
 
+        nonisolated func mapView(_ mapView: GMSMapView, didChange position: GMSCameraPosition) {
+            MainActor.assumeIsolated { self.updateMarkerSizes() }
+        }
+
         nonisolated func mapView(_ mapView: GMSMapView, idleAt position: GMSCameraPosition) {
             let zoom = position.zoom
             Task { @MainActor in
-                self.renderLandmark(markers: Array(self.markerModels.values))
+                self.updateMarkerSizes()
                 self.parent.onCameraIdle(zoom)
             }
         }
+    }
+}
+
+/// Shared Google/Apple artwork: consistent frame, with the number centered on the site.
+@MainActor
+enum StopMapArtwork {
+    static func image(for marker: StopMarkerModel, isSelected: Bool = false, scheme: ColorScheme = .light) -> UIImage {
+        let renderer = ImageRenderer(content:
+            VStack(spacing: 4) {
+                StopListIllustration(stopID: marker.id).frame(width: 80, height: 56)
+                Text("\(marker.order)")
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .frame(width: 32, height: 32)
+                    .background(marker.state == .current ? AppTheme.terracotta : AppTheme.forest, in: Circle())
+                    .overlay(Circle().strokeBorder(isSelected ? AppTheme.brass : .white, lineWidth: 2))
+            }
+            .frame(width: 88, height: 92)
+            .environment(\.colorScheme, scheme))
+        renderer.scale = 3
+        return renderer.uiImage ?? UIImage()
+    }
+}
+
+/// A 44-point touch target remains available even when the visible map artwork is small.
+@MainActor
+final class StopMapIconView: UIView {
+    let imageView = UIImageView()
+
+    init() {
+        super.init(frame: .zero)
+        isUserInteractionEnabled = false
+        imageView.contentMode = .scaleAspectFit
+        addSubview(imageView)
+        resize(scale: 1)
+    }
+
+    required init?(coder: NSCoder) { nil }
+
+    func resize(scale: CGFloat) {
+        let size = CGSize(width: CGFloat(MapMarkerSizing.width) * scale,
+                          height: CGFloat(MapMarkerSizing.height) * scale)
+        bounds = CGRect(x: 0, y: 0, width: max(44, size.width), height: max(44, size.height))
+        imageView.frame = CGRect(x: (bounds.width - size.width) / 2,
+                                 y: (bounds.height - size.height) / 2,
+                                 width: size.width, height: size.height)
     }
 }
 

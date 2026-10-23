@@ -25,7 +25,6 @@ struct TourMapView: View {
                     markerStyle: .numberedDot,
                     selectedStopID: mapModel.viewedStopID,
                     showsCompass: false,
-                    keepsLandmarksVisible: true,
                     fitInsets: UIEdgeInsets(top: 28, left: 30, bottom: 30, right: 74)
                 )
             } else {
@@ -233,6 +232,8 @@ struct AppleTourMapView: UIViewRepresentable {
         private var hasFitInitialMap = false
         private var layoutRetry: Task<Void, Never>?
         private var layoutAttempts = 0
+        private var markerImages: [String: UIImage] = [:]
+        private var markerScale: CGFloat = 1
 
         init(_ parent: AppleTourMapView) { self.parent = parent }
 
@@ -299,6 +300,7 @@ struct AppleTourMapView: UIViewRepresentable {
                 fit(parent.markers.map(\.coordinate), on: map, animated: false)
                 hasFitInitialMap = true
             }
+            updateMarkerSizes(on: map)
         }
 
         private func fit(_ coordinates: [CLLocationCoordinate2D], on map: MKMapView, animated: Bool) {
@@ -332,13 +334,22 @@ struct AppleTourMapView: UIViewRepresentable {
             view.isAccessibilityElement = true
             view.accessibilityLabel = site.title
             if let marker = site.marker {
-                view.image = markerImage(marker)
-                view.centerOffset = CGPoint(x: 0, y: -30)
+                view.image = nil
+                let icon = (view.subviews.first { $0 is StopMapIconView } as? StopMapIconView) ?? StopMapIconView()
+                if icon.superview == nil { view.addSubview(icon) }
+                let key = "\(marker.id)|\(marker.order)|\(marker.state)"
+                if markerImages[key] == nil { markerImages[key] = StopMapArtwork.image(for: marker) }
+                icon.imageView.image = markerImages[key]
+                icon.resize(scale: markerScale)
+                view.bounds = icon.bounds
+                icon.center = CGPoint(x: view.bounds.midX, y: view.bounds.midY)
+                view.centerOffset = CGPoint(x: 0, y: -30 * markerScale)
                 view.accessibilityTraits = .button
                 view.accessibilityHint = "View stop"
-                view.displayPriority = marker.state == .current ? .required : .defaultHigh
+                view.displayPriority = .required
                 view.zPriority = marker.state == .current ? .max : .defaultSelected
             } else {
+                view.subviews.filter { $0 is StopMapIconView }.forEach { $0.removeFromSuperview() }
                 view.image = UIGraphicsImageRenderer(size: CGSize(width: 24, height: 24)).image { context in
                     UIColor.white.setFill(); context.cgContext.fillEllipse(in: CGRect(x: 0, y: 0, width: 24, height: 24))
                     UIColor.systemBlue.setFill(); context.cgContext.fillEllipse(in: CGRect(x: 3, y: 3, width: 18, height: 18))
@@ -349,26 +360,28 @@ struct AppleTourMapView: UIViewRepresentable {
             }
         }
 
-        private func markerImage(_ marker: StopMarkerModel) -> UIImage {
-            let assets = ["hpab-001": "mill-map-landmark", "hpab-002": "greystone-map-landmark", "hpab-003": "rahway-river-illustration"]
-            let renderer = ImageRenderer(content: StopListIllustration(stopID: marker.id).frame(width: 92, height: 56))
-            renderer.scale = 2
-            let artwork = assets[marker.id].flatMap { UIImage(named: $0) } ?? renderer.uiImage
-            return UIGraphicsImageRenderer(size: CGSize(width: 96, height: 96)).image { context in
-                if let image = artwork {
-                    let scale = min(92 / image.size.width, 56 / image.size.height)
-                    let size = CGSize(width: image.size.width * scale, height: image.size.height * scale)
-                    image.draw(in: CGRect(x: (96 - size.width) / 2, y: 58 - size.height, width: size.width, height: size.height))
-                }
-                let rect = CGRect(x: 30, y: 60, width: 36, height: 36)
-                UIColor.white.setFill(); context.cgContext.fillEllipse(in: rect)
-                let color = UIColor(marker.state == .current ? AppTheme.terracotta : AppTheme.forest)
-                color.setFill(); context.cgContext.fillEllipse(in: rect.insetBy(dx: 3, dy: 3))
-                let text = "\(marker.order)" as NSString
-                let attributes: [NSAttributedString.Key: Any] = [.font: UIFont.systemFont(ofSize: 17, weight: .semibold), .foregroundColor: UIColor.white]
-                let size = text.size(withAttributes: attributes)
-                text.draw(at: CGPoint(x: 48 - size.width / 2, y: 78 - size.height / 2), withAttributes: attributes)
+        private func updateMarkerSizes(on map: MKMapView) {
+            guard map.bounds.width > 0 else { return }
+            let points = parent.markers.map { marker -> SIMD2<Double> in
+                let point = map.convert(marker.coordinate, toPointTo: map)
+                return SIMD2(Double(point.x), Double(point.y))
             }
+            let metersPerPoint = map.visibleMapRect.size.width / Double(map.bounds.width)
+                * MKMetersPerMapPointAtLatitude(map.centerCoordinate.latitude)
+            let scale = CGFloat(MapMarkerSizing.scale(points: points, metersPerPoint: metersPerPoint))
+            markerScale = scale
+            for site in sites.values {
+                guard let view = map.view(for: site),
+                      let icon = view.subviews.first(where: { $0 is StopMapIconView }) as? StopMapIconView else { continue }
+                icon.resize(scale: scale)
+                view.bounds = icon.bounds
+                icon.center = CGPoint(x: view.bounds.midX, y: view.bounds.midY)
+                view.centerOffset = CGPoint(x: 0, y: -30 * scale)
+            }
+        }
+
+        func mapViewDidChangeVisibleRegion(_ mapView: MKMapView) {
+            updateMarkerSizes(on: mapView)
         }
 
         func mapView(_ mapView: MKMapView, didSelect view: MKAnnotationView) {

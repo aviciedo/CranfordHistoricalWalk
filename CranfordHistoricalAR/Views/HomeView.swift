@@ -7,21 +7,17 @@ struct HomeView: View {
     @Environment(AppNavigation.self) private var navigation
     @State private var isShowingDeveloperControls = false
     @State private var scrollBaseline: CGFloat?
-    @ScaledMetric(relativeTo: .body) private var homeContentReserve: CGFloat = 280
+    @ScaledMetric(relativeTo: .body) private var homeContentReserve: CGFloat = 220
 
     var body: some View {
         GeometryReader { viewport in
             ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Cranford")
-                            .font(.system(.title, design: .serif).weight(.semibold))
-                        Text("HISTORICAL AR")
-                            .font(.footnote.weight(.semibold)).tracking(3)
-                        Text("See the history around you.")
-                            .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
-                    }
-                    .modifier(DebugMenuGesture(isPresented: $isShowingDeveloperControls))
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Cranford Uncovered")
+                        .font(.system(.largeTitle, design: .serif).weight(.semibold))
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityAddTraits(.isHeader)
+                        .modifier(DebugMenuGesture(isPresented: $isShowingDeveloperControls))
                     #if DEVELOPER_MENU
                     Button {
                         isShowingDeveloperControls = true
@@ -54,13 +50,6 @@ struct HomeView: View {
                         .accessibilityIdentifier("home.resumeStory")
                     }
                     HomeMapView().frame(height: mapHeight(in: viewport.size.height))
-                    HStack {
-                        Label("\(tour.stops.count) stops", systemImage: "mappin.and.ellipse")
-                        Spacer()
-                        Text("Listen, read and browse photos")
-                            .font(.footnote)
-                    }
-                    .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
                     if let destination = tour.currentStop {
                         Text("Next: \(destination.name)").font(.subheadline)
                             .foregroundStyle(AppTheme.secondaryInk)
@@ -136,14 +125,14 @@ struct HomeView: View {
 
     private func mapHeight(in availableHeight: CGFloat) -> CGFloat {
         // RootView already removes the shared player/navigation from this viewport. Reserve
-        // space for the existing controls; keep the map larger than before even when scrolling
-        // is needed on a short screen or at accessibility text sizes.
+        // space for the title and actions. Let the map use the remaining height; short
+        // screens and larger text stay scrollable without compressing touch targets.
         #if DEVELOPER_MENU
-        let reserved = homeContentReserve + 56 // Developer's 44-point target plus its gap.
+        let reserved = homeContentReserve + 60 // Developer's 44-point target plus its gap.
         #else
         let reserved = homeContentReserve
         #endif
-        return max(220, min(350, availableHeight - reserved - (resumableStory == nil ? 0 : 76) - (tour.currentStop == nil ? 0 : 28)))
+        return max(240, min(520, availableHeight - reserved - (resumableStory == nil ? 0 : 76) - (tour.currentStop == nil ? 0 : 36)))
     }
 }
 
