@@ -18,6 +18,7 @@ struct GoogleMapView: UIViewRepresentable {
     var markerStyle: StopMarkerStyle = .labeledPin
     /// Highlighted stop for dot styles (the labeled pin style has no selection state).
     var selectedStopID: String? = nil
+    var reservesNavigationControls = false
     var showsCompass = true
     var overviewIncludesUserLocation = true
     /// Padding used when fitting all stops into view.
@@ -86,6 +87,7 @@ struct GoogleMapView: UIViewRepresentable {
         private var popupSignature: String?
         private var cameraRetryCount = 0
         private var markerSnapshotTask: Task<Void, Never>?
+        private let markerLeaders = StopMapLeaderView()
 
         private var userMarker: GMSMarker?
         private var accuracyCircle: GMSCircle?
@@ -257,24 +259,35 @@ struct GoogleMapView: UIViewRepresentable {
             return image
         }
 
-        /// Recompute during every camera frame, not only after a pinch finishes.
+        /// Recompute from canonical sites during camera changes, using identical Apple/Google math.
         func updateMarkerSizes() {
-            guard markerStyle == .numberedDot, let mapView else { return }
-            let models = Array(markerModels.values)
+            guard markerStyle == .numberedDot, let mapView, !mapView.bounds.isEmpty else { return }
+            let models = markerModels.values.sorted { ($0.order, $0.id) < ($1.order, $1.id) }
             let points = models.map { model -> SIMD2<Double> in
                 let point = mapView.projection.point(for: model.coordinate)
                 return SIMD2(Double(point.x), Double(point.y))
             }
             let latitude = mapView.camera.target.latitude * Double.pi / 180.0
             let metersPerPoint = 156543.03392 * cos(latitude) / pow(2.0, Double(mapView.camera.zoom))
-            let scale = CGFloat(MapMarkerSizing.scale(points: points, metersPerPoint: metersPerPoint))
-            for marker in markersByID.values {
-                guard let view = marker.iconView as? StopMapIconView else { continue }
+            let viewport = StopMapLeaderView.viewport(in: mapView.bounds, bottomInset: parent.bottomInset)
+            let reserved = StopMapLeaderView.reservedAreas(in: mapView.bounds, controls: parent.reservesNavigationControls)
+            let layout = MapMarkerSizing.layout(points: points, metersPerPoint: metersPerPoint,
+                                                viewport: viewport, reservedAreas: reserved)
+            for (model, placement) in zip(models, layout.placements) {
+                guard let marker = markersByID[model.id], let view = marker.iconView as? StopMapIconView else { continue }
                 marker.tracksViewChanges = true
-                view.resize(scale: scale)
-                marker.groundAnchor = CGPoint(x: 0.5, y: 0.5 + 30 * scale / view.bounds.height)
+                view.resize(scale: CGFloat(layout.scale))
+                // This display coordinate is derived anew from the original GPS point each frame.
+                // Models, walking routes, camera fitting and location services retain the true site.
+                if placement.isVisible {
+                    marker.position = mapView.projection.coordinate(for: CGPoint(x: placement.center.x, y: placement.center.y))
+                }
+                marker.opacity = placement.isVisible ? 1 : 0
+                marker.isTappable = placement.isVisible
+                marker.groundAnchor = CGPoint(x: 0.5, y: 0.5)
             }
-            // Leave a render frame for the SDK to capture the resized artwork before freezing it.
+            markerLeaders.update(layout, in: mapView)
+            updatePopupPlacement()
             markerSnapshotTask?.cancel()
             markerSnapshotTask = Task { @MainActor [weak self] in
                 try? await Task.sleep(for: .milliseconds(100))
@@ -430,8 +443,9 @@ struct GoogleMapView: UIViewRepresentable {
 
         nonisolated func mapView(_ mapView: GMSMapView, didTap marker: GMSMarker) -> Bool {
             let id = marker.userData as? String
-            let position = marker.position
+            let displayPosition = marker.position
             Task { @MainActor in
+                let position = id.flatMap { self.markerModels[$0]?.coordinate } ?? displayPosition
                 self.ignoreMapTapUntil = Date().addingTimeInterval(0.4)
                 if let id { self.parent.onMarkerTap(id) }
                 self.mapView?.animate(toLocation: position)
@@ -469,21 +483,23 @@ struct GoogleMapView: UIViewRepresentable {
     }
 }
 
-/// Shared Google/Apple artwork: consistent frame, with the number centered on the site.
+/// Shared Google/Apple artwork: large landmark with a consistent bottom-left number badge.
 @MainActor
 enum StopMapArtwork {
     static func image(for marker: StopMarkerModel, isSelected: Bool = false, scheme: ColorScheme = .light) -> UIImage {
         let renderer = ImageRenderer(content:
-            VStack(spacing: 4) {
-                StopListIllustration(stopID: marker.id).frame(width: 80, height: 56)
+            ZStack(alignment: .bottomLeading) {
+                StopListIllustration(stopID: marker.id)
+                    .frame(width: 96, height: 70)
+                    .frame(width: 100, height: 80, alignment: .top)
                 Text("\(marker.order)")
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
-                    .frame(width: 32, height: 32)
+                    .frame(width: 28, height: 28)
                     .background(marker.state == .current ? AppTheme.terracotta : AppTheme.forest, in: Circle())
                     .overlay(Circle().strokeBorder(isSelected ? AppTheme.brass : .white, lineWidth: 2))
             }
-            .frame(width: 88, height: 92)
+            .frame(width: CGFloat(MapMarkerSizing.width), height: CGFloat(MapMarkerSizing.height))
             .environment(\.colorScheme, scheme))
         renderer.scale = 3
         return renderer.uiImage ?? UIImage()
@@ -512,6 +528,58 @@ final class StopMapIconView: UIView {
         imageView.frame = CGRect(x: (bounds.width - size.width) / 2,
                                  y: (bounds.height - size.height) / 2,
                                  width: size.width, height: size.height)
+    }
+}
+
+/// Lightweight, noninteractive location lines. It never steals map gestures or marker taps.
+@MainActor
+final class StopMapLeaderView: UIView {
+    private let lines = CAShapeLayer()
+    private let sites = CAShapeLayer()
+
+    init() {
+        super.init(frame: .zero)
+        isUserInteractionEnabled = false
+        isAccessibilityElement = false
+        backgroundColor = .clear
+        lines.fillColor = nil
+        lines.strokeColor = UIColor(AppTheme.forest).withAlphaComponent(0.65).cgColor
+        lines.lineWidth = 1.25
+        lines.lineCap = .round
+        sites.fillColor = UIColor(AppTheme.forest).cgColor
+        sites.strokeColor = UIColor(AppTheme.ivory).cgColor
+        sites.lineWidth = 1
+        layer.addSublayer(lines)
+        layer.addSublayer(sites)
+    }
+
+    required init?(coder: NSCoder) { nil }
+
+    static func viewport(in bounds: CGRect, bottomInset: CGFloat = 0) -> CGRect {
+        bounds.inset(by: UIEdgeInsets(top: 10, left: 10, bottom: max(32, bottomInset + 10), right: 10))
+    }
+
+    static func reservedAreas(in bounds: CGRect, controls: Bool) -> [CGRect] {
+        controls ? [CGRect(x: bounds.maxX - 76, y: bounds.maxY - 204, width: 68, height: 196)] : []
+    }
+
+    func update(_ layout: MapMarkerSizing.Layout, in map: UIView) {
+        if superview !== map { map.addSubview(self) }
+        frame = map.bounds
+        let path = UIBezierPath()
+        let dots = UIBezierPath()
+        for placement in layout.placements where placement.isVisible {
+            guard let end = placement.leaderEnd else { continue }
+            let site = CGPoint(x: placement.site.x, y: placement.site.y)
+            path.move(to: site)
+            path.addLine(to: CGPoint(x: end.x, y: end.y))
+            dots.append(UIBezierPath(ovalIn: CGRect(x: site.x - 2.5, y: site.y - 2.5, width: 5, height: 5)))
+        }
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        lines.path = path.cgPath
+        sites.path = dots.cgPath
+        CATransaction.commit()
     }
 }
 

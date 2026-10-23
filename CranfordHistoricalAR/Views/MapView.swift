@@ -24,6 +24,7 @@ struct TourMapView: View {
                     onMarkerTap: { mapModel.select(stopID: $0) },
                     markerStyle: .numberedDot,
                     selectedStopID: mapModel.viewedStopID,
+                    reservesNavigationControls: true,
                     showsCompass: false,
                     fitInsets: UIEdgeInsets(top: 28, left: 30, bottom: 30, right: 74),
                     onMapTap: { mapModel.clearViewedStop() }
@@ -35,7 +36,7 @@ struct TourMapView: View {
                     cameraRequest: mapModel.cameraRequest,
                     onUserGesture: { mapModel.userDidMoveCamera() },
                     onMarkerTap: { mapModel.select(stopID: $0) },
-                    onMapError: { appleMapError = $0 })
+                    onMapError: { appleMapError = $0 }, reservesNavigationControls: true)
             }
 
             if let appleMapError, !GoogleMapsBootstrap.isConfigured {
@@ -189,6 +190,7 @@ struct AppleTourMapView: UIViewRepresentable {
     var onUserGesture: () -> Void
     var onMarkerTap: (String) -> Void
     var onMapError: (String?) -> Void = { _ in }
+    var reservesNavigationControls = false
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
@@ -235,6 +237,8 @@ struct AppleTourMapView: UIViewRepresentable {
         private var layoutAttempts = 0
         private var markerImages: [String: UIImage] = [:]
         private var markerScale: CGFloat = 1
+        private var markerPlacements: [String: MapMarkerSizing.Placement] = [:]
+        private let markerLeaders = StopMapLeaderView()
 
         init(_ parent: AppleTourMapView) { self.parent = parent }
 
@@ -344,7 +348,13 @@ struct AppleTourMapView: UIViewRepresentable {
                 icon.resize(scale: markerScale)
                 view.bounds = icon.bounds
                 icon.center = CGPoint(x: view.bounds.midX, y: view.bounds.midY)
-                view.centerOffset = CGPoint(x: 0, y: -30 * markerScale)
+                if let placement = markerPlacements[marker.id] {
+                    view.centerOffset = CGPoint(x: placement.center.x - placement.site.x,
+                                                y: placement.center.y - placement.site.y)
+                    view.isHidden = !placement.isVisible
+                } else {
+                    view.centerOffset = .zero
+                }
                 view.accessibilityTraits = .button
                 view.accessibilityHint = "View stop"
                 view.displayPriority = .required
@@ -355,6 +365,7 @@ struct AppleTourMapView: UIViewRepresentable {
                     UIColor.white.setFill(); context.cgContext.fillEllipse(in: CGRect(x: 0, y: 0, width: 24, height: 24))
                     UIColor.systemBlue.setFill(); context.cgContext.fillEllipse(in: CGRect(x: 3, y: 3, width: 18, height: 18))
                 }
+                view.isHidden = false
                 view.centerOffset = .zero; view.displayPriority = .required; view.zPriority = .max
                 view.accessibilityTraits = .updatesFrequently
                 view.accessibilityHint = nil
@@ -362,23 +373,24 @@ struct AppleTourMapView: UIViewRepresentable {
         }
 
         private func updateMarkerSizes(on map: MKMapView) {
-            guard map.bounds.width > 0 else { return }
-            let points = parent.markers.map { marker -> SIMD2<Double> in
+            guard !map.bounds.isEmpty else { return }
+            let models = parent.markers.sorted { ($0.order, $0.id) < ($1.order, $1.id) }
+            let points = models.map { marker -> SIMD2<Double> in
                 let point = map.convert(marker.coordinate, toPointTo: map)
                 return SIMD2(Double(point.x), Double(point.y))
             }
             let metersPerPoint = map.visibleMapRect.size.width / Double(map.bounds.width)
                 * MKMetersPerMapPointAtLatitude(map.centerCoordinate.latitude)
-            let scale = CGFloat(MapMarkerSizing.scale(points: points, metersPerPoint: metersPerPoint))
-            markerScale = scale
+            let layout = MapMarkerSizing.layout(points: points, metersPerPoint: metersPerPoint,
+                viewport: StopMapLeaderView.viewport(in: map.bounds),
+                reservedAreas: StopMapLeaderView.reservedAreas(in: map.bounds, controls: parent.reservesNavigationControls))
+            markerScale = CGFloat(layout.scale)
+            markerPlacements = Dictionary(uniqueKeysWithValues: zip(models, layout.placements).map { ($0.id, $1) })
             for site in sites.values {
-                guard let view = map.view(for: site),
-                      let icon = view.subviews.first(where: { $0 is StopMapIconView }) as? StopMapIconView else { continue }
-                icon.resize(scale: scale)
-                view.bounds = icon.bounds
-                icon.center = CGPoint(x: view.bounds.midX, y: view.bounds.midY)
-                view.centerOffset = CGPoint(x: 0, y: -30 * scale)
+                guard let view = map.view(for: site) else { continue }
+                configure(view, for: site)
             }
+            markerLeaders.update(layout, in: map)
         }
 
         func mapViewDidChangeVisibleRegion(_ mapView: MKMapView) {

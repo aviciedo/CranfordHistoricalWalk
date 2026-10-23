@@ -1,6 +1,6 @@
 Cranford Historical AR — Xcode project
 
-Release 0.2.0 (32) — Dismissible map stop popup
+Release 0.2.0 (33) — Prominent, separated map illustrations
 
 1. Close the previous Xcode project. Extract the entire ZIP into a fresh folder on the Mac. Keep its folders together.
    Copy your existing Config/Secrets.xcconfig into this new folder’s Config folder.
@@ -10,7 +10,7 @@ Release 0.2.0 (32) — Dismissible map stop popup
 5. In Xcode select the blue project icon, then Targets > CranfordHistoricalAR > Signing & Capabilities.
 6. Turn on Automatically manage signing and select your Apple account under Team.
 7. Select your iPhone in the top toolbar. Choose Product > Clean Build Folder, then click Run.
-8. On the iPhone open Home > Developer. Installed build and narration must show 0.2.0 (32), audio release cedar-2.
+8. On the iPhone open Home > Developer. Installed build and narration must show 0.2.0 (33), audio release cedar-2.
    After tapping Play, Prepared audio should say bundledAudio with stop_01 or stop_02, never synthesizedSpeech.
 
 Homebrew and XcodeGen are not needed to open this generated project.
@@ -235,3 +235,19 @@ Build 32 map popup close:
 - 45 portable navigation/activity tests and Debug/Release syntax checks pass.
   A native button-action test was added; run it in Xcode. Verify actual Google Maps
   touch handling, panning/zooming, provider attribution and X on an iPhone.
+
+Build 33 map illustrations:
+- Home and Map use a larger shared 100 x 80 point landmark composition. Each stop
+  number overlays the bottom-left corner. Existing artwork and destination colors stay.
+- A zoom-based common size replaces shrinking every landmark for the closest pair.
+  Bounded screen offsets separate nearby landmarks; thin hunter-green leaders and
+  small dots identify their exact geographic sites. Routes/GPS/site data do not move.
+- Both Google and Apple use the same deterministic layout, minimum 44-point targets,
+  10-point spacing and reserved space for the Map controls. Unusual tight viewports
+  reduce the common size only after trying bounded offsets. Offscreen stops are hidden.
+- Check Home and Map overview, pinch in/out, pan and rotate, and tap all five landmarks.
+  Confirm bottom-left badges, no overlapping artwork, legible landmarks, thin leaders,
+  working controls and popup X. Selection/visit state must not change marker size.
+- 190 core tests and 45 activity/navigation tests pass. Debug/Release Swift syntax
+  checks pass. Full iOS type checking, map rendering and touch interactions need Xcode
+  and an iPhone; this Linux environment cannot verify those native checks.
