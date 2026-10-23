@@ -1,4 +1,9 @@
 import XCTest
+#if canImport(CoreGraphics)
+// Apple exposes CGRect's Swift geometry API through CoreGraphics; Foundation alone
+// happens to supply it on Linux, so Linux tests do not catch a missing Apple import.
+import CoreGraphics
+#endif
 @testable import TourCore
 
 final class MapMarkerSizingTests: XCTestCase {
@@ -75,8 +80,8 @@ final class MapMarkerSizingTests: XCTestCase {
             XCTAssertEqual(placement.site, point)
             if let end = placement.leaderEnd {
                 let rect = rectangle(placement, scale: layout.scale)
-                XCTAssertTrue(abs(end.x - rect.minX) < 0.001 || abs(end.x - rect.maxX) < 0.001
-                              || abs(end.y - rect.minY) < 0.001 || abs(end.y - rect.maxY) < 0.001)
+                XCTAssertTrue(abs(end.x - Double(rect.minX)) < 0.001 || abs(end.x - Double(rect.maxX)) < 0.001
+                              || abs(end.y - Double(rect.minY)) < 0.001 || abs(end.y - Double(rect.maxY)) < 0.001)
             }
         }
     }
@@ -92,7 +97,7 @@ final class MapMarkerSizingTests: XCTestCase {
             for step in 0...200 {
                 let p = placement.site + (end - placement.site) * Double(step) / 200
                 for j in layout.placements.indices where i != j {
-                    XCTAssertFalse(rectangle(layout.placements[j], scale: layout.scale).contains(CGPoint(x: p.x, y: p.y)))
+                    XCTAssertFalse(rectangle(layout.placements[j], scale: layout.scale).contains(CGPoint(x: CGFloat(p.x), y: CGFloat(p.y))))
                 }
             }
         }
@@ -117,7 +122,8 @@ final class MapMarkerSizingTests: XCTestCase {
 
     private func rectangle(_ placement: MapMarkerSizing.Placement, scale: Double) -> CGRect {
         let w = max(44, MapMarkerSizing.width * scale), h = max(44, MapMarkerSizing.height * scale)
-        return CGRect(x: placement.center.x - w / 2, y: placement.center.y - h / 2, width: w, height: h)
+        return CGRect(x: CGFloat(placement.center.x - w / 2), y: CGFloat(placement.center.y - h / 2),
+                      width: CGFloat(w), height: CGFloat(h))
     }
 
     private func assertSeparate(_ layout: MapMarkerSizing.Layout, file: StaticString = #filePath, line: UInt = #line) {

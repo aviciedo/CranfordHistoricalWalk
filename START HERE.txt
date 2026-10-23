@@ -1,6 +1,6 @@
 Cranford Historical AR — Xcode project
 
-Release 0.2.0 (35) — Larger persistent narration player
+Release 0.2.0 (36) — Apple geometry compiler fix
 
 1. Close the previous Xcode project. Extract the entire ZIP into a fresh folder on the Mac. Keep its folders together.
    Copy your existing Config/Secrets.xcconfig into this new folder’s Config folder.
@@ -10,7 +10,7 @@ Release 0.2.0 (35) — Larger persistent narration player
 5. In Xcode select the blue project icon, then Targets > CranfordHistoricalAR > Signing & Capabilities.
 6. Turn on Automatically manage signing and select your Apple account under Team.
 7. Select your iPhone in the top toolbar. Choose Product > Clean Build Folder, then click Run.
-8. On the iPhone open Home > Developer. Installed build and narration must show 0.2.0 (35), audio release cedar-2.
+8. On the iPhone open Home > Developer. Installed build and narration must show 0.2.0 (36), audio release cedar-2.
    After tapping Play, Prepared audio should say bundledAudio with stop_01 or stop_02, never synthesizedSpeech.
 
 Homebrew and XcodeGen are not needed to open this generated project.
@@ -273,3 +273,17 @@ Build 35 larger persistent player:
   Scroll to all actions, seek, pause/resume, close and reopen. AR/photos stay clear.
 - Debug/Release Swift syntax checks pass; native sizing, scrolling and touch handling
   must be checked in Xcode/on iPhone. This environment cannot render the native UI.
+
+Build 36 Apple geometry compiler fix:
+- The repeated CGRect missing-member errors in MapMarkerSizing came from importing
+  Foundation without CoreGraphics on Apple. CoreGraphics is now explicitly imported
+  where available, in both the layout source and its tests. Linux remains supported.
+- Geometry conversions between Double and CGFloat are explicit. Larger expressions
+  were split into typed steps to avoid cascading conversion/type-check errors.
+- Marker layout, player sizing and the other recent UI changes retain their behavior.
+- The Apple compiler checks GitHub workflow tests TourCore on macOS, compiles the
+  shipped Xcode project/tests for Simulator and compiles Release for iPhone without
+  API keys or signing. View its result in GitHub Actions before treating iOS as verified.
+- Local verification: 190 TourCore tests in Debug and Release, 45 activity/navigation
+  tests, and Debug/Release native source syntax checks. Native compilation cannot run
+  on this Linux workspace; GitHub's Actions status API is also unavailable here.

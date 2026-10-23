@@ -1,4 +1,9 @@
 import Foundation
+#if canImport(CoreGraphics)
+// Apple exposes CGRect's Swift geometry API through CoreGraphics; Foundation alone
+// happens to supply it on Linux, so Linux tests do not catch a missing Apple import.
+import CoreGraphics
+#endif
 
 /// Shared screen-space layout for Apple and Google. Canonical coordinates never move:
 /// only the artwork does, with a leader back to the site when it needs separating.
@@ -48,12 +53,16 @@ public enum MapMarkerSizing {
     public static func layout(points: [SIMD2<Double>], metersPerPoint: Double,
                               viewport: CGRect, reservedAreas: [CGRect] = []) -> Layout {
         let nominal = scale(metersPerPoint: metersPerPoint)
-        guard nominal > 0, viewport.width >= 44, viewport.height >= 44 else {
+        guard nominal > 0, viewport.size.width >= 44, viewport.size.height >= 44 else {
             return Layout(scale: 0, placements: points.map {
                 Placement(site: $0, center: $0, isVisible: false, leaderEnd: nil)
             })
         }
-        let visible = points.map { p in p.x.isFinite && p.y.isFinite && viewport.contains(CGPoint(x: p.x, y: p.y)) }
+        let visible: [Bool] = points.map { point in
+            guard point.x.isFinite, point.y.isFinite else { return false }
+            let screenPoint = CGPoint(x: CGFloat(point.x), y: CGFloat(point.y))
+            return viewport.contains(screenPoint)
+        }
         var size = nominal
         // Only exceptionally tight viewports/dense clusters reduce the common size, after
         // exhausting bounded offsets. The 44pt targets participate in collision testing.
@@ -73,14 +82,16 @@ public enum MapMarkerSizing {
                 var chosen: CGRect?
                 for offset in offsets {
                     let center = preferred + offset
-                    let rect = CGRect(x: center.x - w / 2, y: center.y - h / 2, width: w, height: h)
+                    let originX = CGFloat(center.x - w / 2)
+                    let originY = CGFloat(center.y - h / 2)
+                    let rect = CGRect(x: originX, y: originY, width: CGFloat(w), height: CGFloat(h))
                     guard viewport.contains(rect), !reservedAreas.contains(where: { $0.intersects(rect) }),
-                          !rectangles.contains(where: { $0.insetBy(dx: -gap, dy: -gap).intersects(rect) }) else { continue }
+                          !rectangles.contains(where: { $0.insetBy(dx: -CGFloat(gap), dy: -CGFloat(gap)).intersects(rect) }) else { continue }
                     // Keep true locations uncovered so a later leader never starts beneath
                     // another illustration (including coincident sites in a dense cluster).
                     let coversAnotherSite = points.indices.contains { other in
                         other != index && visible[other] && rect.insetBy(dx: -3, dy: -3)
-                            .contains(CGPoint(x: points[other].x, y: points[other].y))
+                            .contains(CGPoint(x: CGFloat(points[other].x), y: CGFloat(points[other].y)))
                     }
                     guard !coversAnotherSite else { continue }
                     let edge = nearestEdge(to: site, of: rect)
@@ -111,13 +122,16 @@ public enum MapMarkerSizing {
     }
 
     private static func nearestEdge(to site: SIMD2<Double>, of rect: CGRect) -> SIMD2<Double> {
-        SIMD2(min(max(site.x, rect.minX), rect.maxX), min(max(site.y, rect.minY), rect.maxY))
+        let x = min(max(site.x, Double(rect.minX)), Double(rect.maxX))
+        let y = min(max(site.y, Double(rect.minY)), Double(rect.maxY))
+        return SIMD2<Double>(x, y)
     }
 
     /// Slab intersection, with a little breathing room so leaders do not graze other art.
     private static func segment(from start: SIMD2<Double>, to end: SIMD2<Double>, intersects rect: CGRect) -> Bool {
         let box = rect.insetBy(dx: -2, dy: -2)
-        let low = SIMD2<Double>(box.minX, box.minY), high = SIMD2<Double>(box.maxX, box.maxY)
+        let low = SIMD2<Double>(Double(box.minX), Double(box.minY))
+        let high = SIMD2<Double>(Double(box.maxX), Double(box.maxY))
         let direction = end - start
         var entry = 0.0, exit = 1.0
         for axis in 0..<2 {
