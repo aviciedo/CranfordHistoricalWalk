@@ -388,7 +388,8 @@ final class GeoAnchorManager {
         let candidates = frame.anchors.compactMap { $0 as? ARPlaneAnchor }.filter { plane in
             let center = plane.transform * SIMD4<Float>(plane.center.x, plane.center.y, plane.center.z, 1)
             let below = camera.y - center.y
-            return plane.alignment == .horizontal && plane.extent.x * plane.extent.z >= 0.5
+            let planeArea = plane.planeExtent.width * plane.planeExtent.height
+            return plane.alignment == .horizontal && planeArea >= 0.5
                 && plane.classification != .table && plane.classification != .seat && plane.classification != .ceiling
                 && below > 0.45 && below < 2.5
                 && simd_length(SIMD2(center.x - camera.x, center.z - camera.z)) < 8

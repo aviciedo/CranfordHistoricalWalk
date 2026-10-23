@@ -78,8 +78,15 @@ final class ARNavigationArrowEntity: Entity {
         let degrees = ARChevronGeometry.rotationDegrees(relativeBearing: bearing)
         let rotation = simd_quatf(angle: Float(degrees * .pi / 180), axis: [0, 0, 1])
         let appearing = lastPosition == nil
-        let bearingChange = lastBearing.map { abs(atan2(sin((bearing - $0) * .pi / 180),
-                                                       cos((bearing - $0) * .pi / 180)) * 180 / .pi) } ?? 360
+        let bearingChange: Double
+        if let previousBearing = lastBearing {
+            let deltaDegrees: Double = bearing - previousBearing
+            let deltaRadians: Double = deltaDegrees * Double.pi / 180.0
+            let wrappedRadians: Double = atan2(sin(deltaRadians), cos(deltaRadians))
+            bearingChange = abs(wrappedRadians * 180.0 / Double.pi)
+        } else {
+            bearingChange = 360.0
+        }
         if !force, let lastPosition, let lastRotation,
            simd_distance(position, lastPosition) < 0.25,
            abs(simd_dot(facing.vector, lastRotation.vector)) > 0.999,
