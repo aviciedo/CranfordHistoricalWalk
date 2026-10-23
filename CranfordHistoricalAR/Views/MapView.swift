@@ -25,7 +25,8 @@ struct TourMapView: View {
                     markerStyle: .numberedDot,
                     selectedStopID: mapModel.viewedStopID,
                     showsCompass: false,
-                    fitInsets: UIEdgeInsets(top: 28, left: 30, bottom: 30, right: 74)
+                    fitInsets: UIEdgeInsets(top: 28, left: 30, bottom: 30, right: 74),
+                    onMapTap: { mapModel.clearViewedStop() }
                 )
             } else {
                 AppleTourMapView(markers: mapModel.markers(for: tour),

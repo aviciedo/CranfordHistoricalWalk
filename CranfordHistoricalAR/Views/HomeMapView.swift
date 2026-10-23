@@ -26,7 +26,8 @@ struct HomeMapView: View {
                     selectedStopID: mapModel.selectedStopID,
                     showsCompass: false,
                     overviewIncludesUserLocation: false,
-                    fitInsets: UIEdgeInsets(top: 56, left: 40, bottom: 40, right: 40)
+                    fitInsets: UIEdgeInsets(top: 56, left: 40, bottom: 40, right: 40),
+                    onMapTap: { mapModel.select(stopID: nil) }
                 )
                 .onAppear { mapModel.requestOverview(animated: false) }
                 .onChange(of: tour.stops.count) { _, _ in mapModel.requestOverview(animated: false) }

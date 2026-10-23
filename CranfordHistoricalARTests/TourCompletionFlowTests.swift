@@ -103,6 +103,21 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertEqual(navigation.photoSelections[stops[0].id], 3)
     }
 
+    func testClosingViewedMapPopupPreservesWalkAndCamera() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.startTour()
+        tour.completeCurrentStopAndAdvance()
+        let destination = tour.currentStop?.id
+        let map = MapViewModel()
+        map.show(stop: stops[0])
+        let camera = map.cameraRequest
+        map.clearViewedStop()
+        XCTAssertNil(map.viewedStopID)
+        XCTAssertEqual(map.cameraRequest, camera)
+        XCTAssertEqual(tour.currentStop?.id, destination)
+        XCTAssertEqual(tour.phase, .inProgress)
+    }
+
     private var stops: [HistoricalStop] { HistoricalStop.previewStops }
     private func makeTour(visitStore: (any StopVisitStore)? = nil, activityStore: (any StopActivityStore)? = nil) async -> TourViewModel {
         let model = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),

@@ -1,10 +1,23 @@
 import XCTest
+import UIKit
 import CoreLocation
 import TourCore
 @testable import CranfordHistoricalAR
 
 @MainActor
 final class MapViewModelTests: XCTestCase {
+    func testMapPopupCloseIsAnInteractiveControl() throws {
+        var dismissed = false
+        let popup = StopNameInfoWindow(title: "Greystone", details: "Stop details", width: 280, maximumHeight: 300) {
+            dismissed = true
+        }
+        let close = try XCTUnwrap(popup.subviews.compactMap { $0 as? UIButton }.first)
+        XCTAssertEqual(close.accessibilityIdentifier, "map.popup.close")
+        XCTAssertGreaterThanOrEqual(close.bounds.width, 44)
+        close.sendActions(for: .touchUpInside)
+        XCTAssertTrue(dismissed)
+    }
+
     func testRerouteWithSameEndpointsAndMidpointChangesTheMapPath() {
         let original = (0..<5).map { CLLocationCoordinate2D(latitude: 40, longitude: Double($0)) }
         var rerouted = original

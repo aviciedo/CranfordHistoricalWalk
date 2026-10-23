@@ -82,6 +82,8 @@ struct GoogleMapView: UIViewRepresentable {
         private var markerStyle: StopMarkerStyle = .labeledPin
         private var markerColorScheme: ColorScheme?
         private var selectedID: String?
+        private var stopPopup: StopNameInfoWindow?
+        private var popupSignature: String?
         private var cameraRetryCount = 0
         private var markerSnapshotTask: Task<Void, Never>?
 
@@ -176,13 +178,48 @@ struct GoogleMapView: UIViewRepresentable {
         }
 
         private func syncSelectedMarker(on mapView: GMSMapView, selectedID: String?) {
-            if let selectedID, let marker = markersByID[selectedID] {
-                if mapView.selectedMarker !== marker {
-                    mapView.selectedMarker = marker
-                }
-            } else if mapView.selectedMarker != nil {
-                mapView.selectedMarker = nil
+            // SDK info windows are raster snapshots; use a real view for an interactive X.
+            mapView.selectedMarker = nil
+            guard let selectedID, let marker = markersByID[selectedID] else {
+                stopPopup?.removeFromSuperview()
+                stopPopup = nil
+                popupSignature = nil
+                return
             }
+            let width = max(120, min(300, mapView.bounds.width - 24))
+            let maximumHeight = max(100, mapView.bounds.height - 84)
+            let signature = "\(selectedID)|\(marker.title ?? "")|\(marker.snippet ?? "")|\(width)|\(maximumHeight)"
+            if popupSignature != signature {
+                stopPopup?.removeFromSuperview()
+                let popup = StopNameInfoWindow(title: marker.title ?? "", details: marker.snippet,
+                                               width: width, maximumHeight: maximumHeight) { [weak self] in
+                    self?.dismissStopPopup()
+                }
+                stopPopup = popup
+                popupSignature = signature
+                mapView.addSubview(popup)
+            }
+            updatePopupPlacement()
+        }
+
+        private func dismissStopPopup() {
+            stopPopup?.removeFromSuperview()
+            stopPopup = nil
+            popupSignature = nil
+            selectedID = nil
+            mapView?.selectedMarker = nil
+            parent.onMapTap()
+        }
+
+        private func updatePopupPlacement() {
+            guard let mapView, let popup = stopPopup, let id = selectedID,
+                  let marker = markersByID[id], !mapView.bounds.isEmpty else { return }
+            let point = mapView.projection.point(for: marker.position)
+            let maxX = max(12, mapView.bounds.width - popup.bounds.width - 12)
+            let maxY = max(12, mapView.bounds.height - max(parent.bottomInset, 48) - popup.bounds.height - 12)
+            popup.frame.origin = CGPoint(x: min(maxX, max(12, point.x - popup.bounds.width / 2)),
+                                         y: min(maxY, max(12, point.y - popup.bounds.height - 28)))
+            mapView.bringSubviewToFront(popup)
         }
 
         /// Pins stand on their tip; dots are centred on the coordinate.
@@ -399,35 +436,33 @@ struct GoogleMapView: UIViewRepresentable {
                 if let id { self.parent.onMarkerTap(id) }
                 self.mapView?.animate(toLocation: position)
             }
-            // Consume the tap so we can show both the SDK info window (via selectedMarker in
-            // render) and the SwiftUI callout. Returning false used to race with didTapAt.
+            // Consume the SDK tap; the selected stop drives the interactive popup and details.
             return true
         }
 
         nonisolated func mapView(_ mapView: GMSMapView, didTapAt coordinate: CLLocationCoordinate2D) {
             Task { @MainActor in
                 if let until = self.ignoreMapTapUntil, Date() < until { return }
-                self.parent.onMapTap()
+                self.dismissStopPopup()
             }
         }
 
         nonisolated func mapView(_ mapView: GMSMapView, markerInfoWindow marker: GMSMarker) -> UIView? {
-            // Maps SDK delegates run on the main thread; UIKit construction is main-actor isolated.
-            MainActor.assumeIsolated {
-                let title = marker.title ?? ""
-                guard !title.isEmpty else { return nil }
-                return StopNameInfoWindow(title: title, details: marker.snippet)
-            }
+            nil // All stop popups are live overlay views, not SDK snapshots.
         }
 
         nonisolated func mapView(_ mapView: GMSMapView, didChange position: GMSCameraPosition) {
-            MainActor.assumeIsolated { self.updateMarkerSizes() }
+            MainActor.assumeIsolated {
+                self.updateMarkerSizes()
+                self.updatePopupPlacement()
+            }
         }
 
         nonisolated func mapView(_ mapView: GMSMapView, idleAt position: GMSCameraPosition) {
             let zoom = position.zoom
             Task { @MainActor in
                 self.updateMarkerSizes()
+                if let map = self.mapView { self.syncSelectedMarker(on: map, selectedID: self.selectedID) }
                 self.parent.onCameraIdle(zoom)
             }
         }
@@ -480,34 +515,53 @@ final class StopMapIconView: UIView {
     }
 }
 
-/// In-map popup for a tapped stop; the shared details sheet supplies the full content.
+/// A live map overlay: its X dismisses only this popup, independently of screen navigation.
+@MainActor
 final class StopNameInfoWindow: UIView {
-    init(title: String, details: String? = nil) {
-        let label = UILabel()
-        let text = NSMutableAttributedString(string: title, attributes: [.font: UIFont.systemFont(ofSize: 15, weight: .semibold)])
-        if let details, !details.isEmpty {
-            text.append(NSAttributedString(string: "\n\n" + details, attributes: [.font: UIFont.systemFont(ofSize: 13)]))
-        }
-        label.attributedText = text
-        label.textColor = .label
-        label.numberOfLines = 0
-        label.lineBreakMode = .byTruncatingTail
-        let fitting = label.sizeThatFits(CGSize(width: 220, height: CGFloat.greatestFiniteMagnitude))
-        let width = min(220, max(96, ceil(fitting.width)))
-        let height = max(22, ceil(fitting.height))
-        super.init(frame: CGRect(x: 0, y: 0, width: width + 24, height: height + 16))
-        backgroundColor = UIColor.systemBackground.withAlphaComponent(0.96)
-        layer.cornerRadius = 12
-        clipsToBounds = false
+    init(title: String, details: String? = nil, width: CGFloat, maximumHeight: CGFloat,
+         onClose: @escaping () -> Void) {
+        let heading = UILabel()
+        heading.text = title
+        heading.font = .preferredFont(forTextStyle: .headline)
+        heading.textColor = UIColor(AppTheme.forest)
+        heading.numberOfLines = 0
+        heading.adjustsFontForContentSizeCategory = true
+        let headingHeight = max(28, ceil(heading.sizeThatFits(CGSize(width: width - 68, height: .greatestFiniteMagnitude)).height))
+        let body = UILabel()
+        body.text = details
+        body.font = .preferredFont(forTextStyle: .footnote)
+        body.textColor = UIColor(AppTheme.forest)
+        body.numberOfLines = 0
+        body.adjustsFontForContentSizeCategory = true
+        let bodyHeight = ceil(body.sizeThatFits(CGSize(width: width - 24, height: .greatestFiniteMagnitude)).height)
+        let contentHeight = max(44, headingHeight) + (bodyHeight > 0 ? bodyHeight + 12 : 0)
+        super.init(frame: CGRect(x: 0, y: 0, width: width, height: min(maximumHeight, contentHeight + 24)))
+        backgroundColor = UIColor(AppTheme.ivory).withAlphaComponent(0.98)
+        layer.cornerRadius = 14
         layer.shadowColor = UIColor.black.cgColor
-        layer.shadowOpacity = 0.18
+        layer.shadowOpacity = 0.16
         layer.shadowRadius = 6
-        layer.shadowOffset = CGSize(width: 0, height: 2)
-        label.frame = bounds.insetBy(dx: 12, dy: 8)
-        label.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        addSubview(label)
-        isUserInteractionEnabled = false
-        accessibilityLabel = [title, details].compactMap { $0 }.joined(separator: ". ")
+        layer.shadowOffset = CGSize(width: 0, height: 3)
+
+        let scroll = UIScrollView(frame: bounds.insetBy(dx: 12, dy: 12))
+        scroll.contentSize = CGSize(width: width - 24, height: contentHeight)
+        heading.frame = CGRect(x: 0, y: 0, width: width - 68, height: headingHeight)
+        body.frame = CGRect(x: 0, y: max(44, headingHeight) + 8, width: width - 24, height: bodyHeight)
+        scroll.addSubview(heading)
+        scroll.addSubview(body)
+        addSubview(scroll)
+
+        let close = UIButton(type: .system)
+        close.frame = CGRect(x: width - 48, y: 4, width: 44, height: 44)
+        close.setImage(UIImage(systemName: "xmark", withConfiguration: UIImage.SymbolConfiguration(pointSize: 15, weight: .medium)), for: .normal)
+        close.tintColor = UIColor(AppTheme.forest)
+        close.backgroundColor = UIColor(AppTheme.ivory)
+        close.layer.cornerRadius = 22
+        close.accessibilityLabel = "Dismiss stop popup"
+        close.accessibilityIdentifier = "map.popup.close"
+        close.addAction(UIAction { _ in onClose() }, for: .touchUpInside)
+        addSubview(close)
+        accessibilityElements = [heading, close, body]
     }
 
     required init?(coder: NSCoder) { nil }
