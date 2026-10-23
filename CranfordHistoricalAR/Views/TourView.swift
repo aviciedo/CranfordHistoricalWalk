@@ -121,15 +121,6 @@ struct TourView: View {
             Text("Map").font(.system(.largeTitle, design: .serif).weight(.semibold))
                 .modifier(WalkDebugGesture(isPresented: $isShowingDeveloperControls))
             Spacer()
-            if tour.phase != .complete {
-                Button { isShowingSummary = true } label: {
-                    Text(tour.currentStop.map { "\($0.order) of \(tour.stops.count)" } ?? "\(tour.stops.count) stops")
-                        .font(.subheadline.weight(.medium)).frame(minWidth: 44, minHeight: 44)
-                }
-                .buttonStyle(.plain).foregroundStyle(AppTheme.secondaryInk)
-                .accessibilityLabel("Tour summary")
-            }
-
         }
         .padding(.horizontal, 22).padding(.vertical, 12)
     }

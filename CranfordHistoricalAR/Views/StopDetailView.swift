@@ -60,8 +60,6 @@ struct StopDetailView: View {
             VStack(alignment: .leading, spacing: 20) {
                 StopPhotoGallery(stop: stop, isObscured: isShowingScanner || isShowingBonus)
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Stop \(stop.order) of \(tour.stops.count)")
-                        .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
                     Text(stop.name).font(.system(.largeTitle, design: .serif).weight(.semibold))
                     if let date = stop.displayDate { Text(date).font(.subheadline).foregroundStyle(AppTheme.secondaryInk) }
                     Label(stop.address, systemImage: "mappin.and.ellipse")
