@@ -14,32 +14,34 @@ struct StopPhotoGallery: View {
     }
 
     var body: some View {
-        if photos.count < 2 {
-            VStack(alignment: .leading, spacing: 8) {
-                StopPhoto(stop: stop, height: 240, cornerRadius: 16)
-                if let photo = photos.first { Text(photo.caption).font(.subheadline) }
-            }
+        if photos.isEmpty {
+            StopPhoto(stop: stop, height: 240, cornerRadius: 16, contentMode: .fit)
         } else {
             VStack(alignment: .leading, spacing: 8) {
-                TabView(selection: Binding(get: { selection }, set: { selection = $0 })) {
-                    ForEach(Array(photos.enumerated()), id: \.element.id) { index, photo in
-                        GalleryPhotoPage(stop: stop, photo: photo, isSelected: index == selection) { image in
-                            expanded = ExpandedPhoto(image: image, photo: photo)
+                GeometryReader { viewport in
+                    TabView(selection: Binding(get: { selection }, set: { selection = $0 })) {
+                        ForEach(Array(photos.enumerated()), id: \.element.id) { index, photo in
+                            GalleryPhotoPage(stop: stop, photo: photo, isSelected: index == selection) { image in
+                                expanded = ExpandedPhoto(image: image, photo: photo)
+                            }
+                            .frame(width: viewport.size.width, height: viewport.size.height)
+                            .tag(index)
                         }
-                        .tag(index)
                     }
+                    .tabViewStyle(.page(indexDisplayMode: .never))
                 }
-                .tabViewStyle(.page(indexDisplayMode: .never))
                 .frame(height: 240)
                 .background(AppTheme.playerSurface, in: RoundedRectangle(cornerRadius: 16))
                 .clipShape(RoundedRectangle(cornerRadius: 16))
                 .overlay {
-                    HStack {
-                        photoArrow("chevron.left", label: "Previous photo", amount: -1)
-                        Spacer()
-                        photoArrow("chevron.right", label: "Next photo", amount: 1)
+                    if photos.count > 1 {
+                        HStack {
+                            photoArrow("chevron.left", label: "Previous photo", amount: -1)
+                            Spacer()
+                            photoArrow("chevron.right", label: "Next photo", amount: 1)
+                        }
+                        .padding(.horizontal, 4)
                     }
-                    .padding(.horizontal, 8)
                 }
                 Text("\(selection + 1) of \(photos.count)")
                     .font(.caption).foregroundStyle(AppTheme.secondaryInk)
@@ -61,10 +63,9 @@ struct StopPhotoGallery: View {
     private func photoArrow(_ symbol: String, label: String, amount: Int) -> some View {
         Button { move(by: amount) } label: {
             Image(systemName: symbol)
-                .font(.system(size: 24, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: 48, height: 52)
-                .background(.black.opacity(0.24), in: RoundedRectangle(cornerRadius: 12))
+                .font(.system(size: 18, weight: .regular))
+                .foregroundStyle(.white.opacity(0.7))
+                .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain).accessibilityLabel(label)
@@ -97,7 +98,8 @@ private struct GalleryPhotoPage: View {
                     Button { onOpen(image) } label: {
                         // Keep the whole photograph visible, especially portrait photographs.
                         Image(uiImage: image.image).resizable().scaledToFit()
-                            .frame(width: proxy.size.width, height: proxy.size.height)
+                            .frame(width: max(0, proxy.size.width - 16), height: max(0, proxy.size.height - 16))
+                            .padding(8)
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)

@@ -15,7 +15,7 @@ struct SharedNarrationBar: View {
                 NarrationPlayButton(stop: stop, diameter: 44)
                 Button { isExpanded = true } label: {
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(stop.name).font(.subheadline.weight(.semibold)).lineLimit(1)
+                        Text(stop.name).font(.subheadline.weight(.semibold)).fixedSize(horizontal: false, vertical: true)
                         NarrationTimeline(stop: stop, compact: true)
                     }
                     .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
@@ -34,22 +34,24 @@ struct SharedNarrationBar: View {
             .overlay(alignment: .top) { Divider() }
             .sheet(isPresented: $isExpanded) {
                 NavigationStack {
-                    VStack(alignment: .leading, spacing: 24) {
-                        Text(stop.name).font(.system(.title, design: .serif).weight(.semibold))
-                        NarrationControls(stop: stop)
-                        HStack {
-                            Button { player.skip(by: -15) } label: {
-                                Label("Back 15 seconds", systemImage: "gobackward.15").frame(minHeight: 44)
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 24) {
+                            Text(stop.name).font(.system(.title, design: .serif).weight(.semibold))
+                            NarrationControls(stop: stop)
+                            HStack {
+                                Button { player.skip(by: -15) } label: {
+                                    Label("Back 15 seconds", systemImage: "gobackward.15").frame(minHeight: 44)
+                                }
+                                Spacer()
+                                Button { player.skip(by: 15) } label: {
+                                    Label("Forward 15 seconds", systemImage: "goforward.15").frame(minHeight: 44)
+                                }
                             }
-                            Spacer()
-                            Button { player.skip(by: 15) } label: {
-                                Label("Forward 15 seconds", systemImage: "goforward.15").frame(minHeight: 44)
-                            }
+                            .disabled(!player.canSeek)
                         }
-                        .disabled(!player.canSeek)
-                        Spacer(minLength: 0)
+                        .padding(24)
                     }
-                    .padding(24).background(AppTheme.ivory)
+                    .background(AppTheme.ivory)
                     .toolbar {
                         ToolbarItem(placement: .confirmationAction) {
                             Button("Back") { isExpanded = false }
@@ -85,7 +87,7 @@ struct NarrationPlayButton: View {
             }
             .frame(width: diameter, height: diameter)
             .foregroundStyle(AppTheme.ivory)
-            .background(AppTheme.terracotta, in: Circle())
+            .background(AppTheme.forest, in: Circle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(isCurrent && player.isPlaying ? "Pause narration" : "Play narration for \(stop.name)")
@@ -117,12 +119,12 @@ struct NarrationTimeline: View {
                         scrubProgress = nil
                     }
                 })
-                .tint(AppTheme.terracotta)
+                .tint(AppTheme.forest)
                 .disabled(!canSeek)
                 .accessibilityLabel("Narration position for \(stop.name)")
             } else {
                 ProgressView(value: isCurrent ? player.progress : 0)
-                    .tint(AppTheme.terracotta).padding(.vertical, compact ? 4 : 6)
+                    .tint(AppTheme.forest).padding(.vertical, compact ? 4 : 6)
                     .accessibilityLabel("Narration progress for \(stop.name)")
             }
             HStack {

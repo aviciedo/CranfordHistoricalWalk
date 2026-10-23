@@ -16,13 +16,10 @@ struct StopsContent: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Cranford")
-                    .font(.system(.title, design: .serif).weight(.semibold))
-                Text("HISTORICAL AR")
-                    .font(.footnote.weight(.semibold)).tracking(3)
-            }
-            .padding(.horizontal, 24).padding(.top, 8).padding(.bottom, 8)
+            Text("Stops")
+                .font(.system(.largeTitle, design: .serif).weight(.semibold))
+                .accessibilityAddTraits(.isHeader)
+                .padding(.horizontal, 22).padding(.vertical, 12)
             GeometryReader { viewport in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 0) {

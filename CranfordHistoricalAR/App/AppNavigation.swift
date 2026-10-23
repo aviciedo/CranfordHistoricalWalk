@@ -9,7 +9,6 @@ final class AppNavigation {
     var focusedStopID: String?
     var isNarrationMinimized = true
     enum StoryMode: String, CaseIterable { case listen = "Listen", read = "Read" }
-    var storyModes: [String: StoryMode] = [:]
     var photoSelections: [String: Int] = [:]
 
     func showOnMap(stopID: String) {

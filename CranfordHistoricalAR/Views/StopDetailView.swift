@@ -13,13 +13,11 @@ struct StopDetailView: View {
     @State private var isShowingBonus = false
     @State private var inlinePlayerVisible = true
 
-    private var mode: Binding<AppNavigation.StoryMode> {
-        Binding(get: { navigation.storyModes[stop.id] ?? .listen },
-                set: { navigation.storyModes[stop.id] = $0 })
-    }
+    // Each newly opened stop starts on Listen; switching to Read never touches playback.
+    @State private var mode: AppNavigation.StoryMode = .listen
     private var script: String { stop.narrationText ?? "" }
     private var inlineTransportShown: Bool {
-        mode.wrappedValue == .listen && dependencies.narrationPlayer.stopID == stop.id && inlinePlayerVisible
+        mode == .listen && dependencies.narrationPlayer.stopID == stop.id && inlinePlayerVisible
     }
 
     private func openPlaqueActivity() {
@@ -54,14 +52,14 @@ struct StopDetailView: View {
                         Label("Show on map", systemImage: "map").frame(minHeight: 44)
                     }
                     .buttonStyle(.plain)
-                    Picker("Enjoy the story", selection: mode) {
+                    Picker("Enjoy the story", selection: $mode) {
                         ForEach(AppNavigation.StoryMode.allCases, id: \.self) { value in
                             Text(value.rawValue).tag(value)
                         }
                     }
                     .pickerStyle(.segmented)
                     .accessibilityIdentifier("stop.storyMode")
-                    if mode.wrappedValue == .listen {
+                    if mode == .listen {
                         if stop.narrationSource == nil {
                             Label("Narration coming soon", systemImage: "headphones")
                                 .font(.headline).padding(.vertical, 12)

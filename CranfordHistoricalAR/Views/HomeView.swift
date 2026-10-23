@@ -33,7 +33,7 @@ struct HomeView: View {
                         Button { dependencies.narrationPlayer.resumeSavedStory(stop) } label: {
                             HStack(spacing: 12) {
                                 Image(systemName: "play.circle").font(.system(size: 38))
-                                    .foregroundStyle(AppTheme.terracotta)
+                                    .foregroundStyle(AppTheme.forest)
                                 VStack(alignment: .leading, spacing: 3) {
                                     Text("Resume \(stop.name)").font(.subheadline.weight(.medium))
                                         .fixedSize(horizontal: false, vertical: true)

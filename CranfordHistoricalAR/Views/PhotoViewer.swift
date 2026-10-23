@@ -5,11 +5,12 @@ struct ExpandableStopImage: View {
     let image: LoadedImage
     let title: String
     var cornerRadius: CGFloat = 14
+    var contentMode: ContentMode = .fill
     @State private var isExpanded = false
 
     var body: some View {
         Button { isExpanded = true } label: {
-            SignImage(image: image, cornerRadius: cornerRadius)
+            SignImage(image: image, cornerRadius: cornerRadius, contentMode: contentMode)
                 .contentShape(RoundedRectangle(cornerRadius: cornerRadius))
         }
         .buttonStyle(.plain)

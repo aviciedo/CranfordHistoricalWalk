@@ -13,6 +13,7 @@ struct TourView: View {
     @State private var isShowingSummary = false
     @State private var isShowingDeveloperControls = false
     @State private var detailStop: HistoricalStop?
+    @State private var destinationHeight: CGFloat = 200
 
     var body: some View {
         VStack(spacing: 0) {
@@ -30,14 +31,23 @@ struct TourView: View {
                 }
                 .buttonStyle(.plain).padding(.horizontal, 22)
             }
-            if typeSize.isAccessibilitySize {
+            GeometryReader { viewport in
                 ScrollView {
-                    map.frame(height: 260)
-                    destination
+                    VStack(spacing: 0) {
+                        map.frame(height: typeSize.isAccessibilitySize ? 260 : max(260, viewport.size.height - destinationHeight - 24))
+                        VStack(spacing: 0) { destination }
+                            .fixedSize(horizontal: false, vertical: true)
+                            .background {
+                                GeometryReader { panel in
+                                    Color.clear.preference(key: MapDestinationHeight.self, value: panel.size.height)
+                                }
+                            }
+                    }
+                    // Keep the last line/actions clear of the persistent player and tabs.
+                    .padding(.bottom, 24)
                 }
-            } else {
-                map.frame(maxHeight: .infinity)
-                destination.fixedSize(horizontal: false, vertical: true)
+                .onPreferenceChange(MapDestinationHeight.self) { destinationHeight = $0 }
+                .accessibilityIdentifier("map.scrollContent")
             }
         }
         .background(AppTheme.parchment).foregroundStyle(AppTheme.ink)
@@ -164,6 +174,11 @@ struct TourView: View {
         mapModel.show(stop: stop)
         navigation.focusedStopID = nil
     }
+}
+
+private struct MapDestinationHeight: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }
 
 private struct WalkDebugGesture: ViewModifier {

@@ -254,7 +254,6 @@ final class TourCompletionFlowTests: XCTestCase {
         tour.completeCurrentStopAndAdvance()
         let destination = tour.currentStop?.id
         let navigation = AppNavigation()
-        navigation.storyModes[stops[0].id] = .read
         navigation.photoSelections[stops[0].id] = 3
         navigation.selectedTab = .stops
         tour.openStory(for: stops[0].id)
@@ -267,7 +266,6 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertFalse(tour.activities[stops[1].id].learningCompleted)
         XCTAssertNil(tour.activities[stops[0].id].visitedAt)
         XCTAssertEqual(navigation.photoSelections[stops[0].id], 3)
-        XCTAssertEqual(navigation.storyModes[stops[0].id], .read)
     }
     func testGPSRecordsVisitWithoutCompletingLearningBonusOrAdvancing() async {
         let tour = await makeTour(); defer { cleanUp(tour) }

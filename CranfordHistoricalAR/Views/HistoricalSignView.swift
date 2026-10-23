@@ -48,7 +48,7 @@ struct HistoricalSignView: View {
         VStack(spacing: 20) {
             Image(systemName: "viewfinder.circle.fill")
                 .font(.system(size: 92, weight: .light))
-                .foregroundStyle(AppTheme.terracotta)
+                .foregroundStyle(AppTheme.forest)
             Text("Stop \(stop.order)")
                 .font(.system(size: 28, weight: .medium))
             Text(stop.name)
@@ -262,12 +262,13 @@ struct StopPhoto: View {
     var height: CGFloat = 160
     var cornerRadius: CGFloat = 12
     var width: CGFloat? = nil
+    var contentMode: ContentMode = .fill
     @State private var image: LoadedImage?
 
     var body: some View {
         Group {
             if let image {
-                ExpandableStopImage(image: image, title: stop.name, cornerRadius: cornerRadius)
+                ExpandableStopImage(image: image, title: stop.name, cornerRadius: cornerRadius, contentMode: contentMode)
                     .frame(width: width, height: height)
                     .frame(maxWidth: width == nil ? .infinity : width)
                     .clipped()
@@ -284,12 +285,13 @@ struct StopPhoto: View {
 struct SignImage: View {
     let image: LoadedImage
     var cornerRadius: CGFloat
+    var contentMode: ContentMode = .fill
 
     var body: some View {
         ZStack(alignment: .bottomLeading) {
             Image(uiImage: image.image)
                 .resizable()
-                .scaledToFill()
+                .aspectRatio(contentMode: contentMode)
                 .clipped()
             if image.isPlaceholder {
                 Text(image.kind == .illustration ? "PLACEHOLDER ILLUSTRATION" : "PLACEHOLDER IMAGE")

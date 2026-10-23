@@ -1,6 +1,6 @@
 Cranford Historical AR — Xcode project
 
-Release 0.2.0 (23) — Cranford Uncovered Home and zoom-aware illustrated markers
+Release 0.2.0 (24) — Scrollable Map, full-frame galleries and consistent story controls
 
 1. Close the previous Xcode project. Extract the entire ZIP into a fresh folder on the Mac. Keep its folders together.
    Copy your existing Config/Secrets.xcconfig into this new folder’s Config folder.
@@ -10,7 +10,7 @@ Release 0.2.0 (23) — Cranford Uncovered Home and zoom-aware illustrated marker
 5. In Xcode select the blue project icon, then Targets > CranfordHistoricalAR > Signing & Capabilities.
 6. Turn on Automatically manage signing and select your Apple account under Team.
 7. Select your iPhone in the top toolbar. Choose Product > Clean Build Folder, then click Run.
-8. On the iPhone open Home > Developer. Installed build and narration must show 0.2.0 (23), audio release cedar-2.
+8. On the iPhone open Home > Developer. Installed build and narration must show 0.2.0 (24), audio release cedar-2.
    After tapping Play, Prepared audio should say bundledAudio with stop_01 or stop_02, never synthesizedSpeech.
 
 Homebrew and XcodeGen are not needed to open this generated project.
@@ -110,3 +110,17 @@ Build 23 Home and map checks:
 - Linux verification: 175 TourCore tests, including dense/rotated marker collision cases,
   plus Debug/Release syntax checks. Native map rendering and full iOS compilation still
   require Xcode on a Mac; no simulator screenshots were available for this release.
+
+Build 24 readability and story controls:
+- Map destination content scrolls at all text sizes, with space above the player/tabs.
+  The map uses remaining height; long destination content stays reachable by scrolling.
+- Stops uses the same heading style as Map.
+- Portrait and landscape gallery photos fit entirely in the frame; smaller white
+  translucent arrows have no shaded backgrounds. Swipe and tap-to-enlarge remain.
+- Play/pause and timeline controls use hunter green. Player titles/errors wrap.
+- Every newly opened stop defaults to Listen. Read does not interrupt audio.
+- Church asset update remains pending: this workspace contains the existing drawn
+  church thumbnail but no separate generated church illustration or church photographs.
+  Reattach the intended illustration and photos to finish the church gallery update.
+- Verify small-screen Map scrolling, full photos and larger text on an iPhone.
+  Linux cannot run Xcode or capture the native interface.

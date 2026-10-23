@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Warm-white surfaces, forest ink and terracotta transport from the selected walking-screen reference.
+/// Warm-white surfaces, forest ink and hunter-green transport from the selected walking-screen reference.
 enum AppTheme {
     static let accent = Color("AccentColor")
     static let forest = Color(red: 48 / 255, green: 70 / 255, blue: 57 / 255)
