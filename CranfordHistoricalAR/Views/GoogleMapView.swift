@@ -214,14 +214,16 @@ struct GoogleMapView: UIViewRepresentable {
         /// Tappable artwork beside the real stop coordinate; shares the numbered marker’s stop ID.
         func renderLandmark(markers: [StopMarkerModel]) {
             guard let mapView else { return }
-            let artworkByStop = ["hpab-001": "mill-map-landmark", "hpab-002": "greystone-map-landmark"]
+            let artworkByStop = ["hpab-001": "mill-map-landmark", "hpab-002": "greystone-map-landmark", "hpab-003": "rahway-river-illustration"]
             let visibleIDs = Set(markers.map(\.id))
             for id in Array(landmarkMarkers.keys) where !visibleIDs.contains(id) {
                 landmarkMarkers.removeValue(forKey: id)?.map = nil
             }
             for stop in markers {
-                guard let assetName = artworkByStop[stop.id] else { continue }
-                if landmarkMarkers[stop.id] == nil, let artwork = UIImage(named: assetName) {
+                if landmarkMarkers[stop.id] == nil {
+                    let renderer = ImageRenderer(content: StopListIllustration(stopID: stop.id).frame(width: 110, height: 82.5))
+                    renderer.scale = 2
+                    guard let artwork = artworkByStop[stop.id].flatMap({ UIImage(named: $0) }) ?? renderer.uiImage else { continue }
                     let size = CGSize(width: 110, height: 82.5)
                     let format = UIGraphicsImageRendererFormat()
                     format.scale = 2
@@ -379,8 +381,9 @@ struct GoogleMapView: UIViewRepresentable {
                 let position = GMSCameraPosition(target: coordinate, zoom: max(mapView.camera.zoom, 16.5), bearing: bearing ?? mapView.camera.bearing, viewingAngle: 0)
                 update = GMSCameraUpdate.setCamera(position)
             case .fitUserAndDestination(let a, let b):
-                let bounds = GMSCoordinateBounds(coordinate: a, coordinate: b)
-                update = GMSCameraUpdate.fit(bounds, with: UIEdgeInsets(top: 110, left: 60, bottom: 60, right: 60))
+                var bounds = GMSCoordinateBounds(coordinate: a, coordinate: b)
+                for coordinate in parent.routeCoordinates { bounds = bounds.includingCoordinate(coordinate) }
+                update = GMSCameraUpdate.fit(bounds, with: parent.fitInsets)
             }
             if request.animated {
                 mapView.animate(with: update)

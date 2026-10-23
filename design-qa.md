@@ -452,3 +452,16 @@ Device acceptance checks:
   Back returns to the presenting screen without stopping the recording.
 - Stops 3–5 show Narration coming soon and pending Read text. No legacy recording or
   synthesized placeholder speech plays; neither pending activity can count as completed.
+
+
+## Build 19 — Map is a complete walking entry
+
+Passed 168 core tests and 24 actual-model/provider policy tests plus both syntax configurations.
+Native build and device rendering have not been run on this Linux host. Device acceptance:
+- Walk all five stops without opening the camera; arrival stays on Map with You’re here.
+- View stop returns with playback and destination intact; Continue requires no learning/bonus.
+- Recenter, route framing, then optional circular camera / AR appear in that order.
+- With Google keys absent, Apple geography/illustrations/GPS and real walking routes appear.
+- Test Google route failure with Apple fallback, and both providers offline. No straight-line
+  estimate should render as a walkable path. Check Apple attribution stays clear of controls.
+- Pan/zoom, rotate device, use larger text, tap every icon, and verify geographic route alignment.

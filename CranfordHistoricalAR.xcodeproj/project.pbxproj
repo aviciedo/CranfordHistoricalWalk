@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		B19A00000000000000000001 /* MapKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B19A00000000000000000002 /* MapKit.framework */; };
 		012BAA410B6693441ECB0D90 /* SimulatedLocationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1636300C82A2602A371808C /* SimulatedLocationService.swift */; };
 		07C6CC3F2FEF8BF08586BA9A /* GoogleMaps in Frameworks */ = {isa = PBXBuildFile; productRef = F65571425EB2DA6D39C2C26D /* GoogleMaps */; };
 		133ADE3C26D4C44B39E287EE /* DirectionsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D6B98AD9D1811ED29AD8E30 /* DirectionsService.swift */; };
@@ -88,6 +89,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		B19A00000000000000000002 /* MapKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MapKit.framework; path = System/Library/Frameworks/MapKit.framework; sourceTree = SDKROOT; };
 		045B96A351C172F54B2AE1C1 /* Network.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Network.framework; path = System/Library/Frameworks/Network.framework; sourceTree = SDKROOT; };
 		0679E29391ED1F9233133A66 /* GeoAnchorManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeoAnchorManager.swift; sourceTree = "<group>"; };
 		0909178F615F884806D7A0A4 /* HomeMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeMapView.swift; sourceTree = "<group>"; };
@@ -179,6 +181,7 @@
 				AC868F643CEE0A38A8219235 /* RealityKit.framework in Frameworks */,
 				B01FDA2B78F3F71650F2B6A2 /* CoreLocation.framework in Frameworks */,
 				B003EAED16DE750332BADB2A /* AVFoundation.framework in Frameworks */,
+				B19A00000000000000000001 /* MapKit.framework in Frameworks */,
 				630FEA8B13E4B2A65A98857F /* Network.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -235,6 +238,7 @@
 				2DAB9EB7D1372E8ABFF7D617 /* ARKit.framework */,
 				61B6796034569996BDF1001A /* AVFoundation.framework */,
 				740DEF310E0B49F74C661D00 /* CoreLocation.framework */,
+				B19A00000000000000000002 /* MapKit.framework */,
 				045B96A351C172F54B2AE1C1 /* Network.framework */,
 				BAA7A4387FC614C69C643ACB /* RealityKit.framework */,
 			);
@@ -580,7 +584,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 18;
+				CURRENT_PROJECT_VERSION = 19;
 				DEVELOPMENT_TEAM = "$(DEVELOPMENT_TEAM)";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = CranfordHistoricalAR/Info.plist;
@@ -689,7 +693,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 18;
+				CURRENT_PROJECT_VERSION = 19;
 				DEVELOPMENT_TEAM = "$(DEVELOPMENT_TEAM)";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = CranfordHistoricalAR/Info.plist;

@@ -230,6 +230,11 @@ final class TourViewModel {
             return arStop != nil
         }
         if phase == .complete { resetTour() }
+        // Map AR always guides the walking destination, even after browsing another plaque.
+        arDiscoveryStopID = nil
+        plaqueConfirmedStopID = nil
+        presentedSignStopID = nil
+        signPresentationSource = nil
         startTour()
         return phase == .inProgress && currentStop != nil
     }

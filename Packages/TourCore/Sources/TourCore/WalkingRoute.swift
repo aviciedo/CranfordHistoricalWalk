@@ -4,6 +4,7 @@ import Foundation
 public enum RouteSource: String, Codable, Sendable {
     case googleRoutesAPI
     case googleDirectionsLegacy
+    case appleMaps
     /// Haversine fallback used only when no routing provider is reachable.
     case straightLineEstimate
     case simulated

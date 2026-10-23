@@ -6,6 +6,15 @@ extension TourViewModel {
     var presentedSignStop: HistoricalStop? { presentedSignStopID.flatMap(stop(withID:)) }
     var isSignPresented: Bool { presentedSignStopID != nil }
     var proximityState: StopProximityState? { proximityMachine?.state }
+    /// Live presence, never inferred from an old visit or a previously presented sign.
+    var isAtCurrentStopNow: Bool {
+        guard phase == .inProgress, let stop = currentStop, let sample = userLocation else { return false }
+        if case .allow = StopActivationPolicy.decide(trackingReady: true, plaqueIsTracked: false,
+            isSimulated: sample.isSimulated, distanceMeters: GeoMath.distance(from: sample.coordinate, to: stop.coordinate),
+            horizontalAccuracy: sample.horizontalAccuracy, locationTimestamp: sample.timestamp,
+            arrivalRadius: stop.arrivalRadius) { return true }
+        return false
+    }
     var hasArrivedAtCurrentStop: Bool { proximityMachine?.hasPresentedSign ?? false }
     var isWithinArrivalRadius: Bool { proximityMachine?.isWithinArrivalRadius ?? false }
     var hasPlaqueConfirmedArrival: Bool { arStop?.id == plaqueConfirmedStopID && plaqueConfirmedStopID != nil }

@@ -1,5 +1,6 @@
 import CoreLocation
 import Foundation
+import MapKit
 import TourCore
 
 /// Walking directions provider (spec §18).
@@ -199,16 +200,71 @@ actor CachedDirectionsService: DirectionsService {
     }
 }
 
+// MARK: - Apple walking routes and provider fallback
+
+/// Real street/path geometry; never substitutes a straight line for a walking route.
+struct AppleWalkingDirectionsService: DirectionsService {
+    func walkingRoute(from origin: CLLocationCoordinate2D, to destination: CLLocationCoordinate2D) async throws -> WalkingRoute {
+        try Task.checkCancellation()
+        let request = MKDirections.Request()
+        request.source = MKMapItem(placemark: MKPlacemark(coordinate: origin))
+        request.destination = MKMapItem(placemark: MKPlacemark(coordinate: destination))
+        request.transportType = .walking
+        request.requestsAlternateRoutes = false
+        let directions = MKDirections(request: request)
+        let response = try await directions.calculate()
+        try Task.checkCancellation()
+        guard let route = response.routes.first else { throw DirectionsError.noRoute }
+        let geometry = coordinates(of: route.polyline)
+        guard geometry.count >= 2 else { throw DirectionsError.invalidResponse }
+        let steps = route.steps.compactMap { step -> RouteStep? in
+            let points = coordinates(of: step.polyline)
+            guard let start = points.first, let end = points.last, step.distance > 0 else { return nil }
+            return RouteStep(distanceMeters: step.distance,
+                durationSeconds: route.distance > 0 ? route.expectedTravelTime * step.distance / route.distance : 0,
+                startCoordinate: start, endCoordinate: end,
+                instruction: step.instructions.isEmpty ? nil : step.instructions, coordinates: points)
+        }
+        return WalkingRoute(origin: GeoCoordinate(origin), destination: GeoCoordinate(destination),
+            distanceMeters: route.distance, durationSeconds: route.expectedTravelTime,
+            routeCoordinates: geometry, routeSteps: steps, source: .appleMaps)
+    }
+
+    private func coordinates(of polyline: MKPolyline) -> [GeoCoordinate] {
+        let points = polyline.points()
+        return (0..<polyline.pointCount).map { GeoCoordinate(points[$0].coordinate) }
+    }
+}
+
+/// Google remains primary when configured; failures use Apple's real walking network.
+struct FallbackWalkingDirectionsService: DirectionsService {
+    let primary: any DirectionsService
+    let fallback: any DirectionsService
+
+    func walkingRoute(from origin: CLLocationCoordinate2D, to destination: CLLocationCoordinate2D) async throws -> WalkingRoute {
+        do { return try await primary.walkingRoute(from: origin, to: destination) }
+        catch is CancellationError { throw CancellationError() }
+        catch {
+            try Task.checkCancellation()
+            return try await fallback.walkingRoute(from: origin, to: destination)
+        }
+    }
+}
+
 // MARK: - Factory
 
 enum DirectionsServiceFactory {
     static func make(configuration: AppConfiguration) -> any DirectionsService {
-        let upstream: any DirectionsService
+        let apple = AppleWalkingDirectionsService()
+        guard configuration.hasGoogleMapsKey, AppConfiguration.looksLikeKey(configuration.googleRoutesAPIKey) else {
+            return CachedDirectionsService(upstream: apple)
+        }
+        let google: any DirectionsService
         let bundleID = AppConfiguration.iosBundleIdentifier()
         switch configuration.directionsProvider {
-        case .routes: upstream = GoogleRoutesDirectionsService(apiKey: configuration.googleRoutesAPIKey, bundleIdentifier: bundleID)
-        case .legacy: upstream = LegacyGoogleDirectionsService(apiKey: configuration.googleRoutesAPIKey, bundleIdentifier: bundleID)
+        case .routes: google = GoogleRoutesDirectionsService(apiKey: configuration.googleRoutesAPIKey, bundleIdentifier: bundleID)
+        case .legacy: google = LegacyGoogleDirectionsService(apiKey: configuration.googleRoutesAPIKey, bundleIdentifier: bundleID)
         }
-        return CachedDirectionsService(upstream: upstream)
+        return CachedDirectionsService(upstream: FallbackWalkingDirectionsService(primary: google, fallback: apple))
     }
 }

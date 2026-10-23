@@ -988,3 +988,34 @@ this keeps learning separate from walking. Existing AR walking controls are reta
 
 Validation: 168 core tests, 18 app-model flow tests and Debug/Release Swift syntax checks.
 Native layout, audio and Back/gesture behavior require Mac/iPhone verification.
+
+## GPS-first walking map — 0.2.0 (19)
+
+Map gives real geographic context the most space. A compact destination panel shows the
+stop name, distance and walking time, View stop and explicit Continue. Fresh accurate GPS
+presence shows You’re here; historical visits do not. Arrival never opens the story or
+automatically advances. The story, visit and bonus records stay independent. Recenter and
+route framing precede a circular camera button with a small AR label. The Map camera entry
+always uses the existing walking destination, and leaving AR preserves it.
+
+Google remains the configured map provider. Without its key, Map and Home now use MapKit
+with real street geography, all five existing tour illustrations, and tappable numbered
+markers at their catalog coordinates. MapKit draws GPS from the same location source as
+Google and AR; it never creates a second location manager or requests permissions itself.
+Home overview excludes GPS and does not start a walk. Artwork is decorative; the map, GPS
+and route are geographic data. Route framing includes the routed path, not just endpoints.
+
+Apple walking directions are used without Google map/route keys, or after a Google routing
+failure. Both providers use returned street/path polylines, real distances and travel times;
+Apple step times are apportioned from the route time because its steps do not provide times.
+Canceled requests do not trigger another provider. Cached routing and existing reroute policy
+remain in force. Connectivity is still required. If providers fail, existing same-destination
+routes remain; distance estimates are labeled and never drawn as navigation paths. The legacy
+schematic, if used elsewhere, is explicitly labeled overview only. Location coordinates retain
+their existing field-verification status; map alignment does not turn them into surveyed points.
+
+Validation: 168 TourCore tests and 24 portable model/provider-flow tests passed, including all
+five stops completed through GPS and explicit Continue with no learning or plaque prerequisite,
+saved-visit vs live-arrival distinction, Map/AR target continuity, primary routing, fallback and
+cancellation. Debug/Release Swift syntax checks passed. MapKit rendering, live route responses,
+Google Maps and iPhone AR still require native Mac/iPhone compilation and field testing.

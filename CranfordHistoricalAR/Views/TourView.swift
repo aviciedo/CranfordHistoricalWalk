@@ -66,11 +66,6 @@ struct TourView: View {
             mapModel.select(stopID: nil)
         }
         .onChange(of: navigation.focusedStopID) { _, _ in focusRequestedStop() }
-        .onChange(of: tour.arrivalStoryStopID) { _, id in
-            if let id, !isShowingAR, navigation.selectedTab == .map {
-                detailStop = tour.stop(withID: id)
-            }
-        }
         .onChange(of: tour.currentStop?.id) { _, _ in
             mapModel.showUserAndDestination(tour: tour)
             dependencies.imageLoader.prefetch([tour.currentStop, tour.nextStop].compactMap { $0 })
@@ -78,7 +73,6 @@ struct TourView: View {
         .task {
             if tour.phase == .inProgress { tour.startLocationIfPossible() }
             focusRequestedStop()
-            if let id = tour.arrivalStoryStopID, !isShowingAR { detailStop = tour.stop(withID: id) }
             dependencies.imageLoader.prefetch([tour.currentStop, tour.nextStop].compactMap { $0 })
         }
     }
@@ -106,7 +100,7 @@ struct TourView: View {
     @ViewBuilder
     private var destination: some View {
         if tour.phase == .inProgress {
-            NextStopCard(onEnterAR: { isShowingAR = true }, onDetails: { detailStop = tour.currentStop })
+            NextStopCard(onDetails: { detailStop = tour.currentStop })
         } else {
             Button {
                 tour.startTour()

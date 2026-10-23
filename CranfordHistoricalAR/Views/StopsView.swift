@@ -75,7 +75,7 @@ struct StopsContent: View {
 }
 
 /// Transparent landmark thumbnails. Stop 4 follows the supplied First Baptist Church photograph.
-private struct StopListIllustration: View {
+struct StopListIllustration: View {
     let stopID: String
 
     var body: some View {

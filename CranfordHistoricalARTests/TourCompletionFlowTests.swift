@@ -2,6 +2,7 @@ import Foundation
 import TourCore
 import XCTest
 #if canImport(CranfordHistoricalAR)
+import CoreLocation
 @testable import CranfordHistoricalAR
 #else
 @testable import ActivityModelHarness
@@ -19,6 +20,56 @@ final class TourCompletionFlowTests: XCTestCase {
         return model
     }
     private func cleanUp(_ model: TourViewModel) { model.stopLocation(); model.cancelRouting() }
+
+    func testEntireWalkNeedsOnlyGPSAndExplicitContinue() async throws {
+        let source = ActivityTestLocationService(status: .authorized)
+        let tour = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),
+            locationService: source, directionsService: PreviewDirectionsService())
+        await tour.loadStopsIfNeeded()
+        defer { cleanUp(tour) }
+        tour.startTour()
+        for stop in stops {
+            source.emit(LocationSample(coordinate: stop.coordinate, horizontalAccuracy: 3))
+            for _ in 0..<100 where tour.userLocation?.coordinate != stop.coordinate {
+                try await Task.sleep(for: .milliseconds(2))
+            }
+            XCTAssertEqual(tour.currentStop?.id, stop.id, "Arrival must not replace the destination")
+            XCTAssertTrue(tour.isAtCurrentStopNow)
+            XCTAssertNotNil(tour.activities[stop.id].visitedAt)
+            XCTAssertFalse(tour.activities[stop.id].learningCompleted)
+            XCTAssertNil(tour.activities[stop.id].bonusFoundAt)
+            XCTAssertTrue(tour.canContinueCurrentStop)
+            tour.completeCurrentStopAndAdvance()
+        }
+        XCTAssertEqual(tour.phase, .complete)
+        XCTAssertFalse(tour.isARSessionActive)
+        XCTAssertEqual(source.permissionRequests, 0)
+    }
+
+    func testMapCameraUsesWalkingDestinationAfterInspectingAnotherStop() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.startTour()
+        tour.completeCurrentStopAndAdvance()
+        XCTAssertTrue(tour.prepareForARFromDetails(stopID: stops[0].id))
+        XCTAssertEqual(tour.arStop?.id, stops[0].id)
+        XCTAssertTrue(tour.prepareForARFromDetails())
+        XCTAssertEqual(tour.currentStop?.id, stops[1].id)
+        XCTAssertEqual(tour.arStop?.id, stops[1].id)
+        tour.endARDiscoverySession()
+        XCTAssertEqual(tour.currentStop?.id, stops[1].id)
+    }
+
+    func testSavedVisitIsNotLiveArrival() async {
+        var ledger = StopActivityLedger()
+        ledger.visited(stops[0].id)
+        let storage = InMemoryStopActivityStore()
+        storage.save(ledger)
+        let tour = await makeTour(activityStore: storage)
+        defer { cleanUp(tour) }
+        tour.startTour()
+        XCTAssertTrue(tour.isCurrentStopVisited)
+        XCTAssertFalse(tour.isAtCurrentStopNow)
+    }
 
     func testExploringDoesNotRequestPermissionsOrStartLocation() async {
         let source = ActivityTestLocationService(status: .notDetermined)
@@ -228,13 +279,15 @@ final class TourCompletionFlowTests: XCTestCase {
 @MainActor
 private final class ActivityTestLocationService: LocationService {
     private let status: LocationAuthorization
+    private let broadcaster = EventBroadcaster<LocationEvent>()
     private(set) var permissionRequests = 0
     private(set) var startRequests = 0
     init(status: LocationAuthorization = .denied) { self.status = status }
     var authorization: LocationAuthorization { status }
     var isPreciseLocationAuthorized: Bool { true }
     var isHeadingAvailable: Bool { false }
-    func events() -> AsyncStream<LocationEvent> { AsyncStream { $0.finish() } }
+    func events() -> AsyncStream<LocationEvent> { broadcaster.stream() }
+    func emit(_ sample: LocationSample) { broadcaster.send(.location(sample)) }
     func requestWhenInUseAuthorization() { permissionRequests += 1 }
     func requestTemporaryPreciseLocationIfNeeded() {}
     func start() { startRequests += 1 }
@@ -515,3 +568,58 @@ private final class DeveloperTestLocationService: LocationService {
 #endif
 
 #endif
+
+/// Provider selection logic runs on Linux and in the native host without network requests.
+final class WalkingProviderFallbackTests: XCTestCase {
+    func testPrimaryWalkingRouteWins() async throws {
+        let primary = WalkingProviderStub(source: .googleRoutesAPI)
+        let fallback = WalkingProviderStub(source: .appleMaps)
+        let service = FallbackWalkingDirectionsService(primary: primary, fallback: fallback)
+        let route = try await service.walkingRoute(from: point, to: point)
+        XCTAssertEqual(route.source, .googleRoutesAPI)
+        let calls = await fallback.calls
+        XCTAssertEqual(calls, 0)
+    }
+
+    func testProviderFailureUsesAppleWalkingRoute() async throws {
+        let primary = WalkingProviderStub(source: .googleRoutesAPI, fails: true)
+        let fallback = WalkingProviderStub(source: .appleMaps)
+        let service = FallbackWalkingDirectionsService(primary: primary, fallback: fallback)
+        let route = try await service.walkingRoute(from: point, to: point)
+        XCTAssertEqual(route.source, .appleMaps)
+        let calls = await fallback.calls
+        XCTAssertEqual(calls, 1)
+    }
+
+    func testCancellationDoesNotRequestAnotherProvider() async {
+        let primary = WalkingProviderStub(source: .googleRoutesAPI, cancels: true)
+        let fallback = WalkingProviderStub(source: .appleMaps)
+        let service = FallbackWalkingDirectionsService(primary: primary, fallback: fallback)
+        do { _ = try await service.walkingRoute(from: point, to: point); XCTFail("Expected cancellation") }
+        catch { XCTAssertTrue(error is CancellationError) }
+        let calls = await fallback.calls
+        XCTAssertEqual(calls, 0)
+    }
+
+    private var point: CLLocationCoordinate2D { CLLocationCoordinate2D(latitude: 40.650249, longitude: -74.301047) }
+}
+
+private actor WalkingProviderStub: DirectionsService {
+    let source: RouteSource
+    let fails: Bool
+    let cancels: Bool
+    private(set) var calls = 0
+    init(source: RouteSource, fails: Bool = false, cancels: Bool = false) {
+        self.source = source; self.fails = fails; self.cancels = cancels
+    }
+    func walkingRoute(from origin: CLLocationCoordinate2D, to destination: CLLocationCoordinate2D) async throws -> WalkingRoute {
+        calls += 1
+        if cancels { throw CancellationError() }
+        if fails { throw URLError(.cannotConnectToHost) }
+        var route = WalkingRoute.straightLineEstimate(
+            from: GeoCoordinate(latitude: origin.latitude, longitude: origin.longitude),
+            to: GeoCoordinate(latitude: destination.latitude, longitude: destination.longitude))
+        route.source = source
+        return route
+    }
+}

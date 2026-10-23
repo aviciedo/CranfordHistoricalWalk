@@ -66,5 +66,9 @@ struct PreviewDirectionsService: DirectionsService {
  }
 }
 ''')
+# Compile the actual provider fallback policy too, using the same service protocol bridge.
+routing = (root / 'CranfordHistoricalAR/Services/DirectionsService.swift').read_text()
+fallback = routing[routing.index('struct FallbackWalkingDirectionsService:'):routing.index('// MARK: - Factory')]
+(src / 'FallbackWalkingDirectionsService.swift').write_text('import Foundation\nimport TourCore\n' + fallback)
 (tests / 'TourCompletionFlowTests.swift').write_text((root / 'CranfordHistoricalARTests/TourCompletionFlowTests.swift').read_text())
 print(out)

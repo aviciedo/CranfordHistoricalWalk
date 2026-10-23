@@ -1,7 +1,7 @@
 import SwiftUI
 import TourCore
 
-/// A live overview when configured; the offline illustration remains clearly labeled.
+/// A geographic overview using Google when configured, otherwise Apple; no GPS permission is requested.
 struct HomeMapView: View {
     @Environment(TourViewModel.self) private var tour
     @State private var mapModel = MapViewModel()
@@ -32,9 +32,13 @@ struct HomeMapView: View {
                 .onChange(of: tour.stops.count) { _, _ in mapModel.requestOverview(animated: false) }
                 .clipShape(RoundedRectangle(cornerRadius: 16))
             } else {
-                StylizedCranfordMapView(stops: tour.stops)
-                    .accessibilityElement(children: .contain)
-                    .accessibilityLabel("Illustrated map of the historical stops")
+                AppleTourMapView(markers: mapModel.markers(for: tour), userPuck: nil,
+                    routeCoordinates: [], cameraRequest: mapModel.cameraRequest,
+                    onUserGesture: { mapModel.userDidMoveCamera() },
+                    onMarkerTap: { detailStop = tour.stop(withID: $0) })
+                    .onAppear { mapModel.requestOverview(animated: false) }
+                    .onChange(of: tour.stops.count) { _, _ in mapModel.requestOverview(animated: false) }
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
             }
         }
         .sheet(item: $detailStop, onDismiss: { mapModel.select(stopID: nil) }) {

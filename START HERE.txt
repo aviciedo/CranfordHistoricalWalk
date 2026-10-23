@@ -1,6 +1,6 @@
 Cranford Historical AR — Xcode project
 
-Release 0.2.0 (18) — Photo-led stops with one Listen / Read story control
+Release 0.2.0 (19) — GPS-first illustrated walking map with Apple Maps fallback
 
 1. Close the previous Xcode project. Extract the entire ZIP into a fresh folder on the Mac. Keep its folders together.
    Copy your existing Config/Secrets.xcconfig into this new folder’s Config folder.
@@ -10,13 +10,13 @@ Release 0.2.0 (18) — Photo-led stops with one Listen / Read story control
 5. In Xcode select the blue project icon, then Targets > CranfordHistoricalAR > Signing & Capabilities.
 6. Turn on Automatically manage signing and select your Apple account under Team.
 7. Select your iPhone in the top toolbar. Choose Product > Clean Build Folder, then click Run.
-8. On the iPhone open Home > Developer. Installed build and narration must show 0.2.0 (18), audio release cedar-2.
+8. On the iPhone open Home > Developer. Installed build and narration must show 0.2.0 (19), audio release cedar-2.
    After tapping Play, Prepared audio should say bundledAudio with stop_01 or stop_02, never synthesizedSpeech.
 
 Homebrew and XcodeGen are not needed to open this generated project.
 Xcode is still required. This project was generated on Linux; a successful iOS build and installation have NOT been verified.
 
-Without Google API keys, the existing fallback map and estimated distances are expected.
+Without Google API keys, Apple Maps and Apple walking routes are used. Both map providers and walking routes need connectivity. If routing fails, estimated distance is labeled and no straight line is drawn as a walking path.
 Do not enter Google keys in the example file or commit them to GitHub. Use Config/Secrets.xcconfig if configuring real Maps/Routes.
 
 New interface quick check:
@@ -52,3 +52,15 @@ Build 18 stop-page checks:
 - Continue to next stop is on Map, not the stop detail page.
 - Play stop 1, switch to Read and browse photos: audio position must remain unchanged.
 - Stops 3–5 retain silent narration/text placeholders until approved content is supplied.
+
+Build 19 walking-map checks:
+- Without Google keys: Apple street geography, illustrations, GPS dot and routed walking
+  paths should be visible. Location is requested only after choosing a walking feature.
+- With Google configured: retain Google geography; route failures fall back to Apple routing.
+- Recenter and route-framing buttons remain above the circular camera / AR button.
+- At every stop, Map stays open and says You’re here. View stop opens the story.
+  Continue is always explicit, with no listening/reading/plaque requirement.
+- Listen to the mill while walking to Greystone. Enter AR, then Back: neither your selected
+  destination nor recording should change.
+- With networking unavailable: show route/map errors; never draw a straight estimate as a path.
+- Check route alignment, icon taps, map gestures and all five legs on your iPhone.
