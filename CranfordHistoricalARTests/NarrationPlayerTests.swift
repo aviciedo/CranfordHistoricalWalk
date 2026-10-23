@@ -7,6 +7,51 @@ import AVFoundation
 
 @MainActor
 final class NarrationPlayerTests: XCTestCase {
+    func testClosingPersistentPlayerPausesWithoutLosingBookmark() async throws {
+        let player = NarrationPlayer()
+        let stop = HistoricalStop.previewStops[0]
+        defer { player.stop() }
+        XCTAssertFalse(player.isPersistentPlayerVisible)
+        XCTAssertTrue(player.prepare(stop))
+        try await waitForAudio { player.canSeek }
+        XCTAssertFalse(player.isPersistentPlayerVisible, "Preparing does not show transport")
+        player.seek(to: 42)
+        player.play()
+        XCTAssertTrue(player.isPersistentPlayerVisible)
+        player.dismissPersistentPlayer()
+        XCTAssertFalse(player.isPlaying)
+        XCTAssertFalse(player.isPersistentPlayerVisible)
+        XCTAssertEqual(player.resumableStoryID, stop.id)
+        XCTAssertEqual(player.resumableElapsed, 42, accuracy: 1)
+        XCTAssertTrue(player.prepare(stop))
+        XCTAssertFalse(player.isPersistentPlayerVisible, "Preparing the same story must not undo X")
+        player.resumeSavedStory(stop)
+        try await waitForAudio { player.isPlaying && player.elapsed >= 41 }
+        XCTAssertTrue(player.isPersistentPlayerVisible)
+    }
+
+    func testCloseDuringLoadCancelsDeferredPlaybackAndStaysHidden() async throws {
+        let player = NarrationPlayer()
+        defer { player.stop() }
+        XCTAssertTrue(player.prepare(HistoricalStop.previewStops[0]))
+        player.play()
+        player.dismissPersistentPlayer()
+        try await waitForAudio { player.canSeek }
+        XCTAssertFalse(player.isPlaying)
+        XCTAssertFalse(player.isPersistentPlayerVisible)
+        XCTAssertEqual(player.status, .paused)
+    }
+
+    func testOrdinaryPauseKeepsPersistentPlayerAvailable() async throws {
+        let player = NarrationPlayer()
+        defer { player.stop() }
+        XCTAssertTrue(player.prepare(HistoricalStop.previewStops[0]))
+        player.play()
+        player.pause()
+        XCTAssertTrue(player.isPersistentPlayerVisible)
+        XCTAssertFalse(player.isPlaying)
+    }
+
     func testCompletionOfMillRecordingWhileWalkingToParkRecordsOnlyMillLearning() async throws {
         let dependencies = AppDependencies.preview()
         let tour = dependencies.tourViewModel
@@ -65,6 +110,7 @@ final class NarrationPlayerTests: XCTestCase {
         XCTAssertNil(restored.kind)
         XCTAssertEqual(restored.status, .idle)
         XCTAssertFalse(restored.hasStartedPlayback)
+        XCTAssertFalse(restored.isPersistentPlayerVisible)
         XCTAssertFalse(restored.isPlaying)
         XCTAssertTrue(restored.prepare(stop))
         try await waitForAudio { restored.canSeek && abs(restored.elapsed - 42) < 1 }

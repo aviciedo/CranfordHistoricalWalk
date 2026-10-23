@@ -28,27 +28,32 @@ struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        TabView(selection: $navigation.selectedTab) {
-            HomeView()
-                .tabItem { Label("Home", systemImage: "house") }
-                .tag(AppNavigation.Tab.home)
-                .toolbar(.hidden, for: .tabBar)
-            TourView()
-                .tabItem { Label("Map", systemImage: "map") }
-                .tag(AppNavigation.Tab.map)
-                .toolbar(.hidden, for: .tabBar)
-            StopsView()
-                .tabItem { Label("Stops", systemImage: "mappin") }
-                .tag(AppNavigation.Tab.stops)
-                .toolbar(.hidden, for: .tabBar)
-        }
-        .toolbar(.hidden, for: .tabBar)
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            VStack(spacing: 0) {
-                SharedNarrationBar()
-                BottomNavigationBar(selection: $navigation.selectedTab)
+        VStack(spacing: 0) {
+            TabView(selection: $navigation.selectedTab) {
+                HomeView()
+                    .tabItem { Label("Home", systemImage: "house") }
+                    .tag(AppNavigation.Tab.home)
+                    .toolbar(.hidden, for: .tabBar)
+                TourView()
+                    .tabItem { Label("Map", systemImage: "map") }
+                    .tag(AppNavigation.Tab.map)
+                    .toolbar(.hidden, for: .tabBar)
+                StopsView()
+                    .tabItem { Label("Stops", systemImage: "mappin") }
+                    .tag(AppNavigation.Tab.stops)
+                    .toolbar(.hidden, for: .tabBar)
             }
-            .background(AppTheme.navigationBackground.ignoresSafeArea(edges: .bottom))
+            .toolbar(.hidden, for: .tabBar)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .clipped()
+
+            // Real layout siblings: screens receive only the height above the footer.
+            // This avoids relying on inset propagation through the native TabView.
+            SharedNarrationBar()
+                .fixedSize(horizontal: false, vertical: true)
+            BottomNavigationBar(selection: $navigation.selectedTab)
+                .fixedSize(horizontal: false, vertical: true)
+                .background(AppTheme.navigationBackground.ignoresSafeArea(edges: .bottom))
         }
         .environment(navigation)
         .tint(AppTheme.accent)

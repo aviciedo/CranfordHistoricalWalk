@@ -6,7 +6,6 @@ struct HomeView: View {
     @Environment(AppDependencies.self) private var dependencies
     @Environment(AppNavigation.self) private var navigation
     @State private var isShowingDeveloperControls = false
-    @State private var scrollBaseline: CGFloat?
     @ScaledMetric(relativeTo: .body) private var homeContentReserve: CGFloat = 220
 
     var body: some View {
@@ -87,21 +86,6 @@ struct HomeView: View {
                 .padding(.horizontal, 24)
                 .padding(.top, 8)
                 .padding(.bottom, 16)
-                .background {
-                    GeometryReader { geometry in
-                        Color.clear.preference(key: HomeScrollOffsetKey.self,
-                            value: geometry.frame(in: .named("home.scroll")).minY)
-                    }
-                }
-            }
-            .coordinateSpace(name: "home.scroll")
-            .onPreferenceChange(HomeScrollOffsetKey.self) { offset in
-                if let baseline = scrollBaseline {
-                    if offset < baseline - 24 {
-                        navigation.isNarrationMinimized = true
-                        scrollBaseline = offset
-                    } else if offset > baseline { scrollBaseline = offset }
-                } else { scrollBaseline = offset }
             }
         }
         .background(AppTheme.parchment).foregroundStyle(AppTheme.ink)
@@ -112,7 +96,7 @@ struct HomeView: View {
 
     private var resumableStory: HistoricalStop? {
         let player = dependencies.narrationPlayer
-        guard !player.hasStartedPlayback, let id = player.resumableStoryID,
+        guard !player.isPersistentPlayerVisible, let id = player.resumableStoryID,
               let stop = tour.stop(withID: id), player.hasSavedResume(for: stop) else { return nil }
         return stop
     }
@@ -134,11 +118,6 @@ struct HomeView: View {
         #endif
         return max(240, min(520, availableHeight - reserved - (resumableStory == nil ? 0 : 76) - (tour.currentStop == nil ? 0 : 36)))
     }
-}
-
-private struct HomeScrollOffsetKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }
 
 private struct DebugMenuGesture: ViewModifier {

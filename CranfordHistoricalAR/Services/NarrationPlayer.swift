@@ -23,6 +23,7 @@ final class NarrationPlayer: NSObject {
     }
 
     private(set) var hasStartedPlayback = false
+    private(set) var isPersistentPlayerVisible = false
     @ObservationIgnored private let resumeStore: any NarrationResumeStore
     private var resumeState: NarrationResumeState
     @ObservationIgnored private var resumeSeconds: Double = 0
@@ -165,6 +166,7 @@ final class NarrationPlayer: NSObject {
             resumeSeconds = 0
         }
         hasStartedPlayback = false
+        isPersistentPlayerVisible = false
         stopID = stop.id
         title = stop.name
         guard let source else {
@@ -269,6 +271,7 @@ final class NarrationPlayer: NSObject {
     func play() {
         guard kind != nil else { return }
         hasStartedPlayback = true
+        isPersistentPlayerVisible = true
         activateSession()
         switch kind {
         case .recording:
@@ -325,12 +328,21 @@ final class NarrationPlayer: NSObject {
         checkpointPlayback()
     }
 
+    /// Close is a reversible dismissal, not Stop: retain both in-memory and durable positions.
+    func dismissPersistentPlayer() {
+        pause()
+        wasPlayingBeforeInterruption = false
+        isPersistentPlayerVisible = false
+        deactivateSession()
+    }
+
     func togglePlayPause() {
         isPlaying ? pause() : play()
     }
 
     /// Stops playback and releases the audio session; the prepared stop is kept so play() restarts.
     func stop() {
+        isPersistentPlayerVisible = false
         switch kind {
         case .recording:
             player?.pause()

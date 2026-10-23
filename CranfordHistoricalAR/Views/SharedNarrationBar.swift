@@ -5,62 +5,40 @@ import TourCore
 struct SharedNarrationBar: View {
     @Environment(AppDependencies.self) private var dependencies
     @Environment(TourViewModel.self) private var tour
-    @State private var isExpanded = false
 
     var body: some View {
         let player = dependencies.narrationPlayer
-        if player.hasStartedPlayback, let id = player.stopID,
+        if player.isPersistentPlayerVisible, let id = player.stopID,
            let stop = tour.stop(withID: id) {
-            HStack(spacing: 12) {
-                NarrationPlayButton(stop: stop, diameter: 44)
-                Button { isExpanded = true } label: {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(stop.name).font(.subheadline.weight(.semibold)).fixedSize(horizontal: false, vertical: true)
-                        NarrationTimeline(stop: stop, compact: true)
+            HStack(alignment: .center, spacing: 12) {
+                NarrationPlayButton(stop: stop, diameter: 48)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(stop.name)
+                        .font(.subheadline.weight(.semibold))
+                        .fixedSize(horizontal: false, vertical: true)
+                    // Keep seeking in the sole player; no expanded sheet is needed.
+                    NarrationTimeline(stop: stop)
+                    if case .failed(let message) = player.status {
+                        Text(message).font(.footnote).foregroundStyle(AppTheme.warning)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                    .contentShape(Rectangle())
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Button { player.dismissPersistentPlayer() } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 16, weight: .medium))
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Expand player for \(stop.name)")
-                Button { isExpanded = true } label: {
-                    Image(systemName: "chevron.up").frame(width: 44, height: 44)
-                }
-                .buttonStyle(.plain).accessibilityLabel("Expand audio player")
+                .accessibilityLabel("Close player")
+                .accessibilityHint("Pauses narration and saves your position")
+                .accessibilityIdentifier("narration.closePlayer")
             }
-            .padding(.horizontal, 16).padding(.vertical, 8)
-            .accessibilityIdentifier("narration.compactPlayer")
+            .padding(.horizontal, 16).padding(.vertical, 10)
+            .accessibilityIdentifier("narration.persistentPlayer")
             .foregroundStyle(AppTheme.forest).background(AppTheme.ivory)
             .overlay(alignment: .top) { Divider() }
-            .sheet(isPresented: $isExpanded) {
-                NavigationStack {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 24) {
-                            Text(stop.name).font(.system(.title, design: .serif).weight(.semibold))
-                            NarrationControls(stop: stop)
-                            HStack {
-                                Button { player.skip(by: -15) } label: {
-                                    Label("Back 15 seconds", systemImage: "gobackward.15").frame(minHeight: 44)
-                                }
-                                Spacer()
-                                Button { player.skip(by: 15) } label: {
-                                    Label("Forward 15 seconds", systemImage: "goforward.15").frame(minHeight: 44)
-                                }
-                            }
-                            .disabled(!player.canSeek)
-                        }
-                        .padding(24)
-                    }
-                    .background(AppTheme.ivory)
-                    .toolbar {
-                        ToolbarItem(placement: .confirmationAction) {
-                            Button("Back") { isExpanded = false }
-                        }
-                    }
-                }
-                .environment(\.colorScheme, .light)
-                .presentationDetents([.medium, .large])
-            }
         }
     }
 }
@@ -98,8 +76,6 @@ struct NarrationPlayButton: View {
 struct NarrationTimeline: View {
     @Environment(AppDependencies.self) private var dependencies
     let stop: HistoricalStop
-    /// The persistent strip uses a thin progress rail; expanded recorded-audio controls retain seeking.
-    var compact = false
     @State private var scrubProgress: Double?
 
     var body: some View {
@@ -107,7 +83,7 @@ struct NarrationTimeline: View {
         let isCurrent = player.stopID == stop.id
         let canSeek = isCurrent && player.canSeek
         VStack(spacing: 0) {
-            if stop.hasRecordedNarration && !compact {
+            if stop.hasRecordedNarration {
                 Slider(value: Binding(
                     get: { scrubProgress ?? (isCurrent ? player.progress : 0) },
                     set: { scrubProgress = $0 }
@@ -124,7 +100,7 @@ struct NarrationTimeline: View {
                 .accessibilityLabel("Narration position for \(stop.name)")
             } else {
                 ProgressView(value: isCurrent ? player.progress : 0)
-                    .tint(AppTheme.forest).padding(.vertical, compact ? 4 : 6)
+                    .tint(AppTheme.forest).padding(.vertical, 6)
                     .accessibilityLabel("Narration progress for \(stop.name)")
             }
             HStack {
