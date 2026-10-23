@@ -479,3 +479,21 @@ Mac compilation and camera/device verification remain pending. On iPhone:
 - Play a story, change photos/Read, scan/return: recording, photo and mode stay intact.
 - Saved View the bonus opens without using camera; no learning completion is manufactured.
 - Discover after finishing the walk: phase remains complete.
+
+
+## Build 21 — stable Map and paused relaunch resume
+
+Automated: 172 core tests and 36 actual-model/store/provider tests passed. Native AVFoundation
+resume cases are present but not executed on Linux. Debug/Release syntax passed.
+
+Device acceptance:
+- Finish itinerary > Stops > Greystone > Show on map: geographic map focuses Greystone;
+  completed phase stays complete and AR walking remains disabled.
+- View summary / Back or Done returns to the map. Walk it again is an explicit restart.
+- View mill while walking to Greystone: both identities are labeled, route unchanged.
+- Listen to mill at a saved position, kill/relaunch while walking toward Greystone: Home
+  independently offers paused audio and walking destination. No autoplay or permission prompt.
+- Tap Resume story: seek completes before playback; no GPS starts. Tap Resume walk: destination
+  stays Greystone; audio remains at its own position.
+- Test VoiceOver, larger text, shorter screens, paused Map, background interruption, completed
+  narration cleanup, summary reopening and both Apple/Google geographic maps.

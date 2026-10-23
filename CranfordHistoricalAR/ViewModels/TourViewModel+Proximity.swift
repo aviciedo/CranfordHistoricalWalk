@@ -187,7 +187,7 @@ extension TourViewModel {
         visitRecords.filter { $0.stopID == stop.id }.max { $0.activatedAt < $1.activatedAt }
     }
     var isCurrentStopVisited: Bool { currentStop.map { progress.isCurrentStopVisited || activities[$0.id].visitedAt != nil } ?? false }
-    var canContinueCurrentStop: Bool { phase == .inProgress && currentStop != nil }
+    var canContinueCurrentStop: Bool { isWalkingActive && currentStop != nil }
     var canContinueARStop: Bool { canContinueCurrentStop && arStop?.id == currentStop?.id }
 
     /// Advancing an itinerary is not proof of a physical visit or learning completion.

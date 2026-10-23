@@ -69,7 +69,13 @@ final class TourViewModel {
     private(set) var stops: [HistoricalStop] = []
     private(set) var loadState: LoadState = .idle
     /// Internal setter: the proximity/completion extension (separate file) mutates it.
-    var progress = TourProgress(stopIDs: [])
+    var progress = TourProgress(stopIDs: []) {
+        didSet { checkpointWalk() }
+    }
+    private(set) var isWalkPaused = false
+    var isWalkingActive: Bool { phase == .inProgress && !isWalkPaused }
+    private let walkResumeStore: any WalkResumeStore
+    private(set) var restoredCompletionSummary: TourSummary?
 
     // MARK: Location
     private(set) var userLocation: LocationSample?
@@ -134,7 +140,8 @@ final class TourViewModel {
     private(set) var locationService: any LocationService
     private var locationTask: Task<Void, Never>?
 
-    init(stopService: any HistoricalStopService, locationService: any LocationService, directionsService: any DirectionsService, visitStore: (any StopVisitStore)? = nil, activityStore: (any StopActivityStore)? = nil) {
+    init(stopService: any HistoricalStopService, locationService: any LocationService, directionsService: any DirectionsService, visitStore: (any StopVisitStore)? = nil, activityStore: (any StopActivityStore)? = nil, walkResumeStore: (any WalkResumeStore)? = nil) {
+        self.walkResumeStore = walkResumeStore ?? InMemoryWalkResumeStore()
         let store = visitStore ?? InMemoryStopVisitStore()
         self.visitStore = store
         self.visitRecords = store.records()
@@ -194,7 +201,16 @@ final class TourViewModel {
             tourName = document.tourName
             dataStatus = document.dataStatus
             stops = document.stops
-            progress = TourProgress(stopIDs: document.stops.map(\.id))
+            let ids = document.stops.map(\.id)
+            if let saved = walkResumeStore.load(), saved.isValid(for: ids) {
+                progress = saved.progress
+                isWalkPaused = progress.phase == .inProgress
+                restoredCompletionSummary = saved.completionSummary
+            } else {
+                progress = TourProgress(stopIDs: ids)
+                isWalkPaused = false
+                walkResumeStore.save(nil)
+            }
             loadState = .loaded
         } catch {
             loadState = .failed(error.localizedDescription)
@@ -208,7 +224,9 @@ final class TourViewModel {
         if progress.phase == .notStarted {
             progress.start()
         }
+        isWalkPaused = false
         isShowingTour = true
+        checkpointWalk()
         startLocationIfPossible()
         loadTourSummaryLegsIfNeeded()
         evaluateRouteRefresh()
@@ -229,7 +247,7 @@ final class TourViewModel {
             restoreDiscovery(for: stopID)
             return arStop != nil
         }
-        if phase == .complete { resetTour() }
+        guard phase != .complete else { return false }
         // Map AR always guides the walking destination, even after browsing another plaque.
         arDiscoveryStopID = nil
         plaqueConfirmedStopID = nil
@@ -253,6 +271,8 @@ final class TourViewModel {
     }
 
     func resetTour() {
+        isWalkPaused = false
+        restoredCompletionSummary = nil
         cancelRouting()
         discoveriesByStopID = [:]
         continuedARStopIDs = []
@@ -261,6 +281,14 @@ final class TourViewModel {
         progress.start()
         destinationDidChange()
         loadTourSummaryLegsIfNeeded()
+    }
+
+    /// Snapshot only local itinerary context, never GPS history or playback state.
+    func checkpointWalk() {
+        guard loadState == .loaded else { return }
+        guard progress.phase != .notStarted else { walkResumeStore.save(nil); return }
+        walkResumeStore.save(WalkResumeRecord(progress: progress,
+            completionSummary: progress.phase == .complete ? tourSummary : nil))
     }
 
     // MARK: Location pipeline
@@ -320,7 +348,7 @@ final class TourViewModel {
         case .location(let sample):
             guard sample.coordinate.isValid, StopActivationPolicy.isFresh(sample.timestamp),
                   userLocation.map({ sample.timestamp >= $0.timestamp }) ?? true else { return }
-            if let previous = userLocation, progress.phase == .inProgress,
+            if let previous = userLocation, isWalkingActive,
                sample.horizontalAccuracy >= 0, sample.horizontalAccuracy <= TourViewModel.poorAccuracyThreshold,
                previous.horizontalAccuracy >= 0, previous.horizontalAccuracy <= TourViewModel.poorAccuracyThreshold {
                 let moved = GeoMath.distance(from: previous.coordinate, to: sample.coordinate)
@@ -381,4 +409,34 @@ extension TourViewModel.LoadState {
         if case .failed = self { return true }
         return false
     }
+}
+
+
+@MainActor
+protocol WalkResumeStore: AnyObject {
+    func load() -> WalkResumeRecord?
+    func save(_ record: WalkResumeRecord?)
+}
+
+@MainActor
+final class LocalWalkResumeStore: WalkResumeStore {
+    private let defaults: UserDefaults
+    private let key = "cranford.walk-resume.v1"
+    init(defaults: UserDefaults = .standard) { self.defaults = defaults }
+    func load() -> WalkResumeRecord? {
+        guard let data = defaults.data(forKey: key) else { return nil }
+        return try? JSONDecoder().decode(WalkResumeRecord.self, from: data)
+    }
+    func save(_ record: WalkResumeRecord?) {
+        guard let record else { defaults.removeObject(forKey: key); return }
+        guard let data = try? JSONEncoder().encode(record) else { return }
+        defaults.set(data, forKey: key)
+    }
+}
+
+@MainActor
+final class InMemoryWalkResumeStore: WalkResumeStore {
+    private var record: WalkResumeRecord?
+    func load() -> WalkResumeRecord? { record }
+    func save(_ record: WalkResumeRecord?) { self.record = record }
 }

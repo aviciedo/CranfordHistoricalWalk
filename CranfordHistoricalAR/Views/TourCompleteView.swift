@@ -5,6 +5,7 @@ import TourCore
 /// Figures come from the tour's routed legs and recorded movement — nothing is hard-coded.
 struct TourCompleteView: View {
     @Environment(TourViewModel.self) private var tour
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         let figures = tour.completionFigures
@@ -67,7 +68,7 @@ struct TourCompleteView: View {
                     }
 
                     VStack(spacing: 12) {
-                        Button(action: tour.leaveTour) {
+                        Button { dismiss() } label: {
                             Text("Done")
                                 .font(.headline)
                                 .frame(maxWidth: .infinity)
@@ -76,7 +77,11 @@ struct TourCompleteView: View {
                         .buttonStyle(.borderedProminent)
                         .tint(AppTheme.heritageGreen)
 
-                        Button(action: tour.resetTour) {
+                        Button {
+                            tour.resetTour()
+                            tour.startTour()
+                            dismiss()
+                        } label: {
                             Text("Walk it again")
                                 .font(.subheadline.weight(.semibold))
                                 .frame(maxWidth: .infinity)

@@ -47,7 +47,8 @@ extension TourViewModel {
 
     /// Aggregate figures for the header / completion screen (spec §12).
     var tourSummary: TourSummary {
-        TourSummary.make(stops: stops, legs: summaryLegs())
+        if phase == .complete, let restoredCompletionSummary { return restoredCompletionSummary }
+        return TourSummary.make(stops: stops, legs: summaryLegs())
     }
 
     /// Figures for the TOUR COMPLETE screen (spec §12). Distance prefers what was actually measured
@@ -86,7 +87,7 @@ extension TourViewModel {
 
     /// Called by the location pipeline on every accepted sample.
     func handleLocationForRouting(_ sample: LocationSample) {
-        guard progress.phase == .inProgress, let destination = currentStop?.coordinate else { return }
+        guard isWalkingActive, let destination = currentStop?.coordinate else { return }
         if let route = currentRoute {
             routeProgress = RouteProgressCalculator.progress(along: route, userLocation: sample.coordinate)
         }
@@ -95,7 +96,7 @@ extension TourViewModel {
 
     /// Re-evaluates the refresh policy; call after the destination changes too.
     func evaluateRouteRefresh(userLocation: GeoCoordinate? = nil, destination: GeoCoordinate? = nil) {
-        guard progress.phase == .inProgress else { return }
+        guard isWalkingActive else { return }
         guard let user = userLocation ?? self.userLocation?.coordinate,
               let dest = destination ?? currentStop?.coordinate else { return }
         guard routingTask == nil else { return }

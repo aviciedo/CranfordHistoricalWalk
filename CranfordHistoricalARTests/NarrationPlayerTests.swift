@@ -1,6 +1,8 @@
-import AVFoundation
+import Foundation
 import TourCore
 import XCTest
+#if canImport(CranfordHistoricalAR)
+import AVFoundation
 @testable import CranfordHistoricalAR
 
 @MainActor
@@ -21,6 +23,7 @@ final class NarrationPlayerTests: XCTestCase {
         player.play()
         try await waitForAudio { player.status == .finished }
         XCTAssertEqual(tour.currentStop?.id, park.id)
+        XCTAssertNil(player.resumableStoryID, "A completed recording must not be offered as unfinished")
         XCTAssertNotNil(tour.activities[mill.id].listenedAt)
         XCTAssertFalse(tour.activities[park.id].learningCompleted)
         XCTAssertNil(tour.activities[mill.id].visitedAt)
@@ -41,6 +44,68 @@ final class NarrationPlayerTests: XCTestCase {
         try await waitForAudio { player.canSeek && abs(player.elapsed - 42) < 1 }
         XCTAssertEqual(player.elapsed, 42, accuracy: 1)
         XCTAssertFalse(player.isPlaying, "Returning to a recording must not autoplay")
+    }
+
+    func testSavedRecordingRestoresMetadataWithoutPreparingOrAutoplaying() async throws {
+        let store = InMemoryNarrationResumeStore()
+        let stop = HistoricalStop.previewStops[0]
+        let first = NarrationPlayer(resumeStore: store)
+        XCTAssertTrue(first.prepare(stop))
+        try await waitForAudio { first.canSeek }
+        first.seek(to: 42)
+        first.pause()
+        first.checkpointPlayback()
+
+        let restored = NarrationPlayer(resumeStore: store)
+        defer { first.stop(); restored.stop() }
+        XCTAssertEqual(restored.resumableStoryID, stop.id)
+        XCTAssertEqual(restored.resumableElapsed, 42, accuracy: 0.1)
+        XCTAssertTrue(restored.hasSavedResume(for: stop))
+        XCTAssertNil(restored.stopID, "Restoring metadata must not even prepare AVPlayer")
+        XCTAssertNil(restored.kind)
+        XCTAssertEqual(restored.status, .idle)
+        XCTAssertFalse(restored.hasStartedPlayback)
+        XCTAssertFalse(restored.isPlaying)
+        XCTAssertTrue(restored.prepare(stop))
+        try await waitForAudio { restored.canSeek && abs(restored.elapsed - 42) < 1 }
+        XCTAssertFalse(restored.isPlaying)
+    }
+
+    func testExplicitSavedStoryResumeStartsAtSavedRecordingPosition() async throws {
+        let store = InMemoryNarrationResumeStore()
+        let stop = HistoricalStop.previewStops[0]
+        let first = NarrationPlayer(resumeStore: store)
+        XCTAssertTrue(first.prepare(stop))
+        try await waitForAudio { first.canSeek }
+        first.seek(to: 42)
+        first.pause()
+        let restored = NarrationPlayer(resumeStore: store)
+        defer { first.stop(); restored.stop() }
+        restored.resumeSavedStory(stop)
+        try await waitForAudio { restored.isPlaying && restored.elapsed >= 41 }
+        XCTAssertEqual(restored.stopID, stop.id)
+        XCTAssertTrue(restored.hasStartedPlayback)
+    }
+
+    func testChangedRecordingSourceRejectsPreviousBookmark() async throws {
+        let store = InMemoryNarrationResumeStore()
+        var stop = HistoricalStop.previewStops[0]
+        stop.id = "resume-source-version"
+        stop.audioURL = URL(string: "stop_01_droeschers_mill.mp3")
+        let first = NarrationPlayer(resumeStore: store)
+        XCTAssertTrue(first.prepare(stop))
+        try await waitForAudio { first.canSeek }
+        first.seek(to: 42)
+        first.pause()
+        stop.audioURL = URL(string: "stop_02_greystone.mp3")
+        let restored = NarrationPlayer(resumeStore: store)
+        defer { first.stop(); restored.stop() }
+        XCTAssertFalse(restored.hasSavedResume(for: stop))
+        XCTAssertTrue(restored.prepare(stop))
+        try await waitForAudio { restored.canSeek }
+        XCTAssertEqual(restored.elapsed, 0, accuracy: 0.1)
+        XCTAssertNil(restored.resumableStoryID)
+        XCTAssertFalse(restored.isPlaying)
     }
 
     private func waitForAudio(_ predicate: @escaping @MainActor () -> Bool) async throws {
@@ -165,5 +230,47 @@ final class NarrationPlayerTests: XCTestCase {
         XCTAssertLessThan(utterance.rate, AVSpeechUtteranceDefaultSpeechRate)
         XCTAssertGreaterThan(utterance.rate, AVSpeechUtteranceMinimumSpeechRate)
         XCTAssertEqual(utterance.pitchMultiplier, 0.98, accuracy: 0.001)
+    }
+}
+
+#else
+@testable import ActivityModelHarness
+#endif
+
+/// Foundation-only tests also run in the portable activity harness.
+@MainActor
+final class NarrationResumeStoreTests: XCTestCase {
+    func testDurableResumeRoundTripsIndependentStoryBookmarks() async throws {
+        let suite = "cranford.audio-resume.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let state = NarrationResumeState(lastStoryID: "mill", bookmarks: [
+            "mill": NarrationBookmark(sourceID: "release-one", elapsed: 84),
+            "park": NarrationBookmark(sourceID: "release-two", elapsed: 21)
+        ])
+        LocalNarrationResumeStore(defaults: defaults).save(state)
+        XCTAssertEqual(LocalNarrationResumeStore(defaults: defaults).load(), state)
+        XCTAssertEqual(LocalStopActivityStore(defaults: defaults).load(), StopActivityLedger(), "A bookmark must never create learning or visit evidence")
+    }
+
+    func testCorruptStoredResumeDoesNotPreventAppStartup() async throws {
+        let suite = "cranford.audio-resume.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(Data("not-json".utf8), forKey: "cranford.narration-resume.v1")
+        XCTAssertEqual(LocalNarrationResumeStore(defaults: defaults).load(), NarrationResumeState())
+    }
+
+    func testInvalidPositionsAndUnknownLastStoryAreRejected() async {
+        let store = InMemoryNarrationResumeStore()
+        store.save(NarrationResumeState(lastStoryID: "invalid", bookmarks: [
+            "invalid": NarrationBookmark(sourceID: "source", elapsed: .nan),
+            "negative": NarrationBookmark(sourceID: "source", elapsed: -5),
+            "infinite": NarrationBookmark(sourceID: "source", elapsed: .infinity),
+            "no-source": NarrationBookmark(sourceID: "", elapsed: 5),
+            "valid": NarrationBookmark(sourceID: "source", elapsed: 0)
+        ]))
+        XCTAssertNil(store.load().lastStoryID)
+        XCTAssertEqual(store.load().bookmarks, ["valid": NarrationBookmark(sourceID: "source", elapsed: 0)])
     }
 }

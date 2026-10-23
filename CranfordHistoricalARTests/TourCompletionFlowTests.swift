@@ -21,6 +21,130 @@ final class TourCompletionFlowTests: XCTestCase {
     }
     private func cleanUp(_ model: TourViewModel) { model.stopLocation(); model.cancelRouting() }
 
+    func testRestoredWalkIsPausedAndBrowsingDoesNotRequestPermissions() async {
+        let storage = InMemoryWalkResumeStore()
+        let first = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),
+            locationService: ActivityTestLocationService(), directionsService: PreviewDirectionsService(),
+            walkResumeStore: storage)
+        await first.loadStopsIfNeeded()
+        first.startTour()
+        first.completeCurrentStopAndAdvance()
+        cleanUp(first)
+
+        let source = ActivityTestLocationService(status: .notDetermined)
+        let restored = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),
+            locationService: source, directionsService: PreviewDirectionsService(), walkResumeStore: storage)
+        await restored.loadStopsIfNeeded()
+        defer { cleanUp(restored) }
+        XCTAssertEqual(restored.currentStop?.id, stops[1].id)
+        XCTAssertEqual(restored.phase, .inProgress)
+        XCTAssertTrue(restored.isWalkPaused)
+        XCTAssertFalse(restored.isWalkingActive)
+        XCTAssertFalse(restored.canContinueCurrentStop)
+        XCTAssertFalse(restored.isShowingTour)
+        XCTAssertNil(restored.userLocation)
+        XCTAssertNil(restored.routingTask)
+        restored.openStory(for: stops[0].id)
+        let map = MapViewModel()
+        map.show(stop: stops[0])
+        XCTAssertEqual(map.viewedStopID, stops[0].id)
+        XCTAssertEqual(restored.currentStop?.id, stops[1].id)
+        XCTAssertTrue(restored.preparePlaqueScanner(stopID: stops[1].id))
+        restored.endARDiscoverySession()
+        XCTAssertTrue(restored.isWalkPaused)
+        XCTAssertEqual(source.permissionRequests, 0)
+        XCTAssertEqual(source.startRequests, 0)
+        restored.startTour()
+        XCTAssertEqual(source.permissionRequests, 1)
+        XCTAssertFalse(restored.isWalkPaused)
+        XCTAssertEqual(restored.currentStop?.id, stops[1].id)
+        XCTAssertFalse(restored.activities[stops[0].id].learningCompleted)
+    }
+
+    func testCompletedWalkCanFocusAnyStopWithoutRestartOrPermission() async {
+        let storage = InMemoryWalkResumeStore()
+        let first = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),
+            locationService: ActivityTestLocationService(), directionsService: PreviewDirectionsService(),
+            walkResumeStore: storage)
+        await first.loadStopsIfNeeded()
+        first.startTour()
+        for _ in stops { first.completeCurrentStopAndAdvance() }
+        cleanUp(first)
+        let savedFigures = first.completionFigures
+        let source = ActivityTestLocationService(status: .notDetermined)
+        let restored = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),
+            locationService: source, directionsService: PreviewDirectionsService(), walkResumeStore: storage)
+        await restored.loadStopsIfNeeded()
+        defer { cleanUp(restored) }
+        let map = MapViewModel()
+        for stop in stops {
+            map.show(stop: stop)
+            XCTAssertEqual(map.viewedStopID, stop.id)
+            guard case .follow(let coordinate, _) = map.cameraRequest?.kind else {
+                XCTFail("Show on map should focus the requested site"); return
+            }
+            XCTAssertEqual(coordinate.latitude, stop.latitude)
+            XCTAssertEqual(coordinate.longitude, stop.longitude)
+        }
+        XCTAssertEqual(restored.phase, .complete)
+        XCTAssertEqual(restored.completionFigures.walkingSeconds, savedFigures.walkingSeconds)
+        XCTAssertEqual(restored.completionFigures.distanceMeters, savedFigures.distanceMeters)
+        XCTAssertFalse(restored.prepareForARFromDetails(), "Completed AR must not restart a walk")
+        XCTAssertEqual(restored.phase, .complete)
+        XCTAssertEqual(source.permissionRequests, 0)
+        XCTAssertEqual(source.startRequests, 0)
+    }
+
+    func testViewedPlaceAndWalkingDestinationRemainSeparate() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.startTour()
+        tour.completeCurrentStopAndAdvance()
+        let map = MapViewModel()
+        map.show(stop: stops[0])
+        map.select(stopID: nil)
+        XCTAssertEqual(map.viewedStopID, stops[0].id)
+        XCTAssertEqual(tour.currentStop?.id, stops[1].id)
+        map.clearViewedStop()
+        XCTAssertNil(map.viewedStopID)
+        XCTAssertEqual(tour.currentStop?.id, stops[1].id)
+    }
+
+    func testWalkResumeLocalStoreSurvivesNewStoreAndHandlesCorruption() async throws {
+        let suite = "cranford.walk-resume.test.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let storage = LocalWalkResumeStore(defaults: defaults)
+        let first = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),
+            locationService: ActivityTestLocationService(), directionsService: PreviewDirectionsService(),
+            walkResumeStore: storage)
+        await first.loadStopsIfNeeded()
+        first.startTour()
+        first.completeCurrentStopAndAdvance()
+        cleanUp(first)
+        let reopened = LocalWalkResumeStore(defaults: defaults)
+        XCTAssertEqual(reopened.load()?.progress.currentStopID, stops[1].id)
+        defaults.set(Data("invalid".utf8), forKey: "cranford.walk-resume.v1")
+        XCTAssertNil(reopened.load())
+        reopened.save(nil)
+        XCTAssertNil(defaults.data(forKey: "cranford.walk-resume.v1"))
+    }
+
+    func testChangedCatalogRejectsSavedWalkingDestinationWithoutPrompting() async {
+        let storage = InMemoryWalkResumeStore()
+        var progress = TourProgress(stopIDs: ["removed-stop"])
+        progress.start()
+        storage.save(WalkResumeRecord(progress: progress))
+        let source = ActivityTestLocationService(status: .notDetermined)
+        let tour = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),
+            locationService: source, directionsService: PreviewDirectionsService(), walkResumeStore: storage)
+        await tour.loadStopsIfNeeded()
+        defer { cleanUp(tour) }
+        XCTAssertEqual(tour.phase, .notStarted)
+        XCTAssertNil(tour.currentStop)
+        XCTAssertNil(storage.load())
+        XCTAssertEqual(source.permissionRequests, 0)
+    }
+
     func testEntireWalkNeedsOnlyGPSAndExplicitContinue() async throws {
         let source = ActivityTestLocationService(status: .authorized)
         let tour = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),

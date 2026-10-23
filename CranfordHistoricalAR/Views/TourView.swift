@@ -15,48 +15,65 @@ struct TourView: View {
     @State private var detailStop: HistoricalStop?
 
     var body: some View {
-        Group {
+        VStack(spacing: 0) {
+            header
             if tour.phase == .complete {
-                TourCompleteView()
-            } else {
-                VStack(spacing: 0) {
-                    header
-                    if typeSize.isAccessibilitySize {
-                        ScrollView {
-                            map.frame(height: 220)
-                            destination
-                        }
-                    } else {
-                        map.frame(maxHeight: .infinity)
-                        destination.fixedSize(horizontal: false, vertical: true)
+                Button { isShowingSummary = true } label: {
+                    HStack {
+                        Label("Walk complete", systemImage: "checkmark.circle")
+                        Spacer()
+                        Text("View summary")
+                        Image(systemName: "chevron.right").font(.caption)
                     }
+                    .font(.subheadline).frame(minHeight: 44)
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain).padding(.horizontal, 22)
+            }
+            if typeSize.isAccessibilitySize {
+                ScrollView {
+                    map.frame(height: 260)
+                    destination
+                }
+            } else {
+                map.frame(maxHeight: .infinity)
+                destination.fixedSize(horizontal: false, vertical: true)
             }
         }
         .background(AppTheme.parchment).foregroundStyle(AppTheme.ink)
         .sheet(item: $detailStop) { HistoricalSignSheet(stop: $0) }
         .sheet(isPresented: $isShowingSummary) {
             NavigationStack {
-                VStack(alignment: .leading, spacing: 24) {
-                    if tour.phase == .inProgress {
-                        TourHeaderView()
+                Group {
+                    if tour.phase == .complete {
+                        TourCompleteView()
                     } else {
-                        Text("\(tour.stops.count) historical stops")
-                            .font(.system(.title2, design: .serif))
+                        VStack(alignment: .leading, spacing: 24) {
+                            if tour.phase == .inProgress { TourHeaderView() }
+                            else {
+                                Text("\(tour.stops.count) historical stops")
+                                    .font(.system(.title2, design: .serif))
+                            }
+                            Button("Show the whole route") {
+                                mapModel.requestOverview()
+                                isShowingSummary = false
+                            }
+                            .frame(minHeight: 44)
+                            Spacer()
+                        }
+                        .padding(24).background(AppTheme.parchment)
                     }
-                    Button("Show the whole route") { mapModel.requestOverview(); isShowingSummary = false }
-                        .frame(minHeight: 44)
-                    Spacer()
                 }
-                .padding(24).background(AppTheme.parchment)
-                .navigationTitle("Your walk").navigationBarTitleDisplayMode(.inline)
+                .navigationTitle(tour.phase == .complete ? "Walk summary" : "Your walk")
+                .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("Done") { isShowingSummary = false }
+                        Button("Back") { isShowingSummary = false }
                     }
                 }
             }
         }
+
         #if DEVELOPER_MENU
         .sheet(isPresented: $isShowingDeveloperControls) { DeveloperControlsView() }
         #endif
@@ -71,7 +88,7 @@ struct TourView: View {
             dependencies.imageLoader.prefetch([tour.currentStop, tour.nextStop].compactMap { $0 })
         }
         .task {
-            if tour.phase == .inProgress { tour.startLocationIfPossible() }
+            if tour.isWalkingActive { tour.startLocationIfPossible() }
             focusRequestedStop()
             dependencies.imageLoader.prefetch([tour.currentStop, tour.nextStop].compactMap { $0 })
         }
@@ -79,15 +96,18 @@ struct TourView: View {
 
     private var header: some View {
         HStack {
-            Text("Your walk").font(.system(.largeTitle, design: .serif).weight(.semibold))
+            Text("Map").font(.system(.largeTitle, design: .serif).weight(.semibold))
                 .modifier(WalkDebugGesture(isPresented: $isShowingDeveloperControls))
             Spacer()
-            Button { isShowingSummary = true } label: {
-                Text(tour.currentStop.map { "\($0.order) of \(tour.stops.count)" } ?? "\(tour.stops.count) stops")
-                    .font(.subheadline.weight(.medium)).frame(minWidth: 44, minHeight: 44)
+            if tour.phase != .complete {
+                Button { isShowingSummary = true } label: {
+                    Text(tour.currentStop.map { "\($0.order) of \(tour.stops.count)" } ?? "\(tour.stops.count) stops")
+                        .font(.subheadline.weight(.medium)).frame(minWidth: 44, minHeight: 44)
+                }
+                .buttonStyle(.plain).foregroundStyle(AppTheme.secondaryInk)
+                .accessibilityLabel("Tour summary")
             }
-            .buttonStyle(.plain).foregroundStyle(AppTheme.secondaryInk)
-            .accessibilityLabel("Tour summary")
+
         }
         .padding(.horizontal, 22).padding(.vertical, 12)
     }
@@ -99,9 +119,26 @@ struct TourView: View {
 
     @ViewBuilder
     private var destination: some View {
+        if let viewed = mapModel.viewedStopID.flatMap(tour.stop(withID:)) {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Viewing").font(.caption).foregroundStyle(AppTheme.secondaryInk)
+                    Text(viewed.name).font(.system(.headline, design: .serif))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+                Button("View stop") { detailStop = viewed }.frame(minHeight: 44)
+                Button { mapModel.clearViewedStop() } label: {
+                    Image(systemName: "xmark").frame(width: 44, height: 44)
+                }
+                .accessibilityLabel("Clear viewed place")
+            }
+            .buttonStyle(.plain).padding(.horizontal, 22).padding(.vertical, 8)
+            if tour.phase == .inProgress { Divider() }
+        }
         if tour.phase == .inProgress {
             NextStopCard(onDetails: { detailStop = tour.currentStop })
-        } else {
+        } else if tour.phase == .notStarted && mapModel.viewedStopID == nil {
             Button {
                 tour.startTour()
                 navigation.selectedTab = .map

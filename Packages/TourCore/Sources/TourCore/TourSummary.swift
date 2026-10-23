@@ -2,7 +2,7 @@ import Foundation
 
 /// Aggregate figures for the "HISTORICAL WALK / 7 STOPS / 2.1 MILES / ~42 MINUTES" header and
 /// the "TOUR COMPLETE" screen (spec §12). Always computed from real `WalkingRoute` legs.
-public struct TourSummary: Sendable, Equatable {
+public struct TourSummary: Sendable, Equatable, Codable {
     public var stopCount: Int
     public var totalDistanceMeters: Double
     public var totalWalkingSeconds: TimeInterval

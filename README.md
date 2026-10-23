@@ -1046,3 +1046,44 @@ checks. The added flows cover camera-only Greystone discovery before starting a 
 supported plaque during a walk, completed-walk preservation, retry/return persistence and
 unsupported stops. Actual camera permissions, image recognition, AR placement and native
 layout still require Mac/iPhone validation; Linux checks do not execute ARKit or SwiftUI.
+
+## Persistent Map and independent relaunch resume — 0.2.0 (21)
+
+Map is now rendered in every walking phase. Completed walks show a quiet Walk complete /
+View summary row, and the full summary opens separately. Closing it returns to Map. Showing
+any stop on Map retains a Viewing [place] panel, while an active itinerary independently says
+Walking to [destination]. Viewing never changes the itinerary. Geographic recenter/route
+framing clears the viewed-place panel. After completion the optional AR walking button remains
+disabled; it cannot silently restart a walk. Home or the summary's explicit Walk it again
+action can start a new itinerary. Existing GPS/route controls remain available.
+
+The live composition root injects separate local audio and walk stores. WalkResumeRecord
+keeps the ordered itinerary, destination, actual visit markers, distance and completed summary.
+Compatible incomplete walks load paused with no location subscription, routing request or
+permission prompt. Map and Home do not restart location for that paused state. Resume walk
+or Home's Continue your walk explicitly starts location and routes to the saved destination.
+Catalog/order changes, corrupt records and unsupported versions safely discard the itinerary
+record without deleting independent learning, visit or bonus accomplishments.
+
+Recorded-story bookmarks include recording identity and position, independently of walking.
+They checkpoint every five seconds while playing, plus seek/pause/source-switch/completion
+and app lifecycle transitions. Relaunch loads metadata only, without preparing AVPlayer or
+activating audio. A quiet Home Resume [story] / Paused at [time] row appears for a valid saved
+recording; tapping it explicitly prepares, seeks, then plays. The normal compact player takes
+over after playback starts, so there is no duplicate resume transport. Changed produced-audio
+SHA256 identities invalidate old positions; completed recordings leave the unfinished-story
+offer. Restoring or retrying never manufactures story completion. Exact durable seek applies
+to recorded audio (including both approved narrations), not future synthesized speech.
+
+Only the two selected audit recommendations were implemented; content-readiness labeling was
+not changed. The original geographic providers, approved illustrations, narration files,
+manual photos, Listen / Read and optional plaque scanner are retained. Developer reset also
+writes the new walk state; it does not clear the separate audio bookmark or learning/bonus data.
+
+Validation: 172 TourCore tests and 36 portable actual-model/store/provider tests passed,
+including fresh-model paused restoration, completed-map focus for every stop, disabled
+completed-walk AR entry, separate viewing/walking contexts, persistent-store corruption and
+changed catalogs. The portable suite runs three actual Foundation audio-store tests. Native
+AVFoundation tests were added for metadata-only restoration, explicit resume and changed
+recording identity; these remain unrun on Linux. Debug/Release Swift syntax passed. Native
+Xcode compilation, AVPlayer seeking, location/camera prompts and layout require Mac/iPhone QA.

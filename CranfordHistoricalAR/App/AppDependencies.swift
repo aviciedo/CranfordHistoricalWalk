@@ -47,8 +47,8 @@ final class AppDependencies {
         let stopService = BundledJSONHistoricalStopService()
         let locationService = CoreLocationService()
         let directionsService = DirectionsServiceFactory.make(configuration: configuration)
-        let tour = TourViewModel(stopService: stopService, locationService: locationService, directionsService: directionsService, visitStore: LocalStopVisitStore(), activityStore: LocalStopActivityStore())
-        let dependencies = AppDependencies(configuration: configuration, stopService: stopService, locationService: locationService, directionsService: directionsService, imageLoader: CompositeImageLoader(), narrationPlayer: NarrationPlayer(), tourViewModel: tour)
+        let tour = TourViewModel(stopService: stopService, locationService: locationService, directionsService: directionsService, visitStore: LocalStopVisitStore(), activityStore: LocalStopActivityStore(), walkResumeStore: LocalWalkResumeStore())
+        let dependencies = AppDependencies(configuration: configuration, stopService: stopService, locationService: locationService, directionsService: directionsService, imageLoader: CompositeImageLoader(), narrationPlayer: NarrationPlayer(resumeStore: LocalNarrationResumeStore()), tourViewModel: tour)
         dependencies.installDeveloperMode()
         return dependencies
     }

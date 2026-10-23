@@ -23,7 +23,7 @@ struct TourMapView: View {
                     onUserGesture: { mapModel.userDidMoveCamera() },
                     onMarkerTap: { mapModel.select(stopID: $0) },
                     markerStyle: .numberedDot,
-                    selectedStopID: mapModel.selectedStopID,
+                    selectedStopID: mapModel.viewedStopID,
                     showsCompass: false,
                     keepsLandmarksVisible: true,
                     fitInsets: UIEdgeInsets(top: 28, left: 30, bottom: 30, right: 74)
@@ -45,7 +45,7 @@ struct TourMapView: View {
                     .padding(.horizontal, 12).padding(.top, tour.locationIssue == nil ? 8 : 110)
                     .allowsHitTesting(false)
             }
-            if let issue = tour.locationIssue {
+            if let issue = tour.locationIssue, !tour.isWalkPaused {
                 LocationIssueBanner(issue: issue)
                     .padding(.top, 8).padding(.trailing, 12)
                     .transition(.move(edge: .top).combined(with: .opacity))
@@ -99,10 +99,10 @@ struct MapControlStack: View {
                 .frame(width: 48, height: 48).background(.white, in: Circle())
                 .shadow(color: .black.opacity(0.12), radius: 5, y: 3)
             }
-            .disabled(tour.loadState != .loaded)
-            .opacity(tour.loadState == .loaded ? 1 : 0.45)
+            .disabled(tour.loadState != .loaded || tour.phase == .complete)
+            .opacity(tour.loadState == .loaded && tour.phase != .complete ? 1 : 0.45)
             .accessibilityLabel("AR walking directions")
-            .accessibilityHint("Opens optional camera guidance to \(tour.currentStop?.name ?? tour.stops.first?.name ?? "the next tour stop")")
+            .accessibilityHint(tour.phase == .complete ? "Start another walk to use AR walking directions" : "Opens optional camera guidance to \(tour.currentStop?.name ?? tour.stops.first?.name ?? "the next tour stop")")
             .accessibilityIdentifier("map.enterAR")
         }
         .font(.system(size: 19, weight: .medium))

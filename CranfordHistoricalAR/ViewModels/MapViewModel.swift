@@ -76,6 +76,7 @@ final class MapViewModel {
     private(set) var cameraMode: CameraMode = .overview
     private(set) var cameraRequest: MapCameraRequest?
     private(set) var selectedStopID: String?
+    private(set) var viewedStopID: String?
     /// Last settled zoom level reported by the map; `nil` until the first idle callback.
     private(set) var zoom: Float?
     private var requestCounter = 0
@@ -118,16 +119,19 @@ final class MapViewModel {
 
     /// Centers a browsed stop without changing the tour's current destination.
     func show(stop: HistoricalStop) {
+        viewedStopID = stop.id
         cameraMode = .free
         push(.follow(stop.clLocationCoordinate, bearing: nil), animated: true)
     }
 
     func requestOverview(animated: Bool = true) {
+        viewedStopID = nil
         cameraMode = .overview
         push(.fitAll, animated: animated)
     }
 
     func requestFollow(tour: TourViewModel) {
+        viewedStopID = nil
         cameraMode = .follow
         lastFollowedCoordinate = nil
         followIfNeeded(tour: tour, force: true)
@@ -143,6 +147,7 @@ final class MapViewModel {
     }
 
     func showUserAndDestination(tour: TourViewModel) {
+        viewedStopID = nil
         guard let user = tour.userLocation, let stop = tour.currentStop else { return requestOverview() }
         cameraMode = .free
         push(.fitUserAndDestination(user.clLocationCoordinate, stop.clLocationCoordinate), animated: true)
@@ -155,7 +160,10 @@ final class MapViewModel {
 
     func select(stopID: String?) {
         selectedStopID = stopID
+        if let stopID { viewedStopID = stopID }
     }
+
+    func clearViewedStop() { viewedStopID = nil }
 
     /// Toggle semantics for dot markers: tapping the selected stop again deselects it.
     func toggleSelection(stopID: String) {

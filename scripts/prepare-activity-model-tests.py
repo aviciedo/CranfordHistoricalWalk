@@ -21,7 +21,7 @@ let package = Package(name: "ActivityModelHarness", platforms: [.macOS(.v14)],
  .testTarget(name: "ActivityModelHarnessTests", dependencies: ["ActivityModelHarness", .product(name: "TourCore", package: "TourCore")])])
 ''')
 for relative in ['ViewModels/TourViewModel.swift', 'ViewModels/TourViewModel+Proximity.swift',
-                 'ViewModels/TourViewModel+Routing.swift', 'Services/StopVisitStore.swift',
+                 'ViewModels/TourViewModel+Routing.swift', 'ViewModels/MapViewModel.swift', 'Services/StopVisitStore.swift',
                  'Services/SimulatedLocationService.swift', 'App/AppNavigation.swift']:
     text = (root / 'CranfordHistoricalAR' / relative).read_text().replace('import CoreLocation\n', '')
     (src / Path(relative).name).write_text(text)
@@ -50,6 +50,7 @@ enum DirectionsError: LocalizedError {
  var errorDescription: String? { "Directions unavailable in portable tests" }
 }
 extension GeoCoordinate { var clLocationCoordinate: GeoCoordinate { self } }
+extension HistoricalStop { var clLocationCoordinate: GeoCoordinate { coordinate } }
 protocol HistoricalStopService: Sendable { func loadTour() async throws -> HistoricalTourDocument }
 struct InMemoryHistoricalStopService: HistoricalStopService {
  let stops: [HistoricalStop]
@@ -71,4 +72,5 @@ routing = (root / 'CranfordHistoricalAR/Services/DirectionsService.swift').read_
 fallback = routing[routing.index('struct FallbackWalkingDirectionsService:'):routing.index('// MARK: - Factory')]
 (src / 'FallbackWalkingDirectionsService.swift').write_text('import Foundation\nimport TourCore\n' + fallback)
 (tests / 'TourCompletionFlowTests.swift').write_text((root / 'CranfordHistoricalARTests/TourCompletionFlowTests.swift').read_text())
+(tests / 'NarrationPlayerTests.swift').write_text((root / 'CranfordHistoricalARTests/NarrationPlayerTests.swift').read_text())
 print(out)

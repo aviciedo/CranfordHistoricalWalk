@@ -3,6 +3,7 @@ import TourCore
 
 struct HomeView: View {
     @Environment(TourViewModel.self) private var tour
+    @Environment(AppDependencies.self) private var dependencies
     @Environment(AppNavigation.self) private var navigation
     @State private var isShowingDeveloperControls = false
     @State private var scrollBaseline: CGFloat?
@@ -32,6 +33,26 @@ struct HomeView: View {
                     .font(.subheadline.weight(.medium))
                     .accessibilityHint("Opens testing tools and live GPS coordinates")
                     #endif
+                    if let stop = resumableStory {
+                        Button { dependencies.narrationPlayer.resumeSavedStory(stop) } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: "play.circle").font(.system(size: 38))
+                                    .foregroundStyle(AppTheme.terracotta)
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text("Resume \(stop.name)").font(.subheadline.weight(.medium))
+                                        .fixedSize(horizontal: false, vertical: true)
+                                    Text("Paused at \(resumeTime)").font(.footnote)
+                                        .foregroundStyle(AppTheme.secondaryInk)
+                                }
+                                Spacer(minLength: 0)
+                                Image(systemName: "chevron.right").font(.caption)
+                            }
+                            .frame(minHeight: 52).contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Resume \(stop.name), paused at \(resumeTime)")
+                        .accessibilityIdentifier("home.resumeStory")
+                    }
                     HomeMapView().frame(height: mapHeight(in: viewport.size.height))
                     HStack {
                         Label("\(tour.stops.count) stops", systemImage: "mappin.and.ellipse")
@@ -40,6 +61,10 @@ struct HomeView: View {
                             .font(.footnote)
                     }
                     .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
+                    if let destination = tour.currentStop {
+                        Text("Next: \(destination.name)").font(.subheadline)
+                            .foregroundStyle(AppTheme.secondaryInk)
+                    }
                     Button {
                         if tour.phase == .complete { tour.resetTour() }
                         tour.startTour()
@@ -92,8 +117,21 @@ struct HomeView: View {
         }
         .background(AppTheme.parchment).foregroundStyle(AppTheme.ink)
         .task {
-            if tour.phase == .inProgress && tour.locationAuthorization == .authorized { tour.startLocationIfPossible() }
+            if tour.isWalkingActive && tour.locationAuthorization == .authorized { tour.startLocationIfPossible() }
         }
+    }
+
+    private var resumableStory: HistoricalStop? {
+        let player = dependencies.narrationPlayer
+        guard !player.hasStartedPlayback, let id = player.resumableStoryID,
+              let stop = tour.stop(withID: id), player.hasSavedResume(for: stop) else { return nil }
+        return stop
+    }
+
+    private var resumeTime: String {
+        let elapsed = dependencies.narrationPlayer.resumableElapsed
+        let seconds = Int(min(max(0, elapsed.isFinite ? elapsed : 0), Double(Int.max / 2)))
+        return String(format: "%d:%02d", seconds / 60, seconds % 60)
     }
 
     private func mapHeight(in availableHeight: CGFloat) -> CGFloat {
@@ -105,7 +143,7 @@ struct HomeView: View {
         #else
         let reserved = homeContentReserve
         #endif
-        return max(220, min(350, availableHeight - reserved))
+        return max(220, min(350, availableHeight - reserved - (resumableStory == nil ? 0 : 76) - (tour.currentStop == nil ? 0 : 28)))
     }
 }
 

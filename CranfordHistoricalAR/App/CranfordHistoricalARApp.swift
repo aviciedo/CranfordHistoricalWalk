@@ -25,6 +25,7 @@ struct RootView: View {
     @Environment(TourViewModel.self) private var tour
     @Environment(AppDependencies.self) private var dependencies
     @State private var navigation = AppNavigation()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         TabView(selection: $navigation.selectedTab) {
@@ -53,6 +54,12 @@ struct RootView: View {
         .tint(AppTheme.accent)
         .onChange(of: tour.isShowingTour) { _, showing in
             navigation.selectedTab = showing ? .map : .home
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase != .active {
+                dependencies.narrationPlayer.checkpointPlayback()
+                tour.checkpointWalk()
+            }
         }
         .task { await tour.loadStopsIfNeeded() }
     }

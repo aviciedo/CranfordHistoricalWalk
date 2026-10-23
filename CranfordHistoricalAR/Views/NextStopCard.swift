@@ -9,6 +9,8 @@ struct NextStopCard: View {
     var body: some View {
         if let current = tour.currentStop {
             VStack(alignment: .leading, spacing: 10) {
+                Text(tour.isWalkPaused ? "Walk paused · Destination" : "Walking to")
+                    .font(.caption).foregroundStyle(AppTheme.secondaryInk)
                 HStack(alignment: .firstTextBaseline, spacing: 12) {
                     Text(current.name)
                         .font(.system(.title3, design: .serif).weight(.semibold))
@@ -19,7 +21,9 @@ struct NextStopCard: View {
                 }
                 // Refresh presence even if the GPS stops emitting; a stale fix is not arrival.
                 TimelineView(.periodic(from: .now, by: 5)) { _ in
-                    if tour.isAtCurrentStopNow {
+                    if tour.isWalkPaused {
+                        Text("Resume when you’re ready.").font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
+                    } else if tour.isAtCurrentStopNow {
                         Label("You’re here", systemImage: "mappin.circle.fill")
                             .font(.subheadline.weight(.medium))
                             .accessibilityIdentifier("map.arrived")
@@ -52,7 +56,12 @@ struct NextStopCard: View {
             }
             .buttonStyle(.plain).font(.subheadline.weight(.semibold))
         }
-        if tour.canContinueCurrentStop {
+        if tour.isWalkPaused {
+            Button { tour.startTour() } label: {
+                Label("Resume walk", systemImage: "figure.walk").frame(minHeight: 44)
+            }
+            .buttonStyle(.plain).font(.subheadline.weight(.semibold))
+        } else if tour.canContinueCurrentStop {
             Button { tour.completeCurrentStopAndAdvance() } label: {
                 Label(tour.nextStop == nil ? "Finish walk" : "Continue to next stop", systemImage: "arrow.right")
                     .frame(minHeight: 44).contentShape(Rectangle())

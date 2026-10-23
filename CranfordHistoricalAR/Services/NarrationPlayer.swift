@@ -23,8 +23,13 @@ final class NarrationPlayer: NSObject {
     }
 
     private(set) var hasStartedPlayback = false
-    @ObservationIgnored private var bookmarks: [String: Double] = [:]
+    @ObservationIgnored private let resumeStore: any NarrationResumeStore
+    private var resumeState: NarrationResumeState
     @ObservationIgnored private var resumeSeconds: Double = 0
+    @ObservationIgnored private var preparedSourceID: String?
+    @ObservationIgnored private var pendingSeekTarget: Double?
+    @ObservationIgnored private var seekGeneration = 0
+    @ObservationIgnored private var lastCheckpointDate = Date.distantPast
     private(set) var stopID: String?
     private(set) var title: String = ""
     private(set) var kind: Kind?
@@ -59,7 +64,13 @@ final class NarrationPlayer: NSObject {
     @ObservationIgnored private var interruptionObserver: NSObjectProtocol?
     @ObservationIgnored private var wasPlayingBeforeInterruption = false
 
-    override init() {
+    override convenience init() {
+        self.init(resumeStore: InMemoryNarrationResumeStore())
+    }
+
+    init(resumeStore: any NarrationResumeStore) {
+        self.resumeStore = resumeStore
+        self.resumeState = resumeStore.load().sanitized()
         super.init()
         synthesizer.delegate = self
         interruptionObserver = NotificationCenter.default.addObserver(
@@ -81,6 +92,54 @@ final class NarrationPlayer: NSObject {
     /// Completion belongs to the recording, independent of the visible screen or route.
     @ObservationIgnored var onCompletion: ((String) -> Void)?
 
+    // Loaded metadata never prepares a player, activates audio, or automatically resumes.
+    var resumableStoryID: String? { resumeState.lastStoryID }
+    var resumableElapsed: Double {
+        resumableStoryID.flatMap { resumeState.bookmarks[$0]?.elapsed } ?? 0
+    }
+
+    func hasSavedResume(for stop: HistoricalStop) -> Bool {
+        guard let sourceID = Self.recordingSourceID(for: stop),
+              let saved = resumeState.bookmarks[stop.id] else { return false }
+        return saved.sourceID == sourceID
+    }
+
+    /// Explicit Home resume action. Both approved recordings support precise position restoration.
+    /// Future synthesized speech is deliberately excluded instead of promising an exact seek.
+    func resumeSavedStory(_ stop: HistoricalStop) {
+        guard hasSavedResume(for: stop), prepare(stop) else { return }
+        play()
+    }
+
+    func checkpointPlayback() {
+        guard kind == .recording, let stopID, let sourceID = preparedSourceID else { return }
+        if status == .finished {
+            resumeState.bookmarks[stopID] = nil
+            if resumeState.lastStoryID == stopID { resumeState.lastStoryID = nil }
+        } else {
+            // A pending seek's intended position wins over transient AVPlayer time zero.
+            let seconds = pendingSeekTarget ?? (resumeSeconds > 0 ? resumeSeconds : elapsed)
+            guard seconds.isFinite, seconds >= 0,
+                  hasStartedPlayback || seconds > 0 || resumeState.bookmarks[stopID] != nil else { return }
+            resumeState.bookmarks[stopID] = NarrationBookmark(sourceID: sourceID, elapsed: seconds)
+            if hasStartedPlayback || seconds > 0 { resumeState.lastStoryID = stopID }
+        }
+        resumeStore.save(resumeState)
+        lastCheckpointDate = Date()
+    }
+
+    private static func recordingSourceID(for stop: HistoricalStop) -> String? {
+        guard let source = ProducedNarrationRelease.source(for: stop) else { return nil }
+        if let recording = ProducedNarrationRelease.recording(for: stop.id) {
+            return "produced:\(recording.audioSHA256)"
+        }
+        switch source {
+        case .bundledAudio(let name): return "bundle:\(name)"
+        case .remoteAudio(let url): return "url:\(url.absoluteString)"
+        case .synthesizedSpeech: return nil
+        }
+    }
+
     // MARK: Loading
 
     /// Prepares narration for `stop`. Only the same stop, source and voice are reused; a change
@@ -93,9 +152,18 @@ final class NarrationPlayer: NSObject {
             // Retry refreshes downloaded voices / failed recordings instead of keeping a failure.
             guard case .failed = status else { return true }
         }
-        if let stopID, elapsed.isFinite { bookmarks[stopID] = status == .finished ? 0 : elapsed }
+        checkpointPlayback()
         tearDown()
-        resumeSeconds = bookmarks[stop.id] ?? 0
+        let sourceID = Self.recordingSourceID(for: stop)
+        preparedSourceID = sourceID
+        if let saved = resumeState.bookmarks[stop.id], saved.sourceID == sourceID {
+            resumeSeconds = saved.elapsed
+        } else {
+            resumeState.bookmarks[stop.id] = nil
+            if resumeState.lastStoryID == stop.id { resumeState.lastStoryID = nil }
+            resumeStore.save(resumeState)
+            resumeSeconds = 0
+        }
         hasStartedPlayback = false
         stopID = stop.id
         title = stop.name
@@ -161,7 +229,7 @@ final class NarrationPlayer: NSObject {
                         self.resumeSeconds = 0
                         self.seek(to: resume)
                     }
-                    if self.pendingPlayWhenReady {
+                    if self.pendingPlayWhenReady && self.pendingSeekTarget == nil {
                         self.player?.play()
                         self.status = .playing
                         self.pendingPlayWhenReady = false
@@ -205,10 +273,15 @@ final class NarrationPlayer: NSObject {
         switch kind {
         case .recording:
             guard let player else { return }
-            if status == .finished { player.seek(to: .zero) }
-            player.play()
-            status = player.currentItem?.status == .readyToPlay ? .playing : .loading
-            if status == .loading { pendingPlayWhenReady = true }
+            if status == .finished { seek(to: 0) }
+            if player.currentItem?.status == .readyToPlay && pendingSeekTarget == nil && resumeSeconds == 0 {
+                player.play()
+                status = .playing
+            } else {
+                status = .loading
+                pendingPlayWhenReady = true
+            }
+            checkpointPlayback()
         case .synthesizedSpeech:
             if synthesizer.isPaused {
                 synthesizer.continueSpeaking()
@@ -249,6 +322,7 @@ final class NarrationPlayer: NSObject {
         case nil:
             break
         }
+        checkpointPlayback()
     }
 
     func togglePlayPause() {
@@ -273,6 +347,14 @@ final class NarrationPlayer: NSObject {
         progress = 0
         speechElapsedBeforePause = 0
         if kind != nil { status = .idle }
+        resumeSeconds = 0
+        pendingSeekTarget = nil
+        seekGeneration += 1
+        if let stopID {
+            resumeState.bookmarks[stopID] = nil
+            if resumeState.lastStoryID == stopID { resumeState.lastStoryID = nil }
+            resumeStore.save(resumeState)
+        }
         deactivateSession()
     }
 
@@ -282,12 +364,32 @@ final class NarrationPlayer: NSObject {
     }
 
     func seek(to seconds: TimeInterval) {
-        guard canSeek, let player else { return }
-        let clamped = max(0, seconds)
+        guard canSeek, let player, seconds.isFinite else { return }
+        let clamped = min(max(0, seconds), duration ?? seconds)
+        resumeSeconds = 0
+        pendingSeekTarget = clamped
+        seekGeneration += 1
+        let generation = seekGeneration
         elapsed = clamped
         if let duration, duration > 0 { progress = clamped / duration }
-        player.seek(to: CMTime(seconds: clamped, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
         if status == .finished { status = .paused }
+        checkpointPlayback()
+        player.seek(to: CMTime(seconds: clamped, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero) { [weak self, weak player] finished in
+            Task { @MainActor [weak self, weak player] in
+                guard let self, let player, self.player === player, self.seekGeneration == generation else { return }
+                self.pendingSeekTarget = nil
+                if finished {
+                    self.elapsed = clamped
+                    if let duration = self.duration, duration > 0 { self.progress = clamped / duration }
+                }
+                if self.pendingPlayWhenReady, player.currentItem?.status == .readyToPlay {
+                    player.play()
+                    self.status = .playing
+                    self.pendingPlayWhenReady = false
+                }
+                self.checkpointPlayback()
+            }
+        }
     }
 
     // MARK: Internals
@@ -326,14 +428,17 @@ final class NarrationPlayer: NSObject {
         return utterance
     }
 
-    private func recordingTimeDidChange(_ seconds: Double) {
+    private func recordingTimeDidChange(_ observedSeconds: Double) {
+        if resumeSeconds > 0 || pendingSeekTarget != nil { return }
+        // A queued pre-seek callback must not replace the just-restored position with zero.
+        let seconds = player?.currentTime().seconds ?? observedSeconds
         guard seconds.isFinite else { return }
-        if resumeSeconds > 0 { return }
         elapsed = seconds
         if duration == nil, let d = player?.currentItem?.duration.seconds, d.isFinite, d > 0 { duration = d }
         if let duration, duration > 0 { progress = min(seconds / duration, 1) }
         if status == .loading, player?.timeControlStatus == .playing { status = .playing; pendingPlayWhenReady = false }
         if status == .paused, player?.timeControlStatus == .playing { status = .playing }
+        if status == .playing, Date().timeIntervalSince(lastCheckpointDate) >= 5 { checkpointPlayback() }
     }
 
     private func recordingDidFinish() {
@@ -341,6 +446,7 @@ final class NarrationPlayer: NSObject {
         status = .finished
         progress = 1
         if let duration { elapsed = duration }
+        checkpointPlayback()
         deactivateSession()
     }
 
@@ -412,7 +518,16 @@ final class NarrationPlayer: NSObject {
     }
 
     private func tearDown() {
-        if kind != nil { stop() }
+        // Source replacement must not erase the outgoing durable bookmark.
+        player?.pause()
+        activeUtterance = nil
+        synthesizer.stopSpeaking(at: .immediate)
+        speechTicker?.cancel()
+        pendingPlayWhenReady = false
+        pendingSeekTarget = nil
+        seekGeneration += 1
+        resumeSeconds = 0
+        if kind != nil { deactivateSession() }
         if let timeObserver, let player { player.removeTimeObserver(timeObserver) }
         timeObserver = nil
         statusObservation = nil
@@ -421,6 +536,7 @@ final class NarrationPlayer: NSObject {
         player = nil
         kind = nil
         preparedSource = nil
+        preparedSourceID = nil
         preparedVoicePreference = nil
         speechVoice = nil
         speechPreference = .systemDefault

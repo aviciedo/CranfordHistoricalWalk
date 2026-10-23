@@ -1,6 +1,6 @@
 Cranford Historical AR — Xcode project
 
-Release 0.2.0 (20) — Separate optional plaque scanner and saved bonus access
+Release 0.2.0 (21) — Persistent Map and independent paused story/walk resume
 
 1. Close the previous Xcode project. Extract the entire ZIP into a fresh folder on the Mac. Keep its folders together.
    Copy your existing Config/Secrets.xcconfig into this new folder’s Config folder.
@@ -10,7 +10,7 @@ Release 0.2.0 (20) — Separate optional plaque scanner and saved bonus access
 5. In Xcode select the blue project icon, then Targets > CranfordHistoricalAR > Signing & Capabilities.
 6. Turn on Automatically manage signing and select your Apple account under Team.
 7. Select your iPhone in the top toolbar. Choose Product > Clean Build Folder, then click Run.
-8. On the iPhone open Home > Developer. Installed build and narration must show 0.2.0 (20), audio release cedar-2.
+8. On the iPhone open Home > Developer. Installed build and narration must show 0.2.0 (21), audio release cedar-2.
    After tapping Play, Prepared audio should say bundledAudio with stop_01 or stop_02, never synthesizedSpeech.
 
 Homebrew and XcodeGen are not needed to open this generated project.
@@ -78,3 +78,19 @@ Build 20 plaque discovery checks:
   without camera permission. Bonus content remains the existing test placeholder.
 - Repeat discovery after finishing a walk: it must not restart the itinerary.
 - Verify actual reference-image recognition and bonus placement outdoors on your iPhone.
+
+Build 21 Map and relaunch checks:
+- Finish the walk: Map remains geographic, with Walk complete / View summary above it.
+- Open Greystone from Stops > Show on map: its location and Viewing label appear without
+  resetting the completed walk. Close the summary to return to Map.
+- AR walking directions remain disabled after completion. Start another walk explicitly
+  from Home or Walk it again in the summary to enable them.
+- While walking to Greystone, show the mill on Map. Viewing the mill and Walking to Greystone
+  are separate labels. Recenter/route framing clear the viewed-place context.
+- Play the mill recording, seek partway through, and leave the app. Relaunch: Home offers
+  Resume Droescher’s Mill / Paused at the saved time, independently of Next: Greystone.
+- Neither recording nor GPS should start merely from relaunch or opening Map/Stops.
+  Resume story starts only audio. Continue your walk / Resume walk starts only walking.
+- Completion summaries and recorded accomplishments survive relaunch. Audio bookmarks are
+  saved about every five seconds and on pause/seek/app lifecycle changes.
+- Verify actual AVPlayer seeking and iPhone appearance; Linux model tests do not run native UI.
