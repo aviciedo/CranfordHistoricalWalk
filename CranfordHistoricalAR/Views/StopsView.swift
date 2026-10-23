@@ -62,7 +62,7 @@ struct StopsContent: View {
                 }
             }
         }
-        .background(AppTheme.parchment).foregroundStyle(AppTheme.ink)
+        .background(AppTheme.ivory.ignoresSafeArea(edges: .top)).foregroundStyle(AppTheme.ink)
         .sheet(item: $detailStop) { HistoricalSignSheet(stop: $0) }
         .onChange(of: navigation.pendingStopReturn) { _, _ in restoreStopReturn() }
         .onAppear { restoreStopReturn() }

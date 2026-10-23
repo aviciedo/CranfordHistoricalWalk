@@ -34,7 +34,7 @@ struct StopDetailView: View {
                 SharedNarrationBar()
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .background(AppTheme.ivory).foregroundStyle(AppTheme.forest)
+            .background(AppTheme.ivory.ignoresSafeArea(edges: .top)).foregroundStyle(AppTheme.forest)
             .toolbar(.hidden, for: .navigationBar)
             .fullScreenCover(isPresented: $isShowingScanner) { PlaqueScannerView(stopID: stop.id) }
             .sheet(isPresented: $isShowingBonus) { OnSiteBonusPreview(stop: stop) }

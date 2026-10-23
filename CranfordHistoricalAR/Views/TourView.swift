@@ -52,7 +52,7 @@ struct TourView: View {
                 .accessibilityIdentifier("map.scrollContent")
             }
         }
-        .background(AppTheme.parchment).foregroundStyle(AppTheme.ink)
+        .background(AppTheme.ivory.ignoresSafeArea(edges: .top)).foregroundStyle(AppTheme.ink)
         .sheet(item: $detailStop) { HistoricalSignSheet(stop: $0) }
         .sheet(isPresented: $isShowingSummary) {
             NavigationStack {

@@ -67,7 +67,7 @@ struct HomeView: View {
                 .padding(.bottom, 16)
             }
         }
-        .background(AppTheme.parchment).foregroundStyle(AppTheme.ink)
+        .background(AppTheme.ivory.ignoresSafeArea(edges: .top)).foregroundStyle(AppTheme.ink)
         .task {
             if tour.isWalkingActive && tour.locationAuthorization == .authorized { tour.startLocationIfPossible() }
         }

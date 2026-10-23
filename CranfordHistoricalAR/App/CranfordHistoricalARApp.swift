@@ -55,6 +55,8 @@ struct RootView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .background(AppTheme.navigationBackground.ignoresSafeArea(edges: .bottom))
         }
+        // Paint the status-bar/notch area without moving content outside its safe area.
+        .background(AppTheme.ivory.ignoresSafeArea())
         .environment(navigation)
         .tint(AppTheme.accent)
         .onChange(of: tour.isShowingTour) { _, showing in
