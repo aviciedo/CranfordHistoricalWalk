@@ -1,6 +1,6 @@
 Cranford Historical AR — Xcode project
 
-Release 0.2.0 (28) — Consistent Back and return-Home navigation
+Release 0.2.0 (29) — Focused animated AR scanning introduction
 
 1. Close the previous Xcode project. Extract the entire ZIP into a fresh folder on the Mac. Keep its folders together.
    Copy your existing Config/Secrets.xcconfig into this new folder’s Config folder.
@@ -10,7 +10,7 @@ Release 0.2.0 (28) — Consistent Back and return-Home navigation
 5. In Xcode select the blue project icon, then Targets > CranfordHistoricalAR > Signing & Capabilities.
 6. Turn on Automatically manage signing and select your Apple account under Team.
 7. Select your iPhone in the top toolbar. Choose Product > Clean Build Folder, then click Run.
-8. On the iPhone open Home > Developer. Installed build and narration must show 0.2.0 (28), audio release cedar-2.
+8. On the iPhone open Home > Developer. Installed build and narration must show 0.2.0 (29), audio release cedar-2.
    After tapping Play, Prepared audio should say bundledAudio with stop_01 or stop_02, never synthesizedSpeech.
 
 Homebrew and XcodeGen are not needed to open this generated project.
@@ -180,3 +180,18 @@ Build 28 screen navigation:
   opening a stop from Home's map. Camera sessions must close and audio must continue.
 - 44 portable navigation/activity tests and Debug/Release syntax checks. Native nested
   sheet dismissal, camera cleanup and visual placement need Xcode/iPhone verification.
+
+Build 29 AR scan introduction:
+- A neutral gray translucent scrim dims the live camera and walking HUD while the
+  Scan your surroundings card is shown. The camera session continues behind it.
+- A simple phone symbol gently moves/tilts side to side above a horizontal arrow.
+  Reduce Motion uses a static cue; animation pauses when the app is inactive.
+- Background walking controls are not interactive or exposed to VoiceOver during
+  this introduction. Back and header X remain available above the scrim.
+- Start exploring removes the scrim/card and restores the normal walking controls.
+  This is an instruction, not a claim that localization has completed.
+- The card scrolls on smaller screens and with larger text. Plaque scanning retains
+  its own stop-specific instructions. Verify on iPhone with camera permission both
+  enabled and denied, Reduce Motion, larger text and Back/X.
+- Debug/Release syntax checks are available on Linux; camera visuals and animation
+  require Xcode/iPhone verification.

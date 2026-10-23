@@ -9,6 +9,7 @@ struct ARTourView: View {
     @Environment(AppDependencies.self) private var dependencies
     @Environment(AppNavigation.self) private var navigation
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var model: ARViewModel?
     @State private var awaitingGeospatialConsent = false
     @State private var showScanInstruction = true
@@ -92,11 +93,14 @@ struct ARTourView: View {
 
     @ViewBuilder
     private func content(_ model: ARViewModel) -> some View {
+        let isShowingIntroduction = !model.isPlaqueScanner && model.availability == .ready && showScanInstruction
         ZStack {
             switch model.availability {
             case .ready:
                 ARViewContainer(viewModel: model)
                     .ignoresSafeArea()
+                    .allowsHitTesting(!isShowingIntroduction)
+                    .accessibilityHidden(isShowingIntroduction)
             case .awaitingCameraPermission:
                 CameraExplanationView(state: .requesting)
             case .cameraDenied:
@@ -107,44 +111,23 @@ struct ARTourView: View {
                 CameraExplanationView(state: .unsupported)
             }
 
-            if model.isPlaqueScanner {
-                PlaqueScannerHUD(model: model, onClose: returnToMap)
-            } else {
-                ARHUDView(model: model, onClose: returnToMap)
-            }
-
-            if !model.isPlaqueScanner, model.availability == .ready && showScanInstruction {
-                // Live camera stays active behind this subtle scrim.
-                Color.gray.opacity(0.28).ignoresSafeArea().allowsHitTesting(false)
-                VStack(spacing: 17) {
-                    Image(systemName: "viewfinder")
-                        .font(.system(size: 46, weight: .ultraLight))
-                    Text("Scan your surroundings")
-                        .font(.system(.title2, design: .serif).weight(.semibold))
-                    Text("Slowly move your iPhone from side to side and scan the area around you to help AR recognize your surroundings.")
-                        .font(.subheadline)
-                        .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Button {
-                        withAnimation(.easeOut(duration: 0.25)) { showScanInstruction = false }
-                    } label: {
-                        Text("Start exploring")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity, minHeight: 52)
-                            .background(AppTheme.forest, in: RoundedRectangle(cornerRadius: 14))
-                            .foregroundStyle(AppTheme.ivory)
-                    }
-                    .buttonStyle(.plain)
-                    Text("Hold the phone flat, screen facing up, for 2 seconds to return to the map.")
-                        .font(.caption)
-                        .multilineTextAlignment(.center)
-                        .foregroundStyle(AppTheme.secondaryInk)
+            Group {
+                if model.isPlaqueScanner {
+                    PlaqueScannerHUD(model: model, onClose: returnToMap)
+                } else {
+                    ARHUDView(model: model, onClose: returnToMap)
                 }
-                .foregroundStyle(AppTheme.forest)
-                .padding(24)
-                .frame(maxWidth: 340)
-                .background(AppTheme.ivory.opacity(0.96), in: RoundedRectangle(cornerRadius: 22))
-                .padding(.horizontal, 20)
+            }
+            .allowsHitTesting(!isShowingIntroduction)
+            .accessibilityHidden(isShowingIntroduction)
+
+            if isShowingIntroduction {
+                ARScanIntroduction(onBack: returnToMap) {
+                    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.25)) {
+                        showScanInstruction = false
+                    }
+                }
+                .transition(.opacity)
             }
         }
         .onAppear { beginPhoneOrientationMonitoring() }
@@ -163,6 +146,75 @@ struct ARTourView: View {
         .sheet(isPresented: Binding(get: { model.isShowingBonusPreview }, set: { model.isShowingBonusPreview = $0 })) {
             if let stop = tour.arStop { OnSiteBonusPreview(stop: stop).presentationDetents([.large]) }
         }
+    }
+}
+
+/// Focused onboarding over the live camera; the ordinary HUD cannot receive taps behind it.
+private struct ARScanIntroduction: View {
+    let onBack: () -> Void
+    let onContinue: () -> Void
+
+    var body: some View {
+        VStack(spacing: 8) {
+            ScreenReturnBar(onBack: onBack)
+                .padding(.horizontal, 16).padding(.top, 8)
+            GeometryReader { viewport in
+                ScrollView {
+                    VStack(spacing: 18) {
+                        ScanPhoneMotion()
+                        Text("Scan your surroundings")
+                            .font(.system(.title2, design: .serif).weight(.semibold))
+                            .accessibilityAddTraits(.isHeader)
+                        Text("Slowly move your iPhone from side to side and point the camera at buildings, signs and other details around you to help AR recognize your surroundings.")
+                            .font(.body)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Button(action: onContinue) {
+                            Text("Start exploring").font(.headline)
+                                .frame(maxWidth: .infinity, minHeight: 52)
+                                .background(AppTheme.forest, in: RoundedRectangle(cornerRadius: 14))
+                                .foregroundStyle(.white)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("ar.scanIntroduction.continue")
+                        Text("Hold the phone flat, screen facing up, for 2 seconds to return to the map.")
+                            .font(.caption).foregroundStyle(AppTheme.secondaryInk)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(AppTheme.forest)
+                    .padding(24)
+                    .frame(maxWidth: 360)
+                    .background(AppTheme.ivory, in: RoundedRectangle(cornerRadius: 22))
+                    .padding(20)
+                    .frame(maxWidth: .infinity, minHeight: viewport.size.height, alignment: .center)
+                }
+            }
+        }
+        .background(Color.gray.opacity(0.62).ignoresSafeArea())
+        .accessibilityIdentifier("ar.scanIntroduction")
+    }
+}
+
+/// Native symbols keep the movement cue simple and readable. Reduce Motion leaves it still.
+private struct ScanPhoneMotion: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: reduceMotion || scenePhase != .active)) { context in
+            let phase = reduceMotion ? 0 : sin(context.date.timeIntervalSinceReferenceDate * Double.pi / 2)
+            VStack(spacing: 8) {
+                Image(systemName: "iphone.gen3")
+                    .font(.system(size: 62, weight: .light))
+                    .rotationEffect(.degrees(phase * 8))
+                    .offset(x: CGFloat(phase) * 20)
+                    .frame(width: 120, height: 78)
+                Image(systemName: "arrow.left.and.right")
+                    .font(.system(size: 20, weight: .medium))
+            }
+        }
+        .frame(height: 112)
+        .accessibilityHidden(true) // The instruction directly beneath explains the same movement.
     }
 }
 
