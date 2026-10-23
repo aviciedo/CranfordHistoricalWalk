@@ -59,4 +59,63 @@ final class WalkResumeRecordTests: XCTestCase {
         XCTAssertEqual(restored.progress.completedCount, 0)
         XCTAssertEqual(restored.completionSummary, summary)
     }
+
+    func testCorruptResumeCannotRestoreAnotherStopOrAFalseCompletion() throws {
+        var progress = TourProgress(stopIDs: ["mill", "park"])
+        progress.start()
+        let started = WalkResumeRecord(progress: progress)
+        let ids = progress.stopIDs
+        XCTAssertTrue(started.isValid(for: ids))
+
+        let duplicateVisits = try edited(started) { $0["completedStopIDs"] = ["mill", "mill"] }
+        XCTAssertFalse(duplicateVisits.isValid(for: ids))
+        let foreignVisit = try edited(started) { $0["completedStopIDs"] = ["other"] }
+        XCTAssertFalse(foreignVisit.isValid(for: ids))
+        let missingStart = try edited(started) { $0["startedAt"] = NSNull() }
+        XCTAssertFalse(missingStart.isValid(for: ids))
+        let endedWhileWalking = try edited(started) { stored in
+            stored["startedAt"] = 1_000.0
+            stored["completedAt"] = 1_010.0
+        }
+        XCTAssertFalse(endedWhileWalking.isValid(for: ids))
+        XCTAssertFalse(started.isValid(for: []))
+
+        progress.advanceCurrentStop()
+        progress.advanceCurrentStop()
+        let summary = TourSummary(stopCount: 2, totalDistanceMeters: 650, totalWalkingSeconds: 480,
+            totalVisitSeconds: 90, isFromWalkingRoutes: true, pendingLegCount: 0)
+        let completed = WalkResumeRecord(progress: progress, completionSummary: summary)
+        XCTAssertTrue(completed.isValid(for: ids))
+        XCTAssertFalse(try edited(completed) { $0["currentIndex"] = 0 }.isValid(for: ids))
+        XCTAssertFalse(try edited(completed) { $0.removeValue(forKey: "completedAt") }.isValid(for: ids))
+        let endedFirst = try edited(completed) { stored in
+            stored["startedAt"] = 1_000.0
+            stored["completedAt"] = 999.0
+        }
+        XCTAssertFalse(endedFirst.isValid(for: ids))
+
+        for (key, value) in [("stopCount", 9), ("totalDistanceMeters", -1), ("totalWalkingSeconds", -1),
+                             ("totalVisitSeconds", -1), ("pendingLegCount", -1)] as [(String, Any)] {
+            let invalid = try editedSummary(completed) { $0[key] = value }
+            XCTAssertFalse(invalid.isValid(for: ids), key)
+        }
+    }
+
+    private func edited(_ record: WalkResumeRecord, _ edit: (inout [String: Any]) -> Void) throws -> WalkResumeRecord {
+        let data = try JSONEncoder().encode(record)
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        var stored = try XCTUnwrap(object["progress"] as? [String: Any])
+        edit(&stored)
+        object["progress"] = stored
+        return try JSONDecoder().decode(WalkResumeRecord.self, from: JSONSerialization.data(withJSONObject: object))
+    }
+
+    private func editedSummary(_ record: WalkResumeRecord, _ edit: (inout [String: Any]) -> Void) throws -> WalkResumeRecord {
+        let data = try JSONEncoder().encode(record)
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        var summary = try XCTUnwrap(object["completionSummary"] as? [String: Any])
+        edit(&summary)
+        object["completionSummary"] = summary
+        return try JSONDecoder().decode(WalkResumeRecord.self, from: JSONSerialization.data(withJSONObject: object))
+    }
 }
