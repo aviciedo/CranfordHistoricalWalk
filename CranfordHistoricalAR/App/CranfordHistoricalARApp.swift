@@ -28,32 +28,34 @@ struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        VStack(spacing: 0) {
-            TabView(selection: $navigation.selectedTab) {
-                HomeView()
-                    .tabItem { Label("Home", systemImage: "house") }
-                    .tag(AppNavigation.Tab.home)
-                    .toolbar(.hidden, for: .tabBar)
-                TourView()
-                    .tabItem { Label("Map", systemImage: "map") }
-                    .tag(AppNavigation.Tab.map)
-                    .toolbar(.hidden, for: .tabBar)
-                StopsView()
-                    .tabItem { Label("Stops", systemImage: "mappin") }
-                    .tag(AppNavigation.Tab.stops)
-                    .toolbar(.hidden, for: .tabBar)
-            }
-            .toolbar(.hidden, for: .tabBar)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .clipped()
+        GeometryReader { viewport in
+            VStack(spacing: 0) {
+                TabView(selection: $navigation.selectedTab) {
+                    HomeView()
+                        .tabItem { Label("Home", systemImage: "house") }
+                        .tag(AppNavigation.Tab.home)
+                        .toolbar(.hidden, for: .tabBar)
+                    TourView()
+                        .tabItem { Label("Map", systemImage: "map") }
+                        .tag(AppNavigation.Tab.map)
+                        .toolbar(.hidden, for: .tabBar)
+                    StopsView()
+                        .tabItem { Label("Stops", systemImage: "mappin") }
+                        .tag(AppNavigation.Tab.stops)
+                        .toolbar(.hidden, for: .tabBar)
+                }
+                .toolbar(.hidden, for: .tabBar)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped()
 
-            // Real layout siblings: screens receive only the height above the footer.
-            // This avoids relying on inset propagation through the native TabView.
-            SharedNarrationBar()
-                .fixedSize(horizontal: false, vertical: true)
-            BottomNavigationBar(selection: $navigation.selectedTab)
-                .fixedSize(horizontal: false, vertical: true)
-                .background(AppTheme.navigationBackground.ignoresSafeArea(edges: .bottom))
+                // Real layout siblings: screens receive only the height above the footer.
+                // This avoids relying on inset propagation through the native TabView.
+                SharedNarrationBar(availableHeight: viewport.size.height)
+                    .fixedSize(horizontal: false, vertical: true)
+                BottomNavigationBar(selection: $navigation.selectedTab)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .background(AppTheme.navigationBackground.ignoresSafeArea(edges: .bottom))
+            }
         }
         // Paint the status-bar/notch area without moving content outside its safe area.
         .background(AppTheme.ivory.ignoresSafeArea())

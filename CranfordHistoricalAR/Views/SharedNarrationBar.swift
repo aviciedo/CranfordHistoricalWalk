@@ -5,61 +5,65 @@ import TourCore
 struct SharedNarrationBar: View {
     @Environment(AppDependencies.self) private var dependencies
     @Environment(TourViewModel.self) private var tour
+    let availableHeight: CGFloat
 
     var body: some View {
         let player = dependencies.narrationPlayer
         if player.isPersistentPlayerVisible, let id = player.stopID,
            let stop = tour.stop(withID: id) {
-            VStack(alignment: .leading, spacing: 4) {
-                ZStack(alignment: .bottom) {
-                    NarrationSeekRail(stop: stop)
-                        .frame(height: 44)
-                        .padding(.horizontal, 12)
-                    HStack(spacing: 10) {
-                        StopListIllustration(stopID: stop.id)
-                            .frame(width: 44, height: 44)
-                            .accessibilityHidden(true)
-                        ScrollingStoryTitle(text: stop.name)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        HStack(spacing: 0) {
-                            Button { player.dismissPersistentPlayer() } label: {
-                                Image(systemName: "xmark")
-                                    .font(.system(size: 13, weight: .medium))
-                                    .frame(width: 44, height: 44)
-                                    .contentShape(Rectangle())
+            VStack(alignment: .leading, spacing: 0) {
+                Spacer(minLength: 0)
+                HStack(spacing: 14) {
+                    StopListIllustration(stopID: stop.id)
+                        .frame(width: 64, height: 64)
+                        .accessibilityHidden(true)
+                    ScrollingStoryTitle(text: stop.name)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Button {
+                        guard player.prepare(stop) else { return }
+                        player.togglePlayPause()
+                    } label: {
+                        Group {
+                            if player.status == .loading {
+                                ProgressView().tint(.white)
+                            } else {
+                                Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
+                                    .font(.system(size: 30, weight: .semibold))
                             }
-                            .accessibilityLabel("Close player")
-                            .accessibilityHint("Pauses narration and saves your position")
-                            .accessibilityIdentifier("narration.closePlayer")
-                            Button {
-                                guard player.prepare(stop) else { return }
-                                player.togglePlayPause()
-                            } label: {
-                                Group {
-                                    if player.status == .loading {
-                                        ProgressView().tint(.white)
-                                    } else {
-                                        Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
-                                            .font(.system(size: 24, weight: .semibold))
-                                    }
-                                }
-                                .frame(width: 44, height: 44)
-                                .contentShape(Rectangle())
-                            }
-                            .accessibilityLabel(player.isPlaying ? "Pause narration" : "Play narration for \(stop.name)")
-                            .accessibilityValue(player.status == .loading ? "Loading" : "")
                         }
-                        .buttonStyle(.plain)
+                        .frame(width: 48, height: 48)
+                        .contentShape(Rectangle())
                     }
-                    .padding(.horizontal, 10).padding(.top, 8).padding(.bottom, 18)
-                    // Transport buttons win over the generous seek target beneath the title.
-                    .zIndex(1)
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(player.isPlaying ? "Pause narration" : "Play narration for \(stop.name)")
+                    .accessibilityValue(player.status == .loading ? "Loading" : "")
                 }
+                .padding(.horizontal, 16)
+                // Reserve a separate corner for Close, clear of the transport controls.
+                .padding(.top, 44)
                 if case .failed(let message) = player.status {
                     Text(message).font(.footnote)
                         .fixedSize(horizontal: false, vertical: true)
-                        .padding(.horizontal, 14).padding(.bottom, 10)
+                        .padding(.horizontal, 16).padding(.top, 8)
                 }
+                Spacer(minLength: 0)
+                NarrationSeekRail(stop: stop)
+                    .frame(height: 36)
+                    .padding(.horizontal, 16).padding(.bottom, 4)
+            }
+            .frame(minHeight: max(148, min(200, availableHeight * 0.2)))
+            .overlay(alignment: .topTrailing) {
+                Button { player.dismissPersistentPlayer() } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 15, weight: .medium))
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Close player")
+                .accessibilityHint("Pauses narration and saves your position")
+                .accessibilityIdentifier("narration.closePlayer")
+                .padding(.top, 4).padding(.trailing, 4)
             }
             .foregroundStyle(.white)
             .background(AppTheme.forest, in: RoundedRectangle(cornerRadius: 14))
@@ -77,12 +81,12 @@ private struct ScrollingStoryTitle: View {
     let text: String
     @State private var textWidth: CGFloat = 0
     @State private var startedAt = Date()
-    @ScaledMetric(relativeTo: .subheadline) private var lineHeight: CGFloat = 22
+    @ScaledMetric(relativeTo: .headline) private var lineHeight: CGFloat = 26
 
     var body: some View {
         Group {
             if reduceMotion {
-                Text(text).font(.subheadline.weight(.semibold))
+                Text(text).font(.headline)
                     .fixedSize(horizontal: false, vertical: true)
             } else {
                 GeometryReader { viewport in
@@ -125,7 +129,7 @@ private struct ScrollingStoryTitle: View {
     }
 
     private var title: some View {
-        Text(text).font(.subheadline.weight(.semibold))
+        Text(text).font(.headline)
             .fixedSize(horizontal: true, vertical: false)
     }
 }

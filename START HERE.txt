@@ -1,6 +1,6 @@
 Cranford Historical AR — Xcode project
 
-Release 0.2.0 (34) — Visible slideshow navigation buttons
+Release 0.2.0 (35) — Larger persistent narration player
 
 1. Close the previous Xcode project. Extract the entire ZIP into a fresh folder on the Mac. Keep its folders together.
    Copy your existing Config/Secrets.xcconfig into this new folder’s Config folder.
@@ -10,7 +10,7 @@ Release 0.2.0 (34) — Visible slideshow navigation buttons
 5. In Xcode select the blue project icon, then Targets > CranfordHistoricalAR > Signing & Capabilities.
 6. Turn on Automatically manage signing and select your Apple account under Team.
 7. Select your iPhone in the top toolbar. Choose Product > Clean Build Folder, then click Run.
-8. On the iPhone open Home > Developer. Installed build and narration must show 0.2.0 (34), audio release cedar-2.
+8. On the iPhone open Home > Developer. Installed build and narration must show 0.2.0 (35), audio release cedar-2.
    After tapping Play, Prepared audio should say bundledAudio with stop_01 or stop_02, never synthesizedSpeech.
 
 Homebrew and XcodeGen are not needed to open this generated project.
@@ -260,3 +260,16 @@ Build 34 slideshow arrow visibility:
   are preserved. Single-photo galleries do not show unnecessary arrow buttons.
 - Debug/Release Swift syntax checks pass. Native button visibility and touch/swipe
   behavior still need verification on an iPhone or in the Xcode simulator.
+
+Build 35 larger persistent player:
+- The same hunter-green footer player is used on Home, Map, Stops and stop details.
+  It targets 20% of the hosting screen's available height (148–200 points for usable
+  controls on compact/large screens), with larger artwork, title and play/pause control.
+- Close sits separately at top-right with a 44-point target. It still pauses, hides
+  the player and preserves the bookmark. The thin seek rail and scrolling title remain.
+- Root and stop detail measure their viewport outside the footer. The player remains
+  a layout sibling, leaving scrollable space for content; it never overlays the tabs.
+- Confirm the player on all tabs and stop details, with long titles and larger text.
+  Scroll to all actions, seek, pause/resume, close and reopen. AR/photos stay clear.
+- Debug/Release Swift syntax checks pass; native sizing, scrolling and touch handling
+  must be checked in Xcode/on iPhone. This environment cannot render the native UI.

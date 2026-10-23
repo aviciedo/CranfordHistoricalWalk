@@ -28,11 +28,13 @@ struct StopDetailView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                returnControl
-                storyContent
-                SharedNarrationBar()
-                    .fixedSize(horizontal: false, vertical: true)
+            GeometryReader { viewport in
+                VStack(spacing: 0) {
+                    returnControl
+                    storyContent
+                    SharedNarrationBar(availableHeight: viewport.size.height)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
             .background(AppTheme.ivory.ignoresSafeArea(edges: .top)).foregroundStyle(AppTheme.forest)
             .toolbar(.hidden, for: .navigationBar)
