@@ -1,6 +1,6 @@
 Cranford Historical AR — Xcode project
 
-Release 0.2.0 (19) — GPS-first illustrated walking map with Apple Maps fallback
+Release 0.2.0 (20) — Separate optional plaque scanner and saved bonus access
 
 1. Close the previous Xcode project. Extract the entire ZIP into a fresh folder on the Mac. Keep its folders together.
    Copy your existing Config/Secrets.xcconfig into this new folder’s Config folder.
@@ -10,7 +10,7 @@ Release 0.2.0 (19) — GPS-first illustrated walking map with Apple Maps fallbac
 5. In Xcode select the blue project icon, then Targets > CranfordHistoricalAR > Signing & Capabilities.
 6. Turn on Automatically manage signing and select your Apple account under Team.
 7. Select your iPhone in the top toolbar. Choose Product > Clean Build Folder, then click Run.
-8. On the iPhone open Home > Developer. Installed build and narration must show 0.2.0 (19), audio release cedar-2.
+8. On the iPhone open Home > Developer. Installed build and narration must show 0.2.0 (20), audio release cedar-2.
    After tapping Play, Prepared audio should say bundledAudio with stop_01 or stop_02, never synthesizedSpeech.
 
 Homebrew and XcodeGen are not needed to open this generated project.
@@ -64,3 +64,17 @@ Build 19 walking-map checks:
   destination nor recording should change.
 - With networking unavailable: show route/map errors; never draw a straight estimate as a path.
 - Check route alignment, icon taps, map gestures and all five legs on your iPhone.
+
+Build 20 plaque discovery checks:
+- Fresh install: Stops > Greystone > Find the plaque opens its scanner immediately.
+  The walk must stay unstarted. Only camera access is needed; GPS and narration are optional.
+- Camera shows the correct stop name, one short instruction, Retry and top-right Back.
+  No walking arrows, Continue or surroundings tutorial should appear in this scanner.
+- Back returns to the stop, preserving photos, Listen / Read and ongoing audio.
+- A different supported plaque may change the scanner's stop and unlock that stop's bonus;
+  it must never change your walking destination.
+- No match / poor light / interruption: Retry resets tracking, Back remains available.
+- After recognition, the row changes to View the bonus and opens the saved extra directly
+  without camera permission. Bonus content remains the existing test placeholder.
+- Repeat discovery after finishing a walk: it must not restart the itinerary.
+- Verify actual reference-image recognition and bonus placement outdoors on your iPhone.

@@ -249,10 +249,9 @@ struct OnSiteBonusPreview: View {
 struct HistoricalSignSheet: View {
     let stop: HistoricalStop
     var onStartDiscovery: (() -> Void)? = nil
-    var onEnterAR: (() -> Void)? = nil
 
     var body: some View {
-        StopDetailView(stop: stop, onStartDiscovery: onStartDiscovery, onEnterAR: onEnterAR)
+        StopDetailView(stop: stop, onStartDiscovery: onStartDiscovery)
     }
 }
 

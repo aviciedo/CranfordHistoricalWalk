@@ -465,3 +465,17 @@ Native build and device rendering have not been run on this Linux host. Device a
 - Test Google route failure with Apple fallback, and both providers offline. No straight-line
   estimate should render as a walkable path. Check Apple attribution stays clear of controls.
 - Pan/zoom, rotate device, use larger text, tap every icon, and verify geographic route alignment.
+
+
+## Build 20 — optional plaque scanner
+
+Passed 168 core and 28 actual-model/provider tests plus Debug/Release syntax checks.
+Mac compilation and camera/device verification remain pending. On iPhone:
+- Open Greystone from Stops without a walk or location permission; scan immediately.
+- Verify correct name, single instruction, Retry and white top-right Back in every state.
+- Confirm no walking CTA, arrows, introductory scrim or geospatial consent appears.
+- Point at another supported plaque: scanner name/bonus change, walking destination does not.
+- With no match or interrupted tracking, Retry reloads references and Back still returns.
+- Play a story, change photos/Read, scan/return: recording, photo and mode stay intact.
+- Saved View the bonus opens without using camera; no learning completion is manufactured.
+- Discover after finishing the walk: phase remains complete.

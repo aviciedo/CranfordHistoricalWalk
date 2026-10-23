@@ -99,9 +99,13 @@ struct ARTourView: View {
                 CameraExplanationView(state: .unsupported)
             }
 
-            ARHUDView(model: model, onClose: returnToMap)
+            if model.isPlaqueScanner {
+                PlaqueScannerHUD(model: model, onClose: returnToMap)
+            } else {
+                ARHUDView(model: model, onClose: returnToMap)
+            }
 
-            if model.availability == .ready && showScanInstruction {
+            if !model.isPlaqueScanner, model.availability == .ready && showScanInstruction {
                 // Live camera stays active behind this subtle scrim.
                 Color.gray.opacity(0.28).ignoresSafeArea().allowsHitTesting(false)
                 VStack(spacing: 17) {
@@ -143,8 +147,7 @@ struct ARTourView: View {
         .sheet(isPresented: Binding(get: { model.isShowingSignDetails }, set: { model.isShowingSignDetails = $0 })) {
             if let stop = tour.arStop {
                 HistoricalSignSheet(stop: stop,
-                                    onStartDiscovery: model.startPlaqueDiscovery,
-                                    onEnterAR: { model.isShowingSignDetails = false })
+                                    onStartDiscovery: model.startPlaqueDiscovery)
                     .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
             }
@@ -373,6 +376,7 @@ struct ARHUDView: View {
 struct CameraExplanationView: View {
     enum State { case requesting, denied, restricted, unsupported }
     let state: State
+    var isPlaqueScanner = false
 
     var body: some View {
         ZStack {
@@ -393,7 +397,7 @@ struct CameraExplanationView: View {
                         .font(.headline)
                         .padding(.top, 6)
                 }
-                Text("The map, walking directions and stop information keep working without the camera.")
+                Text(isPlaqueScanner ? "Stories, photographs and audio remain available without the camera." : "The map, walking directions and stop information keep working without the camera.")
                     .font(.footnote)
                     .foregroundStyle(.tertiary)
                     .multilineTextAlignment(.center)
@@ -414,7 +418,7 @@ struct CameraExplanationView: View {
 
     private var title: String {
         switch state {
-        case .requesting: return "Camera access for AR"
+        case .requesting: return isPlaqueScanner ? "Camera access for plaque discovery" : "Camera access for AR"
         case .denied: return "Camera access is off"
         case .restricted: return "Camera is restricted"
         case .unsupported: return "AR isn't available on this device"
@@ -424,7 +428,7 @@ struct CameraExplanationView: View {
     private var message: String {
         switch state {
         case .requesting:
-            return "Cranford Historical AR shows walking arrows and historical signs over the live camera. Allow camera access to enter the AR view."
+            return isPlaqueScanner ? "Allow camera access to recognize the plaque and unlock its optional bonus." : "Cranford Historical AR shows walking arrows and historical signs over the live camera. Allow camera access to enter the AR view."
         case .denied:
             return "Enable the camera for Cranford Historical AR in Settings to use the AR view."
         case .restricted:
@@ -432,5 +436,121 @@ struct CameraExplanationView: View {
         case .unsupported:
             return "ARKit world tracking needs an iPhone with an A12 chip or newer. The Simulator cannot run AR."
         }
+    }
+}
+
+/// Direct, camera-only plaque entry. No walking start, location request or geospatial consent.
+struct PlaqueScannerView: View {
+    @Environment(TourViewModel.self) private var tour
+    @Environment(AppDependencies.self) private var dependencies
+    @Environment(\.dismiss) private var dismiss
+    let stopID: String
+    @State private var model: ARViewModel?
+    @State private var unavailable = false
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+            if let model {
+                switch model.availability {
+                case .ready: ARViewContainer(viewModel: model).ignoresSafeArea()
+                case .awaitingCameraPermission: CameraExplanationView(state: .requesting, isPlaqueScanner: true)
+                case .cameraDenied: CameraExplanationView(state: .denied, isPlaqueScanner: true)
+                case .cameraRestricted: CameraExplanationView(state: .restricted, isPlaqueScanner: true)
+                case .unsupportedDevice: CameraExplanationView(state: .unsupported, isPlaqueScanner: true)
+                }
+                PlaqueScannerHUD(model: model, onClose: { dismiss() })
+            } else {
+                VStack {
+                    HStack(alignment: .top) {
+                        Text(tour.stop(withID: stopID)?.name ?? "Plaque discovery")
+                            .font(.system(.headline, design: .serif))
+                        Spacer()
+                        Button { dismiss() } label: {
+                            Label("Back", systemImage: "chevron.left")
+                                .font(.subheadline.weight(.semibold)).padding(.horizontal, 14)
+                                .frame(minHeight: 48).background(.white, in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(16).foregroundStyle(AppTheme.forest).background(AppTheme.ivory)
+                    Spacer()
+                    if unavailable {
+                        Text("Plaque discovery is unavailable for this stop.")
+                            .padding(20).foregroundStyle(.white)
+                    }
+                    Spacer()
+                }
+            }
+        }
+        .preferredColorScheme(.dark)
+        .task {
+            guard model == nil else { return }
+            guard tour.preparePlaqueScanner(stopID: stopID) else { unavailable = true; return }
+            let scanner = ARViewModel(tour: tour,
+                provider: CoreLocationGeoSpatialProvider(hasCompass: false),
+                imageLoader: dependencies.imageLoader, narrationPlayer: dependencies.narrationPlayer,
+                isPlaqueScanner: true)
+            model = scanner
+            await scanner.requestCameraAccessIfNeeded()
+        }
+        .onDisappear { tour.endARDiscoverySession() }
+        .sheet(isPresented: Binding(get: { model?.isShowingBonusPreview ?? false },
+                                   set: { model?.isShowingBonusPreview = $0 })) {
+            if let stop = tour.arStop { OnSiteBonusPreview(stop: stop) }
+        }
+    }
+}
+
+/// The scanner has one instruction and no route distance, Continue action or surroundings tutorial.
+private struct PlaqueScannerHUD: View {
+    let model: ARViewModel
+    let onClose: () -> Void
+
+    var body: some View {
+        VStack(spacing: 12) {
+            HStack(alignment: .top, spacing: 16) {
+                Text(model.destinationName ?? "Plaque discovery")
+                    .font(.system(.headline, design: .serif))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(14).background(AppTheme.ivory, in: RoundedRectangle(cornerRadius: 14))
+                    .accessibilityIdentifier("scanner.stopName")
+                Spacer(minLength: 0)
+                Button(action: onClose) {
+                    Label("Back", systemImage: "chevron.left")
+                        .font(.subheadline.weight(.semibold)).padding(.horizontal, 14)
+                        .frame(minHeight: 48).background(.white, in: Capsule())
+                }
+                .buttonStyle(.plain).accessibilityLabel("Return to previous screen")
+            }
+            Spacer(minLength: 12)
+            if model.availability == .ready {
+                VStack(alignment: .leading, spacing: 12) {
+                    TimelineView(.periodic(from: .now, by: 1)) { context in
+                        Text(model.scannerInstruction(at: context.date))
+                            .font(.subheadline).fixedSize(horizontal: false, vertical: true)
+                    }
+                    if model.tour.discovery.hasVerifiedPlaque {
+                        Label(model.tour.discovery.isPracticeUnlock ? "Practice bonus · Not saved" : "Bonus found",
+                              systemImage: "seal.fill")
+                            .font(.subheadline.weight(.medium))
+                        Button(action: model.openScannerBonus) {
+                            Text("View the bonus").font(.headline).frame(minHeight: 44)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    Button(action: model.retryPlaqueScanner) {
+                        Label("Retry", systemImage: "arrow.clockwise").frame(minHeight: 44)
+                    }
+                    .buttonStyle(.plain).font(.subheadline.weight(.medium))
+                    .accessibilityHint("Restarts plaque scanning without changing your walk or saved activities")
+                    .accessibilityIdentifier("scanner.retry")
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(16).background(AppTheme.ivory, in: RoundedRectangle(cornerRadius: 16))
+            }
+        }
+        .foregroundStyle(AppTheme.forest)
+        .padding(.horizontal, 16).padding(.vertical, 12)
     }
 }

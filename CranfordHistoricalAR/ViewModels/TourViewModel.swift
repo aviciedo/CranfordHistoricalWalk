@@ -239,6 +239,15 @@ final class TourViewModel {
         return phase == .inProgress && currentStop != nil
     }
 
+    /// Camera-only discovery never starts/resets routing, requests GPS or changes its itinerary.
+    @discardableResult
+    func preparePlaqueScanner(stopID: String) -> Bool {
+        guard let stop = stop(withID: stopID), stop.hasPlaqueReference else { return false }
+        guard prepareForARFromDetails(stopID: stopID) else { return false }
+        continuedARStopIDs = []
+        return beginPlaqueDiscovery()
+    }
+
     func leaveTour() {
         isShowingTour = false
     }

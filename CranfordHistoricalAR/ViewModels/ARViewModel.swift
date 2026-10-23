@@ -41,6 +41,8 @@ final class ARViewModel {
     @ObservationIgnored private var imageRequestedForStopID: String?
     @ObservationIgnored private var isSessionRunning = false
     @ObservationIgnored private var observedStopID: String?
+    private(set) var isPlaqueScanner: Bool
+    private(set) var scannerAttemptStartedAt = Date()
     /// True when world tracking accepted a non-empty `PlaqueAnchors` group. Missing assets
     /// disable the optional bonus; they never fall back to a GPS-only verification.
     private(set) var imageTrackingAvailable = false
@@ -48,8 +50,9 @@ final class ARViewModel {
     /// Restrained HUD line while looking for the mill plate.
     private(set) var plaqueHint: String?
 
-    init(tour: TourViewModel, provider: any GeoSpatialProvider, imageLoader: any ImageLoader, narrationPlayer: NarrationPlayer) {
+    init(tour: TourViewModel, provider: any GeoSpatialProvider, imageLoader: any ImageLoader, narrationPlayer: NarrationPlayer, isPlaqueScanner: Bool = false) {
         self.tour = tour
+        self.isPlaqueScanner = isPlaqueScanner
         self.geoAnchors = GeoAnchorManager(provider: provider)
         self.imageLoader = imageLoader
         self.narrationPlayer = narrationPlayer
@@ -187,8 +190,8 @@ final class ARViewModel {
     private func runSession(on arView: ARView) {
         guard availability == .ready, !isSessionRunning else { return }
         let configuration = ARWorldTrackingConfiguration()
-        configuration.worldAlignment = geoAnchors.preferredWorldAlignment
-        configuration.planeDetection = [.horizontal]
+        configuration.worldAlignment = isPlaqueScanner ? .gravity : geoAnchors.preferredWorldAlignment
+        configuration.planeDetection = isPlaqueScanner ? [] : [.horizontal]
         configuration.environmentTexturing = .none
         configuration.isLightEstimationEnabled = true
         configuration.isAutoFocusEnabled = true
@@ -196,7 +199,7 @@ final class ARViewModel {
         arView.session.run(configuration, options: [.resetTracking, .removeExistingAnchors])
         isSessionRunning = true
         tour.isARSessionActive = true
-        isShowingWalkingOrientation = true
+        isShowingWalkingOrientation = !isPlaqueScanner
         walkingOrientation = ARWalkingGuidance.OrientationState()
         geoAnchors.sessionDidStart(arView.session, arView: arView)
         pushTourStateToAnchors()
@@ -237,9 +240,10 @@ final class ARViewModel {
             isShowingDiscoveryConfirmation = false
             isShowingBonusPreview = false
             observedStopID = tour.arStop?.id
+            scannerAttemptStartedAt = Date()
             activationMessage = nil
             isShowingSignDetails = false
-            isShowingWalkingOrientation = true
+            isShowingWalkingOrientation = !isPlaqueScanner
             walkingOrientation = ARWalkingGuidance.OrientationState()
         }
         geoAnchors.hasActivatedStop = tour.isARStopVisited
@@ -251,11 +255,11 @@ final class ARViewModel {
                 isShowingDiscoveryConfirmation = false
             }
         }
-        if tour.isPlaqueDiscoveryStop, tour.arrivalStoryStopID == tour.arStop?.id,
+        if !isPlaqueScanner, tour.isPlaqueDiscoveryStop, tour.arrivalStoryStopID == tour.arStop?.id,
            tour.discovery.stage != .searching, tour.discovery.stage != .unlocked {
             isShowingSignDetails = true
         }
-        geoAnchors.locationDidUpdate(tour.userLocation, heading: tour.heading)
+        if !isPlaqueScanner { geoAnchors.locationDidUpdate(tour.userLocation, heading: tour.heading) }
         applySignPlacement()
         #if DEVELOPER_MENU
         // Apply slider changes even if the phone is still and ARKit sends no new anchor pose.
@@ -271,7 +275,7 @@ final class ARViewModel {
         } else if let signStop = tour.presentedSignStop, imageLoader.cachedImage(for: signStop) == nil, signStop.hasAnyImage {
             loadSignImage(for: signStop)
         }
-        guard tour.arStop?.id == tour.currentStop?.id,
+        guard !isPlaqueScanner, tour.arStop?.id == tour.currentStop?.id,
               !tour.hasPlaqueConfirmedArrival, !tour.isRouteAnEstimate,
               !(tour.isPlaqueDiscoveryStop && tour.discovery.hasArrived),
               tour.currentRoute != nil, let stop = tour.arStop, let user = tour.userLocation else {
@@ -378,8 +382,8 @@ final class ARViewModel {
         applySignPlacement()
     }
 
-    /// A current image match verifies only after the visitor has read/listened and explicitly
-    /// chosen discovery. The normal story is never auto-played by an image callback.
+    /// A supported tracked image is the evidence. Story completion is independent, and image
+    /// callbacks never start playback or retarget the walking itinerary.
     private func handleRecognizedPlaque(_ imageAnchor: ARImageAnchor) {
         guard isSessionRunning,
               tour.selectRecognizedPlaque(imageName: imageAnchor.referenceImage.name,
@@ -418,7 +422,7 @@ final class ARViewModel {
 
     func frameDidUpdate(_ frame: ARFrame) {
         geoAnchors.frameDidUpdate(frame)
-        if isShowingBonusPreview && !geoAnchors.isWindowBonusAccessible { isShowingBonusPreview = false }
+        if !isPlaqueScanner, isShowingBonusPreview && !geoAnchors.isWindowBonusAccessible { isShowingBonusPreview = false }
         updateWalkingOrientation(timestamp: frame.timestamp)
 
     }
@@ -434,7 +438,11 @@ final class ARViewModel {
     }
 
     func startPlaqueDiscovery() {
-        guard tour.beginPlaqueDiscovery() else { return }
+        guard let stopID = tour.arStop?.id, tour.preparePlaqueScanner(stopID: stopID) else { return }
+        isPlaqueScanner = true
+        scannerAttemptStartedAt = Date()
+        isShowingWalkingOrientation = false
+        geoAnchors.setNavigationTarget(nil)
         isShowingSignDetails = false
         pushTourStateToAnchors()
         // ARKit may keep the plaque continuously tracked while the story sheet is open.
@@ -444,6 +452,35 @@ final class ARViewModel {
         }
     }
 
+    func scannerInstruction(at date: Date) -> String {
+        guard imageTrackingAvailable else { return "Plaque recognition is unavailable. Return to the story or try again." }
+        if case .failed = localizationState { return "Scanning stopped. Try again, or return to the story." }
+        if tour.discovery.hasVerifiedPlaque {
+            return geoAnchors.isWindowBonusAccessible ? "Your bonus is unlocked." : "Your bonus is saved. Point at the plaque to place it in AR."
+        }
+        if date.timeIntervalSince(scannerAttemptStartedAt) >= 12 {
+            return "Plaque not recognized yet. Hold it steady in good light, or retry."
+        }
+        return "Frame the entire plaque and some surrounding wall in good light."
+    }
+
+    /// Retry discards camera tracking only; saved learning/visits/bonuses and routing survive.
+    func retryPlaqueScanner() {
+        guard isPlaqueScanner else { return }
+        scannerAttemptStartedAt = Date()
+        activationMessage = nil
+        isShowingBonusPreview = false
+        geoAnchors.clearWindowBonus()
+        if let stopID = tour.arStop?.id { _ = tour.preparePlaqueScanner(stopID: stopID) }
+        retrySession()
+    }
+
+    func openScannerBonus() {
+        guard isPlaqueScanner, tour.discovery.hasVerifiedPlaque else { return }
+        if geoAnchors.isWindowBonusAccessible { geoAnchors.reopenWindowBonus() }
+        isShowingBonusPreview = true
+    }
+
     func openBonus() {
         guard geoAnchors.isWindowBonusAccessible else { return }
         geoAnchors.reopenWindowBonus()
@@ -451,6 +488,7 @@ final class ARViewModel {
     }
 
     private func updateWalkingOrientation(timestamp: TimeInterval) {
+        guard !isPlaqueScanner else { isShowingWalkingOrientation = false; return }
         let visible = walkingOrientation.update(relativeBearing: relativeBearingToWaypoint, timestamp: timestamp,
                                                 isAtStop: tour.isARStopVisited || isMarkerAvailable || tour.phase == .complete
                                                     || (tour.isPlaqueDiscoveryStop && tour.discovery.hasArrived))
@@ -556,7 +594,7 @@ final class ARViewModel {
     }
 
     func continueToNextStop() {
-        guard tour.canContinueARStop else { return }
+        guard !isPlaqueScanner, tour.canContinueARStop else { return }
         isShowingBonusPreview = false
         geoAnchors.clearWindowBonus()
         isShowingSignDetails = false

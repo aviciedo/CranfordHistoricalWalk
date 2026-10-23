@@ -1019,3 +1019,30 @@ five stops completed through GPS and explicit Continue with no learning or plaqu
 saved-visit vs live-arrival distinction, Map/AR target continuity, primary routing, fallback and
 cancellation. Debug/Release Swift syntax checks passed. MapKit rendering, live route responses,
 Google Maps and iPhone AR still require native Mac/iPhone compilation and field testing.
+
+## Separate optional plaque discovery — 0.2.0 (20)
+
+Supported stop details now show Find the plaque / Optional bonus · On-site only, changing
+to View the bonus after saved recognition. The saved bonus opens directly without camera
+or GPS access; its existing placeholder content is unchanged. Story and photographs stay
+available, and audio is never paused or prepared by entering, retrying or leaving discovery.
+
+A dedicated plaque camera opens the selected stop immediately, with the stop name, one short
+instruction, Retry and top-right Back. It has no walking arrows, itinerary Continue, generic
+surroundings tutorial or geospatial consent. It uses image-enabled AR world tracking with
+gravity alignment and a local provider, without requesting or starting GPS. Retry restarts
+camera tracking and reloads references without clearing activities. Failure/unsupported-camera
+states retain Back; unsuccessful recognition offers retry guidance after twelve seconds.
+
+Recognition may switch the scanner to any supported tracked plaque, as requested, but never
+starts/reorders the walking itinerary. Scanner entry also works after a completed walk without
+resetting it. Matching live reference images and ready camera tracking provide the bonus
+evidence; story completion is not required. Unknown/untracked images do not unlock anything.
+Map's AR entry keeps its walking role. Choosing plaque discovery from an existing walking
+AR story switches that camera to the same scanner interface without creating another session.
+
+Validation: 168 core tests, 28 portable model/provider tests, and Debug/Release Swift syntax
+checks. The added flows cover camera-only Greystone discovery before starting a walk, another
+supported plaque during a walk, completed-walk preservation, retry/return persistence and
+unsupported stops. Actual camera permissions, image recognition, AR placement and native
+layout still require Mac/iPhone validation; Linux checks do not execute ARKit or SwiftUI.

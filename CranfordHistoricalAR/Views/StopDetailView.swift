@@ -9,8 +9,8 @@ struct StopDetailView: View {
     @Environment(\.dismiss) private var dismiss
     let stop: HistoricalStop
     var onStartDiscovery: (() -> Void)? = nil
-    var onEnterAR: (() -> Void)? = nil
-    @State private var isShowingAR = false
+    @State private var isShowingScanner = false
+    @State private var isShowingBonus = false
     @State private var inlinePlayerVisible = true
 
     private var mode: Binding<AppNavigation.StoryMode> {
@@ -22,23 +22,23 @@ struct StopDetailView: View {
         mode.wrappedValue == .listen && dependencies.narrationPlayer.stopID == stop.id && inlinePlayerVisible
     }
 
-    private func enterAR() {
-        guard tour.prepareForARFromDetails(stopID: stop.id) else { return }
-        if stop.hasPlaqueReference { _ = tour.beginPlaqueDiscovery() }
+    private func openPlaqueActivity() {
+        if tour.activities[stop.id].bonusFoundAt != nil {
+            isShowingBonus = true
+            return
+        }
+        guard tour.preparePlaqueScanner(stopID: stop.id) else { return }
         if let onStartDiscovery, stop.hasPlaqueReference {
             onStartDiscovery()
             dismiss()
-        } else if let onEnterAR {
-            onEnterAR()
-            dismiss()
-        } else { isShowingAR = true }
+        } else { isShowingScanner = true }
     }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    StopPhotoGallery(stop: stop, isObscured: isShowingAR)
+                    StopPhotoGallery(stop: stop, isObscured: isShowingScanner || isShowingBonus)
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Stop \(stop.order) of \(tour.stops.count)")
                             .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
@@ -97,12 +97,12 @@ struct StopDetailView: View {
                     }
                     if stop.hasPlaqueReference {
                         Divider()
-                        Button(action: enterAR) {
+                        Button(action: openPlaqueActivity) {
                             HStack(spacing: 12) {
                                 Image(systemName: "camera.viewfinder")
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text(tour.activities[stop.id].bonusFoundAt == nil ? "Find the bonus" : "View the bonus")
-                                    Text("Optional · On-site only").font(.footnote).foregroundStyle(AppTheme.secondaryInk)
+                                    Text(tour.activities[stop.id].bonusFoundAt == nil ? "Find the plaque" : "View the bonus")
+                                    Text("Optional bonus · On-site only").font(.footnote).foregroundStyle(AppTheme.secondaryInk)
                                 }
                                 Spacer()
                                 Image(systemName: "chevron.right")
@@ -141,7 +141,8 @@ struct StopDetailView: View {
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 if !inlineTransportShown { SharedNarrationBar() }
             }
-            .fullScreenCover(isPresented: $isShowingAR) { ARTourView() }
+            .fullScreenCover(isPresented: $isShowingScanner) { PlaqueScannerView(stopID: stop.id) }
+            .sheet(isPresented: $isShowingBonus) { OnSiteBonusPreview(stop: stop) }
             .onAppear { tour.openStory(for: stop.id) }
         }
         .environment(\.colorScheme, .light)

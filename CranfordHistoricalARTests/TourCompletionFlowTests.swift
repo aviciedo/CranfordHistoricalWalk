@@ -200,17 +200,86 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertEqual(tour.currentStop?.id, stops[0].id)
     }
     func testPlaqueCanBeDiscoveredWithoutStartingWalkOrRequestingGPS() async {
-        let tour = await makeTour(); defer { cleanUp(tour) }
-        XCTAssertTrue(tour.prepareForARFromDetails(stopID: stops[1].id))
+        let source = ActivityTestLocationService(status: .notDetermined)
+        let tour = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),
+            locationService: source, directionsService: PreviewDirectionsService())
+        await tour.loadStopsIfNeeded()
+        defer { cleanUp(tour) }
+        XCTAssertTrue(tour.preparePlaqueScanner(stopID: stops[1].id))
+        XCTAssertEqual(tour.arStop?.id, stops[1].id)
+        XCTAssertEqual(tour.discovery.stage, .searching)
         XCTAssertEqual(tour.phase, .notStarted)
         XCTAssertFalse(tour.isShowingTour)
-        XCTAssertTrue(tour.beginPlaqueDiscovery())
         tour.confirmPlaqueArrival(for: stops[1].id)
         XCTAssertEqual(tour.activateCurrentStop(stopID: stops[1].id, trackingReady: true, plaqueIsTracked: true), .allow(.recognizedPlaque))
         tour.endARDiscoverySession()
         XCTAssertNil(tour.currentStop)
         XCTAssertNotNil(tour.activities[stops[1].id].bonusFoundAt)
+        XCTAssertFalse(tour.activities[stops[1].id].learningCompleted)
+        XCTAssertEqual(tour.activities[stops[0].id], StopActivities())
+        XCTAssertEqual(source.permissionRequests, 0)
+        XCTAssertEqual(source.startRequests, 0)
     }
+
+    func testScannerCanRecognizeAnotherSupportedStopWithoutRetargetingWalk() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.startTour()
+        tour.completeCurrentStopAndAdvance()
+        tour.continuedARStopIDs.insert(stops[0].id)
+        XCTAssertTrue(tour.preparePlaqueScanner(stopID: stops[1].id))
+        XCTAssertTrue(tour.selectRecognizedPlaque(imageName: SignPlacementPolicy.millReferenceImageName,
+            isTracked: true, trackingReady: true))
+        XCTAssertEqual(tour.arStop?.id, stops[0].id)
+        XCTAssertTrue(tour.beginPlaqueDiscovery())
+        tour.confirmPlaqueArrival(for: stops[0].id)
+        XCTAssertEqual(tour.activateCurrentStop(stopID: stops[0].id, trackingReady: true, plaqueIsTracked: true), .allow(.recognizedPlaque))
+        XCTAssertEqual(tour.currentStop?.id, stops[1].id)
+        XCTAssertNotNil(tour.activities[stops[0].id].bonusFoundAt)
+        XCTAssertNil(tour.activities[stops[1].id].bonusFoundAt)
+        tour.endARDiscoverySession()
+        XCTAssertEqual(tour.currentStop?.id, stops[1].id)
+    }
+
+    func testScannerDoesNotRestartACompletedWalk() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.startTour()
+        for _ in stops { tour.completeCurrentStopAndAdvance() }
+        XCTAssertEqual(tour.phase, .complete)
+        XCTAssertTrue(tour.preparePlaqueScanner(stopID: stops[1].id))
+        tour.confirmPlaqueArrival(for: stops[1].id)
+        XCTAssertEqual(tour.activateCurrentStop(stopID: stops[1].id, trackingReady: true, plaqueIsTracked: true), .allow(.recognizedPlaque))
+        tour.endARDiscoverySession()
+        XCTAssertEqual(tour.phase, .complete)
+        XCTAssertNil(tour.currentStop)
+        XCTAssertNotNil(tour.activities[stops[1].id].bonusFoundAt)
+    }
+
+    func testScannerRetryAndReturnPreserveSavedBonusWithoutCompletingStory() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        XCTAssertTrue(tour.preparePlaqueScanner(stopID: stops[1].id))
+        tour.confirmPlaqueArrival(for: stops[1].id)
+        XCTAssertEqual(tour.activateCurrentStop(stopID: stops[1].id, trackingReady: true, plaqueIsTracked: true), .allow(.recognizedPlaque))
+        let saved = tour.activities[stops[1].id]
+        XCTAssertTrue(tour.preparePlaqueScanner(stopID: stops[1].id))
+        XCTAssertEqual(tour.activities[stops[1].id], saved)
+        XCTAssertTrue(tour.discovery.hasVerifiedPlaque)
+        XCTAssertFalse(tour.discovery.hasFinishedStory)
+        tour.endARDiscoverySession()
+        tour.openStory(for: stops[1].id)
+        XCTAssertEqual(tour.activities[stops[1].id], saved)
+        XCTAssertEqual(tour.phase, .notStarted)
+    }
+
+    func testUnsupportedScannerEntryDoesNotChangeWalkOrARSubject() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.startTour()
+        XCTAssertTrue(tour.preparePlaqueScanner(stopID: stops[1].id))
+        XCTAssertFalse(tour.preparePlaqueScanner(stopID: stops[2].id))
+        XCTAssertFalse(tour.preparePlaqueScanner(stopID: "unknown"))
+        XCTAssertEqual(tour.arStop?.id, stops[1].id)
+        XCTAssertEqual(tour.currentStop?.id, stops[0].id)
+    }
+
     func testKnownUnknownUntrackedAndLimitedReferencesAreIsolated() async {
         let tour = await makeTour(); defer { cleanUp(tour) }
         tour.startTour()
