@@ -37,13 +37,12 @@ struct StopPhotoViewer: View {
     var body: some View {
         VStack(spacing: 0) {
             ScreenReturnBar(onBack: { dismiss() })
-                .padding(.horizontal, 20).padding(.vertical, 8)
-            Text(title).font(.headline).fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 24).padding(.top, 8)
+            Text("Photo")
+                .font(.system(.largeTitle, design: .serif).weight(.semibold))
+                .accessibilityAddTraits(.isHeader)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 20).padding(.bottom, 8)
-            if let credit {
-                Text(credit).font(.caption).padding(.horizontal, 20).padding(.bottom, 8)
-            }
+                .padding(.horizontal, 24).padding(.vertical, 12)
             GeometryReader { proxy in
                 Image(uiImage: image.image)
                     .resizable().scaledToFit()
@@ -75,16 +74,31 @@ struct StopPhotoViewer: View {
                     .accessibilityLabel("\(image.kind == .illustration ? "Illustration" : "Photograph") of \(title)")
             }
             .clipped()
+            VStack(alignment: .leading, spacing: 6) {
+                Text(title)
+                    .font(.headline)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let credit, !credit.isEmpty {
+                    Text(credit)
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.secondaryInk)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 24).padding(.top, 16)
+            .layoutPriority(1)
             HStack {
                 if image.isPlaceholder { Text("Placeholder image").font(.footnote) }
                 Spacer()
                 Button("Reset zoom") { scale = 1; offset = .zero }
                     .frame(minHeight: 44)
             }
-            .font(.subheadline).padding(.horizontal, 24)
+            .font(.subheadline).padding(.horizontal, 24).padding(.vertical, 8)
         }
-        .foregroundStyle(.white).background(.black)
-        .preferredColorScheme(.dark)
+        .foregroundStyle(AppTheme.forest)
+        .background(AppTheme.ivory.ignoresSafeArea())
+        .preferredColorScheme(.light)
         .dismissOnReturnHome()
     }
 }

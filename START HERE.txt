@@ -1,6 +1,6 @@
 Cranford Historical AR — Xcode project
 
-Release 0.2.0 (42) — Smaller rounded Map with visible destination actions
+Release 0.2.0 (43) — Ivory photo viewer with matching heading and caption below
 
 1. Close the previous Xcode project. Extract the entire ZIP into a fresh folder on the Mac. Keep its folders together.
    Copy your existing Config/Secrets.xcconfig into this new folder’s Config folder.
@@ -10,7 +10,7 @@ Release 0.2.0 (42) — Smaller rounded Map with visible destination actions
 5. In Xcode select the blue project icon, then Targets > CranfordHistoricalAR > Signing & Capabilities.
 6. Turn on Automatically manage signing and select your Apple account under Team.
 7. Select your iPhone in the top toolbar. Choose Product > Clean Build Folder, then click Run.
-8. On the iPhone open Home > Developer. Installed build and narration must show 0.2.0 (42), audio release cedar-2.
+8. On the iPhone open Home > Developer. Installed build and narration must show 0.2.0 (43), audio release cedar-2.
    After tapping Play, Prepared audio should say bundledAudio with stop_01 or stop_02, never synthesizedSpeech.
 
 Homebrew and XcodeGen are not needed to open this generated project.
@@ -366,3 +366,14 @@ Build 42 smaller Map and visible destination actions:
   destination and zero-size layout cases. Debug/Release Swift syntax checks pass.
   A native hosting regression measures the new layout with and without player space;
   run it in Xcode. Native map appearance and device/Simulator builds are unverified here.
+
+Build 43 photo detail refinement:
+- The full-screen photo viewer uses ivory through the status-bar and home-indicator
+  areas, with hunter-green text and the same serif Photo heading as Map and Stops.
+- Caption and optional credit now appear below the image, aligned with the heading
+  and Back/X controls. Multiline captions retain their natural height.
+- Full-image fitting, pinch zoom, panning, double-tap reset and Reset zoom remain.
+  Back returns to the previous screen; X returns Home. Audio continues without a
+  player overlay in the photo viewer.
+- Debug/Release Swift syntax checks pass. Native build, visual comparison, larger
+  text and zoom interactions still require Xcode/iPhone verification.

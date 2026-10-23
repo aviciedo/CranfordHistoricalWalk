@@ -1,3 +1,41 @@
+# Build 43 — Photo detail refinement
+
+final result: blocked
+
+Source visual truth: the user's attached 590 × 1280-pixel photo-detail screenshot
+(the mill's upper doors and pulley), with requested ivory background, a Photo
+heading matching Map/Stops, and caption/credit below the image.
+Implementation screenshot: unavailable. The Linux workspace has no Xcode, Apple
+SDK or iPhone simulator. Native capture, visual comparison and gesture testing
+are blocked; syntax validation is not a visual QA pass.
+Target viewport/state: portrait iPhone, fullscreen photo, light appearance, with
+unzoomed and zoomed states. Implementation pixels/points and density normalization:
+not available. No full-view or focused-region rendered comparison is claimed.
+
+Required fidelity surfaces (implementation intent; unverified visually):
+- Typography: exact native largeTitle/serif/semibold expression used by Map/Stops;
+  Photo is marked as a heading. Caption is multiline headline, credit is caption.
+- Spacing/layout: 24-point shared left/right alignment, caption below the fitted
+  image with 16-point separation. Caption gets layout priority over image space.
+- Colors/tokens: shared ivory through all safe areas, forest foreground, secondaryInk
+  credit, light appearance. Back/X use the existing shared white control design.
+- Image quality: existing real image remains scaledToFit; no replacement or default
+  crop. Pinch/pan/double-tap reset and Reset zoom implementations are preserved.
+- Copy/content: Photo is the page heading; existing caption and optional credit are
+  retained below the image. Navigation and audio behavior are unchanged.
+
+Comparison history: no rendered iteration possible. Debug and Release Swift syntax
+checks passed. No native build success or visual/interaction pass is claimed.
+
+Acceptance checklist for Xcode/iPhone:
+- Open portrait and landscape photographs from multiple stops; check full image,
+  ivory notch/bottom areas, matching heading, caption/credit order and alignment.
+- Check larger accessibility text and compact devices for wrapping and control fit.
+- Pinch/pan, double-tap and Reset zoom; Back returns to the stop, X returns Home.
+- Confirm narration continues while fullscreen photo remains free of player overlays.
+
+---
+
 # Walking screen reference review
 
 final result: blocked
