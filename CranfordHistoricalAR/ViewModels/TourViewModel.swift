@@ -167,6 +167,24 @@ final class TourViewModel {
     var nextStop: HistoricalStop? { progress.nextStopID.flatMap(stop(withID:)) }
     var lastCompletedStop: HistoricalStop? { progress.previousCompletedStopID.flatMap(stop(withID:)) }
 
+    var startWalkTitle: String {
+        stops.first.map { "Start walk: \($0.name)" } ?? "Start walk"
+    }
+
+    /// Only this walk's arrival matters; saved story/bonus progress never changes its wording.
+    var isHeadingToFirstStop: Bool {
+        phase == .inProgress && currentStop?.id == stops.first?.id
+            && !progress.isCurrentStopVisited && !isAtCurrentStopNow
+    }
+
+    var walkActionTitle: String {
+        switch phase {
+        case .notStarted: return startWalkTitle
+        case .inProgress: return isHeadingToFirstStop ? startWalkTitle : "Continue your walk"
+        case .complete: return "Walk it again"
+        }
+    }
+
     func stop(withID id: String) -> HistoricalStop? { stops.first { $0.id == id } }
     func isCompleted(_ stop: HistoricalStop) -> Bool { progress.isCompleted(stop.id) }
 
@@ -282,6 +300,18 @@ final class TourViewModel {
         destinationDidChange()
         loadTourSummaryLegsIfNeeded()
     }
+
+    #if DEVELOPER_MENU
+    /// Visit-only and full testing resets are explicit, separate operations.
+    func clearRecordedActivitiesAndRestart(includingStoriesAndBonuses: Bool) {
+        visitStore.removeAll()
+        visitRecords = visitStore.records()
+        if includingStoriesAndBonuses { activities = StopActivityLedger() }
+        else { activities.clearVisits() }
+        activityStore.save(activities)
+        resetTour()
+    }
+    #endif
 
     /// Snapshot only local itinerary context, never GPS history or playback state.
     func checkpointWalk() {

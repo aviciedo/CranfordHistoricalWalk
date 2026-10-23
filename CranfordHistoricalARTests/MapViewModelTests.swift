@@ -1,11 +1,39 @@
 import XCTest
 import UIKit
+import SwiftUI
 import CoreLocation
 import TourCore
 @testable import CranfordHistoricalAR
 
 @MainActor
 final class MapViewModelTests: XCTestCase {
+    func testMapStatusReservesDistanceAndLoadingTextHeight() {
+        let tour = AppDependencies.preview().tourViewModel
+        let sizes: [(DynamicTypeSize, UIContentSizeCategory)] = [
+            (.large, .large), (.accessibility5, .accessibilityExtraExtraExtraLarge)
+        ]
+        for width in [280.0, 350.0] {
+            for (dynamicType, category) in sizes {
+                tour.isRoutingInFlight = false
+                let status = MapDestinationStatus().environment(tour)
+                    .environment(\.dynamicTypeSize, dynamicType)
+                let host = UIHostingController(rootView: status)
+                let proposal = CGSize(width: width, height: 1)
+                let measured = host.sizeThatFits(in: proposal)
+                let traits = UITraitCollection(preferredContentSizeCategory: category)
+                let font = UIFont.preferredFont(forTextStyle: .subheadline, compatibleWith: traits)
+                XCTAssertGreaterThanOrEqual(measured.height, font.lineHeight - 1,
+                    "Distance/time text must retain its full line height in a short map panel")
+
+                tour.isRoutingInFlight = true
+                let loading = UIHostingController(rootView: MapDestinationStatus().environment(tour)
+                    .environment(\.dynamicTypeSize, dynamicType))
+                XCTAssertGreaterThan(loading.sizeThatFits(in: proposal).height, measured.height,
+                    "The route-loading message needs its own space beneath distance/time")
+            }
+        }
+    }
+
     func testMapPopupCloseIsAnInteractiveControl() throws {
         var dismissed = false
         let popup = StopNameInfoWindow(title: "Greystone", details: "Stop details", width: 280, maximumHeight: 300) {

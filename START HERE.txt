@@ -1,6 +1,6 @@
 Cranford Historical AR — Xcode project
 
-Release 0.2.0 (38) — Photo-led stop page spacing
+Release 0.2.0 (39) — Map status text, fresh test reset and first-stop wording
 
 1. Close the previous Xcode project. Extract the entire ZIP into a fresh folder on the Mac. Keep its folders together.
    Copy your existing Config/Secrets.xcconfig into this new folder’s Config folder.
@@ -10,7 +10,7 @@ Release 0.2.0 (38) — Photo-led stop page spacing
 5. In Xcode select the blue project icon, then Targets > CranfordHistoricalAR > Signing & Capabilities.
 6. Turn on Automatically manage signing and select your Apple account under Team.
 7. Select your iPhone in the top toolbar. Choose Product > Clean Build Folder, then click Run.
-8. On the iPhone open Home > Developer. Installed build and narration must show 0.2.0 (38), audio release cedar-2.
+8. On the iPhone open Home > Developer. Installed build and narration must show 0.2.0 (39), audio release cedar-2.
    After tapping Play, Prepared audio should say bundledAudio with stop_01 or stop_02, never synthesizedSpeech.
 
 Homebrew and XcodeGen are not needed to open this generated project.
@@ -307,3 +307,24 @@ Build 38 photo-led stop page:
   remain. Long stop names, addresses and captions wrap instead of truncating.
 - Debug/Release Swift syntax checks pass. Verify native layout on iPhone/Xcode with
   portrait/landscape photos, long captions, large text and the player open/closed.
+
+Build 39 Map status text, testing resets and walk wording:
+- The clipped line is Map's distance/walking-time status above View stop and Continue.
+  Its TimelineView now has an explicit vertical stack, full intrinsic text height and
+  a Dynamic Type-scaled minimum line height. Route-loading text occupies a separate
+  row. The complete destination panel retains its natural height inside the existing
+  ScrollView; long route warnings wrap. The bottom navigation layout stays unchanged.
+- Greystone's Story completed/Bonus found survives a visit-only reset because these
+  are independent records. The existing reset keeps that behavior. Developer now also
+  offers Clear visits, stories & bonuses, which erases all three activity records and
+  restarts at stop 1. It pauses audio but keeps bookmarks and on-site calibration.
+  Live GPS can legitimately record a new visit when still physically at a stop.
+- Home's walk button and Map's first destination now say Start walk: Droescher’s Mill
+  before arrival at stop 1. The Map start button uses the same copy. Arrival switches
+  to the normal destination/actions; future destinations retain Continue wording.
+- Removed the remaining stop-position counter in Map's destination panel.
+- 48 portable activity/navigation tests pass, including both reset modes, Greystone
+  state after relaunch and first-leg wording. Debug/Release syntax checks pass.
+  A native Map status measurement regression covers compact widths, large text and
+  route-loading text; execute it in Xcode. Native rendering and simulator/device
+  compilation are unverified in this Linux workspace. GitHub Apple checks run separately.

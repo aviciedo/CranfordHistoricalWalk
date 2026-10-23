@@ -275,11 +275,13 @@ final class DeveloperModeController {
     }
 
     func clearVisitsAndResetTour() {
-        tour.visitStore.removeAll()
-        tour.visitRecords = tour.visitStore.records()
-        tour.activities.clearVisits()
-        tour.activityStore.save(tour.activities)
-        resetTour()
+        simulator?.stopWalking()
+        tour.clearRecordedActivitiesAndRestart(includingStoriesAndBonuses: false)
+    }
+
+    func clearAllActivitiesAndResetTour() {
+        simulator?.stopWalking()
+        tour.clearRecordedActivitiesAndRestart(includingStoriesAndBonuses: true)
     }
 
     // MARK: Diagnostics

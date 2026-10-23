@@ -118,6 +118,73 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertEqual(tour.phase, .inProgress)
     }
 
+    func testFirstLegStartWordingIgnoresIndependentStoriesAndBonuses() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        let title = "Start walk: \(stops[0].name)"
+        XCTAssertEqual(tour.walkActionTitle, title)
+        tour.finishListening(for: stops[1].id)
+        tour.activities.foundBonus(at: stops[1].id)
+        tour.activities.visited(stops[0].id) // A prior walk must not suppress this walk's start.
+        tour.startTour()
+        XCTAssertTrue(tour.isHeadingToFirstStop)
+        XCTAssertEqual(tour.walkActionTitle, title)
+        tour.openStory(for: stops[1].id)
+        XCTAssertEqual(tour.walkActionTitle, title)
+        tour.handleLocationForProximity(LocationSample(coordinate: stops[0].coordinate))
+        XCTAssertFalse(tour.isHeadingToFirstStop)
+        XCTAssertEqual(tour.walkActionTitle, "Continue your walk")
+        tour.completeCurrentStopAndAdvance()
+        XCTAssertEqual(tour.currentStop?.id, stops[1].id)
+        XCTAssertEqual(tour.walkActionTitle, "Continue your walk")
+        while tour.phase == .inProgress { tour.completeCurrentStopAndAdvance() }
+        XCTAssertEqual(tour.walkActionTitle, "Walk it again")
+    }
+
+    #if DEVELOPER_MENU
+    func testVisitOnlyResetKeepsStoriesAndBonusesSeparate() async {
+        let visits = InMemoryStopVisitStore()
+        let activities = InMemoryStopActivityStore()
+        visits.record(StopVisitRecord(stopID: stops[1].id, activatedAt: Date(), evidence: .recognizedPlaque))
+        let tour = await makeTour(visitStore: visits, activityStore: activities); defer { cleanUp(tour) }
+        tour.finishListening(for: stops[1].id)
+        tour.finishStory(for: stops[1].id)
+        tour.startTour()
+        tour.completeCurrentStopAndAdvance()
+        tour.clearRecordedActivitiesAndRestart(includingStoriesAndBonuses: false)
+        XCTAssertTrue(visits.records().isEmpty)
+        XCTAssertNil(tour.activities[stops[1].id].visitedAt)
+        XCTAssertNotNil(tour.activities[stops[1].id].listenedAt)
+        XCTAssertNotNil(tour.activities[stops[1].id].readAt)
+        XCTAssertNotNil(tour.activities[stops[1].id].bonusFoundAt)
+        XCTAssertEqual(tour.currentStop?.id, stops[0].id)
+        XCTAssertEqual(tour.progress.completedCount, 0)
+        XCTAssertEqual(activities.load(), tour.activities)
+    }
+
+    func testFullActivityResetClearsGreystoneStatusAndPersistsAcrossRelaunch() async {
+        let visits = InMemoryStopVisitStore()
+        let activities = InMemoryStopActivityStore()
+        visits.record(StopVisitRecord(stopID: stops[1].id, activatedAt: Date(), evidence: .recognizedPlaque))
+        let tour = await makeTour(visitStore: visits, activityStore: activities); defer { cleanUp(tour) }
+        tour.finishListening(for: stops[1].id)
+        tour.finishStory(for: stops[1].id)
+        tour.startTour()
+        tour.completeCurrentStopAndAdvance()
+        tour.openStory(for: stops[1].id)
+        XCTAssertNotNil(tour.activities[stops[1].id].bonusFoundAt)
+        tour.clearRecordedActivitiesAndRestart(includingStoriesAndBonuses: true)
+        XCTAssertTrue(visits.records().isEmpty)
+        XCTAssertTrue(tour.visitRecords.isEmpty)
+        for stop in stops { XCTAssertEqual(tour.activities[stop.id], StopActivities()) }
+        XCTAssertEqual(tour.progress.completedCount, 0)
+        XCTAssertEqual(tour.currentStop?.id, stops[0].id)
+        XCTAssertTrue(tour.discoveriesByStopID[stops[1].id] == nil)
+        let reloaded = await makeTour(visitStore: visits, activityStore: activities); defer { cleanUp(reloaded) }
+        for stop in stops { XCTAssertEqual(reloaded.activities[stop.id], StopActivities()) }
+        XCTAssertEqual(reloaded.walkActionTitle, reloaded.startWalkTitle)
+    }
+    #endif
+
     private var stops: [HistoricalStop] { HistoricalStop.previewStops }
     private func makeTour(visitStore: (any StopVisitStore)? = nil, activityStore: (any StopActivityStore)? = nil) async -> TourViewModel {
         let model = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),

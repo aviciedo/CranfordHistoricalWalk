@@ -18,7 +18,8 @@ let package = Package(name: "ActivityModelHarness", platforms: [.macOS(.v14)],
  dependencies: [.package(path: "../../Packages/TourCore")],
  targets: [.target(name: "ActivityModelHarness", dependencies: [.product(name: "TourCore", package: "TourCore")],
  swiftSettings: [.define("DEVELOPER_MENU")]),
- .testTarget(name: "ActivityModelHarnessTests", dependencies: ["ActivityModelHarness", .product(name: "TourCore", package: "TourCore")])])
+ .testTarget(name: "ActivityModelHarnessTests", dependencies: ["ActivityModelHarness", .product(name: "TourCore", package: "TourCore")],
+ swiftSettings: [.define("DEVELOPER_MENU")])])
 ''')
 for relative in ['ViewModels/TourViewModel.swift', 'ViewModels/TourViewModel+Proximity.swift',
                  'ViewModels/TourViewModel+Routing.swift', 'ViewModels/MapViewModel.swift', 'Services/StopVisitStore.swift',

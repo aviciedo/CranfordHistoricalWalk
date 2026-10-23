@@ -156,7 +156,8 @@ struct TourView: View {
                 tour.startTour()
                 navigation.selectedTab = .map
             } label: {
-                Label("Start walking tour", systemImage: "figure.walk")
+                Label(tour.startWalkTitle, systemImage: "figure.walk")
+                    .fixedSize(horizontal: false, vertical: true)
                     .font(.headline).frame(maxWidth: .infinity, minHeight: 54)
             }
             .buttonStyle(.plain).foregroundStyle(AppTheme.ivory)

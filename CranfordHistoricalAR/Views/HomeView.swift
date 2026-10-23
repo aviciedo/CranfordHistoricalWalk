@@ -37,7 +37,8 @@ struct HomeView: View {
                         tour.startTour()
                         navigation.selectedTab = .map
                     } label: {
-                        Label(tour.phase == .inProgress ? "Continue your walk" : (tour.phase == .complete ? "Walk it again" : "Start a walk"), systemImage: "figure.walk")
+                        Label(tour.walkActionTitle, systemImage: "figure.walk")
+                            .fixedSize(horizontal: false, vertical: true)
                             .frame(maxWidth: .infinity).padding(.vertical, 17)
                     }
                     .buttonStyle(.plain).font(.headline)
