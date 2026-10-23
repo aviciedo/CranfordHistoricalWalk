@@ -40,7 +40,7 @@ struct StopPhotoGallery: View {
                             Spacer()
                             photoArrow("chevron.right", label: "Next photo", amount: 1)
                         }
-                        .padding(.horizontal, 4)
+                        .padding(.horizontal, 12)
                     }
                 }
                 Text("\(selection + 1) of \(photos.count)")
@@ -64,10 +64,12 @@ struct StopPhotoGallery: View {
     private func photoArrow(_ symbol: String, label: String, amount: Int) -> some View {
         Button { move(by: amount) } label: {
             Image(systemName: symbol)
-                .font(.system(size: 18, weight: .regular))
-                .foregroundStyle(.white.opacity(0.7))
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(AppTheme.forest)
                 .frame(width: 44, height: 44)
-                .contentShape(Rectangle())
+                .background(.white, in: Circle())
+                .shadow(color: .black.opacity(0.12), radius: 4, y: 2)
+                .contentShape(Circle())
         }
         .buttonStyle(.plain).accessibilityLabel(label)
     }
