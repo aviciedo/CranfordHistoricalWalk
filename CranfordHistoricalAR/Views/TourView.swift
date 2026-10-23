@@ -15,9 +15,10 @@ struct TourView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            ScreenReturnBar(onBack: { navigation.goBack() })
-                .padding(.horizontal, 24).padding(.top, 8)
-            header
+            ScreenPageHeader(onBack: { navigation.goBack() }) {
+                Text("Map")
+                    .modifier(WalkDebugGesture(isPresented: $isShowingDeveloperControls))
+            }
             if tour.phase == .complete {
                 Button { isShowingSummary = true } label: {
                     HStack {
@@ -105,15 +106,6 @@ struct TourView: View {
             focusRequestedStop()
             dependencies.imageLoader.prefetch([tour.currentStop, tour.nextStop].compactMap { $0 })
         }
-    }
-
-    private var header: some View {
-        HStack {
-            Text("Map").font(.system(.largeTitle, design: .serif).weight(.semibold))
-                .modifier(WalkDebugGesture(isPresented: $isShowingDeveloperControls))
-            Spacer()
-        }
-        .padding(.horizontal, 24).padding(.vertical, 12)
     }
 
     private var map: some View {

@@ -1,3 +1,24 @@
+# Build 44 — Map/Stops header alignment
+
+final result: blocked
+
+Source evidence: StopsContent used 22-point horizontal header insets; TourView
+used 24 points. Both used the same ScreenReturnBar buttons and an 8-point top inset.
+The user's requested visual truth is exact matching Back/X positions on both tabs.
+
+Implementation: both pages now render the same ScreenPageHeader component, which
+owns 24-point horizontal insets, 8-point top inset, zero vertical stack spacing,
+identical Back/X controls and the serif largeTitle heading with 12-point vertical
+padding. Map's title-only developer long press remains attached to its title.
+
+Native rendered evidence: unavailable on this Linux host (no Xcode/Apple SDK or
+simulator). No pixel comparison or native build pass is claimed. Verify matching
+portrait viewport, device scale, text size and safe areas on Map/Stops, with player
+visible/hidden. Compare button outer bounds and glyph centers in overlaid captures.
+Debug/Release syntax checks passed; code review confirmed a single shared layout.
+
+---
+
 # Build 43 — Photo detail refinement
 
 final result: blocked

@@ -17,12 +17,9 @@ struct StopsContent: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            ScreenReturnBar(onBack: { navigation.goBack() })
-                .padding(.horizontal, 22).padding(.top, 8)
-            Text("Stops")
-                .font(.system(.largeTitle, design: .serif).weight(.semibold))
-                .accessibilityAddTraits(.isHeader)
-                .padding(.horizontal, 22).padding(.vertical, 12)
+            ScreenPageHeader(onBack: { navigation.goBack() }) {
+                Text("Stops")
+            }
             GeometryReader { viewport in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 0) {

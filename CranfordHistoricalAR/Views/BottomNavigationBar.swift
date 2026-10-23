@@ -84,6 +84,29 @@ struct ScreenReturnBar: View {
     }
 }
 
+/// Identical safe-area-relative button and title geometry for the main pages.
+struct ScreenPageHeader<Heading: View>: View {
+    let onBack: () -> Void
+    let heading: Heading
+
+    init(onBack: @escaping () -> Void, @ViewBuilder heading: () -> Heading) {
+        self.onBack = onBack
+        self.heading = heading()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ScreenReturnBar(onBack: onBack)
+            heading
+                .font(.system(.largeTitle, design: .serif).weight(.semibold))
+                .accessibilityAddTraits(.isHeader)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, 12)
+        }
+        .padding(.horizontal, 24).padding(.top, 8)
+    }
+}
+
 /// Each modal dismisses its own level; parent hosts also clear their presentation bindings.
 private struct ReturnHomeDismissal: ViewModifier {
     @Environment(AppNavigation.self) private var navigation

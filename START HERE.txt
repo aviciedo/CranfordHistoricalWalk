@@ -1,6 +1,6 @@
 Cranford Historical AR — Xcode project
 
-Release 0.2.0 (43) — Ivory photo viewer with matching heading and caption below
+Release 0.2.0 (44) — Precisely aligned Map and Stops headers
 
 1. Close the previous Xcode project. Extract the entire ZIP into a fresh folder on the Mac. Keep its folders together.
    Copy your existing Config/Secrets.xcconfig into this new folder’s Config folder.
@@ -10,7 +10,7 @@ Release 0.2.0 (43) — Ivory photo viewer with matching heading and caption belo
 5. In Xcode select the blue project icon, then Targets > CranfordHistoricalAR > Signing & Capabilities.
 6. Turn on Automatically manage signing and select your Apple account under Team.
 7. Select your iPhone in the top toolbar. Choose Product > Clean Build Folder, then click Run.
-8. On the iPhone open Home > Developer. Installed build and narration must show 0.2.0 (43), audio release cedar-2.
+8. On the iPhone open Home > Developer. Installed build and narration must show 0.2.0 (44), audio release cedar-2.
    After tapping Play, Prepared audio should say bundledAudio with stop_01 or stop_02, never synthesizedSpeech.
 
 Homebrew and XcodeGen are not needed to open this generated project.
@@ -377,3 +377,12 @@ Build 43 photo detail refinement:
   player overlay in the photo viewer.
 - Debug/Release Swift syntax checks pass. Native build, visual comparison, larger
   text and zoom interactions still require Xcode/iPhone verification.
+
+Build 44 shared Map/Stops alignment:
+- Replaced separate Map and Stops header layouts with one ScreenPageHeader.
+  Both now use exactly 24-point horizontal insets, an 8-point top inset, the
+  same Back/X controls, zero row spacing and 12-point title vertical padding.
+  Stops previously used a different 22-point horizontal inset.
+- Map title long-press developer access, Back/X actions and body layouts remain.
+- Debug/Release Swift syntax checks pass. Pixel comparison on native devices,
+  including larger text, still needs Xcode/iPhone verification.
