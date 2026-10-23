@@ -1,6 +1,6 @@
 Cranford Historical AR — Xcode project
 
-Release 0.2.0 (29) — Focused animated AR scanning introduction
+Release 0.2.0 (30) — Grounded walking chevrons and simplified GPS card
 
 1. Close the previous Xcode project. Extract the entire ZIP into a fresh folder on the Mac. Keep its folders together.
    Copy your existing Config/Secrets.xcconfig into this new folder’s Config folder.
@@ -10,7 +10,7 @@ Release 0.2.0 (29) — Focused animated AR scanning introduction
 5. In Xcode select the blue project icon, then Targets > CranfordHistoricalAR > Signing & Capabilities.
 6. Turn on Automatically manage signing and select your Apple account under Team.
 7. Select your iPhone in the top toolbar. Choose Product > Clean Build Folder, then click Run.
-8. On the iPhone open Home > Developer. Installed build and narration must show 0.2.0 (29), audio release cedar-2.
+8. On the iPhone open Home > Developer. Installed build and narration must show 0.2.0 (30), audio release cedar-2.
    After tapping Play, Prepared audio should say bundledAudio with stop_01 or stop_02, never synthesizedSpeech.
 
 Homebrew and XcodeGen are not needed to open this generated project.
@@ -195,3 +195,25 @@ Build 29 AR scan introduction:
   enabled and denied, Reduce Motion, larger text and Back/X.
 - Debug/Release syntax checks are available on Linux; camera visuals and animation
   require Xcode/iPhone verification.
+
+Build 30 AR walking refinement:
+- A compact destination/ETA header and one bottom maneuver card share hunter green,
+  white type and consistent translucent surfaces. No duplicate large center instruction.
+- Only ONE set of smaller upright 3D chevrons is rendered. The second floating turn
+  sign, screen-fixed giant chevrons and distance-dependent sign enlargement are removed.
+- Chevrons use a point up to 6 m along the current walking-route segment; they stop at
+  a corner rather than cutting across it. The bottom GPS card previews the upcoming
+  maneuver. Near the turn, chevrons adopt that maneuver when facing along the route.
+- A detected horizontal ground surface is required. Existing-plane raycasting refines
+  height/position where possible. Until ground is found the GPS card remains available.
+- A marker retains its world position as the phone moves. It advances when approached,
+  when its segment changes or on rerouting; it cannot grow without bound near the camera.
+- Ground detection does NOT establish street semantics or surveyed alignment. GPS and
+  compass accuracy still affect route placement; this is not precision road recognition.
+- 183 core tests (including 8 new placement/corner tests) and 44 activity/navigation
+  tests pass. Debug/Release syntax checks pass on Linux. Xcode compilation, real camera
+  behavior, raycasts and outdoor alignment cannot be verified on Linux.
+- On site: scan ground; walk toward a marker; pan/tilt the phone without walking;
+  approach/pass a corner; test poor GPS, tracking interruption and a reroute. One marker
+  set should remain near the route, with no giant overlay or duplicate floating sign.
+  Read the maneuver from the bottom card. Back/X and optional plaque activities remain.

@@ -291,7 +291,11 @@ final class ARViewModel {
         geoAnchors.setNavigationTarget(GeoAnchorManager.NavigationTarget(
             destination: stop.coordinate,
             bearingToWaypoint: bearing,
-            turnCue: isShowingWalkingOrientation ? nil : walkingCue
+            anchorCoordinate: ARStreetGuidance.routePoint(route: route, progress: progress),
+            routeSegment: progress.segmentIndex,
+            segmentStart: route.routeCoordinates[progress.segmentIndex],
+            segmentEnd: route.routeCoordinates[progress.segmentIndex + 1],
+            turnCue: walkingCue
         ))
     }
 

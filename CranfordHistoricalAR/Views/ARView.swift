@@ -237,16 +237,6 @@ struct ARHUDView: View {
                     notice(hint, symbol: "viewfinder.circle")
                 }
                 Spacer(minLength: 8)
-                if model.availability == .ready, model.isShowingWalkingOrientation,
-                   !model.isMarkerAvailable, !model.tour.isARStopVisited, model.tour.phase == .inProgress,
-                   !(model.tour.isPlaqueDiscoveryStop && model.tour.discovery.hasArrived) {
-                    ARWalkingOrientationView(relativeBearing: model.relativeBearingToWaypoint,
-                                             street: model.orientationStreet,
-                                             distance: model.walkingCue?.distanceText,
-                                             isUpcomingTurn: model.walkingCue?.isUpcomingTurn == true)
-                        .transition(.opacity)
-                    Spacer(minLength: 8)
-                }
                 if model.availability == .ready {
                     ViewThatFits(in: .vertical) {
                         bottomPanel.fixedSize(horizontal: false, vertical: true)
@@ -257,7 +247,6 @@ struct ARHUDView: View {
                 }
             }
             .padding(.horizontal, 16).padding(.top, 8).padding(.bottom, 12)
-            .animation(reduceMotion ? nil : .easeInOut(duration: 0.3), value: model.isShowingWalkingOrientation)
             .overlay {
                 if model.isShowingDiscoveryConfirmation {
                     VStack(spacing: 12) {
@@ -285,23 +274,15 @@ struct ARHUDView: View {
         VStack(alignment: .leading, spacing: 8) {
             ScreenReturnBar(onBack: onClose)
             if let name = model.destinationName {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(model.tour.discovery.hasVerifiedPlaque ? "Bonus found" :
-                         (model.tour.isPlaqueDiscoveryStop && model.tour.discovery.hasArrived ? "At this stop" : "Next stop"))
-                        .font(.caption.weight(.medium))
-                    Text(name).font(.system(.headline, design: .serif))
-                        .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
-                    if !model.tour.isARStopVisited && !(model.tour.isPlaqueDiscoveryStop && model.tour.discovery.hasArrived) {
-                        HStack(spacing: 10) {
-                            Label(model.distanceText, systemImage: "figure.walk")
-                            Label(model.timeText, systemImage: "clock")
-                        }
-                        .font(.subheadline.weight(.medium)).monospacedDigit()
-                        .contentTransition(.numericText())
-                    }
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    Text(name).font(.subheadline.weight(.semibold))
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
+                    Text(model.timeText).font(.caption.weight(.medium)).monospacedDigit()
+                        .fixedSize()
                 }
-                .foregroundStyle(AppTheme.forest).padding(14)
-                .background(AppTheme.ivory, in: RoundedRectangle(cornerRadius: 18))
+                .foregroundStyle(.white).padding(.horizontal, 14).padding(.vertical, 10)
+                .background(AppTheme.forest.opacity(0.90), in: RoundedRectangle(cornerRadius: 14))
             }
         }
     }
@@ -336,9 +317,11 @@ struct ARHUDView: View {
             storyControls
         } else {
             VStack(spacing: 10) {
-                ARNavigationArrowView(relativeBearing: model.relativeBearingToWaypoint, detail: model.guidanceDetail,
+                ARNavigationArrowView(detail: model.guidanceDetail,
                                       cue: model.isMarkerAvailable ? nil : model.walkingCue,
-                                      isApproximate: model.isGuidanceApproximate)
+                                      isApproximate: model.isGuidanceApproximate,
+                                      needsGroundScan: model.geoAnchors.isTrackingReady && !model.geoAnchors.hasDetectedGround,
+                                      needsOrientation: model.isShowingWalkingOrientation && abs(model.relativeBearingToWaypoint ?? 0) > 50)
                 if let message = model.activationMessage { notice(message, symbol: "location.circle") }
                 if model.isMarkerAvailable {
                     primaryButton("Activate stop marker", symbol: "viewfinder.circle", action: model.activateMarker)

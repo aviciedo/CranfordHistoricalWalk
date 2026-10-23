@@ -48,6 +48,7 @@ final class GeoAnchorManager {
     /// Placement decided by `SignPlacementPolicy` (image vs geo). Not tour progress.
     var placementMode: SignPlacementMode = .hidden
     var hasActivatedStop = false
+    private(set) var hasDetectedGround = false
     private(set) var navigationBearing: Double?
     private(set) var isWindowBonusAccessible = false
 
@@ -61,6 +62,10 @@ final class GeoAnchorManager {
     struct NavigationTarget: Equatable {
         var destination: GeoCoordinate
         var bearingToWaypoint: Double
+        var anchorCoordinate: GeoCoordinate?
+        var routeSegment: Int
+        var segmentStart: GeoCoordinate
+        var segmentEnd: GeoCoordinate
         var turnCue: ARWalkingGuidance.RouteCue?
     }
 
@@ -132,6 +137,7 @@ final class GeoAnchorManager {
         trackingState = .notAvailable
         navigationBearing = nil
         groundHeight = nil
+        hasDetectedGround = false
         lastGuidanceTime = nil
         lastFrameTime = 0
         anchors.attach(to: arView)
@@ -154,6 +160,8 @@ final class GeoAnchorManager {
     }
 
     func sessionWasInterrupted() {
+        hasDetectedGround = false
+        groundHeight = nil
         isWindowBonusAccessible = false
         isInterrupted = true
         navigationBearing = nil
@@ -363,8 +371,9 @@ final class GeoAnchorManager {
 
     func setNavigationTarget(_ newTarget: NavigationTarget?) {
         let destinationChanged = newTarget?.destination != target?.destination
+        let segmentChanged = newTarget?.segmentStart != target?.segmentStart || newTarget?.segmentEnd != target?.segmentEnd
         target = newTarget
-        if destinationChanged, cameraTransform != nil {
+        if destinationChanged || segmentChanged, cameraTransform != nil {
             navigationBearing = nil
             lastGuidanceTime = nil
             placeContent(now: lastFrameTime, forceLayout: true)
@@ -394,6 +403,7 @@ final class GeoAnchorManager {
                 && below > 0.45 && below < 2.5
                 && simd_length(SIMD2(center.x - camera.x, center.z - camera.z)) < 8
         }
+        hasDetectedGround = !candidates.isEmpty
         let closest = candidates.min { lhs, rhs in
             let l = lhs.transform * SIMD4<Float>(lhs.center.x, lhs.center.y, lhs.center.z, 1)
             let r = rhs.transform * SIMD4<Float>(rhs.center.x, rhs.center.y, rhs.center.z, 1)
@@ -439,28 +449,54 @@ final class GeoAnchorManager {
             return
         }
         updateCameraGuidance(direction: direction, now: now)
-        anchors.arrows.setVisible(true)
-        // Keep arrows until activation, including inside the GPS arrival radius.
-        if let camera = cameraTransform?.translation {
-            anchors.arrows.update(base: base, direction: direction, camera: camera,
-                                  relativeBearing: navigationBearing, force: forceLayout, maximumDistance: markerDistance)
+        guard hasDetectedGround, let camera = cameraTransform?.translation else {
+            anchors.hideNavigation()
+            return
         }
-        if markerDistance == nil, let cue = target?.turnCue, cue.isUpcomingTurn,
-           cue.isNearTurn || (anchors.turnSign.isShowing && cue.distanceMeters <= 55), let coordinate = cue.coordinate,
-           let camera = cameraTransform?.translation,
-           var position = provider.worldPosition(for: coordinate, altitude: nil, heightBelowCamera: 0) {
-            let flat = SIMD3<Float>(position.x - camera.x, 0, position.z - camera.z)
-            let distance = simd_length(flat)
-            if distance > 0.1 {
-                position = camera + flat / distance * max(3, min(25, distance))
-                position.y = base.y + 2.0
-                anchors.turnSign.update(cue: cue, position: position, camera: camera)
-            } else {
-                anchors.turnSign.hide(animated: true)
-            }
+        let candidate: SIMD3<Float>
+        if let markerDistance {
+            let distance = min(ARNavigationArrowEntity.firstArrowDistance, max(0, markerDistance - 1.2))
+            candidate = base + simd_normalize(direction) * distance
         } else {
-            anchors.turnSign.hide(animated: true)
+            guard let coordinate = target?.anchorCoordinate,
+                  let point = provider.worldPosition(for: coordinate, altitude: nil, heightBelowCamera: 0) else {
+                anchors.hideNavigation()
+                return
+            }
+            candidate = point
         }
+        guard let ground = detectedGroundPosition(near: candidate) else {
+            anchors.hideNavigation()
+            return
+        }
+        let maneuver: ARWalkingGuidance.Direction?
+        if let cue = target?.turnCue, cue.isUpcomingTurn, cue.distanceMeters <= 12 {
+            maneuver = cue.direction
+        } else { maneuver = nil }
+        anchors.arrows.setVisible(true)
+        anchors.arrows.update(ground: ground, direction: direction, camera: camera,
+                              relativeBearing: navigationBearing, segment: target?.routeSegment ?? -1,
+                              maneuver: maneuver, force: forceLayout)
+    }
+
+    /// Refine the route point against detected horizontal geometry when it is in view.
+    /// A known ground plane supplies height when the point is outside the camera frustum.
+    /// Ground detection establishes a surface, not street semantics or survey-grade GPS.
+    private func detectedGroundPosition(near point: SIMD3<Float>) -> SIMD3<Float>? {
+        guard hasDetectedGround, let groundHeight else { return nil }
+        var grounded = point
+        grounded.y = groundHeight
+        if let arView = anchors.arView, let screen = arView.project(grounded), arView.bounds.contains(screen) {
+            let hits = arView.raycast(from: screen, allowing: .existingPlaneGeometry, alignment: .horizontal)
+            if let hit = hits.first(where: { result in
+                guard let plane = result.anchor as? ARPlaneAnchor else { return false }
+                return plane.classification != .table && plane.classification != .seat && plane.classification != .ceiling
+                    && abs(result.worldTransform.translation.y - groundHeight) < 0.6
+            }) {
+                grounded = hit.worldTransform.translation
+            }
+        }
+        return grounded
     }
 
     private func updateCameraGuidance(direction: SIMD3<Float>, now: TimeInterval) {

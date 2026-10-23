@@ -22,7 +22,7 @@ private enum ARChevronArt {
     static func makeGroup() -> Entity {
         let group = Entity()
         guard let bodyMesh, let faceMesh else { return group }
-        let green = SimpleMaterial(color: UIColor(red: 0.10, green: 0.25, blue: 0.17, alpha: 1),
+        let green = SimpleMaterial(color: UIColor(AppTheme.forest),
                                    roughness: 0.55, isMetallic: false)
         let white = UnlitMaterial(color: .white)
         for index in 0..<3 {
@@ -34,7 +34,7 @@ private enum ARChevronArt {
             body.addChild(face)
             group.addChild(body)
         }
-        group.scale = SIMD3<Float>(repeating: 0.65)
+        group.scale = SIMD3<Float>(repeating: Float(ARStreetGuidance.chevronScale))
         return group
     }
 }
@@ -43,13 +43,11 @@ private enum ARChevronArt {
 /// direction follows the smoothed camera-relative route bearing, rather than a fixed icon.
 @MainActor
 final class ARNavigationArrowEntity: Entity {
-    static let firstArrowDistance: Float = 3.8
+    static let firstArrowDistance: Float = Float(ARStreetGuidance.lookAheadMeters)
     static let heightBelowCamera: Float = 1.15
     private let holder = Entity()
     private let heading = Entity()
-    private var lastPosition: SIMD3<Float>?
-    private var lastRotation: simd_quatf?
-    private var lastBearing: Double?
+    private var anchorState = ARStreetGuidance.AnchorState()
     private(set) var isShowing = false
 
     required init() {
@@ -60,53 +58,36 @@ final class ARNavigationArrowEntity: Entity {
         addChild(holder)
     }
 
-    func update(base: SIMD3<Float>, direction: SIMD3<Float>, camera: SIMD3<Float>,
-                relativeBearing: Double?, force: Bool = false, maximumDistance: Float? = nil) {
-        let flat = SIMD3<Float>(direction.x, 0, direction.z)
-        guard simd_length(flat) > 0.001, let bearing = relativeBearing, bearing.isFinite else {
+    func update(ground: SIMD3<Float>, direction: SIMD3<Float>, camera: SIMD3<Float>,
+                relativeBearing: Double?, segment: Int, maneuver: ARWalkingGuidance.Direction?, force: Bool = false) {
+        guard isShowing, let bearing = relativeBearing, bearing.isFinite else {
             holder.isEnabled = false
             return
         }
-        let dir = simd_normalize(flat)
-        let distance = min(Self.firstArrowDistance, maximumDistance.map { max(0, $0 - 1.2) } ?? Self.firstArrowDistance)
-        holder.isEnabled = isShowing && distance >= 0.9
-        guard holder.isEnabled else { return }
-        var position = base + dir * distance
-        position.y += 0.95
+        let candidate = SIMD3<Double>(Double(ground.x), Double(ground.y), Double(ground.z))
+        let cameraPoint = SIMD3<Double>(Double(camera.x), Double(camera.y), Double(camera.z))
+        let routeDirection = SIMD2<Double>(Double(direction.x), Double(direction.z))
+        guard let pinned = anchorState.update(candidate: candidate, camera: cameraPoint,
+                                             direction: routeDirection, segment: segment, force: force) else {
+            holder.isEnabled = false
+            return
+        }
+        let position = SIMD3<Float>(Float(pinned.x), Float(pinned.y + ARStreetGuidance.centerAboveGroundMeters), Float(pinned.z))
         let offset = camera - position
         let facing = simd_quatf(angle: atan2(offset.x, offset.z), axis: [0, 1, 0])
-        let degrees = ARChevronGeometry.rotationDegrees(relativeBearing: bearing)
-        let rotation = simd_quatf(angle: Float(degrees * .pi / 180), axis: [0, 0, 1])
-        let appearing = lastPosition == nil
-        let bearingChange: Double
-        if let previousBearing = lastBearing {
-            let deltaDegrees: Double = bearing - previousBearing
-            let deltaRadians: Double = deltaDegrees * Double.pi / 180.0
-            let wrappedRadians: Double = atan2(sin(deltaRadians), cos(deltaRadians))
-            bearingChange = abs(wrappedRadians * 180.0 / Double.pi)
+        let degrees: Double
+        if let maneuver, abs(bearing) < 50 {
+            degrees = ARChevronGeometry.rotationDegrees(direction: maneuver)
         } else {
-            bearingChange = 360.0
+            degrees = ARChevronGeometry.rotationDegrees(relativeBearing: bearing)
         }
-        if !force, let lastPosition, let lastRotation,
-           simd_distance(position, lastPosition) < 0.25,
-           abs(simd_dot(facing.vector, lastRotation.vector)) > 0.999,
-           bearingChange < 2 { return }
-        lastPosition = position
-        lastRotation = facing
-        lastBearing = bearing
-        let target = Transform(scale: .one, rotation: facing, translation: position)
-        let headingTarget = Transform(scale: .one, rotation: rotation, translation: .zero)
-        if UIAccessibility.isReduceMotionEnabled {
-            holder.transform = target
-            heading.transform = headingTarget
-        } else if appearing {
-            holder.transform = Transform(scale: SIMD3<Float>(repeating: 0.94), rotation: facing, translation: position)
-            heading.transform = headingTarget
-            holder.move(to: target, relativeTo: self, duration: 0.3, timingFunction: .easeInOut)
-        } else {
-            holder.move(to: target, relativeTo: self, duration: 0.4, timingFunction: .easeInOut)
-            heading.move(to: headingTarget, relativeTo: holder, duration: 0.35, timingFunction: .easeInOut)
-        }
+        let rotation = simd_quatf(angle: Float(degrees * Double.pi / 180.0), axis: [0, 0, 1])
+        holder.isEnabled = true
+        // The position is anchored. Only billboard rotation follows the camera for legibility.
+        holder.transform = Transform(scale: .one, rotation: facing, translation: position)
+        let target = Transform(scale: .one, rotation: rotation, translation: .zero)
+        if UIAccessibility.isReduceMotionEnabled { heading.transform = target }
+        else { heading.move(to: target, relativeTo: holder, duration: 0.25, timingFunction: .easeInOut) }
     }
 
     func setVisible(_ visible: Bool) {
@@ -115,128 +96,7 @@ final class ARNavigationArrowEntity: Entity {
         holder.isEnabled = visible
         if !visible {
             holder.stopAllAnimations(recursive: true)
-            lastPosition = nil; lastRotation = nil; lastBearing = nil
-        }
-    }
-}
-
-/// A reusable, upright arrow and street label in the AR world, facing the visitor.
-/// Texture work occurs only when the maneuver, street or rounded distance changes.
-@MainActor
-final class ARTurnSignEntity: Entity {
-    private let plane = ModelEntity(mesh: .generatePlane(width: 3.2, height: 1.2))
-    private let chevrons = ARChevronArt.makeGroup()
-    private var signature: String?
-    private var lastPosition: SIMD3<Float>?
-    private var lastRotation: simd_quatf?
-    private var lastScale: Float?
-    private var hideTask: Task<Void, Never>?
-    private(set) var isShowing = false
-
-    required init() {
-        super.init()
-        plane.position.y = -1.2
-        addChild(plane)
-        chevrons.position.y = 0.4
-        addChild(chevrons)
-        isEnabled = false
-    }
-
-    func update(cue: ARWalkingGuidance.RouteCue, position: SIMD3<Float>, camera: SIMD3<Float>) {
-        let key = "\(cue.direction.rawValue)|\(cue.streetLabel)|\(cue.distanceText)"
-        if signature != key || !isShowing {
-            let angle = Float(ARChevronGeometry.rotationDegrees(direction: cue.direction) * .pi / 180)
-            let target = Transform(scale: chevrons.scale, rotation: simd_quatf(angle: angle, axis: [0, 0, 1]),
-                                   translation: SIMD3<Float>(0, 0.4, 0))
-            if UIAccessibility.isReduceMotionEnabled || !isShowing { chevrons.transform = target }
-            else { chevrons.move(to: target, relativeTo: self, duration: 0.35, timingFunction: .easeInOut) }
-        }
-        if signature != key {
-            let renderer = ImageRenderer(content: ARFloatingTurnContent(cue: cue))
-            renderer.scale = 1.5
-            renderer.isOpaque = false
-            guard let cgImage = renderer.cgImage else { hide(); return }
-            let options = TextureResource.CreateOptions(semantic: .color, mipmapsMode: .allocateAndGenerateAll)
-            let texture: TextureResource
-            do {
-                if #available(iOS 18.0, *) {
-                    texture = try TextureResource(image: cgImage, options: options)
-                } else {
-                    texture = try TextureResource.generate(from: cgImage, options: options)
-                }
-            } catch { hide(); return }
-            var material = UnlitMaterial()
-            material.color = .init(tint: .white, texture: .init(texture))
-            material.blending = .transparent(opacity: .init(floatLiteral: 0.96))
-            plane.model?.materials = [material]
-            signature = key
-        }
-        let offset = camera - position
-        let rotation = simd_quatf(angle: atan2(offset.x, offset.z), axis: [0, 1, 0])
-        // Keep the street legible as the intersection comes into view.
-        let size = max(0.85, min(2.3, simd_length(SIMD2(offset.x, offset.z)) / 9))
-        // Scaling the label below the chevrons must not bury it beneath the street.
-        var targetPosition = position
-        targetPosition.y += max(0, 1.8 * size - 1.8)
-        let target = Transform(scale: SIMD3<Float>(repeating: size), rotation: rotation, translation: targetPosition)
-        let appearing = !isShowing
-        hideTask?.cancel()
-        hideTask = nil
-        if appearing {
-            stopAllAnimations()
-            if #available(iOS 18.0, *) { components.set(OpacityComponent(opacity: 1)) }
-        }
-        isShowing = true
-        isEnabled = true
-        if !appearing, let lastPosition, let lastRotation, let lastScale,
-           simd_distance(targetPosition, lastPosition) < 0.25,
-           abs(size - lastScale) < 0.03,
-           abs(simd_dot(rotation.vector, lastRotation.vector)) > 0.999 { return }
-        lastPosition = targetPosition
-        lastRotation = rotation
-        lastScale = size
-        if UIAccessibility.isReduceMotionEnabled {
-            transform = target
-        } else {
-            if appearing {
-                transform = Transform(scale: target.scale * 0.94, rotation: rotation, translation: targetPosition)
-                if #available(iOS 18.0, *) {
-                    components.set(OpacityComponent(opacity: 0))
-                    let fade = FromToByAnimation<Float>(name: "turn-entrance", from: 0, to: 1, duration: 0.3,
-                                                       timing: .easeInOut, bindTarget: .opacity)
-                    if let animation = try? AnimationResource.generate(with: fade) { playAnimation(animation) }
-                }
-            }
-            move(to: target, relativeTo: parent, duration: 0.4, timingFunction: .easeInOut)
-        }
-    }
-
-    func hide(animated: Bool = false) {
-        if !animated {
-            hideTask?.cancel()
-            hideTask = nil
-        }
-        guard isShowing else {
-            if !animated { isEnabled = false; stopAllAnimations() }
-            return
-        }
-        isShowing = false
-        lastPosition = nil
-        lastRotation = nil
-        lastScale = nil
-        stopAllAnimations()
-        guard animated, !UIAccessibility.isReduceMotionEnabled else { isEnabled = false; return }
-        move(to: Transform(scale: scale * 0.96, rotation: orientation, translation: position),
-             relativeTo: parent, duration: 0.2, timingFunction: .easeInOut)
-        if #available(iOS 18.0, *) {
-            let fade = FromToByAnimation<Float>(name: "turn-exit", from: 1, to: 0, duration: 0.2,
-                                               timing: .easeInOut, bindTarget: .opacity)
-            if let animation = try? AnimationResource.generate(with: fade) { playAnimation(animation) }
-        }
-        hideTask = Task { @MainActor [weak self] in
-            do { try await Task.sleep(for: .milliseconds(220)) } catch { return }
-            guard let self, !self.isShowing else { return }
-            self.isEnabled = false
+            anchorState.reset()
         }
     }
 }
