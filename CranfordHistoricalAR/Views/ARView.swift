@@ -142,7 +142,7 @@ struct ARTourView: View {
         }
         .sheet(isPresented: Binding(get: { model.isShowingSignDetails }, set: { model.isShowingSignDetails = $0 })) {
             if let stop = tour.arStop {
-                HistoricalSignSheet(stop: stop, onContinue: { model.isShowingSignDetails = false },
+                HistoricalSignSheet(stop: stop,
                                     onStartDiscovery: model.startPlaqueDiscovery,
                                     onEnterAR: { model.isShowingSignDetails = false })
                     .presentationDetents([.large])

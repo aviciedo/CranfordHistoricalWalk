@@ -8,18 +8,16 @@ struct StopDetailView: View {
     @Environment(AppDependencies.self) private var dependencies
     @Environment(\.dismiss) private var dismiss
     let stop: HistoricalStop
-    var onContinue: (() -> Void)? = nil
     var onStartDiscovery: (() -> Void)? = nil
     var onEnterAR: (() -> Void)? = nil
     @State private var isShowingAR = false
     @State private var inlinePlayerVisible = true
 
-    private var isCurrent: Bool { tour.phase == .inProgress && tour.currentStop?.id == stop.id }
     private var mode: Binding<AppNavigation.StoryMode> {
         Binding(get: { navigation.storyModes[stop.id] ?? .listen },
                 set: { navigation.storyModes[stop.id] = $0 })
     }
-    private var script: String { stop.narrationText ?? stop.longDescription }
+    private var script: String { stop.narrationText ?? "" }
     private var inlineTransportShown: Bool {
         mode.wrappedValue == .listen && dependencies.narrationPlayer.stopID == stop.id && inlinePlayerVisible
     }
@@ -45,7 +43,7 @@ struct StopDetailView: View {
                         Text("Stop \(stop.order) of \(tour.stops.count)")
                             .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
                         Text(stop.name).font(.system(.largeTitle, design: .serif).weight(.semibold))
-                        if let date = stop.displayDate { Text(date).font(.title3).foregroundStyle(AppTheme.secondaryInk) }
+                        if let date = stop.displayDate { Text(date).font(.subheadline).foregroundStyle(AppTheme.secondaryInk) }
                         Label(stop.address, systemImage: "mappin.and.ellipse")
                             .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
                     }
@@ -71,24 +69,21 @@ struct StopDetailView: View {
                                 .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
                         } else {
                             NarrationControls(stop: stop)
-                            .background {
-                                GeometryReader { geometry in
-                                    Color.clear.preference(key: InlineNarrationBounds.self, value: geometry.frame(in: .global))
+                                .background {
+                                    GeometryReader { geometry in
+                                        Color.clear.preference(key: InlineNarrationBounds.self, value: geometry.frame(in: .global))
+                                    }
                                 }
-                            }
                         }
                     } else {
                         if script.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                             Text("Reading text will be added with the narration.")
                                 .font(.body).foregroundStyle(AppTheme.secondaryInk)
                         } else {
-                            if stop.narrationText == nil {
-                                Text("Stop description").font(.subheadline.weight(.medium))
-                            }
                             Text(script).font(.body).lineSpacing(5)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             if tour.activities[stop.id].readAt == nil {
-                                Button(stop.narrationText == nil ? "I've read the description" : "I've read the narration") {
+                                Button("I've read the narration") {
                                     tour.finishStory(for: stop.id)
                                 }
                                 .frame(minHeight: 44)
@@ -106,7 +101,7 @@ struct StopDetailView: View {
                             HStack(spacing: 12) {
                                 Image(systemName: "camera.viewfinder")
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text(tour.activities[stop.id].bonusFoundAt == nil ? "Find the plaque" : "View AR bonus")
+                                    Text(tour.activities[stop.id].bonusFoundAt == nil ? "Find the bonus" : "View the bonus")
                                     Text("Optional · On-site only").font(.footnote).foregroundStyle(AppTheme.secondaryInk)
                                 }
                                 Spacer()
@@ -121,18 +116,7 @@ struct StopDetailView: View {
                                 .accessibilityIdentifier("stop.bonusFound")
                         }
                     }
-                    if isCurrent {
-                        Button {
-                            tour.completeCurrentStopAndAdvance()
-                            navigation.selectedTab = .map
-                            dismiss()
-                            onContinue?()
-                        } label: {
-                            Label(tour.nextStop == nil ? "Finish walk" : "Continue to next stop", systemImage: "arrow.right")
-                                .frame(minHeight: 48)
-                        }
-                        .buttonStyle(.plain)
-                    }
+
                 }
                 .padding(24)
             }

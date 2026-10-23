@@ -32,7 +32,7 @@ extension TourViewModel {
     /// An explicit reading acknowledgement; merely opening Read never claims completion.
     func finishStory(for stopID: String) {
         guard let stop = stop(withID: stopID),
-              !(stop.narrationText ?? stop.longDescription).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+              !(stop.narrationText ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         activities.read(stopID)
         activityStore.save(activities)
         restoreDiscovery(for: stopID)

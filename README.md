@@ -973,3 +973,18 @@ bridges and external service protocols, not the state/proximity/routing implemen
 store/calibration tests are retained; two new AVFoundation integration tests exercise real recording
 completion attribution and bookmarks on Mac. Debug/Release Swift syntax passes. Xcode compilation,
 SwiftUI layout/gestures, AVFoundation tests and live ARKit still require Mac/iPhone validation.
+
+## Photo-led stop page — 0.2.0 (18)
+
+Stop details keep the top-right Back, manual slideshow and captions, full name, quiet
+construction date and address, quiet Show on map, one Listen / Read control, and an optional
+Find the bonus row where plaque recognition is supported. Read uses approved narration text
+only; it never substitutes a description or adds History & sources. Missing narration text
+retains the explicit pending message. Reading acknowledgement follows the same transcript-only
+rule. Switching modes and Back do not touch the shared player or walking destination.
+
+Continue to next stop is removed from the detail page and remains on Map's destination card;
+this keeps learning separate from walking. Existing AR walking controls are retained.
+
+Validation: 168 core tests, 18 app-model flow tests and Debug/Release Swift syntax checks.
+Native layout, audio and Back/gesture behavior require Mac/iPhone verification.
