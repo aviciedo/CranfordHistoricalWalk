@@ -11,6 +11,67 @@ import CoreLocation
 /// The same state-flow tests run against the native model and its Linux Foundation harness.
 @MainActor
 final class TourCompletionFlowTests: XCTestCase {
+    func testHomeZoomUsesCurrentZoomWithoutChangingWalkingOrViewedStop() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.startTour()
+        tour.completeCurrentStopAndAdvance()
+        let progress = tour.progress
+        let activities = tour.activities
+        let map = MapViewModel()
+        map.show(stop: stops[0])
+        map.select(stopID: stops[0].id)
+        map.cameraDidSettle(zoom: 15.5)
+        map.requestZoom(by: 1)
+        XCTAssertEqual(map.cameraRequest?.kind, .zoomTo(16.5))
+        XCTAssertEqual(map.cameraMode, .free)
+        XCTAssertEqual(map.viewedStopID, stops[0].id)
+        XCTAssertEqual(map.selectedStopID, stops[0].id)
+        XCTAssertEqual(tour.currentStop?.id, stops[1].id)
+        XCTAssertEqual(tour.progress, progress)
+        XCTAssertEqual(tour.activities, activities)
+        map.requestZoom(by: -1)
+        XCTAssertEqual(map.cameraRequest?.kind, .zoomTo(15.5))
+    }
+
+    func testRapidZoomTapsAccumulateAndRespectLimitsAndPinchChanges() async {
+        let map = MapViewModel()
+        map.cameraDidSettle(zoom: 15)
+        for _ in 0..<3 { map.requestZoom(by: 1) }
+        XCTAssertEqual(map.cameraRequest?.kind, .zoomTo(18))
+        map.requestZoom(by: 100)
+        XCTAssertEqual(map.cameraRequest?.kind, .zoomTo(MapZoomPolicy.maximum))
+        XCTAssertFalse(map.canZoomIn)
+        let atMaximum = map.cameraRequest
+        map.requestZoom(by: 1)
+        XCTAssertEqual(map.cameraRequest, atMaximum)
+        map.requestZoom(by: -100)
+        XCTAssertEqual(map.cameraRequest?.kind, .zoomTo(MapZoomPolicy.minimum))
+        XCTAssertFalse(map.canZoomOut)
+        let atMinimum = map.cameraRequest
+        map.requestZoom(by: -1)
+        XCTAssertEqual(map.cameraRequest, atMinimum)
+        map.cameraDidSettle(zoom: 13.25) // A pinch updates the next button's starting point.
+        map.requestZoom(by: -1)
+        XCTAssertEqual(map.cameraRequest?.kind, .zoomTo(12.25))
+        let valid = map.cameraRequest
+        map.requestZoom(by: .nan)
+        map.cameraDidSettle(zoom: .nan)
+        XCTAssertEqual(map.cameraRequest, valid)
+        XCTAssertEqual(map.zoom, 12.25)
+    }
+
+    func testAppleZoomConversionMatchesGoogleScaleAtDifferentLatitudes() async {
+        for latitude in [-45.0, 0.0, 40.65, 65.0] {
+            for level in [5.0, 15.2, 19.0] {
+                let metersPerPoint = 156543.03392 * cos(latitude * Double.pi / 180) / pow(2, level)
+                XCTAssertEqual(MapZoomPolicy.level(metersPerPoint: metersPerPoint, latitude: latitude),
+                               Float(level), accuracy: 0.0001)
+            }
+        }
+        XCTAssertEqual(MapZoomPolicy.level(metersPerPoint: 0, latitude: 40.65), MapZoomPolicy.initial)
+        XCTAssertEqual(MapZoomPolicy.level(metersPerPoint: 1, latitude: .nan), MapZoomPolicy.initial)
+    }
+
     func testManualTabVisitDoesNotReuseAnOlderShowOnMapOrigin() async {
         let navigation = AppNavigation()
         navigation.selectedTab = .stops

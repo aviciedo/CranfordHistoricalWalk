@@ -191,6 +191,8 @@ struct AppleTourMapView: UIViewRepresentable {
     var onMarkerTap: (String) -> Void
     var onMapError: (String?) -> Void = { _ in }
     var reservesNavigationControls = false
+    var reservesZoomControls = false
+    var onCameraIdle: (Float) -> Void = { _ in }
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
@@ -299,6 +301,13 @@ struct AppleTourMapView: UIViewRepresentable {
                     map.setCamera(camera, animated: request.animated)
                 case .fitUserAndDestination(let user, let destination):
                     fit([user, destination] + parent.routeCoordinates, on: map, animated: request.animated)
+                case .zoomTo(let target):
+                    let current = zoomLevel(on: map)
+                    let factor = pow(2.0, Double(current - target))
+                    let camera = MKMapCamera(lookingAtCenter: map.centerCoordinate,
+                        fromDistance: max(1, map.camera.centerCoordinateDistance) * factor,
+                        pitch: map.camera.pitch, heading: map.camera.heading)
+                    map.setCamera(camera, animated: request.animated)
                 }
                 hasFitInitialMap = !parent.markers.isEmpty
             } else if !hasFitInitialMap && !parent.markers.isEmpty {
@@ -325,6 +334,19 @@ struct AppleTourMapView: UIViewRepresentable {
         func mapView(_ mapView: MKMapView, regionWillChangeAnimated animated: Bool) {
             let recognizers = mapView.subviews.flatMap { $0.gestureRecognizers ?? [] } + (mapView.gestureRecognizers ?? [])
             if recognizers.contains(where: { $0.state == .began || $0.state == .changed }) { parent.onUserGesture() }
+        }
+
+        private func zoomLevel(on map: MKMapView) -> Float {
+            guard map.bounds.width > 0 else { return MapZoomPolicy.initial }
+            let metersPerPoint = map.visibleMapRect.size.width / Double(map.bounds.width)
+                * MKMetersPerMapPointAtLatitude(map.centerCoordinate.latitude)
+            return MapZoomPolicy.level(metersPerPoint: metersPerPoint, latitude: map.centerCoordinate.latitude)
+        }
+
+        func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
+            updateMarkerSizes(on: mapView)
+            let zoom = zoomLevel(on: mapView)
+            Task { @MainActor [weak self] in self?.parent.onCameraIdle(zoom) }
         }
 
         func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
@@ -383,7 +405,8 @@ struct AppleTourMapView: UIViewRepresentable {
                 * MKMetersPerMapPointAtLatitude(map.centerCoordinate.latitude)
             let layout = MapMarkerSizing.layout(points: points, metersPerPoint: metersPerPoint,
                 viewport: StopMapLeaderView.viewport(in: map.bounds),
-                reservedAreas: StopMapLeaderView.reservedAreas(in: map.bounds, controls: parent.reservesNavigationControls))
+                reservedAreas: StopMapLeaderView.reservedAreas(in: map.bounds, controls: parent.reservesNavigationControls,
+                                                              zoomControls: parent.reservesZoomControls))
             markerScale = CGFloat(layout.scale)
             markerPlacements = Dictionary(uniqueKeysWithValues: zip(models, layout.placements).map { ($0.id, $1) })
             for site in sites.values {

@@ -50,6 +50,7 @@ struct MapCameraRequest: Equatable {
         case fitAll
         case follow(CLLocationCoordinate2D, bearing: Double?)
         case fitUserAndDestination(CLLocationCoordinate2D, CLLocationCoordinate2D)
+        case zoomTo(Float)
 
         static func == (lhs: Kind, rhs: Kind) -> Bool {
             switch (lhs, rhs) {
@@ -57,6 +58,7 @@ struct MapCameraRequest: Equatable {
             case let (.follow(a, ba), .follow(b, bb)): return a.latitude == b.latitude && a.longitude == b.longitude && ba == bb
             case let (.fitUserAndDestination(a1, a2), .fitUserAndDestination(b1, b2)):
                 return a1.latitude == b1.latitude && a1.longitude == b1.longitude && a2.latitude == b2.latitude && a2.longitude == b2.longitude
+            case let (.zoomTo(a), .zoomTo(b)): return a == b
             default: return false
             }
         }
@@ -65,6 +67,25 @@ struct MapCameraRequest: Equatable {
     var id: Int
     var kind: Kind
     var animated: Bool
+}
+
+/// Shared Web Mercator zoom steps, including conversion for the Apple geographic fallback.
+enum MapZoomPolicy {
+    static let minimum: Float = 3
+    static let maximum: Float = 20
+    static let initial: Float = 15.2
+
+    static func clamped(_ value: Float) -> Float {
+        value.isFinite ? min(maximum, max(minimum, value)) : initial
+    }
+
+    static func level(metersPerPoint: Double, latitude: Double) -> Float {
+        let latitudeScale = cos(latitude * Double.pi / 180)
+        guard metersPerPoint.isFinite, metersPerPoint > 0, latitudeScale.isFinite,
+              latitudeScale > 0 else { return initial }
+        let value = Float(log2(156543.03392 * latitudeScale / metersPerPoint))
+        return value.isFinite ? value : initial
+    }
 }
 
 /// Map-specific presentation state (camera mode, selection). Tour truth stays in `TourViewModel`.
@@ -77,13 +98,27 @@ final class MapViewModel {
     private(set) var cameraRequest: MapCameraRequest?
     private(set) var selectedStopID: String?
     private(set) var viewedStopID: String?
-    /// Last settled zoom level reported by the map; `nil` until the first idle callback.
+    /// Latest requested or settled zoom; nil before the first camera report or zoom tap.
     private(set) var zoom: Float?
     private var requestCounter = 0
     private var lastFollowedCoordinate: GeoCoordinate?
 
     /// Zoom at which the home map switches from plain dots to numbered dots.
     static let numberedDotZoom: Float = 16
+
+    var canZoomIn: Bool { (zoom ?? MapZoomPolicy.initial) < MapZoomPolicy.maximum }
+    var canZoomOut: Bool { (zoom ?? MapZoomPolicy.initial) > MapZoomPolicy.minimum }
+
+    /// Store the requested level immediately so rapid taps accumulate before camera idle.
+    /// No stop selection, walking progress or GPS permissions are changed.
+    func requestZoom(by step: Float) {
+        guard step.isFinite, step != 0 else { return }
+        let target = MapZoomPolicy.clamped((zoom ?? MapZoomPolicy.initial) + step)
+        guard target != zoom else { return }
+        zoom = target
+        userDidMoveCamera()
+        push(.zoomTo(target), animated: true)
+    }
 
     /// Marker style for an overview map of many stops (home screen).
     var overviewMarkerStyle: StopMarkerStyle {
@@ -171,6 +206,7 @@ final class MapViewModel {
     }
 
     func cameraDidSettle(zoom newZoom: Float) {
+        guard newZoom.isFinite else { return }
         if zoom != newZoom { zoom = newZoom }
     }
 

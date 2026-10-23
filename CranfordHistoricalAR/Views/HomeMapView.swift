@@ -17,17 +17,19 @@ struct HomeMapView: View {
                     routeCoordinates: [],
                     cameraRequest: mapModel.cameraRequest,
                     bottomInset: 0,
-                    onUserGesture: {},
+                    onUserGesture: { mapModel.userDidMoveCamera() },
                     onMarkerTap: { id in
                         mapModel.select(stopID: id)
                         detailStop = tour.stop(withID: id)
                     },
                     markerStyle: .numberedDot,
                     selectedStopID: mapModel.selectedStopID,
+                    reservesZoomControls: true,
                     showsCompass: false,
                     overviewIncludesUserLocation: false,
                     fitInsets: UIEdgeInsets(top: 56, left: 40, bottom: 40, right: 40),
-                    onMapTap: { mapModel.select(stopID: nil) }
+                    onMapTap: { mapModel.select(stopID: nil) },
+                    onCameraIdle: { mapModel.cameraDidSettle(zoom: $0) }
                 )
                 .onAppear { mapModel.requestOverview(animated: false) }
                 .onChange(of: tour.stops.count) { _, _ in mapModel.requestOverview(animated: false) }
@@ -36,11 +38,20 @@ struct HomeMapView: View {
                 AppleTourMapView(markers: mapModel.markers(for: tour), userPuck: nil,
                     routeCoordinates: [], cameraRequest: mapModel.cameraRequest,
                     onUserGesture: { mapModel.userDidMoveCamera() },
-                    onMarkerTap: { detailStop = tour.stop(withID: $0) })
+                    onMarkerTap: { detailStop = tour.stop(withID: $0) },
+                    reservesZoomControls: true,
+                    onCameraIdle: { mapModel.cameraDidSettle(zoom: $0) })
                     .onAppear { mapModel.requestOverview(animated: false) }
                     .onChange(of: tour.stops.count) { _, _ in mapModel.requestOverview(animated: false) }
                     .clipShape(RoundedRectangle(cornerRadius: 16))
             }
+        }
+        .overlay(alignment: .bottomTrailing) {
+            VStack(spacing: 10) {
+                zoomButton("plus", label: "Zoom in", enabled: mapModel.canZoomIn, step: 1)
+                zoomButton("minus", label: "Zoom out", enabled: mapModel.canZoomOut, step: -1)
+            }
+            .padding(.trailing, 12).padding(.bottom, 24)
         }
         .onChange(of: navigation.pendingStopReturn) { _, _ in restoreStopReturn() }
         .onAppear { restoreStopReturn() }
@@ -48,6 +59,21 @@ struct HomeMapView: View {
         .sheet(item: $detailStop, onDismiss: { mapModel.select(stopID: nil) }) {
             HistoricalSignSheet(stop: $0)
         }
+    }
+
+    private func zoomButton(_ symbol: String, label: String, enabled: Bool, step: Float) -> some View {
+        Button { mapModel.requestZoom(by: step) } label: {
+            Image(systemName: symbol)
+                .font(.system(size: 20, weight: .medium))
+                .foregroundStyle(AppTheme.forest)
+                .frame(width: 48, height: 48)
+                .background(.white, in: Circle())
+                .shadow(color: .black.opacity(0.12), radius: 5, y: 3)
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled).opacity(enabled ? 1 : 0.45)
+        .accessibilityLabel(label)
+        .accessibilityIdentifier(step > 0 ? "home.map.zoomIn" : "home.map.zoomOut")
     }
 
     private func restoreStopReturn() {

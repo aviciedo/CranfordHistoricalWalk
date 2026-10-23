@@ -19,6 +19,7 @@ struct GoogleMapView: UIViewRepresentable {
     /// Highlighted stop for dot styles (the labeled pin style has no selection state).
     var selectedStopID: String? = nil
     var reservesNavigationControls = false
+    var reservesZoomControls = false
     var showsCompass = true
     var overviewIncludesUserLocation = true
     /// Padding used when fitting all stops into view.
@@ -270,7 +271,8 @@ struct GoogleMapView: UIViewRepresentable {
             let latitude = mapView.camera.target.latitude * Double.pi / 180.0
             let metersPerPoint = 156543.03392 * cos(latitude) / pow(2.0, Double(mapView.camera.zoom))
             let viewport = StopMapLeaderView.viewport(in: mapView.bounds, bottomInset: parent.bottomInset)
-            let reserved = StopMapLeaderView.reservedAreas(in: mapView.bounds, controls: parent.reservesNavigationControls)
+            let reserved = StopMapLeaderView.reservedAreas(in: mapView.bounds, controls: parent.reservesNavigationControls,
+                                                         zoomControls: parent.reservesZoomControls)
             let layout = MapMarkerSizing.layout(points: points, metersPerPoint: metersPerPoint,
                                                 viewport: viewport, reservedAreas: reserved)
             for (model, placement) in zip(models, layout.placements) {
@@ -394,7 +396,8 @@ struct GoogleMapView: UIViewRepresentable {
         // MARK: Camera
 
         func apply(cameraRequest: MapCameraRequest?) {
-            guard let mapView, let request = cameraRequest, request.id != lastCameraRequestID else { return }
+            guard let mapView, let request = cameraRequest, request.id != lastCameraRequestID,
+                  request.id == parent.cameraRequest?.id else { return }
             // A bounds fit is computed against the map's current size; before the first layout pass
             // that size is zero and the fit would land on the wrong zoom. Try again shortly.
             if mapView.bounds.isEmpty, cameraRetryCount < 20 {
@@ -426,6 +429,8 @@ struct GoogleMapView: UIViewRepresentable {
                 var bounds = GMSCoordinateBounds(coordinate: a, coordinate: b)
                 for coordinate in parent.routeCoordinates { bounds = bounds.includingCoordinate(coordinate) }
                 update = GMSCameraUpdate.fit(bounds, with: parent.fitInsets)
+            case .zoomTo(let zoom):
+                update = GMSCameraUpdate.zoom(to: zoom)
             }
             if request.animated {
                 mapView.animate(with: update)
@@ -559,8 +564,10 @@ final class StopMapLeaderView: UIView {
         bounds.inset(by: UIEdgeInsets(top: 10, left: 10, bottom: max(32, bottomInset + 10), right: 10))
     }
 
-    static func reservedAreas(in bounds: CGRect, controls: Bool) -> [CGRect] {
-        controls ? [CGRect(x: bounds.maxX - 76, y: bounds.maxY - 204, width: 68, height: 196)] : []
+    static func reservedAreas(in bounds: CGRect, controls: Bool, zoomControls: Bool = false) -> [CGRect] {
+        if controls { return [CGRect(x: bounds.maxX - 76, y: bounds.maxY - 204, width: 68, height: 196)] }
+        if zoomControls { return [CGRect(x: bounds.maxX - 76, y: bounds.maxY - 144, width: 68, height: 136)] }
+        return []
     }
 
     func update(_ layout: MapMarkerSizing.Layout, in map: UIView) {

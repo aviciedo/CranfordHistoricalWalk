@@ -1,6 +1,6 @@
 Cranford Historical AR — Xcode project
 
-Release 0.2.0 (40) — Full-height ivory stop backgrounds
+Release 0.2.0 (41) — Home map zoom controls
 
 1. Close the previous Xcode project. Extract the entire ZIP into a fresh folder on the Mac. Keep its folders together.
    Copy your existing Config/Secrets.xcconfig into this new folder’s Config folder.
@@ -10,7 +10,7 @@ Release 0.2.0 (40) — Full-height ivory stop backgrounds
 5. In Xcode select the blue project icon, then Targets > CranfordHistoricalAR > Signing & Capabilities.
 6. Turn on Automatically manage signing and select your Apple account under Team.
 7. Select your iPhone in the top toolbar. Choose Product > Clean Build Folder, then click Run.
-8. On the iPhone open Home > Developer. Installed build and narration must show 0.2.0 (40), audio release cedar-2.
+8. On the iPhone open Home > Developer. Installed build and narration must show 0.2.0 (41), audio release cedar-2.
    After tapping Play, Prepared audio should say bundledAudio with stop_01 or stop_02, never synthesizedSpeech.
 
 Homebrew and XcodeGen are not needed to open this generated project.
@@ -336,3 +336,16 @@ Build 40 full-height ivory stop backgrounds:
 - Content and player still respect safe areas; only the background extends. Verify
   stop details from Home, Map and Stops with narration visible and hidden.
 - Debug/Release Swift syntax checks pass. Native appearance requires iPhone/Xcode.
+
+Build 41 Home map zoom controls:
+- White circular + and - buttons sit at the Home map's bottom-right, with hunter-green
+  symbols and 48-point touch targets. Controls are inset above provider attribution;
+  the landmark layout reserves their space. Pinch and pan remain available.
+- Each tap requests one zoom level about the current center, on Google or the Apple
+  fallback. Buttons respect zoom limits. Consecutive taps accumulate, camera reports
+  keep the next tap in sync after pinching, and stale initial Google fit retries no
+  longer overwrite a newer zoom request. Walking destination/progress are unchanged.
+- 51 portable activity/navigation tests cover zoom commands, rapid taps, limits,
+  invalid input, pinch reports, Apple scale conversion and independent walking state.
+  Debug/Release Swift syntax checks pass. Actual native rendering and camera behavior
+  still need iPhone/Xcode verification, for both configured Google and Apple fallback.
