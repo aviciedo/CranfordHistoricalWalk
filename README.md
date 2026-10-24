@@ -1,3 +1,11 @@
+## Current AR arrows — build 48
+
+AR directions use large, deeply extruded hunter-green/white street signs with a
+route-derived street label. Their complete world pose stays fixed while the phone
+turns or GPS fluctuates. Repositioning requires about five metres of AR camera
+translation or a stable changed turn instruction. See [AR-ARROWS.md](AR-ARROWS.md).
+Native rendering and outdoor stability still require iPhone verification.
+
 ## Current UX behavior — build 47
 
 This implementation follows UX audit recommendations 1–7, 9 and 10. Map shares AR's

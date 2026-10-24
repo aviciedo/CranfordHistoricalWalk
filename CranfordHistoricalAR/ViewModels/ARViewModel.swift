@@ -293,9 +293,6 @@ final class ARViewModel {
             destination: stop.coordinate,
             bearingToWaypoint: bearing,
             anchorCoordinate: ARStreetGuidance.routePoint(route: route, progress: progress),
-            routeSegment: progress.segmentIndex,
-            segmentStart: route.routeCoordinates[progress.segmentIndex],
-            segmentEnd: route.routeCoordinates[progress.segmentIndex + 1],
             turnCue: walkingCue
         ))
     }

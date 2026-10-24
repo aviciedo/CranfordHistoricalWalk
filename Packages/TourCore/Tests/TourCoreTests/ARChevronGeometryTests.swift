@@ -43,6 +43,14 @@ final class ARChevronGeometryTests: XCTestCase {
         for n in mesh.normals { XCTAssertEqual(n.x * n.x + n.y * n.y + n.z * n.z, 1, accuracy: 0.00001) }
     }
 
+    func testChunkyStreetSignDepthRetainsSolidClosedGeometry() {
+        let mesh = ARChevronGeometry.body(depth: 0.32)
+        XCTAssertEqual(mesh.positions.map(\.z).min()!, -0.32, accuracy: 0.00001)
+        XCTAssertTrue(mesh.positions.allSatisfy { $0.x.isFinite && $0.y.isFinite && $0.z.isFinite })
+        XCTAssertEqual(mesh.positions.count, mesh.normals.count)
+        XCTAssertTrue(mesh.indices.allSatisfy { Int($0) < mesh.positions.count })
+    }
+
     func testDirectionMappingMatchesCameraRelativeRoute() {
         XCTAssertEqual(ARChevronGeometry.rotationDegrees(relativeBearing: 0), 90)
         XCTAssertEqual(ARChevronGeometry.rotationDegrees(relativeBearing: 90), 0)

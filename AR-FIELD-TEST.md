@@ -1,10 +1,10 @@
-# Field acceptance — review build 47
+# Field acceptance — review build 48
 
 Status: NOT EXECUTED ON SITE. Linux unit tests do not verify iPhone GPS, street
 safety, compass alignment, camera recognition, real plaque dimensions or battery use.
 Do not mark this checklist passed until a tester records the evidence below.
 
-Install the complete review ZIP on a real iPhone using Xcode. Confirm build 47 in
+Install the complete review ZIP on a real iPhone using Xcode. Confirm build 48 in
 Developer and narration release cedar-2. Keep Simulated location OFF. Use the full
 “Clear visits, stories & bonuses” test reset only when you want a clean activity run;
 ordinary visit-only reset intentionally retains reading/listening/bonus progress.
@@ -87,3 +87,24 @@ Mill/Greystone bonus acceptance:
   inaccessible. Re-entering AR must re-establish its physical pose from the plaque;
   a saved accomplishment is not a fresh world anchor. Saved story/bonus previews
   may remain available independently, as intended by the app.
+
+Build 48 — fixed chunky street signs (NOT RUN on device):
+- Stand still for 30 seconds with a reliable route and detected ground. Rotate/tilt
+  the phone and move it at arm's length: arrows must not billboard, spin or drift
+  with GPS updates. Turning away should take the sign out of the camera view.
+- Inspect three deep, hunter-green chevrons with white faces and the actual routed
+  street name above them. Left/right must match the bottom turn instruction;
+  straight/diagonal/U-turn states must remain upright and above detected ground.
+- Walk less than five metres: position/yaw/direction remain fixed. Walk roughly five
+  metres from the last placement: one new placement appears ahead, then holds again.
+  Confirm the jump is understandable; tune only from recorded field evidence.
+- At a real route instruction change, allow 1.5 seconds of stable updates before
+  replacing the sign. GPS/route-boundary flutter must not repeatedly flip it.
+- Temporarily lose ground/tracking and recover while stationary: same-session
+  recovery should reuse the pin. A new AR session, interruption, provider switch,
+  or destination legitimately creates a fresh pose.
+- Check daylight, long street names, both Google/Apple route cues, unknown street
+  names, estimated routes, Reduce Motion and return-to-Map. A straight-line estimate
+  must never become a street claim. The bottom accessible direction card remains.
+- ARKit relocalization drift is a separate device-level limit. A detected plane is
+  not proof of a street, pedestrian access, or survey-grade GPS placement.

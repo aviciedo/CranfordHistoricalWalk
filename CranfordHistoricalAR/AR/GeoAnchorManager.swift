@@ -63,9 +63,6 @@ final class GeoAnchorManager {
         var destination: GeoCoordinate
         var bearingToWaypoint: Double
         var anchorCoordinate: GeoCoordinate?
-        var routeSegment: Int
-        var segmentStart: GeoCoordinate
-        var segmentEnd: GeoCoordinate
         var turnCue: ARWalkingGuidance.RouteCue?
     }
 
@@ -80,6 +77,7 @@ final class GeoAnchorManager {
     }
 
     @ObservationIgnored private var target: NavigationTarget?
+    @ObservationIgnored private var lastNavigationDestination: GeoCoordinate?
     @ObservationIgnored private var signRequest: SignRequest?
     @ObservationIgnored private var signAnchoredPosition: SIMD3<Float>?
     @ObservationIgnored private var lastSignMoveTime: TimeInterval = 0
@@ -123,6 +121,7 @@ final class GeoAnchorManager {
     /// Swap in a stronger provider (e.g. ARCore) later without touching the rest of the AR code.
     func replaceProvider(with newProvider: any GeoSpatialProvider, session: ARSession?) {
         provider.detach()
+        anchors.arrows.resetAnchor()
         provider = newProvider
         geospatialWaitStarted = nil
         didRequestFallback = false
@@ -133,6 +132,8 @@ final class GeoAnchorManager {
 
     func sessionDidStart(_ session: ARSession, arView: ARView) {
         clearWindowBonus()
+        anchors.arrows.resetAnchor()
+        lastNavigationDestination = nil
         cameraTransform = nil
         trackingState = .notAvailable
         navigationBearing = nil
@@ -150,6 +151,7 @@ final class GeoAnchorManager {
 
     func sessionDidStop() {
         clearWindowBonus()
+        anchors.arrows.resetAnchor()
         provider.detach()
         plaqueAnchors.unbind(sign: anchors.sign, returningTo: anchors.worldRoot)
         anchors.hideAll()
@@ -160,6 +162,7 @@ final class GeoAnchorManager {
     }
 
     func sessionWasInterrupted() {
+        anchors.arrows.resetAnchor()
         hasDetectedGround = false
         groundHeight = nil
         isWindowBonusAccessible = false
@@ -370,13 +373,16 @@ final class GeoAnchorManager {
     }
 
     func setNavigationTarget(_ newTarget: NavigationTarget?) {
-        let destinationChanged = newTarget?.destination != target?.destination
-        let segmentChanged = newTarget?.segmentStart != target?.segmentStart || newTarget?.segmentEnd != target?.segmentEnd
+        let destinationChanged = newTarget.map { $0.destination != lastNavigationDestination } ?? false
         target = newTarget
-        if destinationChanged || segmentChanged, cameraTransform != nil {
+        guard let newTarget else { anchors.hideNavigation(); return }
+        lastNavigationDestination = newTarget.destination
+        // Polyline segment/GPS refinements must not continuously re-place a street sign.
+        if destinationChanged {
+            anchors.arrows.resetAnchor()
             navigationBearing = nil
             lastGuidanceTime = nil
-            placeContent(now: lastFrameTime, forceLayout: true)
+            if cameraTransform != nil { placeContent(now: lastFrameTime) }
         }
     }
 
@@ -417,7 +423,7 @@ final class GeoAnchorManager {
         }
     }
 
-    private func placeContent(now: TimeInterval, forceLayout: Bool = false) {
+    private func placeContent(now: TimeInterval) {
         guard !hasActivatedStop, isTrackingReady, let base = cameraGroundPosition else {
             anchors.hideNavigation()
             navigationBearing = nil
@@ -469,14 +475,13 @@ final class GeoAnchorManager {
             anchors.hideNavigation()
             return
         }
-        let maneuver: ARWalkingGuidance.Direction?
-        if let cue = target?.turnCue, cue.isUpcomingTurn, cue.distanceMeters <= 12 {
-            maneuver = cue.direction
-        } else { maneuver = nil }
+        let cue = target?.turnCue
+        let instruction = ARStreetGuidance.Instruction(
+            direction: cue?.direction ?? .ahead,
+            streetName: cue?.streetName == nil ? nil : cue?.streetLabel)
         anchors.arrows.setVisible(true)
-        anchors.arrows.update(ground: ground, direction: direction, camera: camera,
-                              relativeBearing: navigationBearing, segment: target?.routeSegment ?? -1,
-                              maneuver: maneuver, force: forceLayout)
+        anchors.arrows.update(ground: ground, camera: camera,
+                              instruction: instruction, timestamp: now)
     }
 
     /// Refine the route point against detected horizontal geometry when it is in view.

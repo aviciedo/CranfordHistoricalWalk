@@ -63,3 +63,14 @@ UX implementation — review build 47:
   awaits Apple execution. Debug/Release parsing passes; no native build is claimed.
 - See UX-IMPLEMENTATION.md and revised AR-FIELD-TEST.md for scope and acceptance.
 - This task does not publish, merge or retire any branch.
+
+AR refinement — review build 48:
+- Entire arrow pose is pinned, including facing angle, direction and street label.
+  Removed per-frame billboarding/animation and polyline-segment force placement.
+- About 5 m AR translation or a 1.5 s settled instruction changes the sign. Transient
+  hide/recovery preserves the pin; session/destination/provider resets discard it.
+- Larger 3D green bodies/white faces, 32 cm local extrusion, route-derived label and
+  orientation-specific ground clearance. Both native map providers retained.
+- 219 core and 66 portable actual-model tests pass; Debug/Release parsing passes.
+  Native RealityKit build/rendering and real street stability remain unverified.
+- See AR-ARROWS.md and the build-48 field checklist. No publication in this task.
