@@ -62,9 +62,10 @@ Acceptance record per case: NOT RUN / PASS / FAIL, tester, evidence file, expect
 versus actual behavior, reproduction steps. Confirm Google and Apple separately.
 
 Mill/Greystone bonus acceptance:
-- Recognize only the matching supported plaque. Another plaque, a photograph on a
-  second screen, weak tracking, GPS arrival or story playback must not be accepted
-  as verified on-site discovery without recording and investigating that limitation.
+- Recognize only the matching supported plaque. Weak tracking, GPS arrival and story
+  playback must not unlock its bonus. Test a printed or screen-displayed reproduction
+  and record recognition: image tracking alone does not authenticate real-site presence
+  and must not be described as spoof-proof.
 - At the mill, record right/up/width/height calibration ratios and verify the bonus
   covers both intended panes, stays on the facade when looking away, and responds
   correctly to its close/open controls. Do not claim independent window recognition.
