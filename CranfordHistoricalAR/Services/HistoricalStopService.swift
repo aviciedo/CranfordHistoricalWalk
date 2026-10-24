@@ -48,47 +48,55 @@ struct InMemoryHistoricalStopService: HistoricalStopService {
 }
 
 /// One authoritative release for the produced recordings. Legacy tour metadata must never
-/// select the phone's voice or old remote audio for these stops. Validate actual bundled bytes
-/// at load time; missing/stale resources are an explicit error, never a silent voice fallback.
+/// select the phone's voice or old remote audio for these stops. Validate bundled bytes
+/// against the selected catalog; unavailable narration never blocks walking or reading.
 enum ProducedNarrationRelease {
     static let identifier = "cedar-2"
-    struct Recording {
-        let stopID: String
-        let fileName: String
-        let duration: TimeInterval
-        let audioSHA256: String
-        let transcriptSHA256: String
-    }
-    static let recordings: [Recording] = [
-        Recording(stopID: "hpab-001", fileName: "stop_01_droeschers_mill.mp3",
-                  duration: 151.301224, audioSHA256: "197afe552a3e7be4bb100fa9eeacde4eef9cce32d7ad9aa406ccbf3575661f71",
-                  transcriptSHA256: "bbf78f5a93d013b782c981d39f9139068e77760ea38da76d67ed65bd4c254454"),
-        Recording(stopID: "hpab-002", fileName: "stop_02_greystone.mp3",
-                  duration: 142.733061, audioSHA256: "12253f3de71fbf179b5f54a3a23298eeecc71e2175334007792930f8a96d5b1a",
-                  transcriptSHA256: "e8d895c7345f9f66f9859dc16d69e2649eb1949e637b7ef36437f60c8cb6ef72"),
-    ]
+    typealias Recording = TourRecording
+    /// Compatibility lookup for the shipped catalog and its existing narration bookmarks.
+    static let recordings: [Recording] = {
+        guard let url = Bundle.main.url(forResource: "historical_stops", withExtension: "json"),
+              let data = try? Data(contentsOf: url),
+              let document = try? HistoricalStopDecoder.decode(data) else { return [] }
+        return document.recordings ?? []
+    }()
 
     static func recording(for stopID: String) -> Recording? {
         recordings.first { $0.stopID == stopID }
     }
 
+    static func recording(for stop: HistoricalStop) -> Recording? {
+        guard stop.catalogID == nil || stop.catalogID == TourCatalogIdentity.legacy.tourID else { return nil }
+        return recording(for: stop.id)
+    }
+
     static func source(for stop: HistoricalStop) -> HistoricalStop.NarrationSource? {
-        if let recording = recording(for: stop.id) {
+        guard !stop.narrationPending else { return nil }
+        if stop.narrationAudioSHA256 != nil { return stop.narrationSource }
+        if let recording = recording(for: stop) {
             return .bundledAudio(fileName: recording.fileName)
         }
         return stop.narrationSource
     }
 
     static func install(in document: inout HistoricalTourDocument, bundle: Bundle) throws {
-        for recording in recordings {
+        for index in document.stops.indices { document.stops[index].narrationAudioSHA256 = nil }
+        for recording in document.recordings ?? [] {
             guard let index = document.stops.firstIndex(where: { $0.id == recording.stopID }),
                   let url = bundle.url(forResource: recording.fileName, withExtension: nil),
                   let bytes = try? Data(contentsOf: url),
                   digest(bytes) == recording.audioSHA256,
                   let transcript = document.stops[index].narrationText,
                   digest(Data(transcript.utf8)) == recording.transcriptSHA256 else {
-                throw HistoricalStopServiceError.narrationReleaseMismatch(recording.fileName)
+                // A missing recording must not disable otherwise valid map/story content.
+                if let index = document.stops.firstIndex(where: { $0.id == recording.stopID }) {
+                    document.stops[index].audioURL = nil
+                    document.stops[index].narrationPending = true
+                }
+                continue
             }
+            document.stops[index].narrationPending = false
+            document.stops[index].narrationAudioSHA256 = recording.audioSHA256
             document.stops[index].audioURL = URL(string: recording.fileName)
             document.stops[index].estimatedVisitDuration = recording.duration
         }

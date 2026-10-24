@@ -42,9 +42,9 @@ final class AppDependencies {
         )
     }
 
-    static func live(configuration: AppConfiguration) -> AppDependencies {
+    static func live(configuration: AppConfiguration, tourResourceName: String = "historical_stops") -> AppDependencies {
         GoogleMapsBootstrap.configure(with: configuration)
-        let stopService = BundledJSONHistoricalStopService()
+        let stopService = BundledJSONHistoricalStopService(resourceName: tourResourceName)
         let locationService = CoreLocationService()
         let directionsService = DirectionsServiceFactory.make(configuration: configuration)
         let tour = TourViewModel(stopService: stopService, locationService: locationService, directionsService: directionsService, visitStore: LocalStopVisitStore(), activityStore: LocalStopActivityStore(), walkResumeStore: LocalWalkResumeStore())

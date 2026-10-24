@@ -233,12 +233,20 @@ final class NarrationPlayerTests: XCTestCase {
         XCTAssertEqual(player.preparedSource, .synthesizedSpeech(text: "The updated story."))
     }
 
-    func testReleaseRejectsMissingAudioOrOutdatedTranscript() throws {
+    func testUnavailableRecordingDoesNotDisableTourOrFallBackToSpeech() throws {
         let data = try Data(contentsOf: XCTUnwrap(Bundle.main.url(forResource: "historical_stops", withExtension: "json")))
         var document = try HistoricalStopDecoder.decode(data)
-        XCTAssertThrowsError(try ProducedNarrationRelease.install(in: &document, bundle: Bundle(for: Self.self)))
+        try ProducedNarrationRelease.install(in: &document, bundle: Bundle(for: Self.self))
+        XCTAssertEqual(document.stops.count, 5)
+        XCTAssertTrue(document.stops[0].narrationPending)
+        XCTAssertNil(ProducedNarrationRelease.source(for: document.stops[0]))
+        document = try HistoricalStopDecoder.decode(data)
         document.stops[0].narrationText = "An outdated script."
-        XCTAssertThrowsError(try ProducedNarrationRelease.install(in: &document, bundle: .main))
+        try ProducedNarrationRelease.install(in: &document, bundle: .main)
+        XCTAssertTrue(document.stops[0].narrationPending)
+        XCTAssertNil(ProducedNarrationRelease.source(for: document.stops[0]))
+        XCTAssertNotNil(document.stops[0].narrationText)
+        XCTAssertFalse(document.stops[1].narrationPending)
     }
 
     func testReleaseCorrectsLegacyAudioMetadataAndPreservesOtherStops() throws {
@@ -253,6 +261,9 @@ final class NarrationPlayerTests: XCTestCase {
             XCTAssertEqual(stop.estimatedVisitDuration, recording.duration)
         }
         XCTAssertEqual(Array(document.stops.dropFirst(2)), remaining)
+        for (stop, recording) in zip(document.stops, document.recordings ?? []) {
+            XCTAssertEqual(stop.narrationAudioSHA256, recording.audioSHA256)
+        }
     }
 
     func testRequestedMaleVoiceDoesNotSilentlyFallBackWhenMissing() {

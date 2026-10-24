@@ -3,6 +3,7 @@ import TourCore
 
 @MainActor
 protocol StopVisitStore: AnyObject {
+    func selectTour(_ identity: TourCatalogIdentity)
     func records() -> [StopVisitRecord]
     func record(_ visit: StopVisitRecord)
     #if DEVELOPER_MENU
@@ -14,7 +15,8 @@ protocol StopVisitStore: AnyObject {
 @MainActor
 final class LocalStopVisitStore: StopVisitStore {
     private let defaults: UserDefaults
-    private let key = "cranford.stop-visits.v1"
+    private var key = "cranford.stop-visits.v1"
+    func selectTour(_ identity: TourCatalogIdentity) { key = identity.storageKey("cranford.stop-visits.v1") }
 
     init(defaults: UserDefaults = .standard) { self.defaults = defaults }
 
@@ -42,6 +44,13 @@ final class LocalStopVisitStore: StopVisitStore {
 @MainActor
 final class InMemoryStopVisitStore: StopVisitStore {
     private var visits: [StopVisitRecord] = []
+    private var selectedKey = ""
+    private var saved: [String: [StopVisitRecord]] = [:]
+    func selectTour(_ identity: TourCatalogIdentity) {
+        saved[selectedKey] = visits
+        selectedKey = identity.storageKey("")
+        visits = saved[selectedKey] ?? []
+    }
     func records() -> [StopVisitRecord] { visits }
     func record(_ visit: StopVisitRecord) {
         guard visit.evidence != .simulation else { return }
@@ -58,6 +67,7 @@ final class InMemoryStopVisitStore: StopVisitStore {
 /// Separate persistence from the legacy visit history; browsing never writes a visit.
 @MainActor
 protocol StopActivityStore: AnyObject {
+    func selectTour(_ identity: TourCatalogIdentity)
     func load() -> StopActivityLedger
     func save(_ ledger: StopActivityLedger)
 }
@@ -65,7 +75,8 @@ protocol StopActivityStore: AnyObject {
 @MainActor
 final class LocalStopActivityStore: StopActivityStore {
     private let defaults: UserDefaults
-    private let key = "cranford.stop-activities.v1"
+    private var key = "cranford.stop-activities.v1"
+    func selectTour(_ identity: TourCatalogIdentity) { key = identity.storageKey("cranford.stop-activities.v1") }
     init(defaults: UserDefaults = .standard) { self.defaults = defaults }
     func load() -> StopActivityLedger {
         guard let data = defaults.data(forKey: key),
@@ -81,6 +92,13 @@ final class LocalStopActivityStore: StopActivityStore {
 @MainActor
 final class InMemoryStopActivityStore: StopActivityStore {
     private var ledger = StopActivityLedger()
+    private var selectedKey = ""
+    private var saved: [String: StopActivityLedger] = [:]
+    func selectTour(_ identity: TourCatalogIdentity) {
+        saved[selectedKey] = ledger
+        selectedKey = identity.storageKey("")
+        ledger = saved[selectedKey] ?? StopActivityLedger()
+    }
     func load() -> StopActivityLedger { ledger }
     func save(_ ledger: StopActivityLedger) { self.ledger = ledger }
 }

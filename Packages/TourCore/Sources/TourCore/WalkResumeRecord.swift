@@ -2,14 +2,23 @@ import Foundation
 
 /// Device-local itinerary context. Restoring this never constitutes a visit or permission grant.
 public struct WalkResumeRecord: Codable, Equatable, Sendable {
+    public var catalogIdentity: TourCatalogIdentity?
+    public var sessionID: UUID?
     public var version: Int
     public var progress: TourProgress
     public var completionSummary: TourSummary?
 
-    public init(progress: TourProgress, completionSummary: TourSummary? = nil) {
+    public init(progress: TourProgress, completionSummary: TourSummary? = nil, catalogIdentity: TourCatalogIdentity? = nil, sessionID: UUID? = nil) {
+        self.catalogIdentity = catalogIdentity
+        self.sessionID = sessionID
         version = 1
         self.progress = progress
         self.completionSummary = completionSummary
+    }
+
+    public func isValid(for identity: TourCatalogIdentity, stopIDs: [String]) -> Bool {
+        guard identity.isValid, (catalogIdentity ?? .legacy) == identity else { return false }
+        return isValid(for: stopIDs)
     }
 
     /// Reject changed catalogs and malformed positions rather than routing to an unrelated stop.

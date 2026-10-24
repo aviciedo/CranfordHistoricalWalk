@@ -131,7 +131,8 @@ final class NarrationPlayer: NSObject {
 
     private static func recordingSourceID(for stop: HistoricalStop) -> String? {
         guard let source = ProducedNarrationRelease.source(for: stop) else { return nil }
-        if let recording = ProducedNarrationRelease.recording(for: stop.id) {
+        if let digest = stop.narrationAudioSHA256 { return "produced:\(digest)" }
+        if let recording = ProducedNarrationRelease.recording(for: stop) {
             return "produced:\(recording.audioSHA256)"
         }
         switch source {

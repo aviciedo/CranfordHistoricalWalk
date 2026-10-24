@@ -754,6 +754,53 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertEqual(calls, 2)
     }
 
+    func testTourStoresKeepLegacyDataAndIsolateOtherTourAndRevision() async throws {
+        let suite = "catalog-test-\(UUID())"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let visits = LocalStopVisitStore(defaults: defaults)
+        let activities = LocalStopActivityStore(defaults: defaults)
+        let walks = LocalWalkResumeStore(defaults: defaults)
+        let date = Date()
+        visits.record(StopVisitRecord(stopID: "same", activatedAt: date, evidence: .recognizedPlaque))
+        var ledger = StopActivityLedger(); ledger.read("same"); activities.save(ledger)
+        var progress = TourProgress(stopIDs: ["same"]); progress.start()
+        walks.save(WalkResumeRecord(progress: progress))
+        let other = TourCatalogIdentity(tourID: "other")
+        visits.selectTour(other); activities.selectTour(other); walks.selectTour(other)
+        XCTAssertTrue(visits.records().isEmpty)
+        XCTAssertFalse(activities.load()["same"].learningCompleted)
+        XCTAssertNil(walks.load())
+        ledger = StopActivityLedger(); ledger.listened(to: "other"); activities.save(ledger)
+        walks.save(WalkResumeRecord(progress: progress, catalogIdentity: other, sessionID: UUID()))
+        let revision = TourCatalogIdentity(tourID: "other", version: 2)
+        activities.selectTour(revision); walks.selectTour(revision)
+        XCTAssertTrue(activities.load()["other"].learningCompleted)
+        XCTAssertNil(walks.load())
+        visits.selectTour(.legacy); activities.selectTour(.legacy); walks.selectTour(.legacy)
+        XCTAssertEqual(visits.records().first?.activatedAt, date)
+        XCTAssertTrue(activities.load()["same"].learningCompleted)
+        XCTAssertNotNil(walks.load())
+    }
+
+    func testWalkSessionResumesThenRestartCreatesDifferentIdentity() async {
+        let store = InMemoryWalkResumeStore()
+        let first = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),
+            locationService: ActivityTestLocationService(), directionsService: PreviewDirectionsService(), walkResumeStore: store)
+        await first.loadStopsIfNeeded(); defer { cleanUp(first) }
+        first.startTour(); first.completeCurrentStopAndAdvance()
+        let session = first.walkSessionID
+        let restored = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),
+            locationService: ActivityTestLocationService(), directionsService: PreviewDirectionsService(), walkResumeStore: store)
+        await restored.loadStopsIfNeeded(); defer { cleanUp(restored) }
+        XCTAssertEqual(restored.walkSessionID, session)
+        XCTAssertEqual(restored.currentStop?.id, stops[1].id)
+        XCTAssertTrue(restored.isWalkPaused)
+        restored.resetTour()
+        XCTAssertNotEqual(restored.walkSessionID, session)
+        XCTAssertEqual(restored.currentStop?.id, stops[0].id)
+    }
+
     func testBonusRestoredAfterReopenRemainsIndependent() async {
         let store = InMemoryStopActivityStore()
         var ledger = StopActivityLedger(); ledger.foundBonus(at: stops[1].id)

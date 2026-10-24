@@ -64,6 +64,8 @@ final class TourViewModel {
     }
 
     // MARK: Tour data
+    private(set) var catalogIdentity = TourCatalogIdentity.legacy
+    private(set) var walkSessionID = UUID()
     private(set) var tourName: String = "Cranford Historical Walk"
     private(set) var dataStatus: String?
     private(set) var stops: [HistoricalStop] = []
@@ -220,11 +222,20 @@ final class TourViewModel {
         loadState = .loading
         do {
             let document = try await stopService.loadTour()
+            catalogIdentity = document.identity
+            visitStore.selectTour(catalogIdentity)
+            activityStore.selectTour(catalogIdentity)
+            walkResumeStore.selectTour(catalogIdentity)
+            visitRecords = visitStore.records()
+            activities = activityStore.load()
+            activities.importVisits(visitRecords)
+            activityStore.save(activities)
             tourName = document.tourName
             dataStatus = document.dataStatus
             stops = document.stops
             let ids = document.stops.map(\.id)
-            if let saved = walkResumeStore.load(), saved.isValid(for: ids) {
+            if let saved = walkResumeStore.load(), saved.isValid(for: catalogIdentity, stopIDs: ids) {
+                walkSessionID = saved.sessionID ?? UUID()
                 progress = saved.progress
                 isWalkPaused = progress.phase == .inProgress
                 restoredCompletionSummary = saved.completionSummary
@@ -244,6 +255,7 @@ final class TourViewModel {
     func startTour() {
         guard loadState == .loaded, !stops.isEmpty else { return }
         if progress.phase == .notStarted {
+            walkSessionID = UUID()
             progress.start()
         }
         isWalkPaused = false
@@ -293,6 +305,7 @@ final class TourViewModel {
     }
 
     func resetTour() {
+        walkSessionID = UUID()
         isWalkPaused = false
         restoredCompletionSummary = nil
         cancelRouting()
@@ -324,7 +337,8 @@ final class TourViewModel {
         guard loadState == .loaded else { return }
         guard progress.phase != .notStarted else { walkResumeStore.save(nil); return }
         walkResumeStore.save(WalkResumeRecord(progress: progress,
-            completionSummary: progress.phase == .complete ? tourSummary : nil))
+            completionSummary: progress.phase == .complete ? tourSummary : nil,
+            catalogIdentity: catalogIdentity, sessionID: walkSessionID))
     }
 
     // MARK: Location pipeline
@@ -454,6 +468,7 @@ extension TourViewModel.LoadState {
 
 @MainActor
 protocol WalkResumeStore: AnyObject {
+    func selectTour(_ identity: TourCatalogIdentity)
     func load() -> WalkResumeRecord?
     func save(_ record: WalkResumeRecord?)
 }
@@ -461,7 +476,8 @@ protocol WalkResumeStore: AnyObject {
 @MainActor
 final class LocalWalkResumeStore: WalkResumeStore {
     private let defaults: UserDefaults
-    private let key = "cranford.walk-resume.v1"
+    private var key = "cranford.walk-resume.v1"
+    func selectTour(_ identity: TourCatalogIdentity) { key = identity.storageKey("cranford.walk-resume.v1", perRevision: true) }
     init(defaults: UserDefaults = .standard) { self.defaults = defaults }
     func load() -> WalkResumeRecord? {
         guard let data = defaults.data(forKey: key) else { return nil }
@@ -476,6 +492,13 @@ final class LocalWalkResumeStore: WalkResumeStore {
 
 @MainActor
 final class InMemoryWalkResumeStore: WalkResumeStore {
+    private var selectedKey = ""
+    private var saved: [String: WalkResumeRecord] = [:]
+    func selectTour(_ identity: TourCatalogIdentity) {
+        saved[selectedKey] = record
+        selectedKey = identity.storageKey("", perRevision: true)
+        record = saved[selectedKey]
+    }
     private var record: WalkResumeRecord?
     func load() -> WalkResumeRecord? { record }
     func save(_ record: WalkResumeRecord?) { self.record = record }

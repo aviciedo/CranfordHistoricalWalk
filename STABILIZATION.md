@@ -30,3 +30,21 @@ Verification and remaining gates:
 - The reported Stop 1 failure after Continue has not been reproduced on hardware.
   Existing all-stop explicit-Continue and independent-state regression tests remain.
 - Do not merge or call this a release until native CI and device acceptance pass.
+
+Steps 4–6 — review build 46:
+- Field acceptance guide corrected for current product behavior, all five approximate
+  locations, providers, permissions, AR tracking and calibration. Physical execution
+  is NOT RUN: on-site iPhone access is unavailable in this environment.
+- Extracted/tested a monotonic phone-down policy and selectively ported parser tests
+  from old branch work without merging any branch or restoring automatic advancement.
+- Added catalog/version/session identities, catalog validation, per-tour persistence,
+  legacy-key compatibility and revision-specific walk resume. No saved visits or
+  narration bookmarks are deleted; reset changes only the active walk session.
+- Recording metadata now lives in the selected catalog. Both existing audio/transcript
+  hashes were checked successfully against bundled bytes. Missing recordings no longer
+  prevent navigation; pending audio never silently falls back to synthesized speech.
+- Native media tests updated to cover degraded availability. Native CI/device checks,
+  generated-project comparison and the Apple-resolved lockfile remain pending.
+- Final build 46 verification: 206 TourCore tests and 57 portable application-model
+  tests passed; Debug/Release app/test syntax checks passed. Two narration files and
+  their transcripts match the catalog SHA-256 manifest. These are not device results.

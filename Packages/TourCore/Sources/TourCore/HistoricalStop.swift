@@ -5,6 +5,9 @@ import Foundation
 /// The model is `Codable` so it can be loaded from the bundled `historical_stops.json`
 /// today and from a remote API later without changes to consumers.
 public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
+    public var catalogID: String? = nil
+    /// Set by the app only after verifying bytes against the catalog media manifest.
+    public var narrationAudioSHA256: String? = nil
     public var id: String
     public var name: String
     public var latitude: Double
@@ -267,13 +270,20 @@ public struct StopPlaque: Hashable, Codable, Sendable {
 
 /// Top-level document stored in `Resources/historical_stops.json`.
 public struct HistoricalTourDocument: Codable, Sendable {
+    public var tourID: String?
+    public var catalogVersion: Int?
+    public var recordings: [TourRecording]?
+    public var identity: TourCatalogIdentity { .init(tourID: tourID ?? TourCatalogIdentity.legacy.tourID, version: catalogVersion ?? 1) }
     public var schemaVersion: Int
     public var tourName: String
     public var tourSubtitle: String?
     public var dataStatus: String?
     public var stops: [HistoricalStop]
 
-    public init(schemaVersion: Int = 1, tourName: String, tourSubtitle: String? = nil, dataStatus: String? = nil, stops: [HistoricalStop]) {
+    public init(schemaVersion: Int = 1, tourName: String, tourSubtitle: String? = nil, dataStatus: String? = nil, stops: [HistoricalStop], tourID: String? = nil, catalogVersion: Int? = nil, recordings: [TourRecording]? = nil) {
+        self.tourID = tourID
+        self.catalogVersion = catalogVersion
+        self.recordings = recordings
         self.schemaVersion = schemaVersion
         self.tourName = tourName
         self.tourSubtitle = tourSubtitle
@@ -283,12 +293,14 @@ public struct HistoricalTourDocument: Codable, Sendable {
 }
 
 public enum HistoricalStopDecodingError: Error, Equatable, LocalizedError {
+    case invalidCatalog
     case emptyTour
     case duplicateIdentifiers([String])
     case invalidCoordinate(stopID: String)
 
     public var errorDescription: String? {
         switch self {
+        case .invalidCatalog: return "The tour catalog identity, version or media manifest is invalid."
         case .emptyTour: return "The tour file contains no stops."
         case .duplicateIdentifiers(let ids): return "Duplicate stop identifiers: \(ids.joined(separator: ", "))."
         case .invalidCoordinate(let id): return "Stop \(id) has an invalid coordinate."
@@ -301,6 +313,7 @@ public enum HistoricalStopDecoder {
     public static func decode(_ data: Data) throws -> HistoricalTourDocument {
         let decoder = JSONDecoder()
         var document = try decoder.decode(HistoricalTourDocument.self, from: data)
+        guard document.identity.isValid, document.schemaVersion == 1 else { throw HistoricalStopDecodingError.invalidCatalog }
         guard !document.stops.isEmpty else { throw HistoricalStopDecodingError.emptyTour }
 
         var seen = Set<String>()
@@ -311,8 +324,14 @@ public enum HistoricalStopDecoder {
                 throw HistoricalStopDecodingError.invalidCoordinate(stopID: stop.id)
             }
         }
+        let recordings = document.recordings ?? []
+        guard Set(recordings.map(\.stopID)).count == recordings.count,
+              recordings.allSatisfy({ seen.contains($0.stopID) && $0.isValid }) else { throw HistoricalStopDecodingError.invalidCatalog }
         if !duplicates.isEmpty { throw HistoricalStopDecodingError.duplicateIdentifiers(duplicates) }
 
+        for index in document.stops.indices {
+            document.stops[index].catalogID = document.identity.tourID == TourCatalogIdentity.legacy.tourID ? nil : document.identity.tourID
+        }
         document.stops.sort { ($0.order, $0.id) < ($1.order, $1.id) }
         return document
     }
