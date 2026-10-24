@@ -88,6 +88,12 @@ extension TourViewModel {
     /// Called by the location pipeline on every accepted sample.
     func handleLocationForRouting(_ sample: LocationSample) {
         guard isWalkingActive, let destination = currentStop?.coordinate else { return }
+        if retryRouteOnFreshLocation, StopActivationPolicy.isFresh(sample.timestamp),
+           sample.horizontalAccuracy >= 0, sample.horizontalAccuracy <= Self.poorAccuracyThreshold {
+            retryRouteOnFreshLocation = false
+            requestRoute(from: sample.coordinate, to: destination, reason: .stale)
+            return
+        }
         if let route = currentRoute {
             routeProgress = RouteProgressCalculator.progress(along: route, userLocation: sample.coordinate)
         }
@@ -115,6 +121,8 @@ extension TourViewModel {
     }
 
     func requestRoute(from origin: GeoCoordinate, to destination: GeoCoordinate, reason: RouteRefreshReason) {
+        routeRecoveryTask?.cancel()
+        routeRecoveryTask = nil
         routingTask?.cancel()
         routingGeneration += 1
         let generation = routingGeneration
@@ -146,6 +154,7 @@ extension TourViewModel {
         guard let current = currentStop?.coordinate, GeoMath.distance(from: current, to: destination) < 1 else { return }
         currentRoute = route
         routingError = nil
+        routeRecoveryAttempts = 0
         if let userLocation {
             routeProgress = RouteProgressCalculator.progress(along: route, userLocation: userLocation.coordinate)
         } else {
@@ -159,6 +168,7 @@ extension TourViewModel {
     private func handleRoutingFailure(_ error: Error, origin: GeoCoordinate, destination: GeoCoordinate) {
         let described = (error as? DirectionsError)?.errorDescription ?? error.localizedDescription
         routingError = described
+        scheduleRouteRecovery()
         // Spec §21: keep the last known route; only estimate when we have nothing for this destination.
         if let existing = currentRoute, GeoMath.distance(from: existing.destination, to: destination) < 1 {
             return
@@ -175,10 +185,48 @@ extension TourViewModel {
         }
     }
 
+    /// Finite recovery budget; retries never advance the itinerary or use an old GPS fix.
+    func scheduleRouteRecovery() {
+        guard routeRecoveryAttempts < 5 else { return }
+        routeRecoveryAttempts += 1
+        let generation = routingGeneration
+        routeRecoveryTask?.cancel()
+        let delay = routeRecoveryDelay
+        routeRecoveryTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: delay)
+            guard !Task.isCancelled, let self, self.routingGeneration == generation,
+                  self.isWalkingActive, self.routingTask == nil else { return }
+            guard let sample = self.userLocation, StopActivationPolicy.isFresh(sample.timestamp),
+                  sample.horizontalAccuracy >= 0, sample.horizontalAccuracy <= Self.poorAccuracyThreshold,
+                  let destination = self.currentStop?.coordinate else {
+                self.retryRouteOnFreshLocation = true
+                return
+            }
+            self.requestRoute(from: sample.coordinate, to: destination, reason: .stale)
+        }
+    }
+
+    func retryWalkingRoute() {
+        guard isWalkingActive else { return }
+        routeRecoveryAttempts = 0
+        guard let sample = userLocation, StopActivationPolicy.isFresh(sample.timestamp),
+              sample.horizontalAccuracy >= 0, sample.horizontalAccuracy <= Self.poorAccuracyThreshold,
+              let destination = currentStop?.coordinate else {
+            retryRouteOnFreshLocation = true
+            locationService.requestFreshLocation()
+            return
+        }
+        requestRoute(from: sample.coordinate, to: destination, reason: .stale)
+    }
+
     // MARK: Destination changes
 
     /// Clears per-stop routing state when the destination changes and asks for a new route.
     func destinationDidChange() {
+        routeRecoveryTask?.cancel()
+        routeRecoveryTask = nil
+        routeRecoveryAttempts = 0
+        retryRouteOnFreshLocation = false
         routingTask?.cancel()
         routingTask = nil
         isRoutingInFlight = false
@@ -230,6 +278,9 @@ extension TourViewModel {
     }
 
     func cancelRouting() {
+        retryRouteOnFreshLocation = false
+        routeRecoveryTask?.cancel()
+        routeRecoveryTask = nil
         routingTask?.cancel()
         routingTask = nil
         summaryLegsTask?.cancel()

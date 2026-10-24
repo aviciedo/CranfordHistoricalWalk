@@ -2,7 +2,7 @@ name: Apple compiler checks
 
 on:
   push:
-    branches: [main]
+    branches: [main, stabilization/audit-phase-1-3]
     paths:
       - 'CranfordHistoricalAR/**'
       - 'CranfordHistoricalARTests/**'
@@ -51,6 +51,17 @@ jobs:
             -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath .build/apple-verification/simulator \
             CODE_SIGNING_ALLOWED=NO build-for-testing 2>&1 | tee .build/apple-verification/simulator.log
+      - name: Execute native tests on an available iPhone simulator
+        shell: bash
+        run: |
+          set -o pipefail
+          simulator_id=$(xcrun simctl list devices available --json | python3 -c 'import json,sys; devices=json.load(sys.stdin)["devices"]; print(next(d["udid"] for runtime,items in devices.items() if "iOS" in runtime for d in items if d["name"].startswith("iPhone")))')
+          xcodebuild -project CranfordHistoricalAR.xcodeproj \
+            -scheme CranfordHistoricalAR -configuration Debug \
+            -destination "platform=iOS Simulator,id=$simulator_id" \
+            -derivedDataPath .build/apple-verification/simulator \
+            -resultBundlePath .build/apple-verification/native-tests.xcresult \
+            CODE_SIGNING_ALLOWED=NO test-without-building 2>&1 | tee .build/apple-verification/native-tests.log
       - name: Compile Release for iPhone
         shell: bash
         run: |
@@ -65,6 +76,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: apple-compiler-logs
-          path: .build/apple-verification/*.log
+          path: |
+            .build/apple-verification/*.log
+            .build/apple-verification/*.xcresult
+            CranfordHistoricalAR.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
           if-no-files-found: ignore
           retention-days: 7

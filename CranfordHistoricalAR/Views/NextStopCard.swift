@@ -57,6 +57,10 @@ struct NextStopCard: View {
     }
 
     @ViewBuilder private var routeStatus: some View {
+        if tour.isRouteAnEstimate || tour.routingError != nil {
+            Button("Retry directions") { tour.retryWalkingRoute() }
+                .frame(minHeight: 44).disabled(tour.isRoutingInFlight || tour.isWalkPaused)
+        }
         if tour.isRouteAnEstimate {
             Label("Walking route unavailable · Distance is an estimate", systemImage: "info.circle")
                 .font(.footnote).foregroundStyle(AppTheme.warning)
@@ -102,6 +106,12 @@ struct MapDestinationStatus: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .fixedSize(horizontal: false, vertical: true)
+        }
+        .task {
+            while !Task.isCancelled {
+                tour.refreshLocationIssue()
+                try? await Task.sleep(for: .seconds(5))
+            }
         }
         .frame(minHeight: minimumLineHeight, alignment: .leading)
         .fixedSize(horizontal: false, vertical: true)

@@ -86,7 +86,7 @@ final class TourViewModel {
     private(set) var lastLocationFailure: LocationFailure?
 
     /// Accuracy worse than this is reported to the user as "weak GPS".
-    static let poorAccuracyThreshold: Double = 40
+    static let poorAccuracyThreshold: Double = StopActivationPolicy.maximumAccuracyMeters
 
     // MARK: Routing (mutated by TourViewModel+Routing.swift)
     var currentRoute: WalkingRoute?
@@ -100,6 +100,10 @@ final class TourViewModel {
     @ObservationIgnored var routingTask: Task<Void, Never>?
     @ObservationIgnored var summaryLegsTask: Task<Void, Never>?
     @ObservationIgnored var routingGeneration = 0
+    @ObservationIgnored var routeRecoveryTask: Task<Void, Never>?
+    var routeRecoveryAttempts = 0
+    var routeRecoveryDelay: Duration = .seconds(30)
+    var retryRouteOnFreshLocation = false
 
     // MARK: Proximity / AR sign (mutated by TourViewModel+Proximity.swift)
     var proximityMachine: StopProximityStateMachine?
@@ -292,6 +296,8 @@ final class TourViewModel {
         isWalkPaused = false
         restoredCompletionSummary = nil
         cancelRouting()
+        legRoutes = [:]
+        lastRouteRequest = nil
         discoveriesByStopID = [:]
         continuedARStopIDs = []
         arDiscoveryStopID = nil
@@ -405,7 +411,7 @@ final class TourViewModel {
         handleLocationForProximity(sample)
     }
 
-    private func refreshLocationIssue() {
+    func refreshLocationIssue() {
         switch locationAuthorization {
         case .notDetermined:
             locationIssue = .permissionNotDetermined
@@ -424,6 +430,10 @@ final class TourViewModel {
             } else if !isPreciseLocation {
                 locationIssue = .reducedAccuracy
             } else if let userLocation {
+                guard StopActivationPolicy.isFresh(userLocation.timestamp) else {
+                    locationIssue = .waitingForSignal
+                    return
+                }
                 locationIssue = userLocation.horizontalAccuracy > TourViewModel.poorAccuracyThreshold
                     ? .poorAccuracy(meters: userLocation.horizontalAccuracy)
                     : nil

@@ -690,6 +690,70 @@ final class TourCompletionFlowTests: XCTestCase {
         store.save(ledger)
         XCTAssertEqual(LocalStopActivityStore(defaults: defaults).load(), ledger)
     }
+    func testRestartClearsPriorWalkRoutesWithoutClearingStories() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.startTour()
+        tour.finishStory(for: stops[0].id)
+        tour.legRoutes[TourViewModel.startLegKey] = WalkingRoute.straightLineEstimate(from: stops[1].coordinate, to: stops[0].coordinate)
+        tour.resetTour()
+        XCTAssertNil(tour.legRoutes[TourViewModel.startLegKey])
+        XCTAssertTrue(tour.activities[stops[0].id].learningCompleted)
+        XCTAssertEqual(tour.currentStop?.id, stops[0].id)
+    }
+
+    func testGoodFixBecomesWaitingAndMarginalFixShowsWarning() async throws {
+        let source = ActivityTestLocationService(status: .authorized)
+        let tour = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),
+            locationService: source, directionsService: PreviewDirectionsService())
+        await tour.loadStopsIfNeeded(); defer { cleanUp(tour) }
+        tour.startTour()
+        source.emit(LocationSample(coordinate: stops[1].coordinate,
+            horizontalAccuracy: 3, timestamp: Date().addingTimeInterval(-29.9)))
+        for _ in 0..<100 where tour.userLocation == nil { try await Task.sleep(for: .milliseconds(2)) }
+        try await Task.sleep(for: .milliseconds(120))
+        tour.refreshLocationIssue()
+        XCTAssertEqual(tour.locationIssue, .waitingForSignal)
+        source.emit(LocationSample(coordinate: stops[1].coordinate, horizontalAccuracy: 30))
+        for _ in 0..<100 where tour.userLocation?.horizontalAccuracy != 30 { try await Task.sleep(for: .milliseconds(2)) }
+        XCTAssertEqual(tour.locationIssue, .poorAccuracy(meters: 30))
+    }
+
+    func testRecoveryHasFiniteBudgetAndDestinationChangeCancelsIt() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.startTour()
+        for _ in 0..<20 { tour.scheduleRouteRecovery() }
+        XCTAssertEqual(tour.routeRecoveryAttempts, 5)
+        XCTAssertNotNil(tour.routeRecoveryTask)
+        tour.completeCurrentStopAndAdvance()
+        XCTAssertEqual(tour.currentStop?.id, stops[1].id)
+        XCTAssertEqual(tour.routeRecoveryAttempts, 0)
+        XCTAssertNil(tour.routeRecoveryTask)
+    }
+
+    func testStationaryRecoveryRequestsRouteWithoutAdvancing() async throws {
+        let source = ActivityTestLocationService(status: .authorized)
+        let service = FailOnceRecoveryDirections()
+        let tour = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),
+            locationService: source, directionsService: service)
+        await tour.loadStopsIfNeeded(); defer { cleanUp(tour) }
+        // Preload summary legs so only live walking requests exercise this failure.
+        for i in 1..<stops.count {
+            tour.legRoutes[TourViewModel.legKey(from: stops[i-1], to: stops[i])] =
+                WalkingRoute.straightLineEstimate(from: stops[i-1].coordinate, to: stops[i].coordinate)
+        }
+        tour.routeRecoveryDelay = .milliseconds(100)
+        tour.startTour()
+        source.emit(LocationSample(coordinate: stops[1].coordinate, horizontalAccuracy: 3))
+        for _ in 0..<100 where !tour.isRouteAnEstimate { try await Task.sleep(for: .milliseconds(2)) }
+        XCTAssertTrue(tour.isRouteAnEstimate)
+        for _ in 0..<200 where tour.currentRoute?.source != .simulated { try await Task.sleep(for: .milliseconds(2)) }
+        XCTAssertEqual(tour.currentRoute?.source, .simulated)
+        XCTAssertNil(tour.routingError)
+        XCTAssertEqual(tour.currentStop?.id, stops[0].id)
+        let calls = await service.calls
+        XCTAssertEqual(calls, 2)
+    }
+
     func testBonusRestoredAfterReopenRemainsIndependent() async {
         let store = InMemoryStopActivityStore()
         var ledger = StopActivityLedger(); ledger.foundBonus(at: stops[1].id)
@@ -1046,6 +1110,19 @@ private actor WalkingProviderStub: DirectionsService {
             from: GeoCoordinate(latitude: origin.latitude, longitude: origin.longitude),
             to: GeoCoordinate(latitude: destination.latitude, longitude: destination.longitude))
         route.source = source
+        return route
+    }
+}
+
+private actor FailOnceRecoveryDirections: DirectionsService {
+    private(set) var calls = 0
+    func walkingRoute(from origin: CLLocationCoordinate2D, to destination: CLLocationCoordinate2D) async throws -> WalkingRoute {
+        calls += 1
+        if calls == 1 { throw NSError(domain: "RecoveryTest", code: 1) }
+        var route = WalkingRoute.straightLineEstimate(
+            from: GeoCoordinate(latitude: origin.latitude, longitude: origin.longitude),
+            to: GeoCoordinate(latitude: destination.latitude, longitude: destination.longitude))
+        route.source = .simulated
         return route
     }
 }

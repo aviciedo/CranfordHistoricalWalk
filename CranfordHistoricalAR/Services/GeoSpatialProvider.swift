@@ -284,6 +284,10 @@ final class ARCoreGeoSpatialProvider: GeoSpatialProvider {
             // Official: -[GARSession update:error:]
             garFrame = try garSession.update(frame)
         } catch {
+            quality = .unavailable
+            pose = nil
+            lastAltitude = nil
+            lastHeading = nil
             return
         }
         // Do not retain `garFrame` / `earth` beyond this call.
