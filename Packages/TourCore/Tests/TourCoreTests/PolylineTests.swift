@@ -36,9 +36,16 @@ final class PolylineTests: XCTestCase {
         }
     }
 
+    // Regression intent from aef5300; no old production behavior is merged.
+    func testIncompleteFinalPairPreservesEarlierPoints() {
+        let full = Polyline.decode("_p~iF~ps|U_ulLnnqC_mqNvxq`@")
+        let truncated = Polyline.decode("_p~iF~ps|U_ulLnnqC_")
+        XCTAssertEqual(truncated, Array(full.prefix(2)))
+    }
+
     func testEmptyAndGarbageInputDoNotCrash() {
         XCTAssertTrue(Polyline.decode("").isEmpty)
-        _ = Polyline.decode("!!!")
-        _ = Polyline.decode("_p~iF")
+        XCTAssertTrue(Polyline.decode("!!!").isEmpty)
+        XCTAssertTrue(Polyline.decode("_p~iF").isEmpty)
     }
 }

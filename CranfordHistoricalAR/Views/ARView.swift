@@ -14,8 +14,8 @@ struct ARTourView: View {
     @State private var awaitingGeospatialConsent = false
     @State private var showScanInstruction = true
     @State private var motionManager = CMMotionManager()
-    @State private var phoneWasRaised = false
-    @State private var horizontalSince: Date?
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var phoneDown = PhoneDownReturnPolicy()
     @State private var isLeavingAR = false
 
     var body: some View {
@@ -51,6 +51,11 @@ struct ARTourView: View {
         }
         .preferredColorScheme(awaitingGeospatialConsent ? .light : .dark)
         .statusBarHidden(false)
+        .onChange(of: scenePhase) { _, phase in
+            phoneDown.reset()
+            if phase != .active { motionManager.stopDeviceMotionUpdates() }
+            else if model != nil && !isLeavingAR { beginPhoneOrientationMonitoring() }
+        }
         .onChange(of: navigation.homeReturnID) { _, _ in
             model?.isShowingSignDetails = false
             model?.isShowingBonusPreview = false
@@ -67,20 +72,15 @@ struct ARTourView: View {
 
     /// Requires an upright/tilted phone first to avoid exiting as AR opens.
     private func beginPhoneOrientationMonitoring() {
-        guard motionManager.isDeviceMotionAvailable, !motionManager.isDeviceMotionActive else { return }
+        guard scenePhase == .active, !isLeavingAR, motionManager.isDeviceMotionAvailable, !motionManager.isDeviceMotionActive else { return }
         motionManager.deviceMotionUpdateInterval = 0.2
         motionManager.startDeviceMotionUpdates(to: .main) { motion, error in
             guard error == nil, let gravity = motion?.gravity, !isLeavingAR else { return }
-            let screenUpHorizontal = gravity.z < -0.92
-                && abs(gravity.x) < 0.35 && abs(gravity.y) < 0.35
-            if abs(gravity.z) < 0.70 {
-                phoneWasRaised = true
-                horizontalSince = nil
-            } else if phoneWasRaised && screenUpHorizontal {
-                if let since = horizontalSince {
-                    if Date().timeIntervalSince(since) >= 2.0 { returnToMap() }
-                } else { horizontalSince = Date() }
-            } else { horizontalSince = nil }
+            if phoneDown.update(x: gravity.x, y: gravity.y, z: gravity.z,
+                timestamp: motion?.timestamp ?? 0,
+                suspended: scenePhase != .active || model?.isShowingSignDetails == true || model?.isShowingBonusPreview == true) {
+                returnToMap()
+            }
         }
     }
 

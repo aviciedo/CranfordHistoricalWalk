@@ -1,147 +1,74 @@
-# Test the mill story and optional AR discovery
+# Field acceptance — review build 46
 
-The portable logic checks passed. The iOS build, actual narration, recognition, overlay fit and
-window anchoring still need Xcode/iPhone testing. Use a Debug build to access Developer Controls.
+Status: NOT EXECUTED ON SITE. Linux unit tests do not verify iPhone GPS, street
+safety, compass alignment, camera recognition, real plaque dimensions or battery use.
+Do not mark this checklist passed until a tester records the evidence below.
 
-## Prepare
+Install the complete review ZIP on a real iPhone using Xcode. Confirm build 46 in
+Developer and narration release cedar-2. Keep Simulated location OFF. Use the full
+“Clear visits, stories & bonuses” test reset only when you want a clean activity run;
+ordinary visit-only reset intentionally retains reading/listening/bonus progress.
 
-1. Download the current GitHub ZIP, copy your existing `Config/Secrets.xcconfig` into its Config
-   folder, open `CranfordHistoricalAR.xcodeproj`, select your signing team and run on the iPhone.
-2. On Home, open **Developer**. Confirm **0.2.0 (2)** and audio release **cedar-2**.
-   Leave **Simulated location** off for field testing.
-3. Tap **Clear visits & restart at stop 1**. To avoid saving repeated test visits, turn **Save visit
-   history** off. This leaves story completion and AR discovery usable; confirmation says the visit
-   was not saved. Saving defaults to on after relaunch.
-4. At the permitted public viewing position, wait for a fresh GPS fix with good reported accuracy.
-   Tap **Save this location as the viewing point**. Copy/screenshot its coordinates and accuracy.
-   The existing Google-search coordinate is approximate, not a verified public viewing area.
-   Capture changes story arrival on this device; it does not replace the building/map coordinates.
+Current approximate reference points (not surveyed or certified public entrances):
 
-## Story first
+| Stop | Latitude | Longitude | Plaque width metadata |
+|---|---:|---:|---|
+| Droescher’s Mill | 40.650249 | -74.301047 | 0.18 m, measure on site |
+| Greystone | 40.6524 | -74.2990 | 0.75 m full-frame testing estimate |
+| Rahway River | 40.6659731 | -74.3108614 | No image reference |
+| First Baptist Church | 40.653165 | -74.302768 | No image reference |
+| Cranford Hotel | 40.65513 | -74.304765 | No image reference |
 
-1. Start the walk and approach the viewing position. Confirm the detail screen appears once with
-   the mill photograph and description. It must not start audio or record a plaque verification.
-2. Tap Play. Confirm the warm male narration plays only after this action and the map/AR player
-   does not start a second copy. Pause/resume; browse another stop without changing the guided order.
-3. After the mill narration actually ends, confirm the invitation to use **Start AR** appears. Repeat with
-   **I've read the story** to test the reading route. Developer's **Mark story read for testing**
-   avoids waiting through the recording during repeated placement tests.
-4. Choose Continue without scanning. Confirm Greystone becomes the destination, its walking route
-   updates, and the mill has no newly saved plaque verification or unlocked bonus.
-5. Reset the walk and repeat with optional discovery. Closing details must not reopen them on
-   every GPS update; resetting the walk must re-arm the arrival offer.
+Stand only in permitted pedestrian areas. Do not follow an AR arrow into a roadway
+or private property. Coordinates and ground-plane detection do not establish safe access.
+Record proposed coordinate/scale changes; do not silently change production data.
 
-## Plaque and two-door-pane overlay
+For EVERY stop, record: build/commit, device/iOS, time, provider (Google/Apple),
+permission/Precise Location settings, actual public viewing point, GPS fix age and
+accuracy, distance to stop, destination before/after, result, and screenshot/video.
+No keys, unrelated bystanders, or raw continuous location trail are needed.
 
-1. From a permitted place outside, choose **Start AR** and point at the plaque beside
-   the red double doors. Keep the entrance clear. The camera must not show the old giant marker
-   above the plaque or automatically replay the full narration.
-2. A matching, currently tracked plaque with normal AR tracking should trigger one short
-   translucent confirmation and save one plaque-verified visit (unless saving is off/simulated).
-   GPS alone and story playback alone must never unlock the extra.
-3. The translucent bonus placeholder should cover the TWO glass panes in the red double doors,
-   immediately right of the plaque. Initial position/size are approximate and require calibration.
-4. Tap **Align bonus**. Keep the plaque within the camera's view; adjust right/up/width/height,
-   close the controls and inspect. Repeat as necessary. Values are multiples of plaque width and
-   saved only on this device. Copy/screenshot the final values for the developer. Reset visits
-   must preserve calibration; **Reset approximate placement** removes the custom bounds.
-5. Pan from plaque to windows; gently move sideways/back. The overlay should stay on the facade,
-   not follow the camera or vanish just because the plaque leaves view. Test the X and Open extra
-   controls. Extra content is explicitly a placeholder, not a supplied historical photo/video.
-6. Move more than 12 meters away or interrupt AR. The extra must become inaccessible. Reopening
-   AR must require seeing the plaque again to establish its pose. Existing saved verification
-   must not unlock a remote bonus from Home/Stops.
-7. Try poor light, oblique angles and tracking loss. Verify no duplicate recording/celebration,
-   no GPS-only fallback unlock, and Continue remains available after the story. Capture failures
-   with the Developer coordinate/accuracy readout, plus overlay alignment values.
+1. Arrive from outside the 50 m departure boundary. A real GPS visit needs a fix
+   younger than 30 seconds, accuracy <=25 m, and distance + accuracy <=35 m.
+   Check the inside/outside boundaries without expecting uncertain fixes to count.
+2. Verify “You’re here” and one saved physical visit. Arrival must NOT change the
+   destination, complete a story, unlock a bonus, or start audio.
+3. Tap Continue ONCE: next stop and route endpoint change together. Stop 1 must
+   become Greystone. Capture the entire sequence if it stays at the mill.
+4. Skip before arriving: destination changes, skipped stop receives no visit credit.
+5. Play mill narration while walking to Greystone. Open/close details, photos and
+   AR; neither playback identity nor walking destination may be changed by browsing.
+6. Deny camera/location separately; browsing must work. Test reduced accuracy,
+   stale/weak GPS, lost connectivity, and recovery while stationary. Expect at most
+   five automatic routing retries; Retry directions renews the budget explicitly.
+7. In AR, wait for normal tracking and ground detection. Inspect upright chevrons,
+   route alignment and GPS approximation labels. GPS-only fallback is approximate.
+8. Match each supported physical plaque in good and poor light, from oblique angles,
+   then lose tracking. GPS and story completion must never claim plaque recognition.
+   Measure plaque/reference widths and capture calibration ratios before proposing changes.
+9. Raise the phone, then hold screen-up/level continuously for two seconds: return
+   to the presenting screen. Opening already flat must not immediately close AR.
+   A modal, background interruption or gap in motion samples must break the hold.
+10. Test call/interruption, camera retry, app background/foreground, and repeated
+    entry/exit. No duplicate camera session, narration, visit or unlocked-bonus event.
+11. Kill/relaunch: walking resumes paused with its destination; narration resumes only
+    after Play. Restart a walk from elsewhere and check the new summary starting leg.
+12. Inspect small-phone/large-text/VoiceOver/Reduce Motion layouts, Map/Stops header
+    alignment, destination actions with the player visible, and full uncropped photos.
+13. Run a 20-minute walk with Instruments Energy/Memory and record observed thermal,
+    CPU, frame-rate and battery behavior. No performance threshold is declared passed here.
 
-## Accessibility and continuation
+Acceptance record per case: NOT RUN / PASS / FAIL, tester, evidence file, expected
+versus actual behavior, reproduction steps. Confirm Google and Apple separately.
 
-- Test larger text, VoiceOver, smaller phones and Reduce Motion. The Map control and Continue
-  must remain reachable. The confirmation must not require tapping or recognizing animation.
-- Continue to Greystone. Confirm all mill overlays disappear, normal street-turn guidance returns,
-  and the next stop uses its existing GPS marker flow. Camera denial must still allow the map,
-  stop story and optional continuation.
-- Run Product > Test on the Mac. The native suite also covers map state, the shared narration
-  player and a mill activation action that opens the story without starting playback.
-
-Exact alignment cannot be certified by a photograph alone. The plaque width is still unmeasured;
-the overlay uses a plaque-derived world pose with calibrated bounds, not separate window tracking.
-
-## Walking arrows and street turns
-
-- Enter AR facing left, right and backward relative to the route. Check the large initial
-  direction cue, route street name and feet distance; face the route and let the cue settle.
-- Walk toward an actual left/right turn. Check the translucent ground arrow and floating
-  street sign; after turning, the ground arrow must follow the new leg, without pointing back
-  at the corner. Stand near a corner for several GPS updates to check stability.
-- Leave the route by more than 35 meters. Old walking arrows must disappear while a fresh
-  route is requested. Use Map until routing and heading are available again.
-- Interrupt/resume AR near a turn several times, including with Reduce Motion enabled.
-  The floating sign must return visibly rather than remain transparent after a canceled fade.
-- Repeat after Continue to Greystone. The mill arrival/story flow must still stop walking
-  guidance and must not record plaque verification from GPS alone.
-
-Latest portable verification: 151 core tests and 20 production tour-logic integration tests
-passed. Both Debug/Release Swift syntax and saved project/asset checks passed. These do not
-substitute for an Xcode iPhone build or the physical-device checks above.
-
-## Greystone Cranford Park discovery
-
-1. Continue to Greystone. Confirm its story opens on arrival, or open it from Map/Stops. Read or
-   listen, then choose **Start AR**. Also test Continue without scanning: this must
-   advance to the Rahway River without recording a plaque-verified visit or unlocking an extra.
-2. Aim at the black **Cranford Park** sign. Include the stone surround shown in the reference
-   photograph, keep the camera steady and use good light. The mill plaque must not unlock this stop.
-3. A currently tracked match with normal AR tracking should show one translucent confirmation,
-   record one Greystone plaque verification (unless saving is off/simulated), and display the
-   translucent placeholder above the plaque. It must not use the mill's door-pane position.
-4. Tap the placeholder/Open on-site extra, close it, pan away, interrupt AR, restart AR and move
-   more than 12 meters away. The session/distance restrictions must match the mill's bonus.
-5. Verify mill viewing-point capture and door alignment do not alter Greystone's arrival/overlay.
-   GPS arrival, a nonmatching plaque, saved visits alone and interrupted tracking must not unlock.
-6. Reference scale is unmeasured: 0.75 m describes the entire supplied image frame including stone,
-   not just the black plaque. Report recognition failures, screenshots and the measured sign width
-   when available. Validate ARKit reference-image quality during the Xcode asset build.
-
-## Fine-tune the Greystone pillar extra
-
-- Use the new default card above the black Cranford Park sign. It should fit inside the pillar's
-  visible edges and leave the plaque readable. This is a photo-based starting point, not a
-  measured physical fit; the close-up reference still uses its estimated full-frame width.
-- In the AR camera, tap **Align bonus** and scroll to **Greystone plaque bonus alignment**.
-  Keep the plaque visible and adjust Move right, Move up, Width and Height. Even with the phone
-  held still, changes should update the card. Close the controls to inspect it on the pillar.
-- Relaunch to verify saved settings. Reset visits and verify alignment survives. Reset Greystone
-  placement and verify the photo-based defaults return while the mill's alignment stays unchanged.
-- Send a screenshot of the final four values and the overlay, plus any measured plaque width.
-  The photo by itself cannot establish scale in feet/meters or certify a public viewing position.
-
-
-## Narration-source and detail AR regression
-
-- From fresh launch before starting a walk, open each stop's details. AR must be visible.
-  Entering it starts the first destination, not the stop merely being browsed.
-- Play stop 1 and stop 2. Details must identify OpenAI cedar. In Developer, Prepared audio must
-  show bundledAudio for the corresponding MP3; compare with the MP3 under assets/audio/stops.
-- After the first story, Continue to Greystone. Open details for another stop and enter AR:
-  the button names the current destination, and the destination must remain Greystone.
-- Before finishing the story, entering AR must not unlock/record a plaque. Afterwards, the
-  current stop's AR action/Find the plaque action must start recognition. Scan its real marker.
-- From details already over the AR camera, View in AR must close details and keep one session.
-  Close the camera and ensure the app returns to a usable map/list without a stranded sheet.
-- After finishing the whole tour, the detail action must explicitly say Start new walk in AR.
-  It restarts at stop 1 while leaving saved visit history intact.
-
-
-## Hunter-green chevrons
-
-- Confirm build 0.2.0 (14). Enter AR while facing ahead, left, right and away from the route.
-  Three white chevrons with hunter-green depth should point appropriately and retain the
-  matching instruction/street/distance; behind-you guidance must say Turn around.
-- Walk toward a turn and rotate the phone slowly. Check camera-facing legibility, smooth
-  positioning/rotation, white faces and green sides, and the street's maneuver chevrons.
-- Confirm transitions between ahead and turn signs do not contradict the route. Move near a
-  plaque/stop and verify navigation hides as before, without rendering through the doorway.
-- Repeat with Reduce Motion, strong sunlight, weak compass/GPS, tracking loss and resume.
-  No reliable tracking/localization means navigation must hide, not invent a direction.
+Mill/Greystone bonus acceptance:
+- Recognize only the matching supported plaque. Another plaque, a photograph on a
+  second screen, weak tracking, GPS arrival or story playback must not be accepted
+  as verified on-site discovery without recording and investigating that limitation.
+- At the mill, record right/up/width/height calibration ratios and verify the bonus
+  covers both intended panes, stays on the facade when looking away, and responds
+  correctly to its close/open controls. Do not claim independent window recognition.
+- Move farther than 12 m or interrupt AR: the live on-site extra must become
+  inaccessible. Re-entering AR must re-establish its physical pose from the plaque;
+  a saved accomplishment is not a fresh world anchor. Saved story/bonus previews
+  may remain available independently, as intended by the app.
