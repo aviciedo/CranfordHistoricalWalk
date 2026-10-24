@@ -185,4 +185,23 @@
       "narrationPending": true
     }
   ]
+,
+  "tourID": "cranford-historical-walk",
+  "catalogVersion": 1,
+  "recordings": [
+    {
+      "stopID": "hpab-001",
+      "fileName": "stop_01_droeschers_mill.mp3",
+      "duration": 151.301224,
+      "audioSHA256": "197afe552a3e7be4bb100fa9eeacde4eef9cce32d7ad9aa406ccbf3575661f71",
+      "transcriptSHA256": "bbf78f5a93d013b782c981d39f9139068e77760ea38da76d67ed65bd4c254454"
+    },
+    {
+      "stopID": "hpab-002",
+      "fileName": "stop_02_greystone.mp3",
+      "duration": 142.733061,
+      "audioSHA256": "12253f3de71fbf179b5f54a3a23298eeecc71e2175334007792930f8a96d5b1a",
+      "transcriptSHA256": "e8d895c7345f9f66f9859dc16d69e2649eb1949e637b7ef36437f60c8cb6ef72"
+    }
+  ]
 }
