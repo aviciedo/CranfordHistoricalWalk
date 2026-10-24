@@ -1,6 +1,6 @@
 Cranford Historical AR — Xcode project
 
-Review build 0.2.0 (46) — Catalog/session isolation and field acceptance preparation
+Build 0.2.0 (46) — Catalog/session isolation; native and field verification pending
 
 1. Close the previous Xcode project. Extract the entire ZIP into a fresh folder on the Mac. Keep its folders together.
    Copy your existing Config/Secrets.xcconfig into this new folder’s Config folder.

@@ -55,4 +55,5 @@ Selective consolidation provenance:
 
 Acceptance gates: portable tests and syntax checks supplement, not replace, native simulator
 CI and the real-device evidence checklist in AR-FIELD-TEST.md. Coordinates and physical plaque
-scales remain unverified. Review branch only; no main merge or branch retirement is authorized.
+scales remain unverified. Publication to main and xcode-download was explicitly approved by the product owner.
+Native/device verification remains pending; branch retirement is not authorized.

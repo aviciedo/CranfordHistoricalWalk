@@ -48,3 +48,9 @@ Steps 4–6 — review build 46:
 - Final build 46 verification: 206 TourCore tests and 57 portable application-model
   tests passed; Debug/Release app/test syntax checks passed. Two narration files and
   their transcripts match the catalog SHA-256 manifest. These are not device results.
+
+Publication:
+The product owner explicitly approved publishing all changes to main and xcode-download.
+This approval supersedes the earlier review-only publication gate; it does not establish
+native CI success, on-site acceptance, App Store readiness, or permission to retire branches.
+Build 46 retains the verification limitations documented above.
