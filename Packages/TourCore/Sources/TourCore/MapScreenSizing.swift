@@ -1,7 +1,7 @@
 /// Destination content gets its complete measured height before the map receives space.
 /// These sizes describe the Map content viewport, excluding the title, player and tabs.
 public enum MapScreenSizing {
-    public static let minimumMapHeight: Double = 160
+    public static let minimumMapHeight: Double = 120
     public static let maximumMapHeight: Double = 400
     public static let compactControlsThreshold: Double = 240
     public static let sectionSpacing: Double = 16

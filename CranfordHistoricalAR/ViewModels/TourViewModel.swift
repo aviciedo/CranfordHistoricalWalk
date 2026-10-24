@@ -109,6 +109,23 @@ final class TourViewModel {
 
     // MARK: Proximity / AR sign (mutated by TourViewModel+Proximity.swift)
     var proximityMachine: StopProximityStateMachine?
+    var walkingProgression = WalkingProgressionPolicy()
+    var heldDepartureStopID: String? {
+        didSet { checkpointWalk() }
+    }
+    /// Only foreground Map can change the itinerary automatically. Browsing and AR hold it.
+    var isAutomaticNavigationVisible = false {
+        didSet { if !isAutomaticNavigationVisible { walkingProgression.interrupt() } }
+    }
+    var explorationHolds: Set<UUID> = [] {
+        didSet { if !explorationHolds.isEmpty { walkingProgression.interrupt() } }
+    }
+    var automaticTransitionFromStopID: String?
+    var automaticTransitionProgress: TourProgress?
+    var isAutomaticNavigationAllowed: Bool {
+        isWalkingActive && isAutomaticNavigationVisible && explorationHolds.isEmpty && !isARSessionActive
+    }
+
     /// Visual confirmation overrides an unverified geocode until the visitor continues.
     var plaqueConfirmedStopID: String?
     var presentedSignStopID: String?
@@ -127,7 +144,9 @@ final class TourViewModel {
     var discoveriesByStopID: [String: StopDiscovery] = [:]
     /// Hold a selected site's story/discovery through GPS fixes and AR presentation.
     var arDiscoveryStopID: String?
-    var isARSessionActive = false
+    var isARSessionActive = false {
+        didSet { if isARSessionActive { walkingProgression.interrupt() } }
+    }
     var continuedARStopIDs: Set<String> = []
     var arrivalStoryStopID: String?
     var windowBonusLayout = WindowBonusLayout()
@@ -237,6 +256,7 @@ final class TourViewModel {
             if let saved = walkResumeStore.load(), saved.isValid(for: catalogIdentity, stopIDs: ids) {
                 walkSessionID = saved.sessionID ?? UUID()
                 progress = saved.progress
+                heldDepartureStopID = saved.departureHoldStopID
                 isWalkPaused = progress.phase == .inProgress
                 restoredCompletionSummary = saved.completionSummary
             } else {
@@ -306,6 +326,10 @@ final class TourViewModel {
 
     func resetTour() {
         walkSessionID = UUID()
+        automaticTransitionFromStopID = nil
+        automaticTransitionProgress = nil
+        heldDepartureStopID = nil
+        walkingProgression = WalkingProgressionPolicy()
         isWalkPaused = false
         restoredCompletionSummary = nil
         cancelRouting()
@@ -338,7 +362,7 @@ final class TourViewModel {
         guard progress.phase != .notStarted else { walkResumeStore.save(nil); return }
         walkResumeStore.save(WalkResumeRecord(progress: progress,
             completionSummary: progress.phase == .complete ? tourSummary : nil,
-            catalogIdentity: catalogIdentity, sessionID: walkSessionID))
+            catalogIdentity: catalogIdentity, sessionID: walkSessionID, departureHoldStopID: heldDepartureStopID == currentStop?.id ? heldDepartureStopID : nil))
     }
 
     // MARK: Location pipeline
@@ -381,6 +405,7 @@ final class TourViewModel {
         isPreciseLocation = service.isPreciseLocationAuthorized
         userLocation = nil
         heading = nil
+        walkingProgression.interrupt()
         if wasRunning || isShowingTour { startLocationIfPossible() }
     }
 
@@ -423,6 +448,7 @@ final class TourViewModel {
     func didUpdateLocation(_ sample: LocationSample) {
         handleLocationForRouting(sample)
         handleLocationForProximity(sample)
+        evaluateAutomaticProgression(sample)
     }
 
     func refreshLocationIssue() {

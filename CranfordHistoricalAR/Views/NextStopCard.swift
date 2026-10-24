@@ -12,7 +12,13 @@ struct NextStopCard: View {
                 if tour.isWalkPaused {
                     Text("Walk paused · Destination")
                         .font(.caption).foregroundStyle(AppTheme.secondaryInk)
-                } else if !tour.isHeadingToFirstStop {
+                } else if tour.walkingProgression.isConfirmingArrival {
+                    Text("Arriving at")
+                        .font(.caption).foregroundStyle(AppTheme.secondaryInk)
+                } else if tour.automaticTransitionFromStopID != nil && !tour.progress.isCurrentStopVisited {
+                    Text("Now guiding you to")
+                        .font(.caption).foregroundStyle(AppTheme.secondaryInk)
+                } else if !tour.isHeadingToFirstStop && !tour.progress.isCurrentStopVisited {
                     Text("Walking to")
                         .font(.caption).foregroundStyle(AppTheme.secondaryInk)
                 }
@@ -20,6 +26,19 @@ struct NextStopCard: View {
                     .font(.system(.title3, design: .serif).weight(.semibold))
                     .fixedSize(horizontal: false, vertical: true)
                 MapDestinationStatus()
+                if let cue = tour.mapWalkingCue {
+                    ARNavigationArrowView(detail: cue.instruction, cue: cue, isApproximate: false)
+                        .accessibilityIdentifier("map.nextTurn")
+                }
+                if tour.walkingProgression.hasArrived && !tour.isWalkPaused {
+                    Text(tour.walkingProgression.isHeld ? "Staying here until you continue." : "Take your time. Directions move on when you leave.")
+                        .font(.footnote).foregroundStyle(AppTheme.secondaryInk)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button(tour.walkingProgression.isHeld ? "Guide me when I leave" : "Stay here") {
+                        tour.toggleAutomaticDepartureHold()
+                    }
+                    .buttonStyle(.plain).font(.subheadline.weight(.medium)).frame(minHeight: 44)
+                }
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 24) { actions }
                     VStack(alignment: .leading, spacing: 4) { actions }
@@ -34,9 +53,15 @@ struct NextStopCard: View {
     }
 
     @ViewBuilder private var actions: some View {
+        if let fromID = tour.automaticTransitionFromStopID {
+            Button("Undo") { tour.undoAutomaticTransition() }
+                .buttonStyle(.plain).font(.subheadline.weight(.medium)).frame(minHeight: 44)
+                .accessibilityHint("Return to \(tour.stop(withID: fromID)?.name ?? "the previous stop") and stay there until you continue")
+                .accessibilityIdentifier("map.undoAdvance")
+        }
         if let onDetails {
             Button(action: onDetails) {
-                Label("View stop", systemImage: "book")
+                Label(tour.progress.isCurrentStopVisited && tour.currentStop?.narrationSource != nil ? "Listen to the story" : "View stop", systemImage: "book")
                     .frame(minHeight: 44).contentShape(Rectangle())
             }
             .buttonStyle(.plain).font(.subheadline.weight(.semibold))
@@ -48,7 +73,7 @@ struct NextStopCard: View {
             .buttonStyle(.plain).font(.subheadline.weight(.semibold))
         } else if tour.canContinueCurrentStop {
             Button { tour.completeCurrentStopAndAdvance() } label: {
-                Label(tour.nextStop == nil ? "Finish walk" : "Continue to next stop", systemImage: "arrow.right")
+                Label(tour.nextStop == nil ? "Finish walk" : "Continue now", systemImage: "arrow.right")
                     .frame(minHeight: 44).contentShape(Rectangle())
             }
             .buttonStyle(.plain).font(.subheadline.weight(.medium))
@@ -79,6 +104,13 @@ struct MapDestinationStatus: View {
     @Environment(TourViewModel.self) private var tour
     @ScaledMetric(relativeTo: .subheadline) private var minimumLineHeight: CGFloat = 24
 
+    private var arrivalText: String {
+        if tour.userLocation?.isSimulated == true || tour.locationService is SimulatedLocationService {
+            return "Practice arrival · Not saved"
+        }
+        return tour.isAtCurrentStopNow ? "You’re here · Visited" : "Visited · Ready when you are"
+    }
+
     var body: some View {
         // Refresh presence even when GPS stops emitting; an old fix is not arrival.
         TimelineView(.periodic(from: .now, by: 5)) { _ in
@@ -87,8 +119,8 @@ struct MapDestinationStatus: View {
                     Text("Resume when you’re ready.")
                         .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
                         .fixedSize(horizontal: false, vertical: true)
-                } else if tour.isAtCurrentStopNow {
-                    Label("You’re here", systemImage: "mappin.circle.fill")
+                } else if tour.walkingProgression.hasArrived || tour.progress.isCurrentStopVisited {
+                    Label(arrivalText, systemImage: "checkmark.circle")
                         .font(.subheadline.weight(.medium))
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("map.arrived")
@@ -102,6 +134,10 @@ struct MapDestinationStatus: View {
                             .font(.footnote)
                             .fixedSize(horizontal: false, vertical: true)
                     }
+                }
+                if tour.locationIssue != nil && !tour.isWalkPaused {
+                    Text("Waiting for a clearer location")
+                        .font(.footnote).fixedSize(horizontal: false, vertical: true)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

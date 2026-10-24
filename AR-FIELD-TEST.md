@@ -1,10 +1,10 @@
-# Field acceptance — review build 46
+# Field acceptance — review build 47
 
 Status: NOT EXECUTED ON SITE. Linux unit tests do not verify iPhone GPS, street
 safety, compass alignment, camera recognition, real plaque dimensions or battery use.
 Do not mark this checklist passed until a tester records the evidence below.
 
-Install the complete review ZIP on a real iPhone using Xcode. Confirm build 46 in
+Install the complete review ZIP on a real iPhone using Xcode. Confirm build 47 in
 Developer and narration release cedar-2. Keep Simulated location OFF. Use the full
 “Clear visits, stories & bonuses” test reset only when you want a clean activity run;
 ordinary visit-only reset intentionally retains reading/listening/bonus progress.
@@ -30,20 +30,32 @@ No keys, unrelated bystanders, or raw continuous location trail are needed.
 
 1. Arrive from outside the 50 m departure boundary. A real GPS visit needs a fix
    younger than 30 seconds, accuracy <=25 m, and distance + accuracy <=35 m.
-   Check the inside/outside boundaries without expecting uncertain fixes to count.
-2. Verify “You’re here” and one saved physical visit. Arrival must NOT change the
-   destination, complete a story, unlock a bonus, or start audio.
-3. Tap Continue ONCE: next stop and route endpoint change together. Stop 1 must
-   become Greystone. Capture the entire sequence if it stays at the mill.
+   Current-destination arrival additionally needs two distinct fixes spanning >=3 s.
+   Check boundaries without expecting uncertain or repeated cached fixes to count.
+2. Verify “You’re here” and one saved physical visit. Arrival must NOT complete a
+   story, unlock a bonus or start audio. Hold the current destination for exploring.
+   The last verified arrival may finish the itinerary on foreground Map only.
+3. Without tapping Continue, leave the current site with foreground Map visible.
+   Distance minus accuracy must stay outside the departure boundary (at least 50 m)
+   over distinct fresh fixes spanning >=5 s. Mill must become Greystone once.
+   Undo must return to Mill and latch Stay here; relaunch/Resume preserves the hold.
+   Release it or use Continue now. A single fix must never advance several sites.
+   Repeat while in details, photos, AR, Home and background: no automatic retargeting;
+   new fixes after returning to Map must reestablish departure dwell.
+   Also tap Continue ONCE to verify the manual alternative and route endpoint.
 4. Skip before arriving: destination changes, skipped stop receives no visit credit.
 5. Play mill narration while walking to Greystone. Open/close details, photos and
    AR; neither playback identity nor walking destination may be changed by browsing.
 6. Deny camera/location separately; browsing must work. Test reduced accuracy,
    stale/weak GPS, lost connectivity, and recovery while stationary. Expect at most
    five automatic routing retries; Retry directions renews the budget explicitly.
-7. In AR, wait for normal tracking and ground detection. Inspect upright chevrons,
+7. Enter AR: scanning starts without Start exploring. Confirm the ground coach and
+   gray scrim disappear after ground detection, with Back/Home/Retry unobscured.
+   Wait for normal tracking and ground detection. Inspect upright chevrons,
    route alignment and GPS approximation labels. GPS-only fallback is approximate.
-8. Match each supported physical plaque in good and poor light, from oblique angles,
+8. Verify the scanner shows the correct real target thumbnail and actual phase.
+   After 12 seconds without recognition, help, Retry and Return to story must work.
+   Match each supported physical plaque in good and poor light, from oblique angles,
    then lose tracking. GPS and story completion must never claim plaque recognition.
    Measure plaque/reference widths and capture calibration ratios before proposing changes.
 9. Raise the phone, then hold screen-up/level continuously for two seconds: return
@@ -55,7 +67,9 @@ No keys, unrelated bystanders, or raw continuous location trail are needed.
     after Play. Restart a walk from elsewhere and check the new summary starting leg.
 12. Inspect small-phone/large-text/VoiceOver/Reduce Motion layouts, Map/Stops header
     alignment, destination actions with the player visible, and full uncropped photos.
-13. Run a 20-minute walk with Instruments Energy/Memory and record observed thermal,
+13. At the final stop, confirm automatic finish, truthful skipped-site rows and Undo.
+    Map stays available and ongoing audio does not stop. Relaunch remains truthful.
+14. Run a 20-minute walk with Instruments Energy/Memory and record observed thermal,
     CPU, frame-rate and battery behavior. No performance threshold is declared passed here.
 
 Acceptance record per case: NOT RUN / PASS / FAIL, tester, evidence file, expected

@@ -64,7 +64,11 @@ struct RootView: View {
         .onChange(of: tour.isShowingTour) { _, showing in
             navigation.selectedTab = showing ? .map : .home
         }
+        .onChange(of: navigation.selectedTab, initial: true) { _, tab in
+            tour.isAutomaticNavigationVisible = tab == .map && scenePhase == .active
+        }
         .onChange(of: scenePhase) { _, phase in
+            tour.isAutomaticNavigationVisible = navigation.selectedTab == .map && phase == .active
             if phase != .active {
                 dependencies.narrationPlayer.checkpointPlayback()
                 tour.checkpointWalk()

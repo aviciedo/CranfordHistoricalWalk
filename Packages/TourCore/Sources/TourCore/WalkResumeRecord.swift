@@ -7,10 +7,12 @@ public struct WalkResumeRecord: Codable, Equatable, Sendable {
     public var version: Int
     public var progress: TourProgress
     public var completionSummary: TourSummary?
+    public var departureHoldStopID: String?
 
-    public init(progress: TourProgress, completionSummary: TourSummary? = nil, catalogIdentity: TourCatalogIdentity? = nil, sessionID: UUID? = nil) {
+    public init(progress: TourProgress, completionSummary: TourSummary? = nil, catalogIdentity: TourCatalogIdentity? = nil, sessionID: UUID? = nil, departureHoldStopID: String? = nil) {
         self.catalogIdentity = catalogIdentity
         self.sessionID = sessionID
+        self.departureHoldStopID = departureHoldStopID
         version = 1
         self.progress = progress
         self.completionSummary = completionSummary
@@ -28,6 +30,7 @@ public struct WalkResumeRecord: Codable, Equatable, Sendable {
               Set(progress.completedStopIDs).count == progress.completedStopIDs.count,
               Set(progress.completedStopIDs).isSubset(of: Set(stopIDs)),
               progress.walkedMeters.isFinite, progress.walkedMeters >= 0 else { return false }
+        if let held = departureHoldStopID, held != progress.currentStopID { return false }
         guard progress.phase != .notStarted, let start = progress.startedAt,
               start.timeIntervalSince1970.isFinite else { return false }
         if progress.phase == .complete {

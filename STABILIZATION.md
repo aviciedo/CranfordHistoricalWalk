@@ -54,3 +54,12 @@ The product owner explicitly approved publishing all changes to main and xcode-d
 This approval supersedes the earlier review-only publication gate; it does not establish
 native CI success, on-site acceptance, App Store readiness, or permission to retire branches.
 Build 46 retains the verification limitations documented above.
+
+UX implementation — review build 47:
+- Owner approved UX audit items 1–7, 9 and 10, including replacing manual-only
+  progression with a fresh-fix/dwell departure policy and durable Stay here/Undo.
+- Existing recording, GPS/bonus/learning independence, maps and AR architecture retained.
+- 214 core and 66 portable actual-model tests pass. New host-app audio regression
+  awaits Apple execution. Debug/Release parsing passes; no native build is claimed.
+- See UX-IMPLEMENTATION.md and revised AR-FIELD-TEST.md for scope and acceptance.
+- This task does not publish, merge or retire any branch.

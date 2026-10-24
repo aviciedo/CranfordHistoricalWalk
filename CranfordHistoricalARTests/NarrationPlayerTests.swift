@@ -75,6 +75,34 @@ final class NarrationPlayerTests: XCTestCase {
         XCTAssertNil(tour.activities[mill.id].bonusFoundAt)
     }
 
+    func testAutomaticWalkingTransitionAndUndoLeavePlayingMillNarrationAlone() async throws {
+        let dependencies = AppDependencies.preview()
+        let tour = dependencies.tourViewModel
+        await tour.loadStopsIfNeeded()
+        tour.startTour(); tour.isAutomaticNavigationVisible = true
+        let stops = HistoricalStop.previewStops
+        let player = dependencies.narrationPlayer
+        defer { player.stop(); tour.stopLocation(); tour.cancelRouting() }
+        XCTAssertTrue(player.prepare(stops[0]))
+        try await waitForAudio { player.canSeek }
+        player.seek(to: 35); player.play()
+        try await waitForAudio { player.isPlaying }
+        let now = Date()
+        let away = GeoCoordinate(latitude: stops[0].latitude + 0.002, longitude: stops[0].longitude)
+        for (point, age) in [(stops[0].coordinate, -15.0), (stops[0].coordinate, -12.0), (away, -6.0), (away, 0.0)] {
+            let sample = LocationSample(coordinate: point, horizontalAccuracy: 3, timestamp: now.addingTimeInterval(age))
+            tour.evaluateAutomaticProgression(sample, now: now)
+        }
+        XCTAssertEqual(tour.currentStop?.id, stops[1].id)
+        XCTAssertEqual(player.stopID, stops[0].id)
+        XCTAssertTrue(player.isPlaying)
+        XCTAssertGreaterThanOrEqual(player.elapsed, 34)
+        tour.undoAutomaticTransition()
+        XCTAssertEqual(tour.currentStop?.id, stops[0].id)
+        XCTAssertEqual(player.stopID, stops[0].id)
+        XCTAssertTrue(player.isPlaying)
+    }
+
     func testRecordingBookmarkSurvivesExplicitSwitchToAnotherStory() async throws {
         let player = NarrationPlayer()
         defer { player.stop() }

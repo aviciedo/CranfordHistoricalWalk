@@ -1,4 +1,5 @@
 import SwiftUI
+import TourCore
 
 /// Flat, full-width navigation that keeps the reference layout across iOS versions.
 /// The native TabView above it retains each screen's state; taps only change presentation.
@@ -67,8 +68,8 @@ struct ScreenHomeButton: View {
                 .frame(width: 44, height: 44).background(.white, in: Circle())
         }
         .buttonStyle(.plain).foregroundStyle(AppTheme.forest)
-        .accessibilityLabel("Close and return Home")
-        .accessibilityHint("Keeps your audio position and walking progress")
+        .accessibilityLabel("Return Home")
+        .accessibilityHint("Your walk and any playing narration continue")
         .accessibilityIdentifier("screen.home")
     }
 }
@@ -118,4 +119,19 @@ private struct ReturnHomeDismissal: ViewModifier {
 
 extension View {
     func dismissOnReturnHome() -> some View { modifier(ReturnHomeDismissal()) }
+}
+
+/// A token per presentation prevents nested sheets from releasing their parent's hold.
+private struct WalkingContextHold: ViewModifier {
+    @Environment(TourViewModel.self) private var tour
+    @State private var token = UUID()
+    func body(content: Content) -> some View {
+        content
+            .onAppear { tour.explorationHolds.insert(token) }
+            .onDisappear { tour.explorationHolds.remove(token) }
+    }
+}
+
+extension View {
+    func holdsWalkingContext() -> some View { modifier(WalkingContextHold()) }
 }

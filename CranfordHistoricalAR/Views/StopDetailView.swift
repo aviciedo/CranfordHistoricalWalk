@@ -48,6 +48,7 @@ struct StopDetailView: View {
             isShowingBonus = false
         }
         .dismissOnReturnHome()
+        .holdsWalkingContext()
         .environment(\.colorScheme, .light)
     }
 
@@ -62,27 +63,10 @@ struct StopDetailView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     StopPhotoGallery(stop: stop, height: galleryHeight,
                                      isObscured: isShowingScanner || isShowingBonus)
-                    VStack(alignment: .leading, spacing: 8) {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(stop.name)
-                                .font(.system(.largeTitle, design: .serif).weight(.semibold))
-                                .fixedSize(horizontal: false, vertical: true)
-                                .accessibilityAddTraits(.isHeader)
-                            if let date = stop.displayDate {
-                                Text(date).font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
-                            }
-                            Label(stop.address, systemImage: "mappin.and.ellipse")
-                                .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                        Button {
-                            navigation.showOnMap(stopID: stop.id)
-                            dismiss()
-                        } label: {
-                            Label("Show on map", systemImage: "map").frame(minHeight: 44)
-                        }
-                        .buttonStyle(.plain)
-                    }
+                    Text(stop.name)
+                        .font(.system(.largeTitle, design: .serif).weight(.semibold))
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityAddTraits(.isHeader)
                 }
                 VStack(alignment: .leading, spacing: 16) {
                     Picker("Enjoy the story", selection: $mode) {
@@ -96,14 +80,14 @@ struct StopDetailView: View {
                         if stop.narrationSource == nil {
                             Label("Narration coming soon", systemImage: "headphones")
                                 .font(.headline).padding(.vertical, 12)
-                            Text("New narration will be added here.")
+                            Text("You can explore the history and photographs below.")
                                 .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
                         } else {
                             NarrationControls(stop: stop)
                         }
                     } else {
                         if script.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                            Text("Reading text will be added with the narration.")
+                            Text("A full reading story is not available yet. Explore the history and photographs below.")
                                 .font(.body).foregroundStyle(AppTheme.secondaryInk)
                         } else {
                             Text(script).font(.body).lineSpacing(5)
@@ -122,6 +106,21 @@ struct StopDetailView: View {
                             .font(.footnote).foregroundStyle(AppTheme.secondaryInk)
                     }
                 }
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(stop.longDescription).font(.body).fixedSize(horizontal: false, vertical: true)
+                    if let date = stop.displayDate {
+                        Text(date).font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
+                    }
+                    Label(stop.address, systemImage: "mappin.and.ellipse")
+                        .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button {
+                        navigation.showOnMap(stopID: stop.id)
+                        dismiss()
+                    } label: {
+                        Label("Show on map", systemImage: "map").frame(minHeight: 44)
+                    }.buttonStyle(.plain)
+                }
                 if stop.hasPlaqueReference {
                     VStack(alignment: .leading, spacing: 12) {
                         Divider()
@@ -129,7 +128,7 @@ struct StopDetailView: View {
                             HStack(spacing: 12) {
                                 Image(systemName: "camera.viewfinder")
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text(tour.activities[stop.id].bonusFoundAt == nil ? "Find the plaque" : "View the bonus")
+                                    Text(tour.activities[stop.id].bonusFoundAt == nil ? "Find the plaque in AR" : "View the bonus")
                                     Text("Optional bonus · On-site only").font(.footnote).foregroundStyle(AppTheme.secondaryInk)
                                 }
                                 Spacer()

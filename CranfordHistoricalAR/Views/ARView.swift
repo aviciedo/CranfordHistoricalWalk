@@ -9,10 +9,8 @@ struct ARTourView: View {
     @Environment(AppDependencies.self) private var dependencies
     @Environment(AppNavigation.self) private var navigation
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var model: ARViewModel?
     @State private var awaitingGeospatialConsent = false
-    @State private var showScanInstruction = true
     @State private var motionManager = CMMotionManager()
     @Environment(\.scenePhase) private var scenePhase
     @State private var phoneDown = PhoneDownReturnPolicy()
@@ -51,6 +49,7 @@ struct ARTourView: View {
         }
         .preferredColorScheme(awaitingGeospatialConsent ? .light : .dark)
         .statusBarHidden(false)
+        .holdsWalkingContext()
         .onChange(of: scenePhase) { _, phase in
             phoneDown.reset()
             if phase != .active { motionManager.stopDeviceMotionUpdates() }
@@ -93,14 +92,12 @@ struct ARTourView: View {
 
     @ViewBuilder
     private func content(_ model: ARViewModel) -> some View {
-        let isShowingIntroduction = !model.isPlaqueScanner && model.availability == .ready && showScanInstruction
+        let isShowingIntroduction = !model.isPlaqueScanner && model.availability == .ready && !model.geoAnchors.hasDetectedGround
         ZStack {
             switch model.availability {
             case .ready:
                 ARViewContainer(viewModel: model)
                     .ignoresSafeArea()
-                    .allowsHitTesting(!isShowingIntroduction)
-                    .accessibilityHidden(isShowingIntroduction)
             case .awaitingCameraPermission:
                 CameraExplanationView(state: .requesting)
             case .cameraDenied:
@@ -111,23 +108,15 @@ struct ARTourView: View {
                 CameraExplanationView(state: .unsupported)
             }
 
+            if isShowingIntroduction {
+                Color.gray.opacity(0.28).ignoresSafeArea().allowsHitTesting(false)
+            }
             Group {
                 if model.isPlaqueScanner {
                     PlaqueScannerHUD(model: model, onClose: returnToMap)
                 } else {
                     ARHUDView(model: model, onClose: returnToMap)
                 }
-            }
-            .allowsHitTesting(!isShowingIntroduction)
-            .accessibilityHidden(isShowingIntroduction)
-
-            if isShowingIntroduction {
-                ARScanIntroduction(onBack: returnToMap) {
-                    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.25)) {
-                        showScanInstruction = false
-                    }
-                }
-                .transition(.opacity)
             }
         }
         .onAppear { beginPhoneOrientationMonitoring() }
@@ -149,49 +138,32 @@ struct ARTourView: View {
     }
 }
 
-/// Focused onboarding over the live camera; the ordinary HUD cannot receive taps behind it.
+/// Context-specific, automatically dismissed once real ground is detected.
 private struct ARScanIntroduction: View {
-    let onBack: () -> Void
-    let onContinue: () -> Void
-
     var body: some View {
-        VStack(spacing: 8) {
-            ScreenReturnBar(onBack: onBack)
-                .padding(.horizontal, 16).padding(.top, 8)
-            GeometryReader { viewport in
-                ScrollView {
-                    VStack(spacing: 18) {
-                        ScanPhoneMotion()
-                        Text("Scan your surroundings")
-                            .font(.system(.title2, design: .serif).weight(.semibold))
-                            .accessibilityAddTraits(.isHeader)
-                        Text("Slowly move your iPhone from side to side and point the camera at buildings, signs and other details around you to help AR recognize your surroundings.")
-                            .font(.body)
-                            .fixedSize(horizontal: false, vertical: true)
-                        Button(action: onContinue) {
-                            Text("Start exploring").font(.headline)
-                                .frame(maxWidth: .infinity, minHeight: 52)
-                                .background(AppTheme.forest, in: RoundedRectangle(cornerRadius: 14))
-                                .foregroundStyle(.white)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("ar.scanIntroduction.continue")
-                        Text("Hold the phone flat, screen facing up, for 2 seconds to return to the map.")
-                            .font(.caption).foregroundStyle(AppTheme.secondaryInk)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(AppTheme.forest)
-                    .padding(24)
-                    .frame(maxWidth: 360)
-                    .background(AppTheme.ivory, in: RoundedRectangle(cornerRadius: 22))
-                    .padding(20)
-                    .frame(maxWidth: .infinity, minHeight: viewport.size.height, alignment: .center)
-                }
+        ViewThatFits(in: .vertical) {
+            VStack(spacing: 10) {
+                ScanPhoneMotion().scaleEffect(0.65).frame(height: 72)
+                instruction
             }
+            instruction
         }
-        .background(Color.gray.opacity(0.62).ignoresSafeArea())
+        .foregroundStyle(AppTheme.forest)
+        .padding(16)
+        .background(AppTheme.ivory, in: RoundedRectangle(cornerRadius: 16))
+        .padding(.horizontal, 24)
         .accessibilityIdentifier("ar.scanIntroduction")
+    }
+
+    private var instruction: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Find the ground for directions")
+                .font(.headline).accessibilityAddTraits(.isHeader)
+            Text("Pause somewhere safe. Tilt your phone slightly down and move it slowly side to side.")
+                .font(.subheadline).fixedSize(horizontal: false, vertical: true)
+            Text("Lower it flat for 2 seconds to return to the map.")
+                .font(.footnote).fixedSize(horizontal: false, vertical: true)
+        }
     }
 }
 
@@ -230,23 +202,11 @@ struct ARHUDView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            VStack(spacing: 10) {
-                topBar
-                if let message = model.statusMessage { notice(message, symbol: "viewfinder") }
-                if let hint = model.plaqueHint, !model.tour.isARStopVisited {
-                    notice(hint, symbol: "viewfinder.circle")
-                }
-                Spacer(minLength: 8)
-                if model.availability == .ready {
-                    ViewThatFits(in: .vertical) {
-                        bottomPanel.fixedSize(horizontal: false, vertical: true)
-                        ScrollView { bottomPanel }
-                            .scrollBounceBehavior(.basedOnSize)
-                    }
-                    .frame(maxHeight: geometry.size.height * 0.58, alignment: .bottom)
-                }
+            ViewThatFits(in: .vertical) {
+                hudContent(height: geometry.size.height)
+                ScrollView { hudContent(height: geometry.size.height) }
+                    .scrollBounceBehavior(.basedOnSize)
             }
-            .padding(.horizontal, 16).padding(.top, 8).padding(.bottom, 12)
             .overlay {
                 if model.isShowingDiscoveryConfirmation {
                     VStack(spacing: 12) {
@@ -268,6 +228,29 @@ struct ARHUDView: View {
         .sheet(isPresented: $isShowingCalibration) { DeveloperControlsView() }
         .onChange(of: navigation.homeReturnID) { _, _ in isShowingCalibration = false }
         #endif
+    }
+
+    private func hudContent(height: CGFloat) -> some View {
+        VStack(spacing: 10) {
+                topBar
+                if let message = model.statusMessage { notice(message, symbol: "viewfinder") }
+                if let hint = model.plaqueHint, !model.tour.isARStopVisited {
+                    notice(hint, symbol: "viewfinder.circle")
+                }
+                if model.availability == .ready && !model.geoAnchors.hasDetectedGround {
+                    ARScanIntroduction()
+                }
+                Spacer(minLength: 8)
+                if model.availability == .ready {
+                    ViewThatFits(in: .vertical) {
+                        bottomPanel.fixedSize(horizontal: false, vertical: true)
+                        ScrollView { bottomPanel }
+                            .scrollBounceBehavior(.basedOnSize)
+                    }
+                    .frame(maxHeight: height * 0.58, alignment: .bottom)
+                }
+            }
+            .padding(.horizontal, 16).padding(.top, 8).padding(.bottom, 12)
     }
 
     private var topBar: some View {
@@ -516,6 +499,7 @@ struct PlaqueScannerView: View {
             }
         }
         .preferredColorScheme(.dark)
+        .holdsWalkingContext()
         .task {
             guard model == nil else { return }
             guard tour.preparePlaqueScanner(stopID: stopID) else { unavailable = true; return }
@@ -544,19 +528,39 @@ private struct PlaqueScannerHUD: View {
     let onClose: () -> Void
 
     var body: some View {
+        ViewThatFits(in: .vertical) {
+            content
+            ScrollView { content }.scrollBounceBehavior(.basedOnSize)
+        }
+    }
+
+    private var content: some View {
         VStack(spacing: 12) {
             ScreenReturnBar(onBack: onClose)
-            Text(model.destinationName ?? "Plaque discovery")
-                .font(.system(.headline, design: .serif))
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(14).background(AppTheme.ivory, in: RoundedRectangle(cornerRadius: 14))
-                .accessibilityIdentifier("scanner.stopName")
+            HStack(alignment: .center, spacing: 12) {
+                if let reference = model.tour.arStop?.plaque?.referenceImageName {
+                    Image(reference + "-target").resizable().scaledToFit()
+                        .frame(width: 72, height: 72)
+                        .accessibilityLabel("Reference photograph of the plaque to find")
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Frame this plaque").font(.headline)
+                    Text(model.destinationName ?? "Plaque discovery").font(.subheadline)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(14).background(AppTheme.ivory, in: RoundedRectangle(cornerRadius: 14))
+            .accessibilityIdentifier("scanner.stopName")
             Spacer(minLength: 12)
             if model.availability == .ready {
                 VStack(alignment: .leading, spacing: 12) {
                     TimelineView(.periodic(from: .now, by: 1)) { context in
-                        Text(model.scannerInstruction(at: context.date))
-                            .font(.subheadline).fixedSize(horizontal: false, vertical: true)
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(model.scannerPhaseTitle).font(.headline)
+                            Text(model.scannerInstruction(at: context.date))
+                                .font(.subheadline).fixedSize(horizontal: false, vertical: true)
+                        }
                     }
                     if model.tour.discovery.hasVerifiedPlaque {
                         Label(model.tour.discovery.isPracticeUnlock ? "Practice bonus · Not saved" : "Bonus found",
@@ -573,6 +577,8 @@ private struct PlaqueScannerHUD: View {
                     .buttonStyle(.plain).font(.subheadline.weight(.medium))
                     .accessibilityHint("Restarts plaque scanning without changing your walk or saved activities")
                     .accessibilityIdentifier("scanner.retry")
+                    Button("Return to story", action: onClose)
+                        .buttonStyle(.plain).font(.subheadline.weight(.medium)).frame(minHeight: 44)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(16).background(AppTheme.ivory, in: RoundedRectangle(cornerRadius: 16))

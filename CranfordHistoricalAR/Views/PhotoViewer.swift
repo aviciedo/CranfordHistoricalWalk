@@ -100,5 +100,6 @@ struct StopPhotoViewer: View {
         .background(AppTheme.ivory.ignoresSafeArea())
         .preferredColorScheme(.light)
         .dismissOnReturnHome()
+        .holdsWalkingContext()
     }
 }

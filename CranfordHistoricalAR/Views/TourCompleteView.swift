@@ -17,7 +17,7 @@ struct TourCompleteView: View {
                         Image(systemName: "checkmark.seal")
                             .font(.system(size: 44, weight: .light))
                             .foregroundStyle(AppTheme.brass)
-                        EyebrowText("Tour complete", color: AppTheme.brass)
+                        Text("Walk finished").font(.title2.weight(.semibold)).foregroundStyle(AppTheme.forest)
                         Text(tour.tourName)
                             .font(AppTheme.Fonts.display(34))
                             .foregroundStyle(AppTheme.ink)
@@ -61,7 +61,11 @@ struct TourCompleteView: View {
                             HStack(spacing: 12) {
                                 Image(systemName: tour.isCompleted(stop) ? "checkmark.circle.fill" : "circle")
                                     .foregroundStyle(tour.isCompleted(stop) ? AppTheme.visited : .secondary)
-                                Text(stop.name).font(.subheadline)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(stop.name).font(.subheadline)
+                                    Text(tour.isCompleted(stop) ? "Visited on this walk" : "Not visited on this walk")
+                                        .font(.caption).foregroundStyle(AppTheme.secondaryInk)
+                                }
                                 Spacer()
                             }
                         }

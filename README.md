@@ -1,3 +1,15 @@
+## Current UX behavior — build 47
+
+This implementation follows UX audit recommendations 1–7, 9 and 10. Map shares AR's
+next-turn cues, stable arrival holds the place for exploration, and confirmed departure
+on foreground Map guides onward with Undo/Stay here. Browsing, photos, AR and background
+hold automatic progression; narration continues independently. Final arrival can finish
+truthfully without crediting skipped places. Manual Continue remains available.
+
+See [UX-IMPLEMENTATION.md](UX-IMPLEMENTATION.md) for scope, regression results and remaining
+native/field checks. Older release notes below describe earlier behavior and are superseded
+by this current interaction contract. This is a review build; native/device checks remain.
+
 # Ready-to-open Xcode project download
 
 This branch includes the generated `CranfordHistoricalAR.xcodeproj` together with the app source.

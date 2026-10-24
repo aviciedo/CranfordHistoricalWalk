@@ -1,11 +1,11 @@
 # Tour expansion and state ownership
 
-Build 46 is an incremental extension of the existing app, not a replacement.
+Build 47 is an incremental extension of the existing app, not a replacement.
 
 | Owner | Responsibility | Must not do |
 |---|---|---|
 | AppNavigation / SwiftUI | Tabs, sheets, selected photos, Back/Home | Change itinerary or invent physical visits |
-| TourViewModel | Active catalog identity, walk UUID, explicit Continue, shared live location | Start audio or require a story/bonus to advance |
+| TourViewModel | Active catalog identity, walk UUID, guarded progression/Continue/Undo, shared live location | Start audio or require a story/bonus to advance |
 | TourCore policies | Arrival eligibility, routing refresh, progress, catalog validation, phone-down decisions | Access camera, GPS managers, defaults or network |
 | Platform services | One GPS source, one shared player, provider adapters, resource integrity | Implicitly advance a walk |
 | Stores | Per-tour activities and visit compatibility history; per-revision walk resume | Erase another tour or narration bookmarks on walk reset |
@@ -57,3 +57,12 @@ Acceptance gates: portable tests and syntax checks supplement, not replace, nati
 CI and the real-device evidence checklist in AR-FIELD-TEST.md. Coordinates and physical plaque
 scales remain unverified. Publication to main and xcode-download was explicitly approved by the product owner.
 Native/device verification remains pending; branch retirement is not authorized.
+
+Build 47 walking interaction:
+- WalkingProgressionPolicy owns fresh-fix/dwell/uncertainty decisions. TourViewModel
+  applies its effects only, then routes through the existing destination-change command.
+- Foreground Map eligibility and token-based exploration holds are presentation inputs;
+  they do not become visit/learning/bonus evidence. Audio never holds routing.
+- Stay here is an optional backward-compatible field in WalkResumeRecord. It affects
+  progression only; persisted visits and narration identity remain independent.
+- See UX-IMPLEMENTATION.md for the approved behavior, tests and native/field limits.

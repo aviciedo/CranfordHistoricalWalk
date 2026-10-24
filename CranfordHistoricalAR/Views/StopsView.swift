@@ -32,16 +32,15 @@ struct StopsContent: View {
                                     VStack(alignment: .leading, spacing: 6) {
                                         Text("Stop \(stop.order)").font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
                                         Text(stop.name).font(.system(.title3, design: .serif).weight(.semibold))
-                                        if tour.activities[stop.id].bonusFoundAt != nil {
-                                            Label("Bonus found", systemImage: "seal.fill")
-                                                .font(.caption).foregroundStyle(AppTheme.visited)
-                                        } else if stop.id == tour.currentStop?.id {
-                                            Text("Next on your walk").font(.caption).foregroundStyle(AppTheme.secondaryInk)
-                                        } else if tour.activities[stop.id].learningCompleted {
-                                            Text("Story completed").font(.caption).foregroundStyle(AppTheme.secondaryInk)
-                                        } else if tour.activities[stop.id].visitedAt != nil {
-                                            Text("Visited").font(.caption).foregroundStyle(AppTheme.secondaryInk)
+                                        Text(placeStatus(stop)).font(.caption).foregroundStyle(AppTheme.secondaryInk)
+                                        if !storyStatus(stop).isEmpty {
+                                            Text(storyStatus(stop)).font(.caption).foregroundStyle(AppTheme.secondaryInk)
                                         }
+                                        if stop.narrationSource == nil {
+                                            Text("Photos & history · Narration coming soon")
+                                                .font(.caption).foregroundStyle(AppTheme.secondaryInk)
+                                        }
+
                                     }
                                     Spacer(minLength: 8)
                                     Image(systemName: "chevron.right").font(.subheadline)
@@ -51,7 +50,7 @@ struct StopsContent: View {
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
-                            .accessibilityLabel("Stop \(stop.order), \(stop.name), details and narration")
+                            .accessibilityLabel("Stop \(stop.order), \(stop.name), \(placeStatus(stop)), \(storyStatus(stop)), \(stop.narrationSource == nil ? "photos and history, narration coming soon" : "details and narration")")
                             Divider()
                         }
                     }
@@ -64,6 +63,25 @@ struct StopsContent: View {
         .onChange(of: navigation.pendingStopReturn) { _, _ in restoreStopReturn() }
         .onAppear { restoreStopReturn() }
         .onChange(of: navigation.homeReturnID) { _, _ in detailStop = nil }
+    }
+
+    private func storyStatus(_ stop: HistoricalStop) -> String {
+        let saved = tour.activities[stop.id]
+        var parts: [String] = []
+        if saved.listenedAt != nil { parts.append("Listened") }
+        if saved.readAt != nil { parts.append("Read") }
+        if saved.bonusFoundAt != nil { parts.append("Bonus found") }
+        return parts.joined(separator: " · ")
+    }
+
+    private func placeStatus(_ stop: HistoricalStop) -> String {
+        let visited = tour.activities[stop.id].visitedAt != nil || tour.isCompleted(stop)
+        if stop.id == tour.currentStop?.id {
+            if tour.isAtCurrentStopNow { return "Here · Visited" }
+            if tour.isCompleted(stop) { return "Current stop · Visited" }
+            return visited ? "Next on your walk · Previously visited" : "Next on your walk"
+        }
+        return visited ? "Visited" : "Not visited yet"
     }
 
     private func restoreStopReturn() {

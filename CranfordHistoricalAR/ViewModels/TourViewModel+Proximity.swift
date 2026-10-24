@@ -8,7 +8,7 @@ extension TourViewModel {
     var proximityState: StopProximityState? { proximityMachine?.state }
     /// Live presence, never inferred from an old visit or a previously presented sign.
     var isAtCurrentStopNow: Bool {
-        guard phase == .inProgress, let stop = currentStop, let sample = userLocation else { return false }
+        guard phase == .inProgress, walkingProgression.hasArrived, let stop = currentStop, let sample = userLocation else { return false }
         if case .allow = StopActivationPolicy.decide(trackingReady: true, plaqueIsTracked: false,
             isSimulated: sample.isSimulated, distanceMeters: GeoMath.distance(from: sample.coordinate, to: stop.coordinate),
             horizontalAccuracy: sample.horizontalAccuracy, locationTimestamp: sample.timestamp,
@@ -55,6 +55,8 @@ extension TourViewModel {
     }
 
     func resetProximityForCurrentStop() {
+        walkingProgression = WalkingProgressionPolicy()
+        walkingProgression.isHeld = heldDepartureStopID == currentStop?.id && heldDepartureStopID != nil
         plaqueConfirmedStopID = nil
         activeVisitEvidence = nil
         arrivalStoryStopID = nil
@@ -66,12 +68,12 @@ extension TourViewModel {
         if let userLocation { handleLocationForProximity(userLocation) }
     }
 
-    /// Physical visits do not finish stories, find bonuses, change playback or advance routing.
+    /// Physical visits do not finish stories, find bonuses or change playback.
     func handleLocationForProximity(_ sample: LocationSample) {
         guard sample.coordinate.isValid, StopActivationPolicy.isFresh(sample.timestamp),
               sample.horizontalAccuracy >= 0, sample.horizontalAccuracy <= 100 else { return }
         let practice = sample.isSimulated || locationService is SimulatedLocationService
-        for stop in stops {
+        for stop in stops where stop.id != currentStop?.id {
             let distance = GeoMath.distance(from: sample.coordinate, to: stop.coordinate)
             if case .allow = StopActivationPolicy.decide(trackingReady: true, plaqueIsTracked: false,
                 isSimulated: practice, distanceMeters: distance, horizontalAccuracy: sample.horizontalAccuracy,
@@ -142,6 +144,8 @@ extension TourViewModel {
             arrivalRadius: stop.arrivalRadius, now: now)
         guard case .allow(let evidence) = decision else { return decision }
         if stop.id == currentStop?.id { progress.markCurrentStopVisited() }
+        // Plaque recognition proves a visit, not a reliable GPS departure boundary.
+        // Stable GPS arrival is still required before automatic departure can be armed.
         activeVisitEvidence = evidence
         if stop.hasPlaqueReference {
             discovery.recognizePlaque(isMatching: true, trackingReady: trackingReady, isSimulated: evidence == .simulation)
@@ -193,10 +197,82 @@ extension TourViewModel {
     /// Advancing an itinerary is not proof of a physical visit or learning completion.
     func completeCurrentStopAndAdvance() {
         guard canContinueCurrentStop, let stop = currentStop else { return }
+        automaticTransitionFromStopID = nil
+        automaticTransitionProgress = nil
+        heldDepartureStopID = nil
         if isARSessionActive { continuedARStopIDs.insert(stop.id) }
         arDiscoveryStopID = nil
         progress.advanceCurrentStop()
         destinationDidChange()
+    }
+
+
+    /// Called exactly once per new location event, never recursively from destination reset.
+    func evaluateAutomaticProgression(_ sample: LocationSample, now: Date = Date()) {
+        guard isWalkingActive, sample.coordinate.isValid, let stop = currentStop else { walkingProgression.interrupt(); return }
+        let previousFix = walkingProgression.lastFix
+        let event = walkingProgression.update(
+            distance: GeoMath.distance(from: sample.coordinate, to: stop.coordinate),
+            accuracy: sample.horizontalAccuracy, timestamp: sample.timestamp, now: now,
+            arrivalRadius: stop.arrivalRadius, departureRadius: max(50, stop.effectiveDepartureRadius),
+            allowsDeparture: isAutomaticNavigationAllowed)
+        switch event {
+        case .arrived:
+            progress.markCurrentStopVisited()
+            if !sample.isSimulated && !(locationService is SimulatedLocationService), activities[stop.id].visitedAt == nil {
+                savePhysicalActivity(for: stop.id, evidence: .onSiteARMarker, now: now)
+            }
+            // Last arrival completes only when the visitor is back on the Map.
+            if nextStop == nil && isAutomaticNavigationAllowed && !walkingProgression.isHeld {
+                advanceAutomatically(from: stop)
+            }
+        case .departed:
+            advanceAutomatically(from: stop)
+        case nil:
+            if walkingProgression.lastFix != previousFix,
+               walkingProgression.hasArrived, nextStop == nil, isAutomaticNavigationAllowed,
+               !walkingProgression.isHeld,
+               StopActivationPolicy.isFresh(sample.timestamp, now: now),
+               case .allow = StopActivationPolicy.decide(trackingReady: true, plaqueIsTracked: false,
+                    isSimulated: sample.isSimulated,
+                    distanceMeters: GeoMath.distance(from: sample.coordinate, to: stop.coordinate),
+                    horizontalAccuracy: sample.horizontalAccuracy, locationTimestamp: sample.timestamp,
+                    arrivalRadius: stop.arrivalRadius, now: now) {
+                advanceAutomatically(from: stop)
+            }
+        }
+    }
+
+    private func advanceAutomatically(from stop: HistoricalStop) {
+        let snapshot = progress
+        completeCurrentStopAndAdvance()
+        automaticTransitionFromStopID = stop.id
+        automaticTransitionProgress = snapshot
+    }
+
+    /// Undo changes only the destination. Real visits, stories, bonuses and audio survive.
+    func undoAutomaticTransition() {
+        guard let snapshot = automaticTransitionProgress, let previousID = snapshot.currentStopID else { return }
+        automaticTransitionFromStopID = nil
+        automaticTransitionProgress = nil
+        // Retarget without rolling back visits or distance accumulated since departure.
+        guard progress.selectStop(withID: previousID) else { return }
+        heldDepartureStopID = previousID
+        destinationDidChange()
+        walkingProgression.confirmArrival()
+        walkingProgression.isHeld = true
+    }
+
+    func toggleAutomaticDepartureHold() {
+        walkingProgression.isHeld.toggle()
+        heldDepartureStopID = walkingProgression.isHeld ? currentStop?.id : nil
+        walkingProgression.interrupt()
+    }
+
+    var mapWalkingCue: ARWalkingGuidance.RouteCue? {
+        guard isWalkingActive, locationIssue == nil, !isAtCurrentStopNow,
+              let route = currentRoute, let routeProgress else { return nil }
+        return ARWalkingGuidance.routeCue(route: route, progress: routeProgress)
     }
 
     var isPlaqueDiscoveryStop: Bool { arStop?.hasPlaqueReference == true }

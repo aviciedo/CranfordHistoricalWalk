@@ -198,6 +198,7 @@ final class ARViewModel {
         imageTrackingAvailable = PlaqueAnchorController.applyDetectionImages(to: configuration)
         arView.session.run(configuration, options: [.resetTracking, .removeExistingAnchors])
         isSessionRunning = true
+        if isPlaqueScanner { scannerAttemptStartedAt = Date() }
         tour.isARSessionActive = true
         isShowingWalkingOrientation = !isPlaqueScanner
         walkingOrientation = ARWalkingGuidance.OrientationState()
@@ -456,14 +457,22 @@ final class ARViewModel {
         }
     }
 
+    var scannerPhaseTitle: String {
+        guard isSessionRunning else { return "Camera starting" }
+        guard imageTrackingAvailable else { return "Recognition unavailable" }
+        if case .failed = localizationState { return "Scanning stopped" }
+        return tour.discovery.hasVerifiedPlaque ? "Plaque found" : "Looking for plaque"
+    }
+
     func scannerInstruction(at date: Date) -> String {
+        guard isSessionRunning else { return "Preparing the camera. You can return to the story at any time." }
         guard imageTrackingAvailable else { return "Plaque recognition is unavailable. Return to the story or try again." }
         if case .failed = localizationState { return "Scanning stopped. Try again, or return to the story." }
         if tour.discovery.hasVerifiedPlaque {
             return geoAnchors.isWindowBonusAccessible ? "Your bonus is unlocked." : "Your bonus is saved. Point at the plaque to place it in AR."
         }
         if date.timeIntervalSince(scannerAttemptStartedAt) >= 12 {
-            return "Plaque not recognized yet. Hold it steady in good light, or retry."
+            return "Move closer until the whole plaque is visible. Hold steady, avoid glare and try better light. You can retry or return to the story."
         }
         return "Frame the entire plaque and some surrounding wall in good light."
     }

@@ -1,0 +1,93 @@
+import XCTest
+@testable import TourCore
+
+final class WalkingProgressionPolicyTests: XCTestCase {
+    private let start = Date(timeIntervalSince1970: 1_000)
+    private func fix(_ policy: inout WalkingProgressionPolicy, _ seconds: Double,
+                     distance: Double = 0, accuracy: Double = 5, allowed: Bool = true) -> WalkingProgressionPolicy.Event? {
+        let date = start.addingTimeInterval(seconds)
+        return policy.update(distance: distance, accuracy: accuracy, timestamp: date, now: date,
+                             arrivalRadius: 35, departureRadius: 50, allowsDeparture: allowed)
+    }
+
+    func testArrivalRequiresDistinctAccurateFixesAndThreeSeconds() {
+        var policy = WalkingProgressionPolicy()
+        XCTAssertNil(fix(&policy, 0))
+        XCTAssertNil(fix(&policy, 0))
+        XCTAssertNil(fix(&policy, 2))
+        XCTAssertEqual(fix(&policy, 3), .arrived)
+        XCTAssertNil(fix(&policy, 4))
+        XCTAssertTrue(policy.hasArrived)
+    }
+
+    func testDepartureRequiresEntireErrorCircleOutsideBoundaryAndFiveSeconds() {
+        var policy = WalkingProgressionPolicy(); policy.confirmArrival()
+        XCTAssertNil(fix(&policy, 0, distance: 55)) // Boundary touches the circle.
+        XCTAssertNil(fix(&policy, 3, distance: 60))
+        XCTAssertNil(fix(&policy, 7, distance: 60))
+        XCTAssertEqual(fix(&policy, 8, distance: 60), .departed)
+        XCTAssertNil(fix(&policy, 14, distance: 60), "Departure is consumed once")
+    }
+
+    func testDepartureCannotHappenBeforeArrivalOrWhileHeld() {
+        var policy = WalkingProgressionPolicy()
+        XCTAssertNil(fix(&policy, 0, distance: 100))
+        XCTAssertNil(fix(&policy, 6, distance: 100))
+        policy.confirmArrival(); policy.isHeld = true
+        XCTAssertNil(fix(&policy, 7, distance: 100))
+        XCTAssertNil(fix(&policy, 13, distance: 100))
+        policy.isHeld = false
+        XCTAssertNil(fix(&policy, 14, distance: 100))
+        XCTAssertEqual(fix(&policy, 19, distance: 100), .departed)
+    }
+
+    func testExploringInterruptsDepartureAndNeedsNewDwellOnMap() {
+        var policy = WalkingProgressionPolicy(); policy.confirmArrival()
+        XCTAssertNil(fix(&policy, 0, distance: 100))
+        XCTAssertNil(fix(&policy, 4, distance: 100, allowed: false))
+        XCTAssertNil(fix(&policy, 6, distance: 100))
+        XCTAssertEqual(fix(&policy, 11, distance: 100), .departed)
+    }
+
+    func testWeakLocationAndReentryCancelDwell() {
+        var policy = WalkingProgressionPolicy(); policy.confirmArrival()
+        XCTAssertNil(fix(&policy, 0, distance: 100))
+        XCTAssertNil(fix(&policy, 4, distance: 100, accuracy: 30))
+        XCTAssertNil(fix(&policy, 5, distance: 100))
+        XCTAssertNil(fix(&policy, 9, distance: 40))
+        XCTAssertNil(fix(&policy, 10, distance: 100))
+        XCTAssertEqual(fix(&policy, 15, distance: 100), .departed)
+    }
+
+    func testLongGapsAndExplicitSuspensionRestartArrivalEvidence() {
+        var policy = WalkingProgressionPolicy()
+        XCTAssertNil(fix(&policy, 0))
+        XCTAssertNil(fix(&policy, 20))
+        policy.interrupt()
+        XCTAssertNil(fix(&policy, 23))
+        XCTAssertEqual(fix(&policy, 26), .arrived)
+    }
+
+    func testStaleFutureInvalidAndOutOfOrderFixesCannotAdvance() {
+        var policy = WalkingProgressionPolicy(); policy.confirmArrival()
+        for (distance, accuracy) in [(Double.nan, 5.0), (100, -1), (100, .infinity)] {
+            XCTAssertNil(fix(&policy, 0, distance: distance, accuracy: accuracy))
+        }
+        for age in [-6.0, 30, 100] {
+            XCTAssertNil(policy.update(distance: 100, accuracy: 5, timestamp: start,
+                now: start.addingTimeInterval(age), arrivalRadius: 35, departureRadius: 50, allowsDeparture: true))
+        }
+        XCTAssertNil(fix(&policy, 10, distance: 100))
+        XCTAssertNil(fix(&policy, 9, distance: 100))
+        XCTAssertEqual(fix(&policy, 15, distance: 100), .departed)
+    }
+
+    func testArrivalUncertaintyMustFitEntirelyInsideStop() {
+        var policy = WalkingProgressionPolicy()
+        XCTAssertNil(fix(&policy, 0, distance: 31))
+        XCTAssertNil(fix(&policy, 4, distance: 31))
+        XCTAssertFalse(policy.hasArrived)
+        XCTAssertNil(fix(&policy, 5, distance: 30))
+        XCTAssertEqual(fix(&policy, 8, distance: 30), .arrived)
+    }
+}

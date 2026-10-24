@@ -22,7 +22,7 @@ struct TourView: View {
             if tour.phase == .complete {
                 Button { isShowingSummary = true } label: {
                     HStack {
-                        Label("Walk complete", systemImage: "checkmark.circle")
+                        Label("Walk finished", systemImage: "checkmark.circle")
                         Spacer()
                         Text("View summary")
                         Image(systemName: "chevron.right").font(.caption)
@@ -78,6 +78,7 @@ struct TourView: View {
                 }
             }
             .dismissOnReturnHome()
+            .holdsWalkingContext()
         }
 
         #if DEVELOPER_MENU
@@ -131,6 +132,19 @@ struct TourView: View {
             }
             .buttonStyle(.plain).padding(.horizontal, 24).padding(.vertical, 8)
             if tour.phase == .inProgress { Divider() }
+        }
+        if tour.phase == .complete, let fromID = tour.automaticTransitionFromStopID {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(tour.currentStop.map { "Now guiding you to \($0.name)" } ?? "Walk finished")
+                    .font(.subheadline.weight(.semibold))
+                    .fixedSize(horizontal: false, vertical: true)
+                Button("Undo · Stay at \(tour.stop(withID: fromID)?.name ?? "previous stop")") {
+                    tour.undoAutomaticTransition()
+                }
+                .buttonStyle(.plain).font(.subheadline).frame(minHeight: 44)
+            }
+            .padding(.horizontal, 24).padding(.vertical, 8)
+            .accessibilityIdentifier("map.automaticTransition")
         }
         if tour.phase == .inProgress {
             NextStopCard(onDetails: { detailStop = tour.currentStop })
