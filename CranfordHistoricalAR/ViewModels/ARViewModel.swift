@@ -262,15 +262,6 @@ final class ARViewModel {
         }
         if !isPlaqueScanner { geoAnchors.locationDidUpdate(tour.userLocation, heading: tour.heading) }
         applySignPlacement()
-        #if DEVELOPER_MENU
-        // Apply slider changes even if the phone is still and ARKit sends no new anchor pose.
-        if tour.discovery.hasVerifiedPlaque, geoAnchors.isTrackingReady,
-           let stop = tour.arStop, let anchor = geoAnchors.plaqueAnchors.trackedAnchor,
-           anchor.isTracked, geoAnchors.plaqueAnchors.matches(anchor, expectedName: stop.plaque?.referenceImageName) {
-            geoAnchors.presentWindowBonus(for: stop, imageAnchor: anchor,
-                                          layout: tour.currentBonusLayout, displayScale: displayScale)
-        }
-        #endif
         if tour.presentedSignStop == nil {
             imageRequestedForStopID = nil
         } else if let signStop = tour.presentedSignStop, imageLoader.cachedImage(for: signStop) == nil, signStop.hasAnyImage {

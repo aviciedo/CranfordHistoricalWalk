@@ -92,12 +92,7 @@ extension TourViewModel {
         proximityMachine = machine
         apply(effects, for: stop, source: .automatic)
         if stop.hasPlaqueReference {
-            var point = stop.coordinate
-            #if DEVELOPER_MENU
-            if stop.plaque?.referenceImageName == SignPlacementPolicy.millReferenceImageName {
-                point = viewingPointOverride ?? point
-            }
-            #endif
+            let point = stop.coordinate
             let viewingDistance = GeoMath.distance(from: sample.coordinate, to: point)
             if sample.horizontalAccuracy <= StopActivationPolicy.maximumAccuracyMeters,
                viewingDistance + sample.horizontalAccuracy <= stop.arrivalRadius,

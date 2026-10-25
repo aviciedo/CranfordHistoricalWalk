@@ -573,6 +573,197 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertEqual(tour.lastRouteRequest?.destination, stops[2].coordinate)
     }
 
+    #if DEVELOPER_MENU
+    func testGPSCapturesSaveMultipleLabeledReadingsAndSurviveReloadWithoutRetargeting() async throws {
+        let suite = "gps-multiple-\(UUID())", defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let (tour, developer, source) = try await makeGPSCaptureContext(defaults: defaults)
+        defer { cleanUp(tour) }
+        let progress = tour.progress, activities = tour.activities
+        XCTAssertTrue(developer.saveGPSCapture(stopID: stops[0].id, label: "Public gate"))
+        let next = LocationSample(coordinate: GeoCoordinate(latitude: 40.6701, longitude: -74.3201),
+                                  horizontalAccuracy: 3, timestamp: Date().addingTimeInterval(0.5))
+        try await receiveGPS(next, source: source, tour: tour)
+        XCTAssertTrue(developer.saveGPSCapture(stopID: stops[0].id, label: " River path ", now: next.timestamp))
+        XCTAssertEqual(developer.captures(for: stops[0].id).map(\.label), ["River path", "Public gate"])
+        XCTAssertEqual(tour.progress, progress)
+        XCTAssertEqual(tour.activities, activities)
+        XCTAssertEqual(tour.stops[0].coordinate, stops[0].coordinate)
+        let restored = DeveloperModeController(tour: tour, realLocationService: source, defaults: defaults)
+        XCTAssertEqual(restored.gpsCaptures, developer.gpsCaptures)
+        XCTAssertEqual(restored.gpsCaptures.first?.horizontalAccuracy, 3)
+        XCTAssertEqual(restored.gpsCaptures.first?.fixTimestamp, next.timestamp)
+    }
+
+    func testGPSCaptureRejectsRepeatedStaleInvalidAndSimulatedReadings() async throws {
+        let suite = "gps-quality-\(UUID())", defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let (tour, developer, source) = try await makeGPSCaptureContext(defaults: defaults)
+        defer { cleanUp(tour) }
+        XCTAssertFalse(developer.saveGPSCapture(stopID: "unknown", label: "Wrong stop"))
+        XCTAssertFalse(developer.saveGPSCapture(stopID: stops[0].id, label: "Stale", now: Date().addingTimeInterval(31)))
+        XCTAssertTrue(developer.saveGPSCapture(stopID: stops[0].id, label: "First"))
+        XCTAssertFalse(developer.saveGPSCapture(stopID: stops[0].id, label: "Duplicate"))
+        let invalid = LocationSample(coordinate: GeoCoordinate(latitude: 40.67, longitude: -74.32),
+                                    horizontalAccuracy: -1, timestamp: Date().addingTimeInterval(0.5))
+        try await receiveGPS(invalid, source: source, tour: tour)
+        XCTAssertFalse(developer.saveGPSCapture(stopID: stops[1].id, label: "Invalid", now: invalid.timestamp))
+        let simulated = LocationSample(coordinate: invalid.coordinate, horizontalAccuracy: 3,
+                                      timestamp: invalid.timestamp.addingTimeInterval(0.5), isSimulated: true)
+        try await receiveGPS(simulated, source: source, tour: tour)
+        XCTAssertFalse(developer.saveGPSCapture(stopID: stops[1].id, label: "Xcode", now: simulated.timestamp))
+        tour.replaceLocationService(with: SimulatedLocationService(start: invalid.coordinate))
+        XCTAssertFalse(developer.saveGPSCapture(stopID: stops[1].id, label: "Injected simulator"))
+        XCTAssertEqual(developer.gpsCaptures.count, 1)
+    }
+
+    func testGPSCaptureKeepsWeakAccuracyMetadataAndUsesFallbackLabel() async throws {
+        let suite = "gps-weak-\(UUID())", defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let sample = LocationSample(coordinate: GeoCoordinate(latitude: 40.67, longitude: -74.32), horizontalAccuracy: 70)
+        let (tour, developer, _) = try await makeGPSCaptureContext(defaults: defaults, sample: sample)
+        defer { cleanUp(tour) }
+        XCTAssertTrue(developer.saveGPSCapture(stopID: stops[2].id, label: "  "))
+        let saved = try XCTUnwrap(developer.gpsCaptures.first)
+        XCTAssertEqual(saved.horizontalAccuracy, 70)
+        XCTAssertEqual(saved.label, "Capture 1")
+        XCTAssertTrue(saved.copyText.contains("± 70.0 m"))
+        XCTAssertNotNil(developer.captureIssue(stopID: stops[2].id))
+    }
+
+    func testGPSCaptureCorruptOrFutureArchiveIsPreservedWithoutOverwrite() async throws {
+        for value in [Data("broken".utf8), Data("{\"version\":2,\"records\":[]}".utf8)] {
+            let suite = "gps-corrupt-\(UUID())", defaults = UserDefaults(suiteName: suite)!
+            defer { defaults.removePersistentDomain(forName: suite) }
+            defaults.set(value, forKey: "cranford.developer.gps-captures.v1")
+            let (tour, developer, _) = try await makeGPSCaptureContext(defaults: defaults)
+            defer { cleanUp(tour) }
+            XCTAssertFalse(developer.saveGPSCapture(stopID: stops[0].id, label: "New"))
+            developer.deleteGPSCapture(id: UUID())
+            XCTAssertEqual(defaults.data(forKey: "cranford.developer.gps-captures.v1"), value)
+            XCTAssertTrue(developer.gpsCaptures.isEmpty)
+        }
+    }
+
+    func testLegacyViewingPointImportsOnceAndDoesNotReturnAfterExplicitDeletion() async throws {
+        let suite = "gps-import-\(UUID())", defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set([40.67, -74.32, 4.0], forKey: "cranford.developer.mill-viewing-point.v1")
+        defaults.set([4.2, 0.55, 5.3, 3.0], forKey: "cranford.developer.mill-window-layout.v1")
+        defaults.set([0.05, 0.65, 0.8, 0.5], forKey: "cranford.developer.greystone-bonus-layout.v1")
+        let (tour, developer, source) = try await makeGPSCaptureContext(defaults: defaults)
+        defer { cleanUp(tour) }
+        XCTAssertEqual(developer.gpsCaptures.count, 1)
+        let imported = try XCTUnwrap(developer.gpsCaptures.first)
+        XCTAssertEqual(imported.source, .legacyViewingPoint)
+        XCTAssertNil(imported.fixTimestamp); XCTAssertNil(imported.preciseLocation)
+        XCTAssertEqual(tour.stops[0].coordinate, stops[0].coordinate)
+        XCTAssertEqual(tour.windowBonusLayout.width, 5.3)
+        XCTAssertEqual(tour.parkBonusLayout.width, 0.8)
+        let reloaded = DeveloperModeController(tour: tour, realLocationService: source, defaults: defaults)
+        XCTAssertEqual(reloaded.gpsCaptures.count, 1)
+        reloaded.deleteGPSCapture(id: imported.id)
+        XCTAssertTrue(DeveloperModeController(tour: tour, realLocationService: source, defaults: defaults).gpsCaptures.isEmpty)
+        XCTAssertNotNil(defaults.array(forKey: "cranford.developer.mill-viewing-point.v1"))
+    }
+
+    func testTourActivityResetsDoNotDeleteGPSCaptures() async throws {
+        let suite = "gps-reset-\(UUID())", defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let (tour, developer, source) = try await makeGPSCaptureContext(defaults: defaults)
+        defer { cleanUp(tour) }
+        XCTAssertTrue(developer.saveGPSCapture(stopID: stops[1].id, label: "Park entrance"))
+        let records = developer.gpsCaptures
+        developer.clearVisitsAndResetTour(); developer.clearAllActivitiesAndResetTour(); developer.resetTour()
+        XCTAssertEqual(developer.gpsCaptures, records)
+        XCTAssertEqual(DeveloperModeController(tour: tour, realLocationService: source, defaults: defaults).gpsCaptures, records)
+    }
+
+    func testGPSCSVFileExportAndFailurePreserveSavedReadings() async throws {
+        let suite = "gps-export-\(UUID())", defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let (tour, developer, _) = try await makeGPSCaptureContext(defaults: defaults)
+        defer { cleanUp(tour) }
+        XCTAssertNil(developer.makeCSVExport())
+        XCTAssertTrue(developer.saveGPSCapture(stopID: stops[0].id, label: "Gate, \"east\""))
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let file = try XCTUnwrap(developer.makeCSVExport(directory: folder))
+        XCTAssertEqual(file.lastPathComponent, "Cranford-GPS-captures.csv")
+        XCTAssertEqual(try String(contentsOf: file, encoding: .utf8), developer.capturesCSV)
+        let records = developer.gpsCaptures
+        let blocker = folder.appendingPathComponent("a-file")
+        try Data("not a directory".utf8).write(to: blocker)
+        XCTAssertNil(developer.makeCSVExport(directory: blocker))
+        XCTAssertEqual(developer.gpsCaptures, records)
+    }
+
+    func testGPSCaptureFilteringAndDeletionPreserveOtherTours() async throws {
+        let suite = "gps-tour-scope-\(UUID())", defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let date = Date()
+        let other = GPSCapture(tour: TourCatalogIdentity(tourID: "other-tour"), stopID: "other-stop", stopName: "Other place",
+            label: "Other", coordinate: GeoCoordinate(latitude: 40.67, longitude: -74.32), horizontalAccuracy: 4,
+            fixTimestamp: date, savedAt: date, preciseLocation: true)
+        defaults.set(try JSONEncoder().encode(GPSCaptureArchive(records: [other])), forKey: "cranford.developer.gps-captures.v1")
+        let (tour, developer, _) = try await makeGPSCaptureContext(defaults: defaults)
+        defer { cleanUp(tour) }
+        XCTAssertTrue(developer.currentTourCaptures.isEmpty)
+        XCTAssertTrue(developer.saveGPSCapture(stopID: stops[0].id, label: "Cranford"))
+        XCTAssertFalse(developer.capturesCSV.contains("other-tour"))
+        let active = try XCTUnwrap(developer.currentTourCaptures.first)
+        developer.deleteGPSCapture(id: active.id)
+        XCTAssertEqual(developer.gpsCaptures, [other])
+    }
+
+    func testGPSCaptureCannotUseCachedCoordinatesAfterLocationPermissionIsDenied() async throws {
+        let suite = "gps-permission-\(UUID())", defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let (tour, developer, _) = try await makeGPSCaptureContext(defaults: defaults, authorization: .denied)
+        defer { cleanUp(tour) }
+        XCTAssertNotNil(tour.userLocation)
+        XCTAssertFalse(developer.saveGPSCapture(stopID: stops[0].id, label: "Denied"))
+        XCTAssertTrue(developer.gpsCaptures.isEmpty)
+    }
+
+    func testGPSCaptureRefreshWaitsForANewFixAndRejectsOverlappingRequests() async throws {
+        let suite = "gps-refresh-\(UUID())", defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let (tour, developer, source) = try await makeGPSCaptureContext(defaults: defaults)
+        defer { cleanUp(tour) }
+        developer.refreshGPSNow(); developer.refreshGPSNow()
+        XCTAssertEqual(source.refreshRequests, 1)
+        try await Task.sleep(for: .milliseconds(230))
+        XCTAssertTrue(developer.isRefreshingGPS, "The existing location is not a newly requested fix")
+        let fresh = LocationSample(coordinate: GeoCoordinate(latitude: 40.67, longitude: -74.32), horizontalAccuracy: 3)
+        try await receiveGPS(fresh, source: source, tour: tour)
+        for _ in 0..<100 where developer.isRefreshingGPS { try await Task.sleep(for: .milliseconds(5)) }
+        XCTAssertFalse(developer.isRefreshingGPS)
+        XCTAssertEqual(developer.gpsRefreshMessage, "Fresh GPS coordinates received.")
+        XCTAssertTrue(developer.saveGPSCapture(stopID: stops[0].id, label: "Refreshed"))
+        XCTAssertEqual(developer.gpsCaptures.first?.fixTimestamp, fresh.timestamp)
+    }
+
+    private func makeGPSCaptureContext(defaults: UserDefaults,
+        sample: LocationSample = LocationSample(coordinate: GeoCoordinate(latitude: 40.67, longitude: -74.32), horizontalAccuracy: 4),
+        authorization: LocationAuthorization = .authorized) async throws -> (TourViewModel, DeveloperModeController, ActivityTestLocationService) {
+        let source = ActivityTestLocationService(status: authorization)
+        let tour = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),
+            locationService: source, directionsService: PreviewDirectionsService())
+        await tour.loadStopsIfNeeded(); tour.startLocationIfPossible()
+        try await receiveGPS(sample, source: source, tour: tour)
+        return (tour, DeveloperModeController(tour: tour, realLocationService: source, defaults: defaults), source)
+    }
+
+    private func receiveGPS(_ sample: LocationSample, source: ActivityTestLocationService, tour: TourViewModel) async throws {
+        source.emit(sample)
+        for _ in 0..<100 where tour.userLocation?.timestamp != sample.timestamp {
+            try await Task.sleep(for: .milliseconds(2))
+        }
+        XCTAssertEqual(tour.userLocation?.timestamp, sample.timestamp)
+    }
+    #endif
+
     private var stops: [HistoricalStop] { HistoricalStop.previewStops }
     private func makeTour(visitStore: (any StopVisitStore)? = nil, activityStore: (any StopActivityStore)? = nil) async -> TourViewModel {
         let model = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),
@@ -1158,6 +1349,7 @@ private final class ActivityTestLocationService: LocationService {
     private let broadcaster = EventBroadcaster<LocationEvent>()
     private(set) var permissionRequests = 0
     private(set) var startRequests = 0
+    private(set) var refreshRequests = 0
     init(status: LocationAuthorization = .denied) { self.status = status }
     var authorization: LocationAuthorization { status }
     var isPreciseLocationAuthorized: Bool { true }
@@ -1167,7 +1359,7 @@ private final class ActivityTestLocationService: LocationService {
     func requestWhenInUseAuthorization() { permissionRequests += 1 }
     func requestTemporaryPreciseLocationIfNeeded() {}
     func start() { startRequests += 1 }
-    func requestFreshLocation() {}
+    func requestFreshLocation() { refreshRequests += 1 }
     func stop() {}
 }
 
@@ -1197,93 +1389,34 @@ final class StopVisitStoreTests: XCTestCase {
         XCTAssertEqual(developer.gpsRefreshMessage, "Fresh GPS coordinates received.")
         XCTAssertEqual(tour.userLocation, fresh)
         XCTAssertEqual(tour.currentStop?.id, HistoricalStop.previewStops[0].id)
-        developer.enableSimulation()
+        tour.replaceLocationService(with: SimulatedLocationService(start: point))
         developer.refreshGPSNow()
         XCTAssertEqual(service.refreshRequests, 1)
         XCTAssertFalse(developer.isRefreshingGPS)
     }
 
-    func testViewingPointAndWindowCalibrationPersistWithoutChangingSiteCoordinates() async throws {
-        let suite = "cranford.discovery.\(UUID().uuidString)"
+    func testExistingBonusPlacementsLoadReadOnlyAndViewingPointBecomesACapture() async throws {
+        let suite = "cranford.legacy-placements.\(UUID())"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
-        let mill = HistoricalStop.previewStops[0]
-        let point = GeoMath.destination(from: mill.coordinate, bearing: 180, distance: 15)
-        let service = DeveloperTestLocationService(sample: LocationSample(coordinate: point, horizontalAccuracy: 4))
-        let tour = TourViewModel(stopService: InMemoryHistoricalStopService(stops: HistoricalStop.previewStops),
-                                 locationService: service, directionsService: PreviewDirectionsService())
-        await tour.loadStopsIfNeeded()
-        tour.startTour()
-        defer { tour.stopLocation(); tour.cancelRouting() }
-        for _ in 0..<100 where tour.userLocation == nil { try await Task.sleep(for: .milliseconds(5)) }
-        XCTAssertNotNil(tour.userLocation)
-        let developer = DeveloperModeController(tour: tour, realLocationService: service, defaults: defaults)
-        XCTAssertTrue(developer.saveViewingPoint())
-        XCTAssertEqual(developer.savedViewingPoint, point)
-        XCTAssertEqual(developer.savedViewingAccuracy, 4)
-        XCTAssertEqual(tour.currentStop?.coordinate, mill.coordinate, "Capture must not silently replace map/routing coordinates")
-        developer.bonusRight = 4.2
-        developer.bonusWidth = 5.3
-        let reloaded = DeveloperModeController(tour: tour, realLocationService: service, defaults: defaults)
-        XCTAssertEqual(reloaded.savedViewingPoint, point)
-        XCTAssertEqual(reloaded.bonusRight, 4.2)
-        XCTAssertEqual(reloaded.bonusWidth, 5.3)
-        reloaded.clearVisitsAndResetTour()
-        XCTAssertEqual(reloaded.savedViewingPoint, point, "Resetting visits must preserve calibration")
-        reloaded.resetWindowLayout()
-        XCTAssertEqual(tour.windowBonusLayout, WindowBonusLayout())
-        reloaded.clearViewingPoint()
-        XCTAssertNil(tour.viewingPointOverride)
-    }
-
-    func testGreystoneCalibrationPersistsAndResetsIndependentlyOfMill() async throws {
-        let suite = "cranford.park-layout.\(UUID().uuidString)"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
-        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set([4.2, 0.55, 5.3, 3.0], forKey: "cranford.developer.mill-window-layout.v1")
+        defaults.set([0.05, 0.65, 0.8, 0.5], forKey: "cranford.developer.greystone-bonus-layout.v1")
+        defaults.set([40.65, -74.30, 4.0], forKey: "cranford.developer.mill-viewing-point.v1")
         let service = DeveloperTestLocationService(sample: nil)
         let tour = TourViewModel(stopService: InMemoryHistoricalStopService(stops: HistoricalStop.previewStops),
                                  locationService: service, directionsService: PreviewDirectionsService())
         await tour.loadStopsIfNeeded()
-        let developer = DeveloperModeController(tour: tour, realLocationService: service, defaults: defaults)
-        developer.bonusRight = 4.2
-        developer.parkRight = 0.05
-        developer.parkUp = 0.65
-        developer.parkWidth = 0.8
-        developer.parkHeight = 0.5
-        tour.parkBonusLayout = .abovePlaque // Verify the next controller actually reloads storage.
-        let reloaded = DeveloperModeController(tour: tour, realLocationService: service, defaults: defaults)
-        XCTAssertEqual(reloaded.parkRight, 0.05)
-        XCTAssertEqual(reloaded.parkUp, 0.65)
-        XCTAssertEqual(reloaded.parkWidth, 0.8)
-        XCTAssertEqual(reloaded.parkHeight, 0.5)
-        XCTAssertEqual(reloaded.bonusRight, 4.2)
-        reloaded.clearVisitsAndResetTour()
-        XCTAssertEqual(reloaded.parkWidth, 0.8, "Resetting visits preserves Greystone calibration")
-        reloaded.resetWindowLayout()
-        XCTAssertEqual(reloaded.parkWidth, 0.8, "Mill reset must not alter Greystone")
-        reloaded.bonusRight = 4.8
-        reloaded.resetParkLayout()
-        XCTAssertEqual(tour.parkBonusLayout, .abovePlaque)
-        XCTAssertEqual(reloaded.bonusRight, 4.8, "Greystone reset must not alter mill calibration")
-        let afterReset = DeveloperModeController(tour: tour, realLocationService: service, defaults: defaults)
-        XCTAssertEqual(afterReset.parkWidth, WindowBonusLayout.abovePlaque.width)
-        XCTAssertEqual(afterReset.bonusRight, 4.8)
-    }
-
-    func testSimulatedGPSCannotBeSavedAsTheRealViewingPoint() async throws {
-        let suite = "cranford.discovery.\(UUID().uuidString)"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
-        defer { defaults.removePersistentDomain(forName: suite) }
-        let service = DeveloperTestLocationService(sample: LocationSample(coordinate: HistoricalStop.previewStops[0].coordinate, isSimulated: true))
-        let tour = TourViewModel(stopService: InMemoryHistoricalStopService(stops: HistoricalStop.previewStops),
-                                 locationService: service, directionsService: PreviewDirectionsService())
-        await tour.loadStopsIfNeeded()
-        tour.startTour()
         defer { tour.stopLocation(); tour.cancelRouting() }
-        for _ in 0..<100 where tour.userLocation == nil { try await Task.sleep(for: .milliseconds(5)) }
         let developer = DeveloperModeController(tour: tour, realLocationService: service, defaults: defaults)
-        XCTAssertFalse(developer.saveViewingPoint())
-        XCTAssertNil(developer.savedViewingPoint)
+        XCTAssertEqual(tour.windowBonusLayout, WindowBonusLayout(right: 4.2, up: 0.55, width: 5.3, height: 3))
+        XCTAssertEqual(tour.parkBonusLayout, WindowBonusLayout(right: 0.05, up: 0.65, width: 0.8, height: 0.5))
+        XCTAssertEqual(developer.gpsCaptures.count, 1)
+        XCTAssertEqual(developer.gpsCaptures.first?.source, .legacyViewingPoint)
+        XCTAssertNil(developer.gpsCaptures.first?.fixTimestamp)
+        developer.clearVisitsAndResetTour()
+        XCTAssertEqual(developer.gpsCaptures.count, 1)
+        XCTAssertEqual(tour.windowBonusLayout.width, 5.3)
+        XCTAssertEqual(tour.parkBonusLayout.width, 0.8)
     }
 
     func testClearingVisitsSurvivesReloadAndPreservesOtherSettings() throws {
@@ -1361,8 +1494,10 @@ final class StopVisitStoreTests: XCTestCase {
         tour.completeCurrentStopAndAdvance()
         tour.progress.recordWalked(meters: 100)
         developer.isVisitRecordingEnabled = false
-        developer.walkTowardNextStop()
-        XCTAssertTrue(developer.isWalking)
+        let simulator = SimulatedLocationService(start: HistoricalStop.previewStops[1].coordinate)
+        tour.replaceLocationService(with: simulator)
+        simulator.startWalking()
+        XCTAssertTrue(simulator.isWalking)
         XCTAssertEqual(tour.currentStop?.id, "hpab-002")
 
         developer.clearVisitsAndResetTour()
@@ -1374,8 +1509,8 @@ final class StopVisitStoreTests: XCTestCase {
         XCTAssertFalse(tour.isCurrentStopVisited)
         XCTAssertNil(tour.lastCompletedStop)
         XCTAssertNil(tour.activeVisitEvidence)
-        XCTAssertFalse(developer.isWalking)
-        XCTAssertTrue(developer.isSimulating, "Clearing visits must not change the chosen location source")
+        XCTAssertFalse(simulator.isWalking)
+        XCTAssertTrue(tour.locationService is SimulatedLocationService, "A reset preserves an injected test source")
         XCTAssertFalse(developer.isVisitRecordingEnabled, "Repeat test walks must keep the selected saving setting")
     }
     #endif

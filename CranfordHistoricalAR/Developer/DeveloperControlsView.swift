@@ -1,5 +1,6 @@
 #if DEVELOPER_MENU
 import SwiftUI
+import UIKit
 import TourCore
 
 /// "Developer Controls" (spec §19). Reachable only from the debug menu in Debug builds.
@@ -7,6 +8,10 @@ struct DeveloperControlsView: View {
     @Environment(TourViewModel.self) private var tour
     @Environment(AppDependencies.self) private var dependencies
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppNavigation.self) private var navigation
+    @State private var captureStopID = ""
+    @State private var captureLabel = ""
+    @State private var csvExport: GPSCaptureExport?
 
     var body: some View {
         NavigationStack {
@@ -25,6 +30,11 @@ struct DeveloperControlsView: View {
             }
         }
         .task { tour.startLocationIfPossible() }
+        .onChange(of: tour.stops.map(\.id), initial: true) { _, ids in
+            if !ids.contains(captureStopID) { captureStopID = tour.currentStop?.id ?? ids.first ?? "" }
+        }
+        .onChange(of: navigation.homeReturnID) { _, _ in csvExport = nil }
+        .sheet(item: $csvExport) { GPSCaptureShareSheet(fileURL: $0.url).dismissOnReturnHome() }
         .dismissOnReturnHome()
     }
 
@@ -44,49 +54,6 @@ struct DeveloperControlsView: View {
                 }
             }
             .textSelection(.enabled)
-
-            Section {
-                Button("Save this location as the viewing point") { developer.saveViewingPoint() }
-                    .frame(minHeight: 44)
-                if let point = developer.savedViewingPoint {
-                    row("Viewing latitude", String(format: "%.6f", point.latitude))
-                    row("Viewing longitude", String(format: "%.6f", point.longitude))
-                    if let accuracy = developer.savedViewingAccuracy { row("Recorded accuracy", String(format: "± %.1f m", accuracy)) }
-                    Button("Clear saved viewing point", role: .destructive) { developer.clearViewingPoint() }
-                }
-                if let message = developer.viewingPointMessage {
-                    Text(message).font(.footnote).foregroundStyle(.secondary)
-                }
-            } header: {
-                Text("Mill viewing point")
-            } footer: {
-                Text("Capture from the permitted public viewing area. This local test setting survives relaunch. Copy these coordinates and accuracy for the next app update; it does not certify public access.")
-            }
-            .textSelection(.enabled)
-
-            Section {
-                calibrationSlider("Move right", value: $developer.bonusRight, range: -2...9)
-                calibrationSlider("Move up", value: $developer.bonusUp, range: -3...6)
-                calibrationSlider("Width", value: $developer.bonusWidth, range: 1...10)
-                calibrationSlider("Height", value: $developer.bonusHeight, range: 1...8)
-                Button("Reset approximate placement") { developer.resetWindowLayout() }
-            } header: {
-                Text("Mill window bonus alignment")
-            } footer: {
-                Text("Keep the plaque in the camera view while adjusting. Fit the overlay to BOTH glass panes in the red doors, then close this page to inspect it. Values are multiples of plaque width and are saved only on this device. The initial layout and plaque width are unmeasured estimates.")
-            }
-
-            Section {
-                calibrationSlider("Move right", value: $developer.parkRight, range: -1...1, unit: "reference width", step: 0.01)
-                calibrationSlider("Move up", value: $developer.parkUp, range: -0.5...2, unit: "reference width", step: 0.01)
-                calibrationSlider("Width", value: $developer.parkWidth, range: 0.25...2, unit: "reference width", step: 0.01)
-                calibrationSlider("Height", value: $developer.parkHeight, range: 0.2...2, unit: "reference width", step: 0.01)
-                Button("Reset Greystone placement") { developer.resetParkLayout() }
-            } header: {
-                Text("Greystone plaque bonus alignment")
-            } footer: {
-                Text("Keep the Cranford Park plaque and stone surround in view while adjusting. Fit the bonus inside the stone pillar above the black sign. Values use the original close-up image frame width, including stone. Physical scale is still estimated. Settings stay on this device and do not change the mill.")
-            }
 
             Section {
                 Toggle("Save visit history", isOn: $developer.isVisitRecordingEnabled)
@@ -121,14 +88,14 @@ struct DeveloperControlsView: View {
                     }
                     .frame(minHeight: 44)
                 }
-                .disabled(developer.isRefreshingGPS || developer.isSimulating)
+                .disabled(developer.isRefreshingGPS)
                 if let message = developer.gpsRefreshMessage {
                     Text(message).font(.footnote).foregroundStyle(.secondary)
                 }
                 TimelineView(.periodic(from: .now, by: 1)) { context in
                     VStack(spacing: 12) {
                         if let sample = tour.userLocation {
-                            row("Source", sample.isSimulated || developer.isSimulating ? "Simulated location" : "Device GPS")
+                            row("Source", sample.isSimulated || tour.locationService is SimulatedLocationService ? "Simulated location" : "Device GPS")
                             row("Latitude", String(format: "%.6f", locale: Locale(identifier: "en_US_POSIX"), sample.coordinate.latitude))
                             row("Longitude", String(format: "%.6f", locale: Locale(identifier: "en_US_POSIX"), sample.coordinate.longitude))
                             row("Reported accuracy", sample.horizontalAccuracy >= 0 && sample.horizontalAccuracy.isFinite
@@ -154,61 +121,10 @@ struct DeveloperControlsView: View {
             } header: {
                 Text("Live coordinates")
             } footer: {
-                Text("Uses the same location as the map and AR. Six decimal places show the reported coordinates; they do not increase GPS accuracy. For on-site testing, leave Simulated location off.")
+                Text("Uses the same location as the map and AR. Six decimal places show the reported coordinates; they do not increase GPS accuracy. Only fresh device readings can be saved; simulated readings are rejected.")
             }
 
-            Section {
-                Toggle("Simulated location", isOn: Binding(
-                    get: { developer.isSimulating },
-                    set: { $0 ? developer.enableSimulation() : developer.disableSimulation() }
-                ))
-                if developer.isSimulating {
-                    Picker("Walking speed", selection: $developer.speedMultiplier) {
-                        Text("1×").tag(1.0)
-                        Text("3×").tag(3.0)
-                        Text("10×").tag(10.0)
-                    }
-                    .pickerStyle(.segmented)
-                    Picker("GPS accuracy", selection: $developer.simulatedAccuracy) {
-                        Text("5 m").tag(5.0)
-                        Text("25 m").tag(25.0)
-                        Text("60 m (weak)").tag(60.0)
-                    }
-                }
-            } header: {
-                Text("Location")
-            } footer: {
-                Text("Replaces Core Location with a simulated walker. The map, routing, proximity and AR all consume it through the same single location source.")
-            }
-
-            Section("Movement") {
-                if developer.isWalking {
-                    Button {
-                        developer.pauseWalking()
-                    } label: {
-                        Label("Pause walking", systemImage: "pause.circle")
-                    }
-                } else {
-                    Button {
-                        developer.walkTowardNextStop()
-                    } label: {
-                        Label("Walk toward next stop", systemImage: "figure.walk.motion")
-                    }
-                    .disabled(tour.currentStop == nil)
-                }
-                Button {
-                    developer.nudgeTowardNextStop()
-                } label: {
-                    Label("Move 25 m toward next stop", systemImage: "arrow.forward.to.line")
-                }
-                .disabled(tour.currentStop == nil)
-                Button {
-                    developer.jumpToNextStop()
-                } label: {
-                    Label("Jump to next stop", systemImage: "mappin.and.ellipse")
-                }
-                .disabled(tour.currentStop == nil)
-            }
+            gpsCaptureSections(developer)
 
             Section("Tour") {
                 if tour.isPlaqueDiscoveryStop {
@@ -280,6 +196,102 @@ struct DeveloperControlsView: View {
         }
     }
 
+    @ViewBuilder
+    private func gpsCaptureSections(_ developer: DeveloperModeController) -> some View {
+        Section {
+            Picker("Tour stop", selection: $captureStopID) {
+                if captureStopID.isEmpty { Text("Select a stop").tag("") }
+                ForEach(tour.stops) { stop in Text(stop.name).tag(stop.id) }
+            }
+            TextField("Capture label (optional)", text: $captureLabel,
+                      prompt: Text("e.g. public viewing area"))
+                .textInputAutocapitalization(.sentences)
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                VStack(alignment: .leading, spacing: 8) {
+                    Button {
+                        if developer.saveGPSCapture(stopID: captureStopID, label: captureLabel) { captureLabel = "" }
+                    } label: {
+                        Label("Save GPS reading", systemImage: "location.circle")
+                            .frame(minHeight: 44)
+                    }
+                    .disabled(developer.captureIssue(stopID: captureStopID, now: context.date) != nil)
+                    .accessibilityIdentifier("developer.gps.capture")
+                    if let issue = developer.captureIssue(stopID: captureStopID, now: context.date) {
+                        Text(issue).font(.footnote).foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    if let sample = tour.userLocation, sample.horizontalAccuracy > 25 {
+                        Text("Low accuracy. The reported uncertainty will be saved with this reading.")
+                            .font(.footnote).foregroundStyle(AppTheme.warning)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            if let message = developer.captureMessage {
+                Text(message).font(.footnote).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        } header: {
+            Text("Capture GPS location")
+        } footer: {
+            Text("Save multiple labeled readings per stop. Captures stay on this device and never change map markers, routing or arrival detection.")
+        }
+
+        Section {
+            let captures = developer.captures(for: captureStopID)
+            if captures.isEmpty {
+                Text("No saved readings for this stop.").foregroundStyle(.secondary)
+            }
+            ForEach(captures) { capture in
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(capture.label).font(.headline)
+                    Text(capture.savedAt.formatted(date: .abbreviated, time: .standard)).font(.caption)
+                    Text(String(format: "%.6f, %.6f", locale: Locale(identifier: "en_US_POSIX"),
+                                capture.coordinate.latitude, capture.coordinate.longitude))
+                        .font(.subheadline).monospacedDigit().textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                    row("Reported accuracy", String(format: "± %.1f m", capture.horizontalAccuracy))
+                    if let fix = capture.fixTimestamp {
+                        Text("GPS fix: \(fix.formatted(date: .abbreviated, time: .standard))")
+                            .font(.caption).foregroundStyle(.secondary)
+                    } else {
+                        Text("Imported viewing point · Original fix time unknown")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    if let precise = capture.preciseLocation {
+                        row("Precise Location at capture", precise ? "On" : "Off")
+                    }
+                    Button {
+                        UIPasteboard.general.string = capture.copyText
+                    } label: {
+                        Label("Copy reading", systemImage: "doc.on.doc").frame(minHeight: 44)
+                    }
+                }
+                .padding(.vertical, 4)
+                .swipeActions(allowsFullSwipe: false) {
+                    Button("Delete", role: .destructive) { developer.deleteGPSCapture(id: capture.id) }
+                }
+            }
+            if !developer.currentTourCaptures.isEmpty {
+                Button {
+                    UIPasteboard.general.string = developer.currentTourCaptures.map(\.copyText).joined(separator: "\n\n")
+                } label: {
+                    Label("Copy all saved readings", systemImage: "doc.on.doc").frame(minHeight: 44)
+                }
+                Button {
+                    if let url = developer.makeCSVExport() { csvExport = GPSCaptureExport(url: url) }
+                } label: {
+                    Label("Share all readings as CSV", systemImage: "square.and.arrow.up").frame(minHeight: 44)
+                }
+                .accessibilityIdentifier("developer.gps.shareCSV")
+            }
+        } header: {
+            Text("Stored GPS captures")
+        } footer: {
+            Text("Copy or share readings for this tour when requesting coordinate updates. Swipe a saved reading to delete it. Clearing tour visits does not delete GPS captures.")
+        }
+    }
+
     private func row(_ label: String, _ value: String) -> some View {
         HStack {
             Text(label)
@@ -289,12 +301,18 @@ struct DeveloperControlsView: View {
         .font(.subheadline)
     }
 
-    private func calibrationSlider(_ title: String, value: Binding<Double>, range: ClosedRange<Double>, unit: String = "plaque width", step: Double = 0.1) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            row(title, String(format: "%.2f × %@", value.wrappedValue, unit))
-            Slider(value: value, in: range, step: step)
-                .accessibilityLabel(title)
-        }
+}
+
+private struct GPSCaptureExport: Identifiable {
+    let id = UUID()
+    let url: URL
+}
+
+private struct GPSCaptureShareSheet: UIViewControllerRepresentable {
+    let fileURL: URL
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: [fileURL], applicationActivities: nil)
     }
+    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
 }
 #endif

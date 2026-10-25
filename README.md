@@ -1,3 +1,16 @@
+## Current Developer Controls — build 55
+
+Removed the simulated-location and movement panels, mill viewing-point shortcut, and
+both bonus-alignment editors. Existing saved bonus placements load read-only so the
+bonuses retain their positions. The former mill arrival override is retired; its saved
+coordinate imports once into the new GPS capture log with original time marked unknown.
+
+Choose a stop, enter an optional label, then Save GPS reading. Multiple fresh device
+readings can be stored per stop with coordinates, accuracy, fix/save times and Precise
+Location status. Copy individual/all readings or Share all readings as CSV. These local
+test records never change map markers, navigation, visits or arrival thresholds.
+See [GPS-CAPTURE-TEST.md](GPS-CAPTURE-TEST.md) for verification and device acceptance.
+
 ## Current Stops list — build 54
 
 The Stops list shows only earned Visited and On-site bonus unlocked labels. Unvisited

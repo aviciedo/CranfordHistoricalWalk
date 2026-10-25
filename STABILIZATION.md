@@ -126,3 +126,19 @@ Stops list simplification — review build 54:
   this screen and its VoiceOver descriptions. Stops without earned status have none.
 - View-only change: no progress or saved activity is cleared; detail pages retain
   their controls/content. Debug/Release parsing passed; native visual check pending.
+
+Developer GPS field tools — review build 55:
+- Removed simulation/movement UI and developer-controller entry points, mill viewing
+  point editor/arrival override, and both alignment editors. Existing bonus settings
+  still load read-only; reusable simulated sources remain for automated test coverage.
+- Manual labeled GPS readings persist per stop/tour with accuracy, actual fix time,
+  saved time and permission metadata. Copy and native CSV sharing are explicit.
+- Invalid/stale/simulated/repeated fixes are rejected. Weak but valid readings can be
+  stored with honest accuracy metadata. Corrupt/future archives are preserved, not overwritten.
+- Legacy mill coordinates import once with unknown fix time; visit/story resets do
+  not clear GPS readings. Deleted imports do not reappear. Saved readings never apply
+  themselves to production stop coordinates, routing, arrival, visits or calibration.
+- 227 TourCore + 82 portable actual-model tests passed; Debug/Release syntax parsing
+  passed. The actual developer controller now runs in the portable model harness.
+- Native CSV share sheet, clipboard, keyboard/form layout and on-device GPS capture
+  remain pending. See GPS-CAPTURE-TEST.md. This task does not publish changes.

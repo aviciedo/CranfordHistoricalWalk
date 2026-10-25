@@ -154,7 +154,6 @@ final class TourViewModel {
     #if DEVELOPER_MENU
     /// Testing only. Defaults to recording on each launch; does not affect this walk's progress.
     var isVisitRecordingEnabled = true
-    var viewingPointOverride: GeoCoordinate?
     #endif
 
     // MARK: Navigation

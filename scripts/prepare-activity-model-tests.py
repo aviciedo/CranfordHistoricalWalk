@@ -23,7 +23,7 @@ let package = Package(name: "ActivityModelHarness", platforms: [.macOS(.v14)],
 ''')
 for relative in ['ViewModels/TourViewModel.swift', 'ViewModels/TourViewModel+Proximity.swift',
                  'ViewModels/TourViewModel+Routing.swift', 'ViewModels/MapViewModel.swift', 'Services/StopVisitStore.swift',
-                 'Services/SimulatedLocationService.swift', 'App/AppNavigation.swift']:
+                 'Services/SimulatedLocationService.swift', 'App/AppNavigation.swift', 'Developer/DeveloperModeController.swift']:
     text = (root / 'CranfordHistoricalAR' / relative).read_text().replace('import CoreLocation\n', '')
     (src / Path(relative).name).write_text(text)
 location = (root / 'CranfordHistoricalAR/Services/LocationService.swift').read_text()

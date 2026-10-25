@@ -1,11 +1,11 @@
-# Field acceptance — review build 53
+# Field acceptance — review build 55
 
 Status: NOT EXECUTED ON SITE. Linux unit tests do not verify iPhone GPS, street
 safety, compass alignment, camera recognition, real plaque dimensions or battery use.
 Do not mark this checklist passed until a tester records the evidence below.
 
-Install the complete review ZIP on a real iPhone using Xcode. Confirm build 53 in
-Developer and narration release cedar-2. Keep Simulated location OFF. Use the full
+Install the complete review ZIP on a real iPhone using Xcode. Confirm build 55 in
+Developer and narration release cedar-2. Disable any Xcode location simulation. Use the full
 “Clear visits, stories & bonuses” test reset only when you want a clean activity run;
 ordinary visit-only reset intentionally retains reading/listening/bonus progress.
 
@@ -57,7 +57,8 @@ No keys, unrelated bystanders, or raw continuous location trail are needed.
    After 12 seconds without recognition, help, Retry and Return to story must work.
    Match each supported physical plaque in good and poor light, from oblique angles,
    then lose tracking. GPS and story completion must never claim plaque recognition.
-   Measure plaque/reference widths and capture calibration ratios before proposing changes.
+   Measure plaque/reference widths and record proposed calibration ratios. Alignment
+   editors are retired; existing saved bonus placement still loads read-only.
 9. Raise the phone, then hold screen-up/level continuously for two seconds: return
    to the presenting screen. Opening already flat must not immediately close AR.
    A modal, background interruption or gap in motion samples must break the hold.
@@ -120,3 +121,9 @@ Build 53 — Previous stop (NOT RUN on device):
   Previous on a restored paused walk must not request location permission or resume GPS.
 - Check distance/time when returning to an already visited place. Verify both action
   rows and player fit the Map layout on small phones and at large Dynamic Type sizes.
+
+Build 55 — developer capture tools:
+Use GPS-CAPTURE-TEST.md to verify repeated stop-associated captures, copying, CSV
+sharing, migration and reset independence. Simulated-location/movement controls,
+both bonus editors and the mill viewing-point override are retired. Do not expect
+a saved GPS test reading to update a route, map marker or arrival boundary.
