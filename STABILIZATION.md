@@ -90,3 +90,9 @@ Map artwork color — review build 50:
   saturation filters, marker sizing, navigation or visibility changes were introduced.
 - Debug/Release syntax checks repeated. Actual SDK snapshot/color reproduction and
   return-from-menu behavior require iPhone verification; no native visual result claimed.
+
+Stop detail alignment — review build 51:
+- Moved date, address and Show on map directly beneath the shared stop title before
+  Listen/Read. The long description stays in the body below the story controls.
+- Debug/Release Swift parsing repeated; no logic/storage changes or new tests.
+  Native layout verification remains pending.

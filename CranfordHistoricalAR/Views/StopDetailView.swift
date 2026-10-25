@@ -63,10 +63,24 @@ struct StopDetailView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     StopPhotoGallery(stop: stop, height: galleryHeight,
                                      isObscured: isShowingScanner || isShowingBonus)
-                    Text(stop.name)
-                        .font(.system(.largeTitle, design: .serif).weight(.semibold))
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityAddTraits(.isHeader)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(stop.name)
+                            .font(.system(.largeTitle, design: .serif).weight(.semibold))
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityAddTraits(.isHeader)
+                        if let date = stop.displayDate {
+                            Text(date).font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
+                        }
+                        Label(stop.address, systemImage: "mappin.and.ellipse")
+                            .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Button {
+                            navigation.showOnMap(stopID: stop.id)
+                            dismiss()
+                        } label: {
+                            Label("Show on map", systemImage: "map").frame(minHeight: 44)
+                        }.buttonStyle(.plain)
+                    }
                 }
                 VStack(alignment: .leading, spacing: 16) {
                     Picker("Enjoy the story", selection: $mode) {
@@ -106,21 +120,7 @@ struct StopDetailView: View {
                             .font(.footnote).foregroundStyle(AppTheme.secondaryInk)
                     }
                 }
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(stop.longDescription).font(.body).fixedSize(horizontal: false, vertical: true)
-                    if let date = stop.displayDate {
-                        Text(date).font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
-                    }
-                    Label(stop.address, systemImage: "mappin.and.ellipse")
-                        .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Button {
-                        navigation.showOnMap(stopID: stop.id)
-                        dismiss()
-                    } label: {
-                        Label("Show on map", systemImage: "map").frame(minHeight: 44)
-                    }.buttonStyle(.plain)
-                }
+                Text(stop.longDescription).font(.body).fixedSize(horizontal: false, vertical: true)
                 if stop.hasPlaqueReference {
                     VStack(alignment: .leading, spacing: 12) {
                         Divider()

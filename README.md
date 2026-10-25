@@ -1,3 +1,10 @@
+## Current stop details — build 51
+
+The construction date, address and Show on map action now sit directly beneath the
+stop title, above Listen/Read. The shared layout applies to all stops. The history
+text remains below the story controls. Swift syntax was checked; native layout
+verification remains pending.
+
 ## Current map artwork — build 50
 
 Landmark illustrations explicitly use their original colors and transparent backgrounds.
