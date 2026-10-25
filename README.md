@@ -1,3 +1,21 @@
+## Illustration-led Home — build 60
+
+Home now follows the selected ivory field-guide reference: a two-line serif app name,
+Discover the stories along the river, original transparent landmark artwork, and a
+primary walking button. The Maps row with map icon sits above Explore the stops.
+There is no embedded map on Home. Both browse rows switch tabs without starting or
+resuming a walk. The existing Google/Apple walking map remains on the Map tab.
+
+Before starting, Home features the first stop and Start walk. During a walk it shows
+the active walking destination's illustration, Continue walk and Next: destination.
+Browsing or playing another story never changes this image. When finished it shows
+Tour complete and Start another walk; saved story/bonus accomplishments are retained.
+The hero yields space to the measured heading and actions, including when the shared
+player is visible; larger text and short screens can scroll without clipping controls.
+Developer Controls remain available by long-pressing the app title in developer builds.
+90 actual-model tests and Debug/Release syntax checks passed. Native visual QA is
+blocked on Linux; see [HOME-LANDING.md](HOME-LANDING.md) and design-qa.md.
+
 ## Active walking map — build 59
 
 Map automatically frames your GPS position, the departure stop and active destination,

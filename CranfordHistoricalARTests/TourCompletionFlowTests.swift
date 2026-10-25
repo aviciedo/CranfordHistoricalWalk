@@ -11,6 +11,50 @@ import CoreLocation
 /// The same state-flow tests run against the native model and its Linux Foundation harness.
 @MainActor
 final class TourCompletionFlowTests: XCTestCase {
+    func testHomeWelcomeFeaturesFirstStopWithoutStartingOrRequestingGPS() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        let source = tour.locationService as? ActivityTestLocationService
+        XCTAssertEqual(tour.homeFeaturedStop?.id, stops[0].id)
+        XCTAssertEqual(tour.homeWalkActionTitle, "Start walk")
+        XCTAssertEqual(tour.phase, .notStarted)
+        XCTAssertEqual(source?.permissionRequests, 0)
+        XCTAssertEqual(source?.startRequests, 0)
+        let navigation = AppNavigation()
+        navigation.selectedTab = .map
+        navigation.selectedTab = .stops
+        navigation.selectedTab = .home
+        XCTAssertEqual(tour.phase, .notStarted)
+        XCTAssertEqual(source?.permissionRequests, 0)
+    }
+
+    func testHomeIllustrationFollowsWalkingDestinationAndPreviousRatherThanBrowsedStory() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.startTour()
+        XCTAssertEqual(tour.homeWalkActionTitle, "Continue walk")
+        XCTAssertEqual(tour.homeFeaturedStop?.id, stops[0].id)
+        tour.completeCurrentStopAndAdvance()
+        XCTAssertEqual(tour.homeFeaturedStop?.id, stops[1].id)
+        tour.openStory(for: stops[4].id)
+        XCTAssertEqual(tour.homeFeaturedStop?.id, stops[1].id)
+        XCTAssertTrue(tour.goToPreviousStop())
+        XCTAssertEqual(tour.homeFeaturedStop?.id, stops[0].id)
+        XCTAssertEqual(tour.homeWalkActionTitle, "Continue walk")
+    }
+
+    func testHomeCompletionAndRestartKeepSavedLearningIndependent() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.startTour()
+        tour.finishStory(for: stops[0].id)
+        for _ in stops { tour.completeCurrentStopAndAdvance() }
+        XCTAssertEqual(tour.phase, .complete)
+        XCTAssertEqual(tour.homeWalkActionTitle, "Start another walk")
+        XCTAssertEqual(tour.homeFeaturedStop?.id, stops[0].id)
+        XCTAssertNil(tour.currentStop, "Completion must not invent another destination")
+        tour.resetTour(); tour.startTour()
+        XCTAssertEqual(tour.homeFeaturedStop?.id, stops[0].id)
+        XCTAssertTrue(tour.activities[stops[0].id].learningCompleted)
+    }
+
     func testWalkingFrameFocusesDestinationWithoutGPSAndKeepsDepartureAfterAdvance() async throws {
         let tour = await makeTour(); defer { cleanUp(tour) }
         tour.startTour()

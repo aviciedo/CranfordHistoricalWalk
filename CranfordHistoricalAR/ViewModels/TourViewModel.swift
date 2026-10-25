@@ -191,6 +191,20 @@ final class TourViewModel {
     var nextStop: HistoricalStop? { progress.nextStopID.flatMap(stop(withID:)) }
     var lastCompletedStop: HistoricalStop? { progress.previousCompletedStopID.flatMap(stop(withID:)) }
 
+    /// Home follows the walking destination, never the story being read or played.
+    /// Completion is a welcome for another walk, not a claim of a further destination.
+    var homeFeaturedStop: HistoricalStop? {
+        phase == .inProgress ? currentStop : stops.first
+    }
+
+    var homeWalkActionTitle: String {
+        switch phase {
+        case .notStarted: return "Start walk"
+        case .inProgress: return "Continue walk"
+        case .complete: return "Start another walk"
+        }
+    }
+
     var startWalkTitle: String {
         stops.first.map { "Start walk: \($0.name)" } ?? "Start walk"
     }

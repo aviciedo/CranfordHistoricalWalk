@@ -1,3 +1,35 @@
+# Build 60 — Illustration-led Home
+
+final result: blocked
+
+Source visual target: the owner's attached 592 × 1280 ivory field-guide Home image,
+with large two-line serif app name, river-story subtitle, transparent mill artwork,
+walking CTA, destination helper, browse row and existing bottom tabs. Requested
+variation: Maps row with icon above Explore the stops; hero follows active walking
+destination; completion reads Tour complete with Start another walk.
+
+Implementation is native SwiftUI, using the existing illustration assets and Canvas
+views, not a new web prototype or a raster screenshot as UI. Native SF Symbols and
+semantic text remain editable controls. No image regeneration or production data
+changes were needed. Source reviewed for heading/image/action hierarchy, 24-point
+insets, icon alignment, full-row hit areas, correct stop identity, loading/errors,
+completion and measured space above the shared player/navigation.
+
+90 portable actual-model tests passed, including 3 Home state regressions. Debug
+and Release Swift syntax parsing passed. These results are not a rendered design
+comparison, Apple SDK build or native interaction/accessibility verification.
+
+Implementation capture: unavailable on Linux without Xcode/iOS simulator. No visual
+fidelity or pixel alignment pass is claimed; screenshot comparison remains blocked.
+Required: capture 393 × 852-point iPhone Home at matching scale, then small/large
+phones, accessibility text and player visible. Compare title, hero proportions,
+CTA/helper, Maps/Stops rows and bottom navigation with the supplied reference.
+Verify all five destination illustrations, Previous, paused/relaunch, completion,
+Maps browse without walk start, Stops browse, developer title long-press, loading
+failure retry and continuing audio. See HOME-LANDING.md.
+
+---
+
 # Build 44 — Map/Stops header alignment
 
 final result: blocked

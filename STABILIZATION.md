@@ -209,3 +209,19 @@ Active walking map — review build 59:
   syntax parsing and source/whitespace checks pass. Core logic is unchanged; its prior
   227-test result was not rerun. Native Apple build, both SDK layouts/rendering and
   field GPS movement remain pending. See MAP-TRACKING.md. No publication in this task.
+
+Illustration-led Home — review build 60:
+- Owner selected the ivory field-guide image and requested Maps above Explore the
+  stops. Home no longer instantiates HomeMapView. Existing map/fallback code remains.
+- Confirmed destination-matched hero and Tour complete / Start another walk state.
+  Native original artwork, serif two-line title, walking CTA and icon browse rows.
+- Home-only labels Start walk / Continue walk / Start another walk; Map's destination
+  wording is retained. Restart uses existing reset/start with saved learning preserved.
+- HomeLandingLayout measures heading/actions before allocating 96–340 points to art.
+  Artwork keeps its native raster or Canvas aspect ratio. Real footer reservation,
+  Dynamic Type, scrolling and error/retry/loading states are retained.
+- Developer Controls move to the existing long-press title entry, without the
+  previous visible developer row. No player, GPS, visit or progression logic changed.
+- 90 actual-model tests pass, including 3 Home regressions. Debug/Release syntax and
+  whitespace checks pass. Native rendering/SDK type-check/VoiceOver/touch remain
+  pending. Product Design visual comparison is blocked, not passed. No publication.

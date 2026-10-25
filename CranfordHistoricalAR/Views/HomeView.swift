@@ -1,89 +1,172 @@
 import SwiftUI
 import TourCore
 
+/// Illustration-led welcome: navigation lives on Map, stories live on Stops.
 struct HomeView: View {
     @Environment(TourViewModel.self) private var tour
     @Environment(AppNavigation.self) private var navigation
     @State private var isShowingDeveloperControls = false
-    @ScaledMetric(relativeTo: .body) private var homeContentReserve: CGFloat = 220
+    @ScaledMetric(relativeTo: .largeTitle) private var titleSize: CGFloat = 48
 
     var body: some View {
         GeometryReader { viewport in
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("Cranford Uncovered")
-                        .font(.system(.largeTitle, design: .serif).weight(.semibold))
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityAddTraits(.isHeader)
-                        .modifier(DebugMenuGesture(isPresented: $isShowingDeveloperControls))
-                    #if DEVELOPER_MENU
-                    Button {
-                        isShowingDeveloperControls = true
-                    } label: {
-                        Label("Developer", systemImage: "wrench.and.screwdriver")
-                            .frame(minHeight: 44)
-                    }
-                    .buttonStyle(.plain)
-                    .font(.subheadline.weight(.medium))
-                    .accessibilityHint("Opens testing tools and live GPS coordinates")
-                    #endif
-                    HomeMapView().frame(height: mapHeight(in: viewport.size.height))
-                    if let destination = tour.currentStop {
-                        Text("Next: \(destination.name)").font(.subheadline)
-                            .foregroundStyle(AppTheme.secondaryInk)
-                    }
-                    Button {
-                        if tour.phase == .complete { tour.resetTour() }
-                        tour.startTour()
-                        navigation.selectedTab = .map
-                    } label: {
-                        Label(tour.walkActionTitle, systemImage: "figure.walk")
-                            .fixedSize(horizontal: false, vertical: true)
-                            .frame(maxWidth: .infinity).padding(.vertical, 17)
-                    }
-                    .buttonStyle(.plain).font(.headline)
-                    .foregroundStyle(AppTheme.ivory)
-                    .background(AppTheme.forest, in: RoundedRectangle(cornerRadius: 14))
-                    .disabled(tour.loadState != .loaded)
-                    .opacity(tour.loadState == .loaded ? 1 : 0.5)
-
-                    Button { navigation.selectedTab = .stops } label: {
-                        HStack {
-                            Text("Explore the stops")
-                            Spacer()
-                            Image(systemName: "chevron.right").font(.caption.weight(.semibold))
-                        }
-                        .frame(minHeight: 44).contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain).font(.subheadline.weight(.medium))
-                    .accessibilityHint("Listen, read and view photographs without starting a walk or enabling location")
-
-                    if case .failed(let message) = tour.loadState {
-                        Text(message).font(.footnote).foregroundStyle(AppTheme.warning)
-                        Button("Try again") { Task { await tour.loadStopsIfNeeded() } }
-                    }
+                HomeLandingLayout(availableSize: CGSize(width: max(0, viewport.size.width - 48),
+                                                        height: max(0, viewport.size.height - 24))) {
+                    heading
+                    featuredIllustration
+                    actions
                 }
-                .padding(.horizontal, 24)
-                .padding(.top, 8)
-                .padding(.bottom, 16)
+                .padding(.horizontal, 24).padding(.top, 8).padding(.bottom, 16)
             }
+            .scrollBounceBehavior(.basedOnSize, axes: .vertical)
         }
-        .background(AppTheme.ivory.ignoresSafeArea(edges: .top)).foregroundStyle(AppTheme.ink)
+        .background(AppTheme.ivory.ignoresSafeArea()).foregroundStyle(AppTheme.forest)
         .task {
             if tour.isWalkingActive && tour.locationAuthorization == .authorized { tour.startLocationIfPossible() }
         }
     }
 
-    private func mapHeight(in availableHeight: CGFloat) -> CGFloat {
-        // RootView already removes the shared player/navigation from this viewport. Reserve
-        // space for the title and actions. Let the map use the remaining height; short
-        // screens and larger text stay scrollable without compressing touch targets.
-        #if DEVELOPER_MENU
-        let reserved = homeContentReserve + 60 // Developer's 44-point target plus its gap.
-        #else
-        let reserved = homeContentReserve
-        #endif
-        return max(240, min(520, availableHeight - reserved - (tour.currentStop == nil ? 0 : 36)))
+    private var heading: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Cranford\nUncovered")
+                .font(.system(size: titleSize, weight: .semibold, design: .serif))
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityLabel("Cranford Uncovered")
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityIdentifier("home.heading")
+                .modifier(DebugMenuGesture(isPresented: $isShowingDeveloperControls))
+            Text("Discover the stories along the river.")
+                .font(.body)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private var featuredIllustration: some View {
+        if let stop = tour.homeFeaturedStop {
+            StopListIllustration(stopID: stop.id)
+                .aspectRatio(stop.id == "hpab-004" ? 1 : stop.id == "hpab-005" ? 100.0 / 90.0 : 4.0 / 3.0,
+                             contentMode: .fit)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .accessibilityHidden(true) // The destination is named immediately below.
+                .accessibilityIdentifier("home.illustration.\(stop.id)")
+        } else if tour.loadState.isFailure {
+            Label("Tour unavailable", systemImage: "exclamationmark.circle")
+                .font(.headline)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            // Loading has no placeholder landmark or invented destination.
+            ProgressView("Loading tour")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    private var actions: some View {
+        VStack(spacing: 20) {
+            VStack(spacing: 10) {
+                if tour.phase == .complete {
+                    Label("Tour complete", systemImage: "checkmark.circle")
+                        .font(.headline)
+                        .accessibilityIdentifier("home.tourComplete")
+                }
+                Button {
+                    if tour.phase == .complete { tour.resetTour() }
+                    tour.startTour()
+                    navigation.selectedTab = .map
+                } label: {
+                    Label(tour.homeWalkActionTitle, systemImage: "figure.walk")
+                        .font(.title3.weight(.semibold))
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, minHeight: 56)
+                        .padding(.horizontal, 16).padding(.vertical, 6)
+                }
+                .buttonStyle(.plain).foregroundStyle(.white)
+                .background(AppTheme.forest, in: RoundedRectangle(cornerRadius: 14))
+                .disabled(tour.loadState != .loaded)
+                .opacity(tour.loadState == .loaded ? 1 : 0.5)
+                .accessibilityIdentifier("home.startWalk")
+                if tour.phase != .complete, let stop = tour.homeFeaturedStop {
+                    Text(tour.phase == .notStarted ? "Begin at \(stop.name)." : "Next: \(stop.name)")
+                        .font(.subheadline)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("home.destination")
+                }
+            }
+
+            VStack(spacing: 0) {
+                Divider()
+                navigationRow("Maps", symbol: "map", tab: .map,
+                              hint: "Opens the map without starting or resuming your walk")
+                Divider()
+                navigationRow("Explore the stops", symbol: "book", tab: .stops,
+                              hint: "Listen, read and view photographs without starting a walk or enabling location")
+                Divider()
+            }
+
+            if case .failed(let message) = tour.loadState {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(message).font(.footnote).foregroundStyle(AppTheme.warning)
+                    Button("Try again") { Task { await tour.loadStopsIfNeeded() } }
+                        .frame(minHeight: 44)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
+    private func navigationRow(_ title: String, symbol: String, tab: AppNavigation.Tab,
+                               hint: String) -> some View {
+        Button { navigation.selectedTab = tab } label: {
+            HStack(spacing: 14) {
+                Image(systemName: symbol).font(.title2).frame(width: 28)
+                Text(title).font(.body)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 8)
+                Image(systemName: "chevron.right").font(.subheadline.weight(.medium))
+            }
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint(hint)
+        .accessibilityIdentifier(tab == .map ? "home.maps" : "home.exploreStops")
+    }
+}
+
+/// Measure the real heading and actions first. Only the decorative hero yields space
+/// to the shared player or larger text; touch targets and copy are never compressed.
+struct HomeLandingLayout: Layout {
+    let availableSize: CGSize
+    private let gap: CGFloat = 20
+
+    private func sizes(_ subviews: Subviews) -> (heading: CGFloat, hero: CGFloat, actions: CGFloat) {
+        let proposal = ProposedViewSize(width: availableSize.width, height: nil)
+        let heading = subviews[0].sizeThatFits(proposal).height
+        let actions = subviews[2].sizeThatFits(proposal).height
+        let hero = max(96, min(340, availableSize.height - heading - actions - 2 * gap))
+        return (heading, hero, actions)
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard subviews.count == 3 else { return .zero }
+        let sizes = sizes(subviews)
+        return CGSize(width: availableSize.width, height: sizes.heading + sizes.hero + sizes.actions + 2 * gap)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard subviews.count == 3 else { return }
+        let sizes = sizes(subviews)
+        let heights = [sizes.heading, sizes.hero, sizes.actions]
+        var y = bounds.minY
+        for index in 0..<3 {
+            subviews[index].place(at: CGPoint(x: bounds.minX, y: y), anchor: .topLeading,
+                                 proposal: ProposedViewSize(width: availableSize.width, height: heights[index]))
+            y += heights[index] + gap
+        }
     }
 }
 
