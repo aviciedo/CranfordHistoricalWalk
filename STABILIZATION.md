@@ -81,3 +81,12 @@ AR clarification — review build 49:
   unchanged bottom direction card; route street identity still protects turn stability.
 - Shared logic is unchanged from the passing 219-core/66-model suite. Debug/Release
   syntax checks repeated after renderer removal. Native iPhone acceptance is pending.
+
+Map artwork color — review build 50:
+- No intentional gray filter was found in the marker code; bundled art is full color.
+- Explicit original-color rendering for landmark assets and cached marker snapshots.
+  The shared Google/Apple image view opts out of inherited UIKit tint dimming.
+- Snapshot rendering stays enabled, non-linear and transparent. No asset color edits,
+  saturation filters, marker sizing, navigation or visibility changes were introduced.
+- Debug/Release syntax checks repeated. Actual SDK snapshot/color reproduction and
+  return-from-menu behavior require iPhone verification; no native visual result claimed.

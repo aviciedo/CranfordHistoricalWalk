@@ -165,7 +165,7 @@ struct GoogleMapView: UIViewRepresentable {
             }
             if markerStyle == .numberedDot {
                 let view = (marker.iconView as? StopMapIconView) ?? StopMapIconView()
-                view.imageView.image = image
+                view.setArtwork(image)
                 marker.icon = nil
                 marker.iconView = view
                 marker.tracksViewChanges = false
@@ -505,9 +505,14 @@ enum StopMapArtwork {
                     .overlay(Circle().strokeBorder(isSelected ? AppTheme.brass : .white, lineWidth: 2))
             }
             .frame(width: CGFloat(MapMarkerSizing.width), height: CGFloat(MapMarkerSizing.height))
-            .environment(\.colorScheme, scheme))
+            .environment(\.colorScheme, scheme)
+            .environment(\.isEnabled, true))
+        // These are full-color illustrations, not template symbols. Keep the alpha channel
+        // for cutout edges and use standard color rendering when Maps snapshots the image.
         renderer.scale = 3
-        return renderer.uiImage ?? UIImage()
+        renderer.colorMode = .nonLinear
+        renderer.isOpaque = false
+        return (renderer.uiImage ?? UIImage()).withRenderingMode(.alwaysOriginal)
     }
 }
 
@@ -519,12 +524,24 @@ final class StopMapIconView: UIView {
     init() {
         super.init(frame: .zero)
         isUserInteractionEnabled = false
+        // Menus/sheets can dim inherited UIKit tint. Decorative landmark art should retain
+        // its original colors when the SDK captures and caches this view.
+        tintAdjustmentMode = .normal
+        backgroundColor = .clear
+        isOpaque = false
+        imageView.tintAdjustmentMode = .normal
+        imageView.backgroundColor = .clear
+        imageView.isOpaque = false
         imageView.contentMode = .scaleAspectFit
         addSubview(imageView)
         resize(scale: 1)
     }
 
     required init?(coder: NSCoder) { nil }
+
+    func setArtwork(_ image: UIImage?) {
+        imageView.image = image?.withRenderingMode(.alwaysOriginal)
+    }
 
     func resize(scale: CGFloat) {
         let size = CGSize(width: CGFloat(MapMarkerSizing.width) * scale,

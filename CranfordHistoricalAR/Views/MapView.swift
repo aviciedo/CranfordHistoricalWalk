@@ -371,7 +371,7 @@ struct AppleTourMapView: UIViewRepresentable {
                 if icon.superview == nil { view.addSubview(icon) }
                 let key = "\(marker.id)|\(marker.order)|\(marker.state)"
                 if markerImages[key] == nil { markerImages[key] = StopMapArtwork.image(for: marker) }
-                icon.imageView.image = markerImages[key]
+                icon.setArtwork(markerImages[key])
                 icon.resize(scale: markerScale)
                 view.bounds = icon.bounds
                 icon.center = CGPoint(x: view.bounds.midX, y: view.bounds.midY)

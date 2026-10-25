@@ -1,3 +1,11 @@
+## Current map artwork — build 50
+
+Landmark illustrations explicitly use their original colors and transparent backgrounds.
+The shared Google/Apple image view opts out of inherited UIKit tint dimming, and marker
+snapshots use an enabled, standard-color rendering environment. Original artwork, marker
+sizes, bottom-left numbers and collision behavior are retained. Native color verification
+on iPhone remains pending.
+
 ## Current AR arrows — build 49
 
 AR directions use large, deeply extruded hunter-green/white chevrons. The street

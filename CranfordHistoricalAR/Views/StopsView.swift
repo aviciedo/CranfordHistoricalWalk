@@ -104,11 +104,11 @@ struct StopListIllustration: View {
         Group {
             switch stopID {
             case "hpab-001":
-                Image("mill-map-landmark").resizable().scaledToFit()
+                Image("mill-map-landmark").renderingMode(.original).resizable().scaledToFit()
             case "hpab-002":
-                Image("greystone-map-landmark").resizable().scaledToFit()
+                Image("greystone-map-landmark").renderingMode(.original).resizable().scaledToFit()
             case "hpab-003":
-                Image("rahway-river-illustration").resizable().scaledToFit()
+                Image("rahway-river-illustration").renderingMode(.original).resizable().scaledToFit()
             case "hpab-004":
                 FirstBaptistChurchThumbnail()
             default:
