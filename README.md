@@ -1,3 +1,12 @@
+## Figma illustration download
+
+[Download all five tour stop illustrations](docs/design/exports/Cranford-Tour-Illustrations-Figma.zip?raw=true).
+Unzip and drag the five numbered files onto a Figma canvas. The mill, Greystone and
+river are the original transparent 1448 × 1086 PNGs. Church and hotel are scalable
+SVG exports of the current app drawings, with transparent 1440-pixel-wide PNG alternatives.
+The package includes import instructions and a checksum manifest. It has not been
+uploaded to a Figma file; no Figma connector was available for direct import.
+
 ## Current Developer Controls — build 55
 
 Removed the simulated-location and movement panels, mill viewing-point shortcut, and

@@ -142,3 +142,16 @@ Developer GPS field tools — review build 55:
   passed. The actual developer controller now runs in the portable model harness.
 - Native CSV share sheet, clipboard, keyboard/form layout and on-device GPS capture
   remain pending. See GPS-CAPTURE-TEST.md. This task does not publish changes.
+
+Build 55 publication and illustration export — 2026-10-25:
+- Owner authorized publication of pending changes and the Figma-ready illustration
+  package. The authoritative main and Xcode download snapshots advance together
+  without merging or deleting branches. App version remains 0.2.0 (55); this
+  publication adds documentation and exported artwork, not further app changes.
+- docs/design/exports/Cranford-Tour-Illustrations-Figma.zip contains the three original
+  transparent PNG assets, two SVG translations of the current Canvas artwork, PNG
+  alternatives, provenance/import instructions and checksums. PNG originals were
+  checked byte-for-byte; SVG exports were rendered and visually inspected.
+- The existing 227-core/82-model passing results and Debug/Release syntax checks
+  remain the latest verification. Publication does not establish native compiler,
+  device, outdoor AR or GPS acceptance. These checks remain pending.
