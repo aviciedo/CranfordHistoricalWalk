@@ -90,4 +90,70 @@ final class WalkingProgressionPolicyTests: XCTestCase {
         XCTAssertNil(fix(&policy, 5, distance: 30))
         XCTAssertEqual(fix(&policy, 8, distance: 30), .arrived)
     }
+
+    func testLeavingTheCircleRestartsArrivalAndHoldDoesNotBlockIt() {
+        var policy = WalkingProgressionPolicy()
+        XCTAssertFalse(policy.isConfirmingArrival)
+        XCTAssertNil(fix(&policy, 0))
+        XCTAssertTrue(policy.isConfirmingArrival)
+        XCTAssertNil(fix(&policy, 2, distance: 40))
+        XCTAssertFalse(policy.isConfirmingArrival)
+        XCTAssertNil(fix(&policy, 4))
+        XCTAssertNil(fix(&policy, 6), "Time spent outside does not count toward the dwell")
+        XCTAssertEqual(fix(&policy, 7), .arrived)
+        XCTAssertFalse(policy.isConfirmingArrival)
+
+        policy = WalkingProgressionPolicy()
+        policy.isHeld = true
+        XCTAssertNil(fix(&policy, 0))
+        XCTAssertEqual(fix(&policy, 3), .arrived)
+        XCTAssertNil(fix(&policy, 4, distance: 100))
+        XCTAssertNil(fix(&policy, 9, distance: 100))
+        XCTAssertTrue(policy.isHeld)
+        XCTAssertTrue(policy.hasArrived)
+    }
+
+    func testBadRadiiAndAccuracyAboveTheCeilingRestartArrival() {
+        let ceiling = StopActivationPolicy.maximumAccuracyMeters
+        var policy = WalkingProgressionPolicy()
+        XCTAssertNil(fix(&policy, 0, accuracy: ceiling))
+        XCTAssertEqual(fix(&policy, 3, accuracy: ceiling), .arrived)
+
+        policy = WalkingProgressionPolicy()
+        policy.confirmArrival()
+        XCTAssertNil(fix(&policy, 0, distance: 51 + ceiling, accuracy: ceiling))
+        XCTAssertNil(fix(&policy, 4, distance: 50 + ceiling, accuracy: ceiling), "The error circle still touches the boundary")
+        XCTAssertNil(fix(&policy, 9, distance: 51 + ceiling, accuracy: ceiling))
+        XCTAssertEqual(fix(&policy, 14, distance: 51 + ceiling, accuracy: ceiling), .departed)
+
+        policy = WalkingProgressionPolicy()
+        XCTAssertNil(fix(&policy, 0))
+        let badAt = start.addingTimeInterval(1)
+        XCTAssertNil(policy.update(distance: 0, accuracy: ceiling + 0.1, timestamp: badAt, now: badAt,
+            arrivalRadius: 35, departureRadius: 50, allowsDeparture: true))
+        XCTAssertFalse(policy.isConfirmingArrival)
+        for radii in [(35.0, 35.0), (0.0, 50.0), (Double.nan, 50.0), (35.0, .infinity)] {
+            XCTAssertNil(policy.update(distance: 0, accuracy: ceiling, timestamp: badAt, now: badAt,
+                arrivalRadius: radii.0, departureRadius: radii.1, allowsDeparture: true))
+            XCTAssertFalse(policy.isConfirmingArrival)
+            XCTAssertFalse(policy.hasArrived)
+        }
+        XCTAssertNil(fix(&policy, 2))
+        XCTAssertNil(fix(&policy, 4), "The rejected sample must not leave the original dwell running")
+        XCTAssertEqual(fix(&policy, 5), .arrived)
+    }
+
+    func testExactlyTenSecondsStillDepartsAndALongerGapRestartsTheDwell() {
+        var policy = WalkingProgressionPolicy()
+        policy.confirmArrival()
+        XCTAssertNil(fix(&policy, 0, distance: 100))
+        XCTAssertEqual(fix(&policy, 10, distance: 100), .departed)
+
+        policy = WalkingProgressionPolicy()
+        policy.confirmArrival()
+        XCTAssertNil(fix(&policy, 0, distance: 100))
+        XCTAssertNil(fix(&policy, 11, distance: 100))
+        XCTAssertNil(fix(&policy, 15, distance: 100))
+        XCTAssertEqual(fix(&policy, 16, distance: 100), .departed)
+    }
 }
