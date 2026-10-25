@@ -181,3 +181,13 @@ Collapsible stop history — review build 57:
   this local view-only change. Native build, small/large text, tap and VoiceOver
   acceptance remain pending: verify collapse/reopen, fresh-stop default and audio
   continuity on both mill and Greystone. No publication in this task.
+
+Simplified plaque action — review build 58:
+- Full-width forest/white camera button above Stop details, matching the supplied
+  reference. Unfound action reads Find on-site plaque with AR; unlocked state keeps
+  View the bonus, the earned Bonus found label and the original bonus-opening action.
+- Removed the optional/on-site subtitle and divider. Native scaling/wrapping,
+  16-point horizontal inset, 14-point vertical inset, 56-point minimum height.
+- Source/whitespace and Debug/Release syntax checks passed; no service, scanner,
+  saved activity or eligibility logic changed. Native layout/VoiceOver/touch checks
+  remain pending. No publication in this task.

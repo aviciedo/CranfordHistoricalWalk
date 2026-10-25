@@ -122,6 +122,36 @@ struct StopDetailView: View {
                             .font(.footnote).foregroundStyle(AppTheme.secondaryInk)
                     }
                 }
+                if stop.hasPlaqueReference {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Button(action: openPlaqueActivity) {
+                            HStack(spacing: 12) {
+                                HStack(spacing: 12) {
+                                    Image(systemName: "camera")
+                                        .font(.title2)
+                                    Text(tour.activities[stop.id].bonusFoundAt == nil ? "Find on-site plaque with AR" : "View the bonus")
+                                        .font(.headline)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                                .frame(maxWidth: .infinity)
+                                Image(systemName: "chevron.right")
+                                    .font(.subheadline.weight(.semibold))
+                            }
+                            .padding(.horizontal, 16).padding(.vertical, 14)
+                            .frame(maxWidth: .infinity, minHeight: 56)
+                            .foregroundStyle(.white)
+                            .background(AppTheme.forest, in: RoundedRectangle(cornerRadius: 14))
+                            .contentShape(RoundedRectangle(cornerRadius: 14))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("stop.findPlaque")
+                        if tour.activities[stop.id].bonusFoundAt != nil {
+                            Label("Bonus found", systemImage: "seal.fill")
+                                .font(.subheadline.weight(.medium)).foregroundStyle(AppTheme.forest)
+                                .accessibilityIdentifier("stop.bonusFound")
+                        }
+                    }
+                }
                 if !stop.longDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     DisclosureGroup(isExpanded: $isStopDetailsExpanded) {
                         Text(stop.longDescription)
@@ -138,29 +168,6 @@ struct StopDetailView: View {
                     .tint(AppTheme.forest)
                     .accessibilityHint("Expands or collapses the stop history")
                     .accessibilityIdentifier("stop.detailsDisclosure")
-                }
-                if stop.hasPlaqueReference {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Divider()
-                        Button(action: openPlaqueActivity) {
-                            HStack(spacing: 12) {
-                                Image(systemName: "camera.viewfinder")
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(tour.activities[stop.id].bonusFoundAt == nil ? "Find the plaque in AR" : "View the bonus")
-                                    Text("Optional bonus · On-site only").font(.footnote).foregroundStyle(AppTheme.secondaryInk)
-                                }
-                                Spacer()
-                                Image(systemName: "chevron.right")
-                            }
-                            .frame(minHeight: 52).contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        if tour.activities[stop.id].bonusFoundAt != nil {
-                            Label("Bonus found", systemImage: "seal.fill")
-                                .font(.subheadline.weight(.medium)).foregroundStyle(AppTheme.forest)
-                                .accessibilityIdentifier("stop.bonusFound")
-                        }
-                    }
                 }
 
             }

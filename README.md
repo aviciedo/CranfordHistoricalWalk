@@ -1,3 +1,12 @@
+## Simplified plaque action — build 58
+
+Stop pages with a plaque now show a full-width hunter-green button above Stop details,
+with a white camera icon, “Find on-site plaque with AR” and a disclosure chevron.
+The optional/on-site subtitle and separator were removed. The button wraps for large
+text and retains a minimum 56-point height. Already unlocked discoveries retain
+View the bonus and their existing bonus access. Debug/Release syntax checks passed;
+native visual and touch verification remains pending.
+
 ## Collapsible stop history — build 57
 
 Stop details appears directly above each available historical description, including
