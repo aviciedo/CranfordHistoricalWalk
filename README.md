@@ -1,3 +1,10 @@
+## Current Home map interaction — build 52
+
+Tap any Home map landmark to preview its name, address, date and short history.
+View stop opens that specific stop's full page; X dismisses only the popup. The
+same preview is used by Google Maps and the Apple fallback. Browsing does not
+start or retarget the walk. Syntax checks passed; native tap/layout checks remain.
+
 ## Current stop details — build 51
 
 The construction date, address and Show on map action now sit directly beneath the

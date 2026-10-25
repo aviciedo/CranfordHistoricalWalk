@@ -96,3 +96,14 @@ Stop detail alignment — review build 51:
   Listen/Read. The long description stays in the body below the story controls.
 - Debug/Release Swift parsing repeated; no logic/storage changes or new tests.
   Native layout verification remains pending.
+
+Home map preview — review build 52:
+- A marker tap now selects a preview only; an explicit View stop action opens the
+  matching stop page. X dismisses the preview without returning Home or changing audio.
+- Shared SwiftUI popup on both providers, with short-map zoom-control clearance,
+  scrolling metadata and whole-card accessibility overflow fallback.
+- Home suppresses only Google's SDK popup so it cannot duplicate the shared preview.
+  Other Map popup behavior is unchanged. Show on map/Back restoration is retained.
+- Debug/Release syntax checks passed. Manually verify all five markers on both
+  providers, switching selected markers, X, View stop, zoom and return from details,
+  including small phones, Dynamic Type and VoiceOver; native runtime is unavailable here.

@@ -18,6 +18,8 @@ struct GoogleMapView: UIViewRepresentable {
     var markerStyle: StopMarkerStyle = .labeledPin
     /// Highlighted stop for dot styles (the labeled pin style has no selection state).
     var selectedStopID: String? = nil
+    /// Home supplies its own shared SwiftUI popup on both providers.
+    var showsStopPopup = true
     var reservesNavigationControls = false
     var reservesZoomControls = false
     var showsCompass = true
@@ -183,7 +185,7 @@ struct GoogleMapView: UIViewRepresentable {
         private func syncSelectedMarker(on mapView: GMSMapView, selectedID: String?) {
             // SDK info windows are raster snapshots; use a real view for an interactive X.
             mapView.selectedMarker = nil
-            guard let selectedID, let marker = markersByID[selectedID] else {
+            guard parent.showsStopPopup, let selectedID, let marker = markersByID[selectedID] else {
                 stopPopup?.removeFromSuperview()
                 stopPopup = nil
                 popupSignature = nil
