@@ -8,7 +8,6 @@ struct TourMapView: View {
     @Environment(TourViewModel.self) private var tour
     var mapModel: MapViewModel
     var bottomInset: CGFloat
-    var onEnterAR: () -> Void
     @State private var appleMapError: String?
 
     var body: some View {
@@ -16,7 +15,7 @@ struct TourMapView: View {
             ZStack(alignment: .top) {
                 if GoogleMapsBootstrap.isConfigured {
                     GoogleMapView(
-                        markers: mapModel.markers(for: tour),
+                        markers: mapModel.markers(for: tour, emphasizesDestinationOnly: true),
                         userPuck: mapModel.userPuck(for: tour),
                         routeCoordinates: mapModel.walkingRouteCoordinates(for: tour).map(\.clLocationCoordinate),
                         cameraRequest: mapModel.cameraRequest,
@@ -25,19 +24,19 @@ struct TourMapView: View {
                         onMarkerTap: { mapModel.select(stopID: $0) },
                         markerStyle: .numberedDot,
                         selectedStopID: mapModel.viewedStopID,
-                        reservesNavigationControls: true,
+                        reservesNavigationControls: false,
                         showsCompass: false,
                         fitInsets: UIEdgeInsets(top: 28, left: 30, bottom: 30, right: 74),
                         onMapTap: { mapModel.clearViewedStop() }
                     )
                 } else {
-                    AppleTourMapView(markers: mapModel.markers(for: tour),
+                    AppleTourMapView(markers: mapModel.markers(for: tour, emphasizesDestinationOnly: true),
                         userPuck: mapModel.userPuck(for: tour),
                         routeCoordinates: mapModel.walkingRouteCoordinates(for: tour).map(\.clLocationCoordinate),
                         cameraRequest: mapModel.cameraRequest,
                         onUserGesture: { mapModel.userDidMoveCamera() },
                         onMarkerTap: { mapModel.select(stopID: $0) },
-                        onMapError: { appleMapError = $0 }, reservesNavigationControls: true)
+                        onMapError: { appleMapError = $0 }, reservesNavigationControls: false)
                 }
 
                 if let appleMapError, !GoogleMapsBootstrap.isConfigured {
@@ -54,8 +53,17 @@ struct TourMapView: View {
                 }
             }
             .overlay(alignment: .bottomTrailing) {
-                MapControlStack(mapModel: mapModel, onEnterAR: onEnterAR,
-                                horizontal: viewport.size.height < CGFloat(MapScreenSizing.compactControlsThreshold))
+                Button { mapModel.showUserAndDestination(tour: tour) } label: {
+                    Image(systemName: "location.fill")
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundStyle(AppTheme.forest)
+                        .frame(width: 48, height: 48).background(.white, in: Circle())
+                        .shadow(color: .black.opacity(0.12), radius: 5, y: 3)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Recenter walking route")
+                .accessibilityHint("Shows your location, departure stop and destination")
+                .accessibilityIdentifier("map.recenter")
                     .padding(.trailing, 16).padding(.bottom, 20)
             }
         }
@@ -69,52 +77,6 @@ struct TourMapView: View {
             if !isNil, mapModel.cameraMode == .overview { mapModel.showUserAndDestination(tour: tour) }
         }
         .animation(.easeInOut(duration: 0.25), value: tour.locationIssue)
-    }
-}
-
-/// Recenter, route framing, then optional AR entry.
-struct MapControlStack: View {
-    @Environment(TourViewModel.self) private var tour
-    var mapModel: MapViewModel
-    var onEnterAR: () -> Void
-    var horizontal = false
-
-    var body: some View {
-        let layout = horizontal ? AnyLayout(HStackLayout(spacing: 10)) : AnyLayout(VStackLayout(spacing: 10))
-        return layout {
-            Button { mapModel.requestFollow(tour: tour) } label: {
-                Image(systemName: "location.fill")
-                    .frame(width: 48, height: 48).background(.white, in: Circle())
-                    .shadow(color: .black.opacity(0.12), radius: 5, y: 3)
-            }
-            .disabled(tour.userLocation == nil)
-            .opacity(tour.userLocation == nil ? 0.45 : 1)
-            .accessibilityLabel("Center on my location")
-
-            Button { mapModel.showUserAndDestination(tour: tour) } label: {
-                Image(systemName: "scope")
-                    .frame(width: 48, height: 48).background(.white, in: Circle())
-                    .shadow(color: .black.opacity(0.12), radius: 5, y: 3)
-            }
-            .accessibilityLabel("Show route to next stop")
-
-            Button(action: onEnterAR) {
-                VStack(spacing: 2) {
-                    Image(systemName: "camera.viewfinder").font(.system(size: 18, weight: .medium))
-                    Text("AR").font(.system(.caption2).weight(.semibold))
-                }
-                .frame(width: 48, height: 48).background(.white, in: Circle())
-                .shadow(color: .black.opacity(0.12), radius: 5, y: 3)
-            }
-            .disabled(tour.loadState != .loaded || tour.phase == .complete)
-            .opacity(tour.loadState == .loaded && tour.phase != .complete ? 1 : 0.45)
-            .accessibilityLabel("AR walking directions")
-            .accessibilityHint(tour.phase == .complete ? "Start another walk to use AR walking directions" : "Opens optional camera guidance to \(tour.currentStop?.name ?? tour.stops.first?.name ?? "the next tour stop")")
-            .accessibilityIdentifier("map.enterAR")
-        }
-        .font(.system(size: 19, weight: .medium))
-        .buttonStyle(.plain)
-        .foregroundStyle(AppTheme.forest)
     }
 }
 
@@ -208,6 +170,9 @@ struct AppleTourMapView: UIViewRepresentable {
         map.showsUserLocation = false
         map.showsCompass = false
         map.isPitchEnabled = false
+        let configuration = MKStandardMapConfiguration(elevationStyle: .flat, emphasisStyle: .muted)
+        configuration.pointOfInterestFilter = .excludingAll
+        map.preferredConfiguration = configuration
         map.pointOfInterestFilter = .excludingAll
         map.overrideUserInterfaceStyle = .light
         return map
@@ -373,6 +338,20 @@ struct AppleTourMapView: UIViewRepresentable {
             view.isAccessibilityElement = true
             view.accessibilityLabel = site.title
             if let marker = site.marker {
+                if !marker.isIllustrated {
+                    view.subviews.filter { $0 is StopMapIconView }.forEach { $0.removeFromSuperview() }
+                    let key = "compact|\(marker.id)|\(marker.order)"
+                    if markerImages[key] == nil { markerImages[key] = StopMapArtwork.compactImage(for: marker) }
+                    view.image = markerImages[key]
+                    view.zPriority = .defaultSelected
+                    view.bounds = CGRect(x: 0, y: 0, width: 44, height: 44)
+                    view.centerOffset = .zero
+                    view.isHidden = false
+                    view.displayPriority = .required
+                    view.accessibilityTraits = .button
+                    view.accessibilityHint = "View stop"
+                    return
+                }
                 view.image = nil
                 let icon = (view.subviews.first { $0 is StopMapIconView } as? StopMapIconView) ?? StopMapIconView()
                 if icon.superview == nil { view.addSubview(icon) }
@@ -408,16 +387,21 @@ struct AppleTourMapView: UIViewRepresentable {
 
         private func updateMarkerSizes(on map: MKMapView) {
             guard !map.bounds.isEmpty else { return }
-            let models = parent.markers.sorted { ($0.order, $0.id) < ($1.order, $1.id) }
+            let models = parent.markers.filter(\.isIllustrated).sorted { ($0.order, $0.id) < ($1.order, $1.id) }
             let points = models.map { marker -> SIMD2<Double> in
                 let point = map.convert(marker.coordinate, toPointTo: map)
                 return SIMD2(Double(point.x), Double(point.y))
             }
             let metersPerPoint = map.visibleMapRect.size.width / Double(map.bounds.width)
                 * MKMetersPerMapPointAtLatitude(map.centerCoordinate.latitude)
+            let compactAreas = parent.markers.filter { !$0.isIllustrated }.map { marker -> CGRect in
+                let point = map.convert(marker.coordinate, toPointTo: map)
+                return CGRect(x: point.x - 22, y: point.y - 22, width: 44, height: 44)
+            }
+            let recenterArea = CGRect(x: map.bounds.maxX - 72, y: map.bounds.maxY - 76, width: 64, height: 64)
             let layout = MapMarkerSizing.layout(points: points, metersPerPoint: metersPerPoint,
                 viewport: StopMapLeaderView.viewport(in: map.bounds),
-                reservedAreas: StopMapLeaderView.reservedAreas(in: map.bounds, controls: parent.reservesNavigationControls,
+                reservedAreas: compactAreas + (parent.reservesNavigationControls ? [] : [recenterArea]) + StopMapLeaderView.reservedAreas(in: map.bounds, controls: parent.reservesNavigationControls,
                                                               zoomControls: parent.reservesZoomControls))
             markerScale = CGFloat(layout.scale)
             markerPlacements = Dictionary(uniqueKeysWithValues: zip(models, layout.placements).map { ($0.id, $1) })

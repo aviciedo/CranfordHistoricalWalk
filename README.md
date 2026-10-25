@@ -1,3 +1,16 @@
+## Simplified Map — build 61
+
+Direction 1 is implemented with the requested green next-turn card directly beneath
+the Map heading and above the map. The destination summary, View stop and AR directions
+are below. Previous stop, Continue/Finish, route framing and location follow are in
+More; Resume, arrival hold, immediate Undo and route recovery remain discoverable.
+The map has one recenter control. Its full illustration emphasizes only the active
+or selected stop; other stops retain numbered 44-point targets at their true locations.
+Google cartography uses quieter ivory, sage and river-blue colors; Apple uses its
+native muted map. Real geography, route geometry, GPS and attribution are preserved.
+92 actual-model tests, Debug/Release syntax and map JSON checks passed. Native build,
+visual comparison and touch/accessibility testing remain pending. See MAP-REDESIGN.md.
+
 ## Illustration-led Home — build 60
 
 Home now follows the selected ivory field-guide reference: a two-line serif app name,

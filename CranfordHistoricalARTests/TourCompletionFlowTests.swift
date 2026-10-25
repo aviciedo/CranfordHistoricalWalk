@@ -11,6 +11,34 @@ import CoreLocation
 /// The same state-flow tests run against the native model and its Linux Foundation harness.
 @MainActor
 final class TourCompletionFlowTests: XCTestCase {
+    func testQuietMapEmphasizesOnlyDestinationWithoutHidingOtherStops() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        let map = MapViewModel()
+        let welcome = map.markers(for: tour, emphasizesDestinationOnly: true)
+        XCTAssertEqual(welcome.count, stops.count)
+        XCTAssertEqual(welcome.filter(\.isIllustrated).map(\.id), [stops[0].id])
+        tour.startTour()
+        tour.completeCurrentStopAndAdvance()
+        tour.progress.markCurrentStopVisited()
+        let active = map.markers(for: tour, emphasizesDestinationOnly: true)
+        XCTAssertEqual(active.filter(\.isIllustrated).map(\.id), [stops[1].id])
+        XCTAssertEqual(active.first { $0.id == stops[1].id }?.state, .visited,
+                       "A visited active destination still deserves the illustration")
+        XCTAssertTrue(map.markers(for: tour).allSatisfy(\.isIllustrated), "Other map consumers keep their existing artwork")
+    }
+
+    func testQuietMapSelectionChangesOnlyVisualEmphasis() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.startTour()
+        let map = MapViewModel()
+        map.show(stop: stops[3])
+        XCTAssertEqual(map.markers(for: tour, emphasizesDestinationOnly: true).filter(\.isIllustrated).map(\.id), [stops[3].id])
+        XCTAssertEqual(tour.currentStop?.id, stops[0].id)
+        map.clearViewedStop()
+        XCTAssertEqual(map.markers(for: tour, emphasizesDestinationOnly: true).filter(\.isIllustrated).map(\.id), [stops[0].id])
+        XCTAssertEqual(tour.progress.completedCount, 0)
+    }
+
     func testHomeWelcomeFeaturesFirstStopWithoutStartingOrRequestingGPS() async {
         let tour = await makeTour(); defer { cleanUp(tour) }
         let source = tour.locationService as? ActivityTestLocationService

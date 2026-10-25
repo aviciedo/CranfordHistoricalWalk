@@ -1,3 +1,30 @@
+# Build 61 — Simplified Map, turn card above cartography
+
+final result: blocked
+
+Selected visual target: direction 1, reattached by the owner (590 × 1278 screenshot),
+with explicit request to move the green next-turn card immediately beneath the Map
+heading, above the live map. Image-viewer X/download chrome is not application UI.
+
+Source implementation: ivory/forest page, measured optional top maneuver, rounded
+real map, destination/title/distance below, two white View stop/AR direction actions,
+one recenter circle, More for secondary navigation. Original active/selected landmark
+artwork stays vibrant; other sites have small numbered markers. Google supports the
+quieter ivory/sage/river-blue styling; MapKit provides its own muted cartography.
+Decorative tree paintings and generated geography are not fabricated as navigation.
+
+92 model tests passed; final Debug/Release syntax and JSON validation passed. Native
+SDK compilation, rendered capture and same-viewport visual comparison are unavailable
+on this Linux host. No pixel-fidelity, interaction or accessibility pass is claimed.
+
+Required native checks: turn first with/without player and at larger text; long/unknown
+street names; active, visited and selected markers on both providers; single recenter;
+More/Previous/Continue/Finish/follow/route; pause/Resume, Undo, arrival hold, offline
+retry; View stop/AR/Back/X and unchanged audio. Compare native screenshots against the
+selected concept and verify real attribution stays visible. See MAP-REDESIGN.md.
+
+---
+
 # Build 60 — Illustration-led Home
 
 final result: blocked

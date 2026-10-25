@@ -153,7 +153,18 @@ struct GoogleMapView: UIViewRepresentable {
             marker.groundAnchor = groundAnchor
             marker.zIndex = zIndex(for: model.state, isSelected: isSelected)
             marker.position = model.coordinate
-            applyIcon(marker, image: icon(for: model, isSelected: isSelected))
+            if markerStyle == .numberedDot && !model.isIllustrated {
+                let view = UIImageView(image: StopMapArtwork.compactImage(for: model))
+                view.bounds = CGRect(x: 0, y: 0, width: 44, height: 44)
+                view.contentMode = .center
+                marker.icon = nil
+                marker.iconView = view
+                marker.tracksViewChanges = false
+                marker.opacity = 1
+                marker.isTappable = true
+            } else {
+                applyIcon(marker, image: icon(for: model, isSelected: isSelected))
+            }
         }
 
         /// Dot styles use `iconView` so the whole 56 pt control is tappable, not just opaque pixels
@@ -242,7 +253,7 @@ struct GoogleMapView: UIViewRepresentable {
         }
 
         private func icon(for model: StopMarkerModel, isSelected: Bool) -> UIImage? {
-            let key = "\(markerStyle)|\(isSelected)|\(model.order)|\(model.state)|\(model.name)|\(colorScheme == .dark)"
+            let key = "\(model.isIllustrated)|\(markerStyle)|\(isSelected)|\(model.order)|\(model.state)|\(model.name)|\(colorScheme == .dark)"
             if let cached = iconCache[key] { return cached }
             let scheme = colorScheme ?? .light
             let renderer: ImageRenderer<AnyView>
@@ -265,7 +276,7 @@ struct GoogleMapView: UIViewRepresentable {
         /// Recompute from canonical sites during camera changes, using identical Apple/Google math.
         func updateMarkerSizes() {
             guard markerStyle == .numberedDot, let mapView, !mapView.bounds.isEmpty else { return }
-            let models = markerModels.values.sorted { ($0.order, $0.id) < ($1.order, $1.id) }
+            let models = markerModels.values.filter(\.isIllustrated).sorted { ($0.order, $0.id) < ($1.order, $1.id) }
             let points = models.map { model -> SIMD2<Double> in
                 let point = mapView.projection.point(for: model.coordinate)
                 return SIMD2(Double(point.x), Double(point.y))
@@ -273,7 +284,12 @@ struct GoogleMapView: UIViewRepresentable {
             let latitude = mapView.camera.target.latitude * Double.pi / 180.0
             let metersPerPoint = 156543.03392 * cos(latitude) / pow(2.0, Double(mapView.camera.zoom))
             let viewport = StopMapLeaderView.viewport(in: mapView.bounds, bottomInset: parent.bottomInset)
-            let reserved = StopMapLeaderView.reservedAreas(in: mapView.bounds, controls: parent.reservesNavigationControls,
+            let compactAreas = markerModels.values.filter { !$0.isIllustrated }.map { model -> CGRect in
+                let point = mapView.projection.point(for: model.coordinate)
+                return CGRect(x: point.x - 22, y: point.y - 22, width: 44, height: 44)
+            }
+            let recenterArea = CGRect(x: mapView.bounds.maxX - 72, y: mapView.bounds.maxY - 76, width: 64, height: 64)
+            let reserved = compactAreas + (parent.reservesNavigationControls ? [] : [recenterArea]) + StopMapLeaderView.reservedAreas(in: mapView.bounds, controls: parent.reservesNavigationControls,
                                                          zoomControls: parent.reservesZoomControls)
             let layout = MapMarkerSizing.layout(points: points, metersPerPoint: metersPerPoint,
                                                 viewport: viewport, reservedAreas: reserved)
@@ -503,6 +519,21 @@ struct GoogleMapView: UIViewRepresentable {
 /// Shared Google/Apple artwork: large landmark with a consistent bottom-left number badge.
 @MainActor
 enum StopMapArtwork {
+    static func compactImage(for marker: StopMarkerModel) -> UIImage {
+        let renderer = ImageRenderer(content:
+            Text("\(marker.order)")
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+                .frame(width: 28, height: 28)
+                .background(AppTheme.forest, in: Circle())
+                .overlay(Circle().strokeBorder(.white, lineWidth: 2))
+                .frame(width: 44, height: 44)
+                .environment(\.isEnabled, true))
+        renderer.scale = 3
+        renderer.isOpaque = false
+        return (renderer.uiImage ?? UIImage()).withRenderingMode(.alwaysOriginal)
+    }
+
     static func image(for marker: StopMarkerModel, isSelected: Bool = false, scheme: ColorScheme = .light) -> UIImage {
         let renderer = ImageRenderer(content:
             ZStack(alignment: .bottomLeading) {
@@ -819,16 +850,18 @@ enum MapStyle {
 
     private static let lightJSON = """
     [
-      {"elementType":"geometry","stylers":[{"color":"#ECE8DF"}]},
+      {"elementType":"geometry","stylers":[{"color":"#F0EDE6"}]},
       {"elementType":"labels.text.fill","stylers":[{"color":"#304639"}]},
       {"elementType":"labels.text.stroke","stylers":[{"color":"#F7F4EF"}]},
+      {"elementType":"labels.icon","stylers":[{"visibility":"off"}]},
+      {"featureType":"administrative.land_parcel","stylers":[{"visibility":"off"}]},
       {"featureType":"poi","stylers":[{"visibility":"off"}]},
-      {"featureType":"poi.park","elementType":"geometry","stylers":[{"color":"#CCD7BF"},{"visibility":"on"}]},
+      {"featureType":"poi.park","elementType":"geometry","stylers":[{"color":"#D9E1CE"},{"visibility":"on"}]},
       {"featureType":"road","elementType":"geometry","stylers":[{"color":"#ffffff"}]},
       {"featureType":"road","elementType":"geometry.stroke","stylers":[{"color":"#E2DDD3"}]},
       {"featureType":"road.arterial","elementType":"geometry","stylers":[{"color":"#ffffff"}]},
-      {"featureType":"transit","stylers":[{"visibility":"simplified"}]},
-      {"featureType":"water","elementType":"geometry","stylers":[{"color":"#A5CBDA"}]}
+      {"featureType":"transit","stylers":[{"visibility":"off"}]},
+      {"featureType":"water","elementType":"geometry","stylers":[{"color":"#B2CED8"}]}
     ]
     """
 
@@ -837,11 +870,13 @@ enum MapStyle {
       {"elementType":"geometry","stylers":[{"color":"#1d2820"}]},
       {"elementType":"labels.text.fill","stylers":[{"color":"#D9C9B2"}]},
       {"elementType":"labels.text.stroke","stylers":[{"color":"#1d2820"}]},
+      {"elementType":"labels.icon","stylers":[{"visibility":"off"}]},
+      {"featureType":"administrative.land_parcel","stylers":[{"visibility":"off"}]},
       {"featureType":"poi","stylers":[{"visibility":"off"}]},
       {"featureType":"poi.park","elementType":"geometry","stylers":[{"color":"#1f2a25"},{"visibility":"on"}]},
       {"featureType":"road","elementType":"geometry","stylers":[{"color":"#354436"}]},
       {"featureType":"road","elementType":"geometry.stroke","stylers":[{"color":"#182119"}]},
-      {"featureType":"transit","stylers":[{"visibility":"simplified"}]},
+      {"featureType":"transit","stylers":[{"visibility":"off"}]},
       {"featureType":"water","elementType":"geometry","stylers":[{"color":"#15222a"}]}
     ]
     """

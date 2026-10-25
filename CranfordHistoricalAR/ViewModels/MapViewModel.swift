@@ -13,9 +13,10 @@ struct StopMarkerModel: Identifiable, Equatable {
     var name: String
     var state: State
     var information: String? = nil
+    var isIllustrated: Bool = true
 
     static func == (lhs: StopMarkerModel, rhs: StopMarkerModel) -> Bool {
-        lhs.id == rhs.id && lhs.order == rhs.order && lhs.name == rhs.name && lhs.state == rhs.state && lhs.information == rhs.information
+        lhs.id == rhs.id && lhs.order == rhs.order && lhs.name == rhs.name && lhs.state == rhs.state && lhs.information == rhs.information && lhs.isIllustrated == rhs.isIllustrated
             && lhs.coordinate.latitude == rhs.coordinate.latitude && lhs.coordinate.longitude == rhs.coordinate.longitude
     }
 }
@@ -131,7 +132,7 @@ final class MapViewModel {
         (zoom ?? 0) >= MapViewModel.numberedDotZoom ? .numberedDot : .dot
     }
 
-    func markers(for tour: TourViewModel) -> [StopMarkerModel] {
+    func markers(for tour: TourViewModel, emphasizesDestinationOnly: Bool = false) -> [StopMarkerModel] {
         tour.stops.map { stop in
             let state: StopMarkerModel.State
             if tour.activities[stop.id].visitedAt != nil || tour.isCompleted(stop) {
@@ -142,7 +143,8 @@ final class MapViewModel {
                 state = .upcoming
             }
             return StopMarkerModel(id: stop.id, coordinate: stop.clLocationCoordinate, order: stop.order, name: stop.name,
-                                   state: state, information: stop.markerInformation)
+                                   state: state, information: stop.markerInformation,
+                                   isIllustrated: !emphasizesDestinationOnly || stop.id == (viewedStopID ?? tour.currentStop?.id ?? tour.stops.first?.id))
         }
     }
 

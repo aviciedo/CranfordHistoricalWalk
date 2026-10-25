@@ -225,3 +225,22 @@ Illustration-led Home — review build 60:
 - 90 actual-model tests pass, including 3 Home regressions. Debug/Release syntax and
   whitespace checks pass. Native rendering/SDK type-check/VoiceOver/touch remain
   pending. Product Design visual comparison is blocked, not passed. No publication.
+
+Simplified Map — review build 61:
+- Owner selected direction 1 and requested moving its green turn card above the map.
+  The measured layout now supports an optional top maneuver, map and destination.
+  Existing two-subview callers remain supported. AR's turn card is unchanged.
+- Full-color artwork only for active/viewed destination; other stops retain numbered
+  compact 44-point targets at true GPS coordinates, reserved in artwork collision checks.
+  Google and Apple render the same emphasis policy; Apple compact images are cached.
+- One recenter control replaces the floating stack. View stop/AR directions remain
+  below the map. Previous/Continue/Finish and route/follow are in More. Paused Resume,
+  immediate Undo, arrival Hold and retry/location warnings are retained. Map's pre-start
+  AR entry still uses the existing start/prepare action. No progression logic changed.
+- Google light cartography is quieter ivory/sage/blue with transit/parcel/icon clutter
+  suppressed. Apple uses standard muted map configuration. No invented roads, trees,
+  geography, custom tiles or provider attribution removal.
+- 92 actual-model tests passed (2 new marker-emphasis regressions), both Google style
+  JSON definitions parse, final Debug/Release app/test syntax and whitespace pass.
+  Native SDK type-checking, layout/Map rendering, Menu/AR interactions and outdoor
+  acceptance remain pending. No visual QA pass or publication is claimed.

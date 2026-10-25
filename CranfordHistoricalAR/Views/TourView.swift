@@ -35,6 +35,7 @@ struct TourView: View {
             GeometryReader { viewport in
                 ScrollView {
                     DestinationFirstMapLayout(availableSize: viewport.size) {
+                        turnInstruction
                         map.padding(.horizontal, 24)
                         VStack(spacing: 0) { destination }
                             .fixedSize(horizontal: false, vertical: true)
@@ -110,8 +111,36 @@ struct TourView: View {
         }
     }
 
+    @ViewBuilder
+    private var turnInstruction: some View {
+        if tour.phase == .inProgress, !tour.isWalkPaused, !tour.walkingProgression.hasArrived,
+           let cue = tour.mapWalkingCue {
+            HStack(spacing: 16) {
+                VStack(spacing: 4) {
+                    Image(systemName: cue.direction.symbolName).font(.system(size: 32, weight: .semibold))
+                        .accessibilityHidden(true)
+                    Text(cue.distanceText).font(.subheadline.weight(.semibold)).monospacedDigit()
+                }
+                .frame(minWidth: 56)
+                Rectangle().fill(.white.opacity(0.25)).frame(width: 1, height: 44).accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(cue.streetName.map {
+                        cue.isUpcomingTurn ? "\(cue.direction.instruction) \(cue.isTowardStreet ? "toward" : "onto") \($0)" : "Continue on \($0)"
+                    } ?? (cue.isUpcomingTurn ? cue.direction.instruction : cue.streetLabel))
+                    .font(.headline).fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(16).foregroundStyle(.white)
+            .background(AppTheme.forest, in: RoundedRectangle(cornerRadius: 14))
+            .padding(.horizontal, 24)
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("map.nextTurn")
+        }
+    }
+
     private var map: some View {
-        TourMapView(mapModel: mapModel, bottomInset: 0, onEnterAR: enterWalkingAR)
+        TourMapView(mapModel: mapModel, bottomInset: 0)
             .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
@@ -148,7 +177,9 @@ struct TourView: View {
             .accessibilityIdentifier("map.automaticTransition")
         }
         if tour.phase == .inProgress {
-            NextStopCard(onDetails: { detailStop = tour.currentStop })
+            NextStopCard(onDetails: { detailStop = tour.currentStop }, onEnterAR: enterWalkingAR,
+                         onShowRoute: { mapModel.showUserAndDestination(tour: tour) },
+                         onFollow: { mapModel.requestFollow(tour: tour) })
         } else if tour.phase == .notStarted && mapModel.viewedStopID == nil {
             Button {
                 tour.startTour()
@@ -162,6 +193,16 @@ struct TourView: View {
             .background(AppTheme.forest, in: RoundedRectangle(cornerRadius: 14))
             .disabled(tour.loadState != .loaded)
             .padding(.horizontal, 24).padding(.vertical, 12)
+        }
+        if tour.phase == .notStarted {
+            Button(action: enterWalkingAR) {
+                Label("AR directions", systemImage: "camera.viewfinder")
+                    .font(.subheadline.weight(.semibold)).frame(minHeight: 44)
+            }
+            .buttonStyle(.plain).padding(.horizontal, 24)
+            .disabled(tour.loadState != .loaded)
+            .accessibilityHint("Starts your walk and opens optional camera walking guidance")
+            .accessibilityIdentifier("map.enterAR")
         }
     }
 
@@ -186,30 +227,39 @@ struct TourView: View {
 struct DestinationFirstMapLayout: Layout {
     let availableSize: CGSize
 
+    private func topHeight(_ subviews: Subviews) -> CGFloat {
+        subviews.count == 3 ? subviews[0].sizeThatFits(ProposedViewSize(width: availableSize.width, height: nil)).height : 0
+    }
+
     private func metrics(for subviews: Subviews) -> MapScreenSizing.Metrics {
-        guard availableSize.width > 0, availableSize.height > 0 else {
-            return MapScreenSizing.metrics(availableHeight: 0, destinationHeight: 0)
-        }
-        let proposal = ProposedViewSize(width: availableSize.width, height: nil)
-        let footerHeight = subviews[1].sizeThatFits(proposal).height
-        return MapScreenSizing.metrics(availableHeight: Double(availableSize.height),
-                                       destinationHeight: Double(footerHeight))
+        let top = topHeight(subviews)
+        let reserved = top > 0 ? top + 12 : 0
+        let footer = subviews[subviews.count - 1].sizeThatFits(ProposedViewSize(width: availableSize.width, height: nil)).height
+        return MapScreenSizing.metrics(availableHeight: Double(max(1, availableSize.height - reserved)),
+                                       destinationHeight: Double(footer))
     }
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        guard subviews.count == 2 else { return .zero }
+        guard (2...3).contains(subviews.count) else { return .zero }
         let sizes = metrics(for: subviews)
-        return CGSize(width: availableSize.width, height: CGFloat(sizes.contentHeight))
+        let top = topHeight(subviews)
+        return CGSize(width: availableSize.width, height: CGFloat(sizes.contentHeight) + (top > 0 ? top + 12 : 0))
     }
 
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        guard subviews.count == 2 else { return }
+        guard (2...3).contains(subviews.count) else { return }
         let sizes = metrics(for: subviews)
-        subviews[0].place(at: CGPoint(x: bounds.minX, y: bounds.minY), anchor: .topLeading,
+        let top = topHeight(subviews)
+        var y = bounds.minY
+        if subviews.count == 3 {
+            subviews[0].place(at: CGPoint(x: bounds.minX, y: y), anchor: .topLeading,
+                             proposal: ProposedViewSize(width: availableSize.width, height: top))
+            if top > 0 { y += top + 12 }
+        }
+        subviews[subviews.count - 2].place(at: CGPoint(x: bounds.minX, y: y), anchor: .topLeading,
             proposal: ProposedViewSize(width: availableSize.width, height: CGFloat(sizes.mapHeight)))
-        subviews[1].place(at: CGPoint(x: bounds.minX, y: bounds.minY + CGFloat(sizes.mapHeight + sizes.gap)),
-            anchor: .topLeading, proposal: ProposedViewSize(width: availableSize.width,
-                                                          height: CGFloat(sizes.destinationHeight)))
+        subviews[subviews.count - 1].place(at: CGPoint(x: bounds.minX, y: y + CGFloat(sizes.mapHeight + sizes.gap)),
+            anchor: .topLeading, proposal: ProposedViewSize(width: availableSize.width, height: CGFloat(sizes.destinationHeight)))
     }
 }
 

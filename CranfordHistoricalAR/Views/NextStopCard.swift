@@ -1,35 +1,36 @@
 import SwiftUI
 import TourCore
 
-/// A quiet destination summary. Navigation and arrival never depend on learning or AR.
+/// Destination and exploration actions; the one turn instruction lives above the map.
 struct NextStopCard: View {
     @Environment(TourViewModel.self) private var tour
     var onDetails: (() -> Void)? = nil
+    var onEnterAR: (() -> Void)? = nil
+    var onShowRoute: (() -> Void)? = nil
+    var onFollow: (() -> Void)? = nil
 
     var body: some View {
         if let current = tour.currentStop {
             VStack(alignment: .leading, spacing: 10) {
                 if tour.isWalkPaused {
-                    Text("Walk paused · Destination")
-                        .font(.caption).foregroundStyle(AppTheme.secondaryInk)
+                    Text("Walk paused").font(.caption).foregroundStyle(AppTheme.secondaryInk)
                 } else if tour.walkingProgression.isConfirmingArrival {
-                    Text("Arriving at")
-                        .font(.caption).foregroundStyle(AppTheme.secondaryInk)
+                    Text("Arriving at").font(.caption).foregroundStyle(AppTheme.secondaryInk)
                 } else if tour.automaticTransitionFromStopID != nil && !tour.progress.isCurrentStopVisited {
-                    Text("Now guiding you to")
-                        .font(.caption).foregroundStyle(AppTheme.secondaryInk)
-                } else if !tour.isHeadingToFirstStop && !tour.walkingProgression.hasArrived {
-                    Text("Walking to")
-                        .font(.caption).foregroundStyle(AppTheme.secondaryInk)
+                    Text("Now guiding you to").font(.caption).foregroundStyle(AppTheme.secondaryInk)
                 }
-                Text(tour.isHeadingToFirstStop && !tour.isWalkPaused ? tour.startWalkTitle : current.name)
-                    .font(.system(.title3, design: .serif).weight(.semibold))
-                    .fixedSize(horizontal: false, vertical: true)
+                HStack(alignment: .top, spacing: 8) {
+                    Text(current.name).font(.system(.title2, design: .serif).weight(.semibold))
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Menu { moreActions } label: {
+                        Image(systemName: "ellipsis").font(.title3.weight(.semibold))
+                            .frame(width: 44, height: 44).contentShape(Rectangle())
+                    }
+                    .accessibilityLabel("More walking controls")
+                    .accessibilityIdentifier("map.more")
+                }
                 MapDestinationStatus()
-                if let cue = tour.mapWalkingCue {
-                    ARNavigationArrowView(detail: cue.instruction, cue: cue, isApproximate: false)
-                        .accessibilityIdentifier("map.nextTurn")
-                }
                 if tour.walkingProgression.hasArrived && !tour.isWalkPaused {
                     Text(tour.walkingProgression.isHeld ? "Staying here until you continue." : "Take your time. Directions move on when you leave.")
                         .font(.footnote).foregroundStyle(AppTheme.secondaryInk)
@@ -44,91 +45,75 @@ struct NextStopCard: View {
                         .font(.footnote).foregroundStyle(AppTheme.secondaryInk)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                actionSection
-                routeStatus
+                if tour.isWalkPaused {
+                    Button { tour.startTour() } label: {
+                        Label("Resume walk", systemImage: "figure.walk").frame(minHeight: 44)
+                    }
+                    .buttonStyle(.plain).font(.headline)
+                }
+                // Undo stays discoverable immediately after an automatic transition.
+                if tour.automaticTransitionFromStopID != nil {
+                    Button("Undo · Stay at previous stop") { tour.undoAutomaticTransition() }
+                        .buttonStyle(.plain).font(.subheadline).frame(minHeight: 44)
+                        .accessibilityIdentifier("map.undoAdvance")
+                }
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 12) { explorationActions }
+                    VStack(spacing: 8) { explorationActions }
+                }
+                if tour.isRouteAnEstimate || tour.routingError != nil {
+                    Button("Retry directions") { tour.retryWalkingRoute() }
+                        .frame(minHeight: 44).disabled(tour.isRoutingInFlight || tour.isWalkPaused)
+                    Text(tour.isRouteAnEstimate ? "Walking route unavailable · Distance is an estimate" : "Couldn't update directions. Showing the last route.")
+                        .font(.footnote).foregroundStyle(AppTheme.warning)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
             .fixedSize(horizontal: false, vertical: true)
-            .foregroundStyle(AppTheme.ink)
+            .foregroundStyle(AppTheme.forest)
             .padding(.horizontal, 24).padding(.bottom, 8)
-            .background(AppTheme.parchment)
+            .background(AppTheme.ivory)
         }
     }
 
-    @ViewBuilder private var actionSection: some View {
-        if tour.previousStop != nil {
-            VStack(alignment: .leading, spacing: 4) {
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 24) { detailActions }
-                    VStack(alignment: .leading, spacing: 4) { detailActions }
-                }
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 24) { navigationActions }
-                    VStack(alignment: .leading, spacing: 4) { navigationActions }
-                }
-            }
-        } else {
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 24) { detailActions; navigationActions }
-                VStack(alignment: .leading, spacing: 4) { detailActions; navigationActions }
-            }
-        }
-    }
-
-    @ViewBuilder private var detailActions: some View {
-        if let fromID = tour.automaticTransitionFromStopID {
-            Button("Undo") { tour.undoAutomaticTransition() }
-                .buttonStyle(.plain).font(.subheadline.weight(.medium)).frame(minHeight: 44)
-                .accessibilityHint("Return to \(tour.stop(withID: fromID)?.name ?? "the previous stop") and stay there until you continue")
-                .accessibilityIdentifier("map.undoAdvance")
-        }
+    @ViewBuilder private var explorationActions: some View {
         if let onDetails {
-            Button(action: onDetails) {
-                Label(tour.progress.isCurrentStopVisited && tour.currentStop?.narrationSource != nil ? "Listen to the story" : "View stop", systemImage: "book")
-                    .frame(minHeight: 44).contentShape(Rectangle())
-            }
-            .buttonStyle(.plain).font(.subheadline.weight(.semibold))
+            Button(action: onDetails) { actionLabel("View stop", symbol: "book") }
+                .buttonStyle(.plain)
+        }
+        if let onEnterAR {
+            Button(action: onEnterAR) { actionLabel("AR directions", symbol: "camera.viewfinder") }
+                .buttonStyle(.plain)
+                .disabled(tour.loadState != .loaded)
+                .accessibilityHint("Opens optional camera walking guidance to the current destination")
+                .accessibilityIdentifier("map.enterAR")
         }
     }
 
-    @ViewBuilder private var navigationActions: some View {
+    private func actionLabel(_ title: String, symbol: String) -> some View {
+        Label(title, systemImage: symbol).font(.subheadline.weight(.semibold))
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, 14).padding(.vertical, 6)
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .background(.white, in: Capsule())
+            .overlay(Capsule().strokeBorder(AppTheme.forest.opacity(0.15), lineWidth: 1))
+            .contentShape(Capsule())
+    }
+
+    @ViewBuilder private var moreActions: some View {
         if let previous = tour.previousStop {
             Button { tour.goToPreviousStop() } label: {
-                Label("Previous stop", systemImage: "arrow.left")
-                    .frame(minHeight: 44).contentShape(Rectangle())
+                Label("Previous stop: \(previous.name)", systemImage: "arrow.left")
             }
-            .buttonStyle(.plain).font(.subheadline.weight(.medium))
-            .accessibilityHint("Return to \(previous.name). Saved visits, stories and audio are preserved.")
             .accessibilityIdentifier("map.previousStop")
         }
-        if tour.isWalkPaused {
-            Button { tour.startTour() } label: {
-                Label("Resume walk", systemImage: "figure.walk").frame(minHeight: 44)
-            }
-            .buttonStyle(.plain).font(.subheadline.weight(.semibold))
-        } else if tour.canContinueCurrentStop {
+        if tour.canContinueCurrentStop {
             Button { tour.completeCurrentStopAndAdvance() } label: {
                 Label(tour.nextStop == nil ? "Finish walk" : "Continue now", systemImage: "arrow.right")
-                    .frame(minHeight: 44).contentShape(Rectangle())
             }
-            .buttonStyle(.plain).font(.subheadline.weight(.medium))
-            .accessibilityHint("Changes the walking destination; listening and finding a bonus are optional")
         }
-    }
-
-    @ViewBuilder private var routeStatus: some View {
-        if tour.isRouteAnEstimate || tour.routingError != nil {
-            Button("Retry directions") { tour.retryWalkingRoute() }
-                .frame(minHeight: 44).disabled(tour.isRoutingInFlight || tour.isWalkPaused)
-        }
-        if tour.isRouteAnEstimate {
-            Label("Walking route unavailable · Distance is an estimate", systemImage: "info.circle")
-                .font(.footnote).foregroundStyle(AppTheme.warning)
-                .fixedSize(horizontal: false, vertical: true)
-        } else if tour.routingError != nil {
-            Label("Couldn't update directions. Showing the last route.", systemImage: "wifi.exclamationmark")
-                .font(.footnote).foregroundStyle(AppTheme.secondaryInk)
-                .fixedSize(horizontal: false, vertical: true)
-        }
+        if let onShowRoute { Button("Show walking route", systemImage: "scope", action: onShowRoute) }
+        if let onFollow { Button("Center on my location", systemImage: "location.fill", action: onFollow).disabled(tour.userLocation == nil) }
     }
 }
 
