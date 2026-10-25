@@ -74,3 +74,10 @@ AR refinement — review build 48:
 - 219 core and 66 portable actual-model tests pass; Debug/Release parsing passes.
   Native RealityKit build/rendering and real street stability remain unverified.
 - See AR-ARROWS.md and the build-48 field checklist. No publication in this task.
+
+AR clarification — review build 49:
+- Confirmed hunter-green/white styling and about 5 m repositioning.
+- Removed the world-space street-label mesh/plate. Street names remain only in the
+  unchanged bottom direction card; route street identity still protects turn stability.
+- Shared logic is unchanged from the passing 219-core/66-model suite. Debug/Release
+  syntax checks repeated after renderer removal. Native iPhone acceptance is pending.

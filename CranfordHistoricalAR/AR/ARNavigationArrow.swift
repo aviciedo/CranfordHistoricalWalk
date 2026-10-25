@@ -47,17 +47,14 @@ final class ARNavigationArrowEntity: Entity {
     static let heightBelowCamera: Float = 1.15
     private let holder = Entity()
     private let heading = Entity()
-    private let streetLabel = Entity()
     private var anchorState = ARStreetGuidance.AnchorState()
     private var renderedPlacement: ARStreetGuidance.Placement?
-    private var renderedStreet: String?
     private(set) var isShowing = false
 
     required init() {
         super.init()
         heading.addChild(ARChevronArt.makeGroup())
         holder.addChild(heading)
-        holder.addChild(streetLabel)
         holder.isEnabled = false
         addChild(holder)
     }
@@ -86,33 +83,7 @@ final class ARNavigationArrowEntity: Entity {
         let lift = Float(ARStreetGuidance.minimumClearanceMeters) - arrowBounds.min.y
         let position = SIMD3<Float>(Float(pinned.position.x), Float(pinned.position.y) + lift, Float(pinned.position.z))
         holder.transform = Transform(scale: .one, rotation: facing, translation: position)
-        if renderedStreet != pinned.instruction.streetName { updateStreetLabel(pinned.instruction.streetName) }
-        streetLabel.position = [0, arrowBounds.max.y + 0.4, 0]
         renderedPlacement = pinned
-    }
-
-    /// Text/mesh work happens only when the street changes, never once per camera frame.
-    private func updateStreetLabel(_ name: String?) {
-        for child in Array(streetLabel.children) { child.removeFromParent() }
-        renderedStreet = name
-        guard let name else { return }
-        let mesh = MeshResource.generateText(name, extrusionDepth: 0.002,
-            font: .systemFont(ofSize: 0.2, weight: .semibold), containerFrame: .zero,
-            alignment: .center, lineBreakMode: .byWordWrapping)
-        let text = ModelEntity(mesh: mesh, materials: [UnlitMaterial(color: .white)])
-        let bounds = text.visualBounds(relativeTo: nil)
-        guard bounds.extents.x.isFinite, bounds.extents.y.isFinite,
-              bounds.extents.x > 0, bounds.extents.y > 0 else { return }
-        let scale = min(Float(1), 3.1 / max(0.001, bounds.extents.x))
-        text.scale = SIMD3<Float>(repeating: scale)
-        let center = bounds.center * scale
-        text.position = [-center.x, -center.y, 0.04]
-        let width = max(0.8, bounds.extents.x * scale + 0.3)
-        let height = max(0.4, bounds.extents.y * scale + 0.2)
-        let plate = ModelEntity(mesh: .generateBox(width: width, height: height, depth: 0.05, cornerRadius: 0.04),
-                                materials: [UnlitMaterial(color: UIColor(AppTheme.forest))])
-        plate.addChild(text)
-        streetLabel.addChild(plate)
     }
 
     /// Transient lost ground/tracking hides the sign without throwing away its world pose.

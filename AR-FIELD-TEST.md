@@ -1,10 +1,10 @@
-# Field acceptance — review build 48
+# Field acceptance — review build 49
 
 Status: NOT EXECUTED ON SITE. Linux unit tests do not verify iPhone GPS, street
 safety, compass alignment, camera recognition, real plaque dimensions or battery use.
 Do not mark this checklist passed until a tester records the evidence below.
 
-Install the complete review ZIP on a real iPhone using Xcode. Confirm build 48 in
+Install the complete review ZIP on a real iPhone using Xcode. Confirm build 49 in
 Developer and narration release cedar-2. Keep Simulated location OFF. Use the full
 “Clear visits, stories & bonuses” test reset only when you want a clean activity run;
 ordinary visit-only reset intentionally retains reading/listening/bonus progress.
@@ -88,12 +88,12 @@ Mill/Greystone bonus acceptance:
   a saved accomplishment is not a fresh world anchor. Saved story/bonus previews
   may remain available independently, as intended by the app.
 
-Build 48 — fixed chunky street signs (NOT RUN on device):
+Build 49 — fixed chunky street signs (NOT RUN on device):
 - Stand still for 30 seconds with a reliable route and detected ground. Rotate/tilt
   the phone and move it at arm's length: arrows must not billboard, spin or drift
   with GPS updates. Turning away should take the sign out of the camera view.
-- Inspect three deep, hunter-green chevrons with white faces and the actual routed
-  street name above them. Left/right must match the bottom turn instruction;
+- Inspect three deep, hunter-green chevrons with white faces. The routed street name
+  must appear only in the bottom direction card, with no floating 3D text. Left/right must match the bottom turn instruction;
   straight/diagonal/U-turn states must remain upright and above detected ground.
 - Walk less than five metres: position/yaw/direction remain fixed. Walk roughly five
   metres from the last placement: one new placement appears ahead, then holds again.
