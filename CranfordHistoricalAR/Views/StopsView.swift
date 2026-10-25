@@ -32,15 +32,9 @@ struct StopsContent: View {
                                     VStack(alignment: .leading, spacing: 6) {
                                         Text("Stop \(stop.order)").font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
                                         Text(stop.name).font(.system(.title3, design: .serif).weight(.semibold))
-                                        Text(placeStatus(stop)).font(.caption).foregroundStyle(AppTheme.secondaryInk)
-                                        if !storyStatus(stop).isEmpty {
-                                            Text(storyStatus(stop)).font(.caption).foregroundStyle(AppTheme.secondaryInk)
+                                        ForEach(statusLabels(for: stop), id: \.self) { status in
+                                            Text(status).font(.caption).foregroundStyle(AppTheme.secondaryInk)
                                         }
-                                        if stop.narrationSource == nil {
-                                            Text("Photos & history · Narration coming soon")
-                                                .font(.caption).foregroundStyle(AppTheme.secondaryInk)
-                                        }
-
                                     }
                                     Spacer(minLength: 8)
                                     Image(systemName: "chevron.right").font(.subheadline)
@@ -50,7 +44,8 @@ struct StopsContent: View {
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
-                            .accessibilityLabel("Stop \(stop.order), \(stop.name), \(placeStatus(stop)), \(storyStatus(stop)), \(stop.narrationSource == nil ? "photos and history, narration coming soon" : "details and narration")")
+                            .accessibilityLabel((["Stop \(stop.order)", stop.name] + statusLabels(for: stop)).joined(separator: ", "))
+                            .accessibilityHint("Opens stop details")
                             Divider()
                         }
                     }
@@ -65,23 +60,13 @@ struct StopsContent: View {
         .onChange(of: navigation.homeReturnID) { _, _ in detailStop = nil }
     }
 
-    private func storyStatus(_ stop: HistoricalStop) -> String {
-        let saved = tour.activities[stop.id]
-        var parts: [String] = []
-        if saved.listenedAt != nil { parts.append("Listened") }
-        if saved.readAt != nil { parts.append("Read") }
-        if saved.bonusFoundAt != nil { parts.append("Bonus found") }
-        return parts.joined(separator: " · ")
-    }
-
-    private func placeStatus(_ stop: HistoricalStop) -> String {
-        let visited = tour.activities[stop.id].visitedAt != nil || tour.isCompleted(stop)
-        if stop.id == tour.currentStop?.id {
-            if tour.isAtCurrentStopNow { return "Here · Visited" }
-            if tour.isCompleted(stop) { return "Current stop · Visited" }
-            return visited ? "Next on your walk · Previously visited" : "Next on your walk"
-        }
-        return visited ? "Visited" : "Not visited yet"
+    /// The list shows earned place accomplishments only; reading and availability
+    /// remain on the detail page and never imply a physical visit or bonus discovery.
+    private func statusLabels(for stop: HistoricalStop) -> [String] {
+        var labels: [String] = []
+        if tour.activities[stop.id].visitedAt != nil || tour.isCompleted(stop) { labels.append("Visited") }
+        if tour.activities[stop.id].bonusFoundAt != nil { labels.append("On-site bonus unlocked") }
+        return labels
     }
 
     private func restoreStopReturn() {

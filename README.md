@@ -1,3 +1,11 @@
+## Current Stops list — build 54
+
+The Stops list shows only earned Visited and On-site bonus unlocked labels. Unvisited
+stops have no status line. Reading/listening, current-destination and media-availability
+labels are removed from this list, including its VoiceOver row descriptions. Detail
+pages and saved activities are retained. Swift syntax checks passed; device layout
+verification is pending.
+
 ## Current Map controls — build 53
 
 Previous stop routes to the preceding stop in the tour order, including skipped stops.

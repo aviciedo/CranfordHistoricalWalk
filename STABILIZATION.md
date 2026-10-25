@@ -118,3 +118,11 @@ Previous-stop navigation — review build 53:
 - 72 portable actual-model tests passed, including 6 new previous-stop regressions.
   Debug/Release syntax checks pass. Added a native audio-identity regression; it has
   not run here. Google/Apple UI layout, device routing and audio remain native checks.
+
+Stops list simplification — review build 54:
+- Shows Visited only for saved/current-walk visits and On-site bonus unlocked only
+  when the saved bonus exists. Both can appear independently, matching the ledger.
+- Removes unvisited, current/next, reading/listening and media-availability copy from
+  this screen and its VoiceOver descriptions. Stops without earned status have none.
+- View-only change: no progress or saved activity is cleared; detail pages retain
+  their controls/content. Debug/Release parsing passed; native visual check pending.
