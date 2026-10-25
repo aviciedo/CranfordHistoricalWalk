@@ -155,3 +155,17 @@ Build 55 publication and illustration export — 2026-10-25:
 - The existing 227-core/82-model passing results and Debug/Release syntax checks
   remain the latest verification. Publication does not establish native compiler,
   device, outdoor AR or GPS acceptance. These checks remain pending.
+
+Player refinement — review build 56:
+- Artwork grows from 64 points to 96–128, proportional to available screen height.
+  Title moves from headline to the shared title2 semibold serif typography.
+- White circular 64-point play/pause control with 36-point scaled symbol; the glyph
+  caps at 48 points. Close retains a separate 44-point top-right target.
+- Two-column layout removes the old 44-point blank strip. Accessibility sizes place
+  the wrapping title above the controls. Seek target grows from 36 to 44 points.
+- Layout minimum is 180–220 points, with content-driven growth rather than clipping
+  for large text or failures. Existing actual-height footer reservation is retained.
+- Debug and Release app/test syntax parsing and whitespace checks passed. This is
+  a view-only refinement: no player service, routing or persistence logic changes.
+  Native Apple compilation, rendered layout, VoiceOver and touch checks remain pending.
+- No GitHub publication in this task.

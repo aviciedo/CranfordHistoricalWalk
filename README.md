@@ -1,3 +1,14 @@
+## Current narration player — build 56
+
+The shared player now uses a screen-proportional 96–128 point illustration, a larger
+semibold serif title matching the stop headings, and a white 64-point play/pause button.
+Title and playback occupy one column beside the artwork, leaving Close at top right.
+The seek target is 44 points tall. Accessibility text sizes use a full-width wrapping
+title above the artwork and transport; Reduce Motion also wraps instead of scrolling.
+The footer reserves its real height, including error messages. Audio and navigation
+behavior are unchanged. Debug/Release syntax parsing passed; native layout, controls,
+and VoiceOver verification remain pending. See [PLAYER-REFINEMENT.md](PLAYER-REFINEMENT.md).
+
 ## Figma illustration download
 
 [Download all five tour stop illustrations](docs/design/exports/Cranford-Tour-Illustrations-Figma.zip?raw=true).

@@ -7,40 +7,19 @@ struct SharedNarrationBar: View {
     @Environment(TourViewModel.self) private var tour
     let availableHeight: CGFloat
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .title2) private var transportSymbolSize: CGFloat = 36
+
+    private var artworkSize: CGFloat { max(96, min(128, availableHeight * 0.14)) }
+
     var body: some View {
         let player = dependencies.narrationPlayer
         if player.isPersistentPlayerVisible, let id = player.stopID,
            let stop = tour.stop(withID: id) {
             VStack(alignment: .leading, spacing: 0) {
                 Spacer(minLength: 0)
-                HStack(spacing: 14) {
-                    StopListIllustration(stopID: stop.id)
-                        .frame(width: 64, height: 64)
-                        .accessibilityHidden(true)
-                    ScrollingStoryTitle(text: stop.name)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    Button {
-                        guard player.prepare(stop) else { return }
-                        player.togglePlayPause()
-                    } label: {
-                        Group {
-                            if player.status == .loading {
-                                ProgressView().tint(.white)
-                            } else {
-                                Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
-                                    .font(.system(size: 30, weight: .semibold))
-                            }
-                        }
-                        .frame(width: 48, height: 48)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(player.isPlaying ? "Pause narration" : "Play narration for \(stop.name)")
-                    .accessibilityValue(player.status == .loading ? "Loading" : "")
-                }
-                .padding(.horizontal, 16)
-                // Reserve a separate corner for Close, clear of the transport controls.
-                .padding(.top, 44)
+                storyControls(for: stop)
+                    .padding(.horizontal, 16).padding(.top, 16)
                 if case .failed(let message) = player.status {
                     Text(message).font(.footnote)
                         .fixedSize(horizontal: false, vertical: true)
@@ -48,14 +27,15 @@ struct SharedNarrationBar: View {
                 }
                 Spacer(minLength: 0)
                 NarrationSeekRail(stop: stop)
-                    .frame(height: 36)
+                    .frame(height: 44)
                     .padding(.horizontal, 16).padding(.bottom, 4)
             }
-            .frame(minHeight: max(148, min(200, availableHeight * 0.2)))
+            // Content can grow for large text and errors; the host reserves its actual height.
+            .frame(minHeight: max(180, min(220, availableHeight * 0.2)))
             .overlay(alignment: .topTrailing) {
                 Button { player.dismissPersistentPlayer() } label: {
                     Image(systemName: "xmark")
-                        .font(.system(size: 15, weight: .medium))
+                        .font(.system(size: 17, weight: .medium))
                         .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
                 }
@@ -72,21 +52,81 @@ struct SharedNarrationBar: View {
             .accessibilityIdentifier("narration.persistentPlayer")
         }
     }
+
+    @ViewBuilder
+    private func storyControls(for stop: HistoricalStop) -> some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 12) {
+                ScrollingStoryTitle(text: stop.name)
+                    .padding(.trailing, 44)
+                HStack(spacing: 16) {
+                    artwork(for: stop)
+                    Spacer(minLength: 0)
+                    playbackButton(for: stop)
+                }
+            }
+        } else {
+            HStack(alignment: .center, spacing: 16) {
+                artwork(for: stop)
+                VStack(alignment: .leading, spacing: 12) {
+                    // The title reserves the close button's corner without wasting a full top row.
+                    ScrollingStoryTitle(text: stop.name)
+                        .padding(.trailing, 44)
+                    playbackButton(for: stop)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
+    private func artwork(for stop: HistoricalStop) -> some View {
+        StopListIllustration(stopID: stop.id)
+            .frame(width: artworkSize, height: artworkSize)
+            .accessibilityHidden(true)
+    }
+
+    private func playbackButton(for stop: HistoricalStop) -> some View {
+        let player = dependencies.narrationPlayer
+        return Button {
+            guard player.prepare(stop) else { return }
+            player.togglePlayPause()
+        } label: {
+            Group {
+                if player.status == .loading {
+                    ProgressView().tint(AppTheme.forest)
+                        .controlSize(.large)
+                } else {
+                    Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
+                        .font(.system(size: min(48, transportSymbolSize), weight: .semibold))
+                        .offset(x: player.isPlaying ? 0 : 2)
+                }
+            }
+            .foregroundStyle(AppTheme.forest)
+            .frame(width: 64, height: 64)
+            .background(.white, in: Circle())
+            .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(player.isPlaying ? "Pause narration" : "Play narration for \(stop.name)")
+        .accessibilityValue(player.status == .loading ? "Loading" : "")
+        .accessibilityIdentifier("narration.playPause")
+    }
 }
 
 /// A full spoken accessibility label, with a slow visual marquee only when the title overflows.
 private struct ScrollingStoryTitle: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.scenePhase) private var scenePhase
     let text: String
     @State private var textWidth: CGFloat = 0
     @State private var startedAt = Date()
-    @ScaledMetric(relativeTo: .headline) private var lineHeight: CGFloat = 26
+    @ScaledMetric(relativeTo: .title2) private var lineHeight: CGFloat = 34
 
     var body: some View {
         Group {
-            if reduceMotion {
-                Text(text).font(.headline)
+            if reduceMotion || dynamicTypeSize.isAccessibilitySize {
+                Text(text).font(AppTheme.Fonts.title)
                     .fixedSize(horizontal: false, vertical: true)
             } else {
                 GeometryReader { viewport in
@@ -129,7 +169,7 @@ private struct ScrollingStoryTitle: View {
     }
 
     private var title: some View {
-        Text(text).font(.headline)
+        Text(text).font(AppTheme.Fonts.title)
             .fixedSize(horizontal: true, vertical: false)
     }
 }
@@ -155,8 +195,7 @@ private struct NarrationSeekRail: View {
                 Capsule().fill(.white).frame(width: viewport.size.width * CGFloat(progress))
             }
             .frame(height: 3)
-            .frame(maxHeight: .infinity, alignment: .bottom)
-            .padding(.bottom, 6)
+            .frame(maxHeight: .infinity, alignment: .center)
             .frame(width: viewport.size.width, height: viewport.size.height)
             .contentShape(Rectangle())
             .gesture(DragGesture(minimumDistance: 0)
