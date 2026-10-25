@@ -1,3 +1,25 @@
+# Build 62 — Stops row refinement
+
+final result: blocked
+
+Target: owner's current Stops screenshot and explicit narrow request to remove
+repeated Stop N labels, emphasize illustrations and tighten artwork/name spacing.
+No gallery redesign or regenerated illustration assets were requested.
+
+Implemented source: existing original art in 104 × 88-point frames (formerly 82 × 76),
+native aspect ratios, artwork aligned toward names, 10-point gap (formerly 14),
+flexible aligned serif name column, no visible Stop N line. Spoken stop numbers and
+earned Visited/On-site bonus unlocked labels remain. Full-row taps and scrolling
+are unchanged. No replacement art or number badges were introduced.
+
+Swift syntax and whitespace checks passed. No native SDK or simulator is available
+on Linux, so rendered comparison, Apple build and accessibility acceptance remain
+blocked. Verify all five rows on compact/large phones, Dynamic Type, earned states
+and with the player visible. Check art is undistorted, long names wrap, all controls
+remain reachable and VoiceOver retains stop order/name/status.
+
+---
+
 # Build 61 — Simplified Map, turn card above cartography
 
 final result: blocked

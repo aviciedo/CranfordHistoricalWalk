@@ -1,3 +1,12 @@
+## Refined Stops rows — build 62
+
+Removed repeated visible Stop 1 / Stop 2 labels. Original illustrations grow from
+82 × 76 to a 104 × 88-point area while preserving their native aspect ratios.
+The artwork aligns toward the names with a 10-point gap instead of 14. Names share
+a consistent leading edge, wrap naturally, and use the existing serif typography.
+Earned status, full-row taps and spoken stop numbers are retained. Native visual
+verification remains pending; Debug/Release Swift syntax checks passed.
+
 ## Simplified Map — build 61
 
 Direction 1 is implemented with the requested green next-turn card directly beneath

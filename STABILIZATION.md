@@ -244,3 +244,15 @@ Simplified Map — review build 61:
   JSON definitions parse, final Debug/Release app/test syntax and whitespace pass.
   Native SDK type-checking, layout/Map rendering, Menu/AR interactions and outdoor
   acceptance remain pending. No visual QA pass or publication is claimed.
+
+Stops row refinement — review build 62:
+- Removed the visible repeated Stop N text. VoiceOver still announces the number,
+  name and only earned statuses. No new badge, artwork, copy or functionality added.
+- Enlarged illustration area to 104 × 88 from 82 × 76, with original raster/Canvas
+  aspect ratios and trailing alignment to the text. Gap is 10 rather than 14 points.
+- Name column expands to available width and wraps vertically; row tap, disclosure,
+  visited/bonus labels and existing minimum-height/scroll behavior are retained.
+- Debug/Release parsing and source/whitespace review passed. No logic changes or new
+  tests for this view refinement. Native Xcode build, small/large text, all five art
+  proportions, player-visible layout and VoiceOver/touch acceptance remain pending.
+  No publication in this task.

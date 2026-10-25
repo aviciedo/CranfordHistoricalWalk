@@ -25,18 +25,20 @@ struct StopsContent: View {
                     LazyVStack(alignment: .leading, spacing: 0) {
                         ForEach(tour.stops) { stop in
                             Button { detailStop = stop } label: {
-                                HStack(spacing: 14) {
+                                HStack(spacing: 10) {
                                     StopListIllustration(stopID: stop.id)
-                                        .frame(width: 82, height: 76)
+                                        .aspectRatio(stop.id == "hpab-004" ? 1 : stop.id == "hpab-005" ? 100.0 / 90.0 : 4.0 / 3.0,
+                                                     contentMode: .fit)
+                                        .frame(width: 104, height: 88, alignment: .trailing)
                                         .accessibilityHidden(true)
                                     VStack(alignment: .leading, spacing: 6) {
-                                        Text("Stop \(stop.order)").font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
                                         Text(stop.name).font(.system(.title3, design: .serif).weight(.semibold))
+                                            .fixedSize(horizontal: false, vertical: true)
                                         ForEach(statusLabels(for: stop), id: \.self) { status in
                                             Text(status).font(.caption).foregroundStyle(AppTheme.secondaryInk)
                                         }
                                     }
-                                    Spacer(minLength: 8)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                                     Image(systemName: "chevron.right").font(.subheadline)
                                 }
                                 .padding(.vertical, 12)
