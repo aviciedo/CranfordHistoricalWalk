@@ -98,6 +98,7 @@ struct TourView: View {
             mapModel.select(stopID: nil)
         }
         .onChange(of: navigation.focusedStopID) { _, _ in focusRequestedStop() }
+        .onChange(of: tour.walkSessionID) { _, _ in mapModel.showUserAndDestination(tour: tour) }
         .onChange(of: tour.currentStop?.id) { _, _ in
             mapModel.showUserAndDestination(tour: tour)
             dependencies.imageLoader.prefetch([tour.currentStop, tour.nextStop].compactMap { $0 })

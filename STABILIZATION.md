@@ -191,3 +191,21 @@ Simplified plaque action — review build 58:
 - Source/whitespace and Debug/Release syntax checks passed; no service, scanner,
   saved activity or eligibility logic changed. Native layout/VoiceOver/touch checks
   remain pending. No publication in this task.
+
+Active walking map — review build 59:
+- Owner chose user + departure stop + destination framing. Added navigation camera
+  mode and self-contained walking-leg camera bounds for both Google and Apple maps.
+- Camera follows meaningful GPS displacement (15 m) and late route changes; normal
+  small movements update the dot without refitting. Manual gestures pause framing.
+- Destination changes retain the outgoing destination, including Previous backtracking.
+  Mid-walk first appearance uses the preceding itinerary stop; new sessions discard
+  old departure context. Before GPS, destination framing still works.
+- Route geometry is valid, destination-matched and excludes straight-line estimates.
+  Dot remains actual GPS, with uncertainty, never path-snapped or automatically marched.
+  Added short interpolation on Apple like the existing Google position update.
+- Apple camera padding reduced for short maps; minimum extent is 250 m. Google
+  walking bounds have a small minimum geographic extent to avoid extreme close zoom.
+- 87 actual-model tests pass, including 5 new map regressions. Debug/Release app/test
+  syntax parsing and source/whitespace checks pass. Core logic is unchanged; its prior
+  227-test result was not rerun. Native Apple build, both SDK layouts/rendering and
+  field GPS movement remain pending. See MAP-TRACKING.md. No publication in this task.

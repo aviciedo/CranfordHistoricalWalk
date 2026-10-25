@@ -18,7 +18,7 @@ struct TourMapView: View {
                     GoogleMapView(
                         markers: mapModel.markers(for: tour),
                         userPuck: mapModel.userPuck(for: tour),
-                        routeCoordinates: tour.isRouteAnEstimate ? [] : (tour.currentRoute?.clCoordinates ?? []),
+                        routeCoordinates: mapModel.walkingRouteCoordinates(for: tour).map(\.clLocationCoordinate),
                         cameraRequest: mapModel.cameraRequest,
                         bottomInset: bottomInset,
                         onUserGesture: { mapModel.userDidMoveCamera() },
@@ -33,7 +33,7 @@ struct TourMapView: View {
                 } else {
                     AppleTourMapView(markers: mapModel.markers(for: tour),
                         userPuck: mapModel.userPuck(for: tour),
-                        routeCoordinates: tour.isRouteAnEstimate ? [] : (tour.currentRoute?.clCoordinates ?? []),
+                        routeCoordinates: mapModel.walkingRouteCoordinates(for: tour).map(\.clLocationCoordinate),
                         cameraRequest: mapModel.cameraRequest,
                         onUserGesture: { mapModel.userDidMoveCamera() },
                         onMarkerTap: { mapModel.select(stopID: $0) },
@@ -59,10 +59,11 @@ struct TourMapView: View {
                     .padding(.trailing, 16).padding(.bottom, 20)
             }
         }
-        .onChange(of: tour.userLocation) { _, _ in mapModel.followIfNeeded(tour: tour) }
+        .onChange(of: tour.userLocation) { _, _ in mapModel.updateWalkingFrame(tour: tour) }
+        .onChange(of: tour.currentRoute) { _, _ in mapModel.updateWalkingFrame(tour: tour, routeChanged: true) }
         .onAppear { if mapModel.cameraRequest == nil { mapModel.showUserAndDestination(tour: tour) } }
         .onChange(of: tour.stops.count) { _, _ in
-            if mapModel.cameraMode == .overview { mapModel.requestOverview(animated: false) }
+            if mapModel.cameraMode == .overview { mapModel.showUserAndDestination(tour: tour) }
         }
         .onChange(of: tour.userLocation == nil) { _, isNil in
             if !isNil, mapModel.cameraMode == .overview { mapModel.showUserAndDestination(tour: tour) }
@@ -265,7 +266,11 @@ struct AppleTourMapView: UIViewRepresentable {
                 }
             }
             if let sample = parent.userPuck {
-                if let puck { puck.coordinate = sample.coordinate }
+                if let puck {
+                    UIView.animate(withDuration: 0.35, delay: 0, options: [.beginFromCurrentState, .curveLinear]) {
+                        puck.coordinate = sample.coordinate
+                    }
+                }
                 else { let point = SiteAnnotation(puck: sample); puck = point; map.addAnnotation(point) }
                 if let accuracy { map.removeOverlay(accuracy) }
                 let circle = MKCircle(center: sample.coordinate, radius: max(0, sample.accuracyMeters))
@@ -306,6 +311,8 @@ struct AppleTourMapView: UIViewRepresentable {
                     map.setCamera(camera, animated: request.animated)
                 case .fitUserAndDestination(let user, let destination):
                     fit([user, destination] + parent.routeCoordinates, on: map, animated: request.animated)
+                case .fitWalkingLeg(let coordinates):
+                    fit(coordinates.map(\.clLocationCoordinate), on: map, animated: request.animated)
                 case .zoomTo(let target):
                     let current = zoomLevel(on: map)
                     let factor = pow(2.0, Double(current - target))
@@ -330,10 +337,10 @@ struct AppleTourMapView: UIViewRepresentable {
                 bounds = bounds.union(MKMapRect(x: point.x, y: point.y, width: 1, height: 1))
             }
             // Give coincident user/destination a usable street-level region.
-            let minimum = 500 / MKMetersPerMapPointAtLatitude(coordinates[0].latitude)
+            let minimum = 250 / MKMetersPerMapPointAtLatitude(coordinates[0].latitude)
             if bounds.width < minimum { bounds = bounds.insetBy(dx: -(minimum - bounds.width) / 2, dy: 0) }
             if bounds.height < minimum { bounds = bounds.insetBy(dx: 0, dy: -(minimum - bounds.height) / 2) }
-            map.setVisibleMapRect(bounds, edgePadding: UIEdgeInsets(top: 65, left: 45, bottom: 40, right: 84), animated: animated)
+            map.setVisibleMapRect(bounds, edgePadding: UIEdgeInsets(top: min(28, map.bounds.height * 0.15), left: 30, bottom: min(30, map.bounds.height * 0.15), right: 74), animated: animated)
         }
 
         func mapView(_ mapView: MKMapView, regionWillChangeAnimated animated: Bool) {

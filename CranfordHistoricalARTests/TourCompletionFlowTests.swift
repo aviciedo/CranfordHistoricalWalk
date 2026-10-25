@@ -11,6 +11,117 @@ import CoreLocation
 /// The same state-flow tests run against the native model and its Linux Foundation harness.
 @MainActor
 final class TourCompletionFlowTests: XCTestCase {
+    func testWalkingFrameFocusesDestinationWithoutGPSAndKeepsDepartureAfterAdvance() async throws {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.startTour()
+        let map = MapViewModel()
+        map.showUserAndDestination(tour: tour)
+        guard case .fitWalkingLeg(let first) = map.cameraRequest?.kind else { return XCTFail("Expected walking frame") }
+        XCTAssertEqual(first, [stops[0].coordinate])
+        XCTAssertEqual(map.cameraMode, .navigation)
+        tour.completeCurrentStopAndAdvance()
+        map.showUserAndDestination(tour: tour)
+        guard case .fitWalkingLeg(let next) = map.cameraRequest?.kind else { return XCTFail("Expected next leg") }
+        XCTAssertTrue(next.contains(stops[0].coordinate))
+        XCTAssertTrue(next.contains(stops[1].coordinate))
+        XCTAssertFalse(next.contains(stops[4].coordinate))
+        XCTAssertNil(map.userPuck(for: tour), "Do not invent a user position without GPS")
+        XCTAssertTrue(tour.goToPreviousStop())
+        map.showUserAndDestination(tour: tour)
+        guard case .fitWalkingLeg(let back) = map.cameraRequest?.kind else { return XCTFail("Expected return leg") }
+        XCTAssertTrue(back.contains(stops[1].coordinate), "Backtracking retains the actual previous destination")
+        XCTAssertTrue(back.contains(stops[0].coordinate))
+    }
+
+    func testWalkingFrameRestoresItineraryDepartureAndClearsItForNewWalk() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.startTour()
+        tour.completeCurrentStopAndAdvance()
+        let map = MapViewModel() // Map first appears mid-tour.
+        map.showUserAndDestination(tour: tour)
+        guard case .fitWalkingLeg(let points) = map.cameraRequest?.kind else { return XCTFail("Expected leg") }
+        XCTAssertTrue(points.contains(stops[0].coordinate))
+        tour.resetTour()
+        tour.startTour()
+        map.showUserAndDestination(tour: tour)
+        guard case .fitWalkingLeg(let reset) = map.cameraRequest?.kind else { return XCTFail("Expected fresh leg") }
+        XCTAssertEqual(reset, [stops[0].coordinate])
+    }
+
+    func testLateWalkingRouteFramesCurvesButNeverStealsManualCamera() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.startTour()
+        let map = MapViewModel()
+        map.showUserAndDestination(tour: tour)
+        let before = map.cameraRequest?.id
+        let origin = GeoCoordinate(latitude: 40.648, longitude: -74.304)
+        let corner = GeoCoordinate(latitude: 40.647, longitude: -74.30)
+        tour.currentRoute = WalkingRoute(origin: origin, destination: stops[0].coordinate,
+            distanceMeters: 600, durationSeconds: 400, routeCoordinates: [origin, corner, stops[0].coordinate], source: .appleMaps)
+        map.updateWalkingFrame(tour: tour, routeChanged: true)
+        XCTAssertNotEqual(map.cameraRequest?.id, before)
+        guard case .fitWalkingLeg(let points) = map.cameraRequest?.kind else { return XCTFail("Expected route bounds") }
+        XCTAssertTrue(points.contains(corner), "Bounds must include the actual street geometry")
+        map.userDidMoveCamera()
+        let manuallyPositioned = map.cameraRequest
+        map.updateWalkingFrame(tour: tour, routeChanged: true)
+        XCTAssertEqual(map.cameraRequest, manuallyPositioned)
+        map.showUserAndDestination(tour: tour)
+        XCTAssertEqual(map.cameraMode, .navigation)
+        XCTAssertNotEqual(map.cameraRequest, manuallyPositioned)
+    }
+
+    func testWalkingPolylineRejectsEstimatesAndOldDestinationRoutes() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.startTour()
+        let map = MapViewModel()
+        let origin = stops[0].coordinate
+        tour.currentRoute = .straightLineEstimate(from: origin, to: origin)
+        XCTAssertTrue(map.walkingRouteCoordinates(for: tour).isEmpty)
+        var route = WalkingRoute.straightLineEstimate(from: origin, to: origin)
+        route.source = .googleRoutesAPI
+        tour.currentRoute = route
+        XCTAssertEqual(map.walkingRouteCoordinates(for: tour).count, 2)
+        tour.completeCurrentStopAndAdvance()
+        tour.currentRoute = route // A stale provider completion must not draw the old leg.
+        XCTAssertTrue(map.walkingRouteCoordinates(for: tour).isEmpty)
+        route.destination = stops[1].coordinate
+        route.routeCoordinates = [origin, GeoCoordinate(latitude: .nan, longitude: 0)]
+        tour.currentRoute = route
+        XCTAssertTrue(map.walkingRouteCoordinates(for: tour).isEmpty)
+    }
+
+    func testGPSDotMovesOffRouteWithoutSnappingAndCameraIgnoresSmallJitter() async throws {
+        let source = ActivityTestLocationService(status: .authorized)
+        let tour = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),
+            locationService: source, directionsService: PreviewDirectionsService())
+        await tour.loadStopsIfNeeded(); tour.startTour()
+        defer { cleanUp(tour) }
+        let map = MapViewModel()
+        // Far from all stops: this test must not trigger an arrival.
+        let origin = GeoCoordinate(latitude: 40.67, longitude: -74.32)
+        let initial = LocationSample(coordinate: origin, horizontalAccuracy: 3)
+        source.emit(initial)
+        for _ in 0..<100 where tour.userLocation == nil { try await Task.sleep(for: .milliseconds(2)) }
+        map.showUserAndDestination(tour: tour)
+        let camera = map.cameraRequest
+        let small = LocationSample(coordinate: GeoCoordinate(latitude: origin.latitude + 0.00002, longitude: origin.longitude), horizontalAccuracy: 3)
+        source.emit(small)
+        for _ in 0..<100 where tour.userLocation?.timestamp != small.timestamp { try await Task.sleep(for: .milliseconds(2)) }
+        map.updateWalkingFrame(tour: tour)
+        XCTAssertEqual(map.cameraRequest, camera)
+        XCTAssertEqual(map.userPuck(for: tour)?.coordinate.latitude, small.coordinate.latitude)
+        let moved = LocationSample(coordinate: GeoCoordinate(latitude: origin.latitude + 0.0003, longitude: origin.longitude + 0.0003), horizontalAccuracy: 5)
+        source.emit(moved)
+        for _ in 0..<100 where tour.userLocation?.timestamp != moved.timestamp { try await Task.sleep(for: .milliseconds(2)) }
+        map.updateWalkingFrame(tour: tour)
+        XCTAssertNotEqual(map.cameraRequest, camera)
+        XCTAssertEqual(map.userPuck(for: tour)?.coordinate.longitude, moved.coordinate.longitude)
+        XCTAssertEqual(map.userPuck(for: tour)?.accuracyMeters, 5)
+        XCTAssertEqual(tour.currentStop?.id, stops[0].id)
+        XCTAssertEqual(tour.progress.completedCount, 0)
+    }
+
     func testHomeZoomUsesCurrentZoomWithoutChangingWalkingOrViewedStop() async {
         let tour = await makeTour(); defer { cleanUp(tour) }
         tour.startTour()

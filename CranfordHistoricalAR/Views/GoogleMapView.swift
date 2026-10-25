@@ -431,6 +431,16 @@ struct GoogleMapView: UIViewRepresentable {
                 var bounds = GMSCoordinateBounds(coordinate: a, coordinate: b)
                 for coordinate in parent.routeCoordinates { bounds = bounds.includingCoordinate(coordinate) }
                 update = GMSCameraUpdate.fit(bounds, with: parent.fitInsets)
+            case .fitWalkingLeg(let points):
+                guard let first = points.first else { return }
+                var bounds = GMSCoordinateBounds(coordinate: first.clLocationCoordinate, coordinate: first.clLocationCoordinate)
+                for point in points.dropFirst() { bounds = bounds.includingCoordinate(point.clLocationCoordinate) }
+                // A lone/coincident fix needs a readable street-level camera, not maximum zoom.
+                let extent = GeoCoordinate(latitude: first.latitude + 0.001, longitude: first.longitude + 0.001)
+                let opposite = GeoCoordinate(latitude: first.latitude - 0.001, longitude: first.longitude - 0.001)
+                if extent.isValid { bounds = bounds.includingCoordinate(extent.clLocationCoordinate) }
+                if opposite.isValid { bounds = bounds.includingCoordinate(opposite.clLocationCoordinate) }
+                update = GMSCameraUpdate.fit(bounds, with: parent.fitInsets)
             case .zoomTo(let zoom):
                 update = GMSCameraUpdate.zoom(to: zoom)
             }

@@ -1,3 +1,16 @@
+## Active walking map — build 59
+
+Map automatically frames your GPS position, the departure stop and active destination,
+along with the real walking route. A late route refresh now updates the camera. The
+blue dot follows accepted GPS readings, including off-route movement, with its reported
+accuracy circle; it is never animated along a fabricated journey or snapped to streets.
+The camera reframes after about 15 metres; manual pan/zoom pauses framing until the
+route control is tapped. Center on my location remains a separate close-follow view.
+Without GPS the map focuses the destination without inventing a dot or walking path.
+Real directions still require a fresh, sufficiently accurate fix and provider success.
+87 actual-model tests and Debug/Release syntax checks passed; native map rendering
+and outdoor GPS acceptance remain pending. See [MAP-TRACKING.md](MAP-TRACKING.md).
+
 ## Simplified plaque action — build 58
 
 Stop pages with a plaque now show a full-width hunter-green button above Stop details,

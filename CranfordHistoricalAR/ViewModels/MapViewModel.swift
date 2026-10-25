@@ -50,6 +50,7 @@ struct MapCameraRequest: Equatable {
         case fitAll
         case follow(CLLocationCoordinate2D, bearing: Double?)
         case fitUserAndDestination(CLLocationCoordinate2D, CLLocationCoordinate2D)
+        case fitWalkingLeg([GeoCoordinate])
         case zoomTo(Float)
 
         static func == (lhs: Kind, rhs: Kind) -> Bool {
@@ -58,6 +59,7 @@ struct MapCameraRequest: Equatable {
             case let (.follow(a, ba), .follow(b, bb)): return a.latitude == b.latitude && a.longitude == b.longitude && ba == bb
             case let (.fitUserAndDestination(a1, a2), .fitUserAndDestination(b1, b2)):
                 return a1.latitude == b1.latitude && a1.longitude == b1.longitude && a2.latitude == b2.latitude && a2.longitude == b2.longitude
+            case let (.fitWalkingLeg(a), .fitWalkingLeg(b)): return a == b
             case let (.zoomTo(a), .zoomTo(b)): return a == b
             default: return false
             }
@@ -92,7 +94,7 @@ enum MapZoomPolicy {
 @MainActor
 @Observable
 final class MapViewModel {
-    enum CameraMode: Equatable { case overview, follow, free }
+    enum CameraMode: Equatable { case overview, navigation, follow, free }
 
     private(set) var cameraMode: CameraMode = .overview
     private(set) var cameraRequest: MapCameraRequest?
@@ -102,6 +104,10 @@ final class MapViewModel {
     private(set) var zoom: Float?
     private var requestCounter = 0
     private var lastFollowedCoordinate: GeoCoordinate?
+    private var lastFramedCoordinate: GeoCoordinate?
+    private var framedDestinationID: String?
+    private var departureStopID: String?
+    private var framedWalkSessionID: UUID?
 
     /// Zoom at which the home map switches from plain dots to numbered dots.
     static let numberedDotZoom: Float = 16
@@ -141,7 +147,8 @@ final class MapViewModel {
     }
 
     func userPuck(for tour: TourViewModel) -> UserPuckModel? {
-        guard let sample = tour.userLocation else { return nil }
+        guard let sample = tour.userLocation, sample.coordinate.isValid,
+              sample.horizontalAccuracy.isFinite, sample.horizontalAccuracy >= 0 else { return nil }
         return UserPuckModel(
             coordinate: sample.clLocationCoordinate,
             accuracyMeters: max(sample.horizontalAccuracy, 0),
@@ -181,11 +188,53 @@ final class MapViewModel {
         push(.follow(location.clLocationCoordinate, bearing: nil), animated: true)
     }
 
+    /// Resume automatic framing of the active leg, including the place just left.
+    /// A location fix is not required to focus the destination while GPS warms up.
     func showUserAndDestination(tour: TourViewModel) {
         viewedStopID = nil
-        guard let user = tour.userLocation, let stop = tour.currentStop else { return requestOverview() }
-        cameraMode = .free
-        push(.fitUserAndDestination(user.clLocationCoordinate, stop.clLocationCoordinate), animated: true)
+        guard tour.phase != .complete, let destination = tour.currentStop ?? tour.stops.first else {
+            framedDestinationID = nil
+            departureStopID = nil
+            return requestOverview()
+        }
+        if framedWalkSessionID != tour.walkSessionID {
+            framedDestinationID = nil
+            departureStopID = nil
+            framedWalkSessionID = tour.walkSessionID
+        }
+        if destination.id != framedDestinationID {
+            departureStopID = tour.phase == .inProgress ? (framedDestinationID ?? tour.previousStop?.id) : nil
+            framedDestinationID = destination.id
+        }
+        cameraMode = .navigation
+        lastFramedCoordinate = tour.userLocation?.coordinate
+        var coordinates = [destination.coordinate]
+        if let departure = departureStopID.flatMap(tour.stop(withID:)) {
+            coordinates.append(departure.coordinate)
+        }
+        if let puck = userPuck(for: tour) { coordinates.append(GeoCoordinate(latitude: puck.coordinate.latitude, longitude: puck.coordinate.longitude)) }
+        coordinates += walkingRouteCoordinates(for: tour)
+        push(.fitWalkingLeg(coordinates), animated: true)
+    }
+
+    /// Keep the dot independent from the camera. Reframe only after meaningful walking;
+    /// manual pan/zoom suspends camera tracking until the route/recenter control is tapped.
+    func updateWalkingFrame(tour: TourViewModel, routeChanged: Bool = false) {
+        if cameraMode == .follow { followIfNeeded(tour: tour); return }
+        guard cameraMode == .navigation else { return }
+        if !routeChanged, let last = lastFramedCoordinate, let location = tour.userLocation,
+           GeoMath.distance(from: last, to: location.coordinate) < 15 { return }
+        showUserAndDestination(tour: tour)
+    }
+
+    /// Never render a straight-line estimate or an old destination's route as a walking path.
+    func walkingRouteCoordinates(for tour: TourViewModel) -> [GeoCoordinate] {
+        guard tour.phase == .inProgress, let route = tour.currentRoute,
+              route.source != .straightLineEstimate, let destination = tour.currentStop,
+              GeoMath.distance(from: route.destination, to: destination.coordinate) < 1,
+              route.routeCoordinates.count >= 2,
+              route.routeCoordinates.allSatisfy({ $0.isValid }) else { return [] }
+        return route.routeCoordinates
     }
 
     /// The user dragged/zoomed; stop fighting them.
