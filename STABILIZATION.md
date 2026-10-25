@@ -169,3 +169,15 @@ Player refinement — review build 56:
   a view-only refinement: no player service, routing or persistence logic changes.
   Native Apple compilation, rendered layout, VoiceOver and touch checks remain pending.
 - No GitHub publication in this task.
+
+Collapsible stop history — review build 57:
+- Added a native Stop details DisclosureGroup immediately above longDescription.
+  State starts expanded and resets when the displayed stop ID changes.
+- Preserves the original history text; metadata, Listen/Read, narration, bonus and
+  visit/progression state are independent of the disclosure. Empty histories omit it.
+- Document icon, minimum 44-point label and native expand/collapse semantics; text
+  wraps naturally. No custom animation or navigation action is introduced.
+- Debug and Release parsing plus whitespace/source checks passed. No new tests for
+  this local view-only change. Native build, small/large text, tap and VoiceOver
+  acceptance remain pending: verify collapse/reopen, fresh-stop default and audio
+  continuity on both mill and Greystone. No publication in this task.

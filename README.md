@@ -1,3 +1,12 @@
+## Collapsible stop history — build 57
+
+Stop details appears directly above each available historical description, including
+the mill text beginning “Standing along the Rahway River.” The native disclosure
+opens by default for each newly opened stop and toggles without leaving the page.
+Only the history collapses; metadata, narration and optional bonus controls retain
+their positions in the page flow. Stops without history have no empty disclosure.
+Debug/Release syntax parsing passed; native layout and VoiceOver checks remain pending.
+
 ## Current narration player — build 56
 
 The shared player now uses a screen-proportional 96–128 point illustration, a larger

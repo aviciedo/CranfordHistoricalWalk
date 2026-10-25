@@ -10,6 +10,7 @@ struct StopDetailView: View {
     var onStartDiscovery: (() -> Void)? = nil
     @State private var isShowingScanner = false
     @State private var isShowingBonus = false
+    @State private var isStopDetailsExpanded = true
 
     // Each newly opened stop starts on Listen; switching to Read never touches playback.
     @State private var mode: AppNavigation.StoryMode = .listen
@@ -47,6 +48,7 @@ struct StopDetailView: View {
             isShowingScanner = false
             isShowingBonus = false
         }
+        .onChange(of: stop.id) { _, _ in isStopDetailsExpanded = true }
         .dismissOnReturnHome()
         .holdsWalkingContext()
         .environment(\.colorScheme, .light)
@@ -120,7 +122,23 @@ struct StopDetailView: View {
                             .font(.footnote).foregroundStyle(AppTheme.secondaryInk)
                     }
                 }
-                Text(stop.longDescription).font(.body).fixedSize(horizontal: false, vertical: true)
+                if !stop.longDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    DisclosureGroup(isExpanded: $isStopDetailsExpanded) {
+                        Text(stop.longDescription)
+                            .font(.body)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.top, 8)
+                    } label: {
+                        Label("Stop details", systemImage: "doc.text")
+                            .font(.body.weight(.medium))
+                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                            .contentShape(Rectangle())
+                    }
+                    .tint(AppTheme.forest)
+                    .accessibilityHint("Expands or collapses the stop history")
+                    .accessibilityIdentifier("stop.detailsDisclosure")
+                }
                 if stop.hasPlaqueReference {
                     VStack(alignment: .leading, spacing: 12) {
                         Divider()
