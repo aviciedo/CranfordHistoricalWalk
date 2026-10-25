@@ -199,6 +199,7 @@ final class TourViewModel {
     /// Only this walk's arrival matters; saved story/bonus progress never changes its wording.
     var isHeadingToFirstStop: Bool {
         phase == .inProgress && currentStop?.id == stops.first?.id
+            && heldDepartureStopID != currentStop?.id
             && !progress.isCurrentStopVisited && !isAtCurrentStopNow
     }
 

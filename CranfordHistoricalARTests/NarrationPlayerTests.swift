@@ -103,6 +103,26 @@ final class NarrationPlayerTests: XCTestCase {
         XCTAssertTrue(player.isPlaying)
     }
 
+    func testPreviousStopLeavesPlayingStoryAndPositionUnchanged() async throws {
+        let dependencies = AppDependencies.preview()
+        let tour = dependencies.tourViewModel
+        await tour.loadStopsIfNeeded()
+        tour.progress.start()
+        for _ in 0..<3 { tour.completeCurrentStopAndAdvance() }
+        let stops = HistoricalStop.previewStops
+        let player = dependencies.narrationPlayer
+        defer { player.stop(); tour.stopLocation(); tour.cancelRouting() }
+        XCTAssertTrue(player.prepare(stops[0]))
+        try await waitForAudio { player.canSeek }
+        player.seek(to: 35); player.play()
+        try await waitForAudio { player.isPlaying }
+        XCTAssertTrue(tour.goToPreviousStop())
+        XCTAssertEqual(tour.currentStop?.id, stops[2].id)
+        XCTAssertEqual(player.stopID, stops[0].id)
+        XCTAssertTrue(player.isPlaying)
+        XCTAssertGreaterThanOrEqual(player.elapsed, 34)
+    }
+
     func testRecordingBookmarkSurvivesExplicitSwitchToAnotherStory() async throws {
         let player = NarrationPlayer()
         defer { player.stop() }

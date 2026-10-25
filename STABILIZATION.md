@@ -107,3 +107,14 @@ Home map preview — review build 52:
 - Debug/Release syntax checks passed. Manually verify all five markers on both
   providers, switching selected markers, X, View stop, zoom and return from details,
   including small phones, Dynamic Type and VoiceOver; native runtime is unavailable here.
+
+Previous-stop navigation — review build 53:
+- Map adds Previous stop for an in-progress destination after the first. It uses
+  itinerary order, preserves accomplishments/distance and reuses destination routing.
+- Clears stale automatic Undo/AR subject, latches the existing durable departure hold,
+  and leaves paused walks paused. Continue releases the hold; first-stop return does
+  not imply a new walk. Distance/time remain visible while returning to visited sites.
+- View/Undo and Previous/Continue use separate rows, with accessibility wrapping.
+- 72 portable actual-model tests passed, including 6 new previous-stop regressions.
+  Debug/Release syntax checks pass. Added a native audio-identity regression; it has
+  not run here. Google/Apple UI layout, device routing and audio remain native checks.

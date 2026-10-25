@@ -1,3 +1,13 @@
+## Current Map controls — build 53
+
+Previous stop routes to the preceding stop in the tour order, including skipped stops.
+It preserves visits, stories, bonuses, elapsed time, distance and the current audio.
+Automatic progression holds the chosen destination until Continue now (or explicitly
+releasing Stay here after arrival). The selection/hold survives relaunch; paused walks
+remain paused. Previous is hidden at the first stop and outside an in-progress walk.
+View stop and Previous/Continue use two rows; returning to a visited site still shows
+route distance/time. Six new model regressions passed; native checks remain pending.
+
 ## Current Home map interaction — build 52
 
 Tap any Home map landmark to preview its name, address, date and short history.

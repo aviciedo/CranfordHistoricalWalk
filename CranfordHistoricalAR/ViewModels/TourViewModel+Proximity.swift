@@ -194,6 +194,28 @@ extension TourViewModel {
     var canContinueCurrentStop: Bool { isWalkingActive && currentStop != nil }
     var canContinueARStop: Bool { canContinueCurrentStop && arStop?.id == currentStop?.id }
 
+    /// Previous means the preceding itinerary entry, including a previously skipped site.
+    var previousStop: HistoricalStop? {
+        guard phase == .inProgress, progress.currentIndex > 0,
+              progress.stopIDs.indices.contains(progress.currentIndex - 1) else { return nil }
+        return stop(withID: progress.stopIDs[progress.currentIndex - 1])
+    }
+
+    /// Retarget the existing route without clearing accomplishments or starting paused walks.
+    @discardableResult
+    func goToPreviousStop() -> Bool {
+        guard let previous = previousStop else { return false }
+        automaticTransitionFromStopID = nil
+        automaticTransitionProgress = nil
+        arDiscoveryStopID = nil
+        continuedARStopIDs.remove(previous.id)
+        guard progress.selectStop(withID: previous.id) else { return false }
+        // Manual backtracking must not be undone by the automatic departure policy.
+        heldDepartureStopID = previous.id
+        destinationDidChange()
+        return true
+    }
+
     /// Advancing an itinerary is not proof of a physical visit or learning completion.
     func completeCurrentStopAndAdvance() {
         guard canContinueCurrentStop, let stop = currentStop else { return }

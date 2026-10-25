@@ -1,10 +1,10 @@
-# Field acceptance — review build 49
+# Field acceptance — review build 53
 
 Status: NOT EXECUTED ON SITE. Linux unit tests do not verify iPhone GPS, street
 safety, compass alignment, camera recognition, real plaque dimensions or battery use.
 Do not mark this checklist passed until a tester records the evidence below.
 
-Install the complete review ZIP on a real iPhone using Xcode. Confirm build 49 in
+Install the complete review ZIP on a real iPhone using Xcode. Confirm build 53 in
 Developer and narration release cedar-2. Keep Simulated location OFF. Use the full
 “Clear visits, stories & bonuses” test reset only when you want a clean activity run;
 ordinary visit-only reset intentionally retains reading/listening/bonus progress.
@@ -108,3 +108,15 @@ Build 49 — fixed chunky street signs (NOT RUN on device):
   must never become a street claim. The bottom accessible direction card remains.
 - ARKit relocalization drift is a separate device-level limit. A detected plane is
   not proof of a street, pedestrian access, or survey-grade GPS placement.
+
+Build 53 — Previous stop (NOT RUN on device):
+- While guiding to stop 4, tap Previous stop: destination/route become stop 3, even
+  if it was skipped. Backtrack repeatedly to stop 1; no further Previous control.
+- Keep Mill narration playing while walking to another stop, then tap Previous:
+  narration identity and position continue. Visits, stories and bonuses remain saved.
+- Arrive/leave the manually selected previous stop: it must stay selected until
+  Continue now or explicit release of Stay here. No immediate automatic bounce forward.
+- Relaunch: selected destination and hold survive; Resume is still explicit. Changing
+  Previous on a restored paused walk must not request location permission or resume GPS.
+- Check distance/time when returning to an already visited place. Verify both action
+  rows and player fit the Map layout on small phones and at large Dynamic Type sizes.

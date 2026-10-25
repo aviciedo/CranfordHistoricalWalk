@@ -18,7 +18,7 @@ struct NextStopCard: View {
                 } else if tour.automaticTransitionFromStopID != nil && !tour.progress.isCurrentStopVisited {
                     Text("Now guiding you to")
                         .font(.caption).foregroundStyle(AppTheme.secondaryInk)
-                } else if !tour.isHeadingToFirstStop && !tour.progress.isCurrentStopVisited {
+                } else if !tour.isHeadingToFirstStop && !tour.walkingProgression.hasArrived {
                     Text("Walking to")
                         .font(.caption).foregroundStyle(AppTheme.secondaryInk)
                 }
@@ -39,10 +39,12 @@ struct NextStopCard: View {
                     }
                     .buttonStyle(.plain).font(.subheadline.weight(.medium)).frame(minHeight: 44)
                 }
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 24) { actions }
-                    VStack(alignment: .leading, spacing: 4) { actions }
+                if tour.walkingProgression.isHeld && !tour.walkingProgression.hasArrived {
+                    Text("Continue when you’re ready to move on.")
+                        .font(.footnote).foregroundStyle(AppTheme.secondaryInk)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
+                actionSection
                 routeStatus
             }
             .fixedSize(horizontal: false, vertical: true)
@@ -52,7 +54,27 @@ struct NextStopCard: View {
         }
     }
 
-    @ViewBuilder private var actions: some View {
+    @ViewBuilder private var actionSection: some View {
+        if tour.previousStop != nil {
+            VStack(alignment: .leading, spacing: 4) {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 24) { detailActions }
+                    VStack(alignment: .leading, spacing: 4) { detailActions }
+                }
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 24) { navigationActions }
+                    VStack(alignment: .leading, spacing: 4) { navigationActions }
+                }
+            }
+        } else {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 24) { detailActions; navigationActions }
+                VStack(alignment: .leading, spacing: 4) { detailActions; navigationActions }
+            }
+        }
+    }
+
+    @ViewBuilder private var detailActions: some View {
         if let fromID = tour.automaticTransitionFromStopID {
             Button("Undo") { tour.undoAutomaticTransition() }
                 .buttonStyle(.plain).font(.subheadline.weight(.medium)).frame(minHeight: 44)
@@ -65,6 +87,18 @@ struct NextStopCard: View {
                     .frame(minHeight: 44).contentShape(Rectangle())
             }
             .buttonStyle(.plain).font(.subheadline.weight(.semibold))
+        }
+    }
+
+    @ViewBuilder private var navigationActions: some View {
+        if let previous = tour.previousStop {
+            Button { tour.goToPreviousStop() } label: {
+                Label("Previous stop", systemImage: "arrow.left")
+                    .frame(minHeight: 44).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain).font(.subheadline.weight(.medium))
+            .accessibilityHint("Return to \(previous.name). Saved visits, stories and audio are preserved.")
+            .accessibilityIdentifier("map.previousStop")
         }
         if tour.isWalkPaused {
             Button { tour.startTour() } label: {
@@ -119,12 +153,16 @@ struct MapDestinationStatus: View {
                     Text("Resume when you’re ready.")
                         .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
                         .fixedSize(horizontal: false, vertical: true)
-                } else if tour.walkingProgression.hasArrived || tour.progress.isCurrentStopVisited {
+                } else if tour.walkingProgression.hasArrived {
                     Label(arrivalText, systemImage: "checkmark.circle")
                         .font(.subheadline.weight(.medium))
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("map.arrived")
                 } else {
+                    if tour.progress.isCurrentStopVisited {
+                        Label("Visited on this walk", systemImage: "checkmark.circle")
+                            .font(.footnote).foregroundStyle(AppTheme.secondaryInk)
+                    }
                     Text("\(tour.remainingDistanceText) · \(tour.remainingTimeText)")
                         .font(.subheadline).monospacedDigit()
                         .foregroundStyle(AppTheme.secondaryInk)
