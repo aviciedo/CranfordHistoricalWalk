@@ -2,7 +2,8 @@ name: Apple compiler checks
 
 on:
   push:
-    branches: [main, stabilization/audit-phase-1-3]
+    # Published branches share one commit. Test main once; PRs and manual runs remain enabled.
+    branches: [main]
     paths:
       - 'CranfordHistoricalAR/**'
       - 'CranfordHistoricalARTests/**'
@@ -11,6 +12,7 @@ on:
       - 'Config/**'
       - 'project.yml'
       - '.github/workflows/apple-build.yml'
+      - 'scripts/summarize-apple-checks.py'
   pull_request:
     paths:
       - 'CranfordHistoricalAR/**'
@@ -20,6 +22,7 @@ on:
       - 'Config/**'
       - 'project.yml'
       - '.github/workflows/apple-build.yml'
+      - 'scripts/summarize-apple-checks.py'
   workflow_dispatch:
 
 permissions:
@@ -34,14 +37,19 @@ jobs:
     runs-on: macos-latest
     timeout-minutes: 35
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Report native toolchain
         run: |
           xcodebuild -version
           swift --version
       - name: Test TourCore on Apple Foundation and CoreGraphics
-        run: swift test --package-path Packages/TourCore
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p .build/apple-verification
+          swift test --package-path Packages/TourCore 2>&1 | tee .build/apple-verification/core.log
       - name: Compile the shipped Xcode project and tests for Simulator
+        id: simulator-build
         shell: bash
         run: |
           set -o pipefail
@@ -63,6 +71,7 @@ jobs:
             -resultBundlePath .build/apple-verification/native-tests.xcresult \
             CODE_SIGNING_ALLOWED=NO test-without-building 2>&1 | tee .build/apple-verification/native-tests.log
       - name: Compile Release for iPhone
+        if: ${{ !cancelled() && steps.simulator-build.outcome == 'success' }}
         shell: bash
         run: |
           set -o pipefail
@@ -71,13 +80,17 @@ jobs:
             -destination 'generic/platform=iOS' \
             -derivedDataPath .build/apple-verification/device \
             CODE_SIGNING_ALLOWED=NO build 2>&1 | tee .build/apple-verification/device.log
+      - name: Summarize Apple build and test failures
+        if: always()
+        run: python3 scripts/summarize-apple-checks.py
       - name: Preserve compiler logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: apple-compiler-logs
           path: |
             .build/apple-verification/*.log
+            .build/apple-verification/diagnostics.md
             .build/apple-verification/*.xcresult
             CranfordHistoricalAR.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
           if-no-files-found: ignore
