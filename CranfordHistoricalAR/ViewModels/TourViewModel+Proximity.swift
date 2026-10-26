@@ -18,6 +18,12 @@ extension TourViewModel {
     var hasArrivedAtCurrentStop: Bool { proximityMachine?.hasPresentedSign ?? false }
     var isWithinArrivalRadius: Bool { proximityMachine?.isWithinArrivalRadius ?? false }
     var hasPlaqueConfirmedArrival: Bool { arStop?.id == plaqueConfirmedStopID && plaqueConfirmedStopID != nil }
+    /// Saved accomplishments are not current presence. Returning to a visited stop
+    /// still needs navigation until this walking session actually arrives.
+    var shouldSuppressWalkingAR: Bool {
+        isAtCurrentStopNow || walkingProgression.hasArrived || hasPlaqueConfirmedArrival
+    }
+
     var isARStopVisited: Bool { arStop.map { activities[$0.id].visitedAt != nil || ($0.id == currentStop?.id && progress.isCurrentStopVisited) } ?? false }
 
     func restoreDiscovery(for stopID: String) {

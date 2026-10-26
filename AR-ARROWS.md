@@ -1,3 +1,10 @@
+## Build64 visibility repair
+
+See [AR-VISIBILITY-FIX.md](AR-VISIBILITY-FIX.md) for saved-visit suppression, out-of-range
+first placement and HUD recovery fixes. Fixed-world styling/pinning below is retained;
+a fallback directional sign is approximate and still requires real ground. Native
+rendering and outdoor verification remain pending.
+
 # AR street arrows — review build 49
 
 Confirmed preferences: hunter-green sides/white faces, about five metres before

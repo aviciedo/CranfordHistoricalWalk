@@ -274,3 +274,21 @@ Photo-led stop details — review build 63:
   Added native bookmark assertions for fresh/prepared, paused/closed and completed
   states; they are not executed on Linux. Native layout/navigation/AVFoundation/
   VoiceOver acceptance remains pending. No publication in this task.
+
+AR arrow visibility repair — review build 64:
+- Owner reports arrows never appeared outdoors despite scanning pavement. Screenshot
+  establishes a live camera/route HUD, not the exact failing internal gate.
+- Verified mismatches: persisted visit/bonus state suppressed walking AR; accepted
+  geo previews could lie outside the renderer's 3–14 m first-placement range.
+- Walking suppression now depends on current-session arrival/plaque confirmation,
+  not historic accomplishments. Saved discovery no longer blocks returning guidance.
+- Pure readableCandidate preserves nearby route projections, otherwise positions an
+  approximate directional sign 8 m along the valid route bearing. Original pinning,
+  5 m repositioning and real-ground requirement retained; image-tracked plaques are
+  not displaced by this route-only fallback. No routes, visits or bonuses invented.
+- GeoAnchorManager/AR HUD report route/compass, mesh, placement and off-camera blockers
+  instead of a blank camera. Behind-camera test precedes screen projection checks.
+- 232 core + 94 actual-model tests pass; final Debug/Release app/test parsing and
+  whitespace checks pass. Native mesh/initial placement smoke test added but unrun.
+  Apple build, actual RealityKit rendering and outdoor field reproduction are pending;
+  the precise cause of the owner's specific test is not claimed proven. No publication.

@@ -50,6 +50,10 @@ final class ARNavigationArrowEntity: Entity {
     private var anchorState = ARStreetGuidance.AnchorState()
     private var renderedPlacement: ARStreetGuidance.Placement?
     private(set) var isShowing = false
+    var canRender: Bool { ARChevronArt.bodyMesh != nil && ARChevronArt.faceMesh != nil }
+    var guidancePosition: SIMD3<Float>? {
+        holder.isEnabled && renderedPlacement != nil ? holder.position(relativeTo: nil) : nil
+    }
 
     required init() {
         super.init()

@@ -67,6 +67,7 @@ final class ARViewModel {
 
     var localizationState: ARLocalizationState { geoAnchors.localizationState }
     var statusMessage: String? {
+        if !isPlaqueScanner, let notice = geoAnchors.navigationNotice { return notice }
         if placementMode == .plaqueAnchored, geoAnchors.isTrackingReady { return nil }
         if localizationState.isUsable, geoAnchors.provider.backend == .coreLocation {
             return nil // The compact walking footer carries the accuracy notice.
@@ -247,7 +248,7 @@ final class ARViewModel {
             isShowingWalkingOrientation = !isPlaqueScanner
             walkingOrientation = ARWalkingGuidance.OrientationState()
         }
-        geoAnchors.hasActivatedStop = tour.isARStopVisited
+        geoAnchors.hasActivatedStop = isPlaqueScanner ? tour.isARStopVisited : tour.shouldSuppressWalkingAR
         if !tour.discovery.hasVerifiedPlaque {
             geoAnchors.clearWindowBonus()
             if isShowingBonusPreview { isShowingBonusPreview = false }
@@ -268,8 +269,7 @@ final class ARViewModel {
             loadSignImage(for: signStop)
         }
         guard !isPlaqueScanner, tour.arStop?.id == tour.currentStop?.id,
-              !tour.hasPlaqueConfirmedArrival, !tour.isRouteAnEstimate,
-              !(tour.isPlaqueDiscoveryStop && tour.discovery.hasArrived),
+              !tour.shouldSuppressWalkingAR, !tour.isRouteAnEstimate,
               tour.currentRoute != nil, let stop = tour.arStop, let user = tour.userLocation else {
             geoAnchors.setNavigationTarget(nil)
             return

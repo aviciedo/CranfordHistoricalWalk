@@ -2,6 +2,47 @@ import XCTest
 @testable import TourCore
 
 final class ARStreetGuidanceTests: XCTestCase {
+    func testReadableCandidateKeepsActualNearbyRouteProjection() {
+        XCTAssertEqual(ARStreetGuidance.readableCandidate(projected: [2, -1.4, -8], camera: .zero,
+            routeDirection: [0, 0, -1]), [2, -1.4, -8])
+    }
+
+    func testGPSLateralOffsetBeyondRendererLimitProducesReadableNearbySign() throws {
+        // routePoint accepts 35 m lateral error, but the old renderer refused over 14 m.
+        let candidate = try XCTUnwrap(ARStreetGuidance.readableCandidate(projected: [25, -1.4, -8], camera: .zero,
+            routeDirection: [0, 0, -1]))
+        XCTAssertEqual(candidate, [0, -1.4, -8])
+        var state = ARStreetGuidance.AnchorState()
+        XCTAssertNotNil(state.update(candidate: candidate, camera: .zero,
+            instruction: .init(direction: .left, streetName: "Alden St"), timestamp: 1))
+    }
+
+    func testShortPolylineVertexDoesNotPreventFirstArrowPlacement() throws {
+        for distance in [0.0, 0.2, 1.0, 2.9, 50.0] {
+            let candidate = try XCTUnwrap(ARStreetGuidance.readableCandidate(projected: [0, -1, -distance], camera: .zero,
+                routeDirection: [0, 0, -2]))
+            XCTAssertEqual(candidate, [0, -1, -8])
+        }
+    }
+
+    func testReadableFallbackRejectsInvalidOrUnavailableDirection() {
+        XCTAssertNil(ARStreetGuidance.readableCandidate(projected: [0, 0, -50], camera: .zero, routeDirection: .zero))
+        XCTAssertNil(ARStreetGuidance.readableCandidate(projected: [0, .nan, -8], camera: .zero, routeDirection: [0, 0, -1]))
+        XCTAssertNil(ARStreetGuidance.readableCandidate(projected: [0, 0, -8], camera: [.nan, 0, 0], routeDirection: [0, 0, -1]))
+    }
+
+    func testFallbackStillPinsPoseRatherThanFollowingGPSNoise() throws {
+        var state = ARStreetGuidance.AnchorState()
+        let instruction = ARStreetGuidance.Instruction(direction: .left, streetName: "Alden St")
+        let first = try XCTUnwrap(ARStreetGuidance.readableCandidate(projected: [25, -1, -8], camera: .zero, routeDirection: [0, 0, -1]))
+        let original = try XCTUnwrap(state.update(candidate: first, camera: .zero, instruction: instruction, timestamp: 0))
+        for i in 1...20 {
+            let candidate = try XCTUnwrap(ARStreetGuidance.readableCandidate(projected: [30, -1, 20], camera: [0.2, 0, 0.2], routeDirection: [1, 0, 0]))
+            XCTAssertEqual(state.update(candidate: candidate, camera: [0.2, 0, 0.2], instruction: instruction,
+                                         timestamp: Double(i) / 10), original)
+        }
+    }
+
     private let ahead = ARStreetGuidance.Instruction(direction: .ahead, streetName: "Springfield Ave")
     private let right = ARStreetGuidance.Instruction(direction: .right, streetName: "Lincoln Ave E")
 

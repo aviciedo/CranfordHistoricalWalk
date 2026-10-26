@@ -1,3 +1,16 @@
+## AR arrow visibility repair — build 64
+
+Fixed two verified code paths that could suppress every arrow: old visit/bonus
+records hiding guidance on a return walk, and projected route previews being rejected
+by the renderer's 3–14 m placement range. Out-of-range previews now use an approximate
+nearby directional sign along the route bearing, retaining real ground detection and
+the existing fixed-world/five-metre policy. This is not exact street registration.
+The HUD now explains missing route/location, renderer failure, placement failure or
+when the arrow is outside the camera view. Recorded visits/bonuses are preserved.
+232 core + 94 actual-model tests and Debug/Release syntax checks passed. Native
+RealityKit rendering and a repeat of the owner's failed outdoor test remain pending.
+See [AR-VISIBILITY-FIX.md](AR-VISIBILITY-FIX.md).
+
 ## Photo-led stop details and reading — build 63
 
 The slideshow stays first, with captions and uncropped original photographs. The

@@ -1,9 +1,25 @@
 import XCTest
+import RealityKit
 @testable import CranfordHistoricalAR
 import TourCore
 
 @MainActor
 final class GeoSpatialProviderFactoryTests: XCTestCase {
+    func testNavigationArrowMeshesAndInitialGroundedPlacementAreRenderable() {
+        let arrow = ARNavigationArrowEntity()
+        XCTAssertTrue(arrow.canRender, "Body and face meshes must both generate successfully")
+        arrow.setVisible(true)
+        arrow.update(ground: [0, -1.4, -8], camera: .zero,
+                     instruction: .init(direction: .left, streetName: "Alden St"), timestamp: 1)
+        XCTAssertNotNil(arrow.guidancePosition, "A valid first placement must enable the arrow entity")
+        arrow.setVisible(false)
+        XCTAssertNil(arrow.guidancePosition)
+        arrow.setVisible(true)
+        XCTAssertNotNil(arrow.guidancePosition, "Transient visibility loss retains the fixed anchor")
+        arrow.resetAnchor()
+        XCTAssertNil(arrow.guidancePosition)
+    }
+
     func testDisabledFlagSelectsCoreLocation() {
         let selection = GeoSpatialProviderFactory.selection(
             configuration: .empty,

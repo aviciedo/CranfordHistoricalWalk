@@ -11,6 +11,34 @@ import CoreLocation
 /// The same state-flow tests run against the native model and its Linux Foundation harness.
 @MainActor
 final class TourCompletionFlowTests: XCTestCase {
+    func testSavedVisitAndBonusNeverSuppressReturnWalkingArrows() async {
+        let store = InMemoryStopActivityStore()
+        var ledger = StopActivityLedger()
+        ledger.visited(stops[0].id)
+        ledger.foundBonus(at: stops[0].id)
+        store.save(ledger)
+        let tour = await makeTour(activityStore: store); defer { cleanUp(tour) }
+        tour.startTour()
+        XCTAssertTrue(tour.isARStopVisited, "Saved accomplishments remain intact")
+        XCTAssertTrue(tour.discovery.hasArrived, "Saved bonus discovery must not masquerade as current presence")
+        XCTAssertFalse(tour.shouldSuppressWalkingAR, "Still guide the user toward a previously visited destination")
+        XCTAssertFalse(tour.hasPlaqueConfirmedArrival)
+        confirmArrival(tour)
+        XCTAssertTrue(tour.shouldSuppressWalkingAR, "Actual current-session arrival ends walking guidance")
+    }
+
+    func testWalkingArrowsResumeOnAdvanceAndPreviousWithoutErasingVisits() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.startTour()
+        confirmArrival(tour)
+        XCTAssertTrue(tour.shouldSuppressWalkingAR)
+        tour.completeCurrentStopAndAdvance()
+        XCTAssertFalse(tour.shouldSuppressWalkingAR)
+        XCTAssertTrue(tour.goToPreviousStop())
+        XCTAssertTrue(tour.isARStopVisited)
+        XCTAssertFalse(tour.shouldSuppressWalkingAR, "Previous must guide back even though the visit persists")
+    }
+
     func testQuietMapEmphasizesOnlyDestinationWithoutHidingOtherStops() async {
         let tour = await makeTour(); defer { cleanUp(tour) }
         let map = MapViewModel()

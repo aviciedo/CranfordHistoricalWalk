@@ -49,6 +49,7 @@ final class GeoAnchorManager {
     var placementMode: SignPlacementMode = .hidden
     var hasActivatedStop = false
     private(set) var hasDetectedGround = false
+    private(set) var navigationNotice: String?
     private(set) var navigationBearing: Double?
     private(set) var isWindowBonusAccessible = false
 
@@ -133,6 +134,7 @@ final class GeoAnchorManager {
     func sessionDidStart(_ session: ARSession, arView: ARView) {
         clearWindowBonus()
         anchors.arrows.resetAnchor()
+        navigationNotice = nil
         lastNavigationDestination = nil
         cameraTransform = nil
         trackingState = .notAvailable
@@ -375,7 +377,11 @@ final class GeoAnchorManager {
     func setNavigationTarget(_ newTarget: NavigationTarget?) {
         let destinationChanged = newTarget.map { $0.destination != lastNavigationDestination } ?? false
         target = newTarget
-        guard let newTarget else { anchors.hideNavigation(); return }
+        guard let newTarget else {
+            anchors.hideNavigation()
+            navigationNotice = hasActivatedStop ? nil : "Walking arrows need a walking route and a fresh location. Use the map or retry directions."
+            return
+        }
         lastNavigationDestination = newTarget.destination
         // Polyline segment/GPS refinements must not continuously re-place a street sign.
         if destinationChanged {
@@ -425,6 +431,7 @@ final class GeoAnchorManager {
 
     private func placeContent(now: TimeInterval) {
         guard !hasActivatedStop, isTrackingReady, let base = cameraGroundPosition else {
+            navigationNotice = hasActivatedStop ? nil : "AR tracking is not ready. Hold still and slowly scan your surroundings."
             anchors.hideNavigation()
             navigationBearing = nil
             lastGuidanceTime = nil
@@ -440,9 +447,16 @@ final class GeoAnchorManager {
             direction = SIMD3(marker.x - base.x, 0, marker.z - base.z)
             markerDistance = simd_length(direction)
         } else {
-            guard localizationState.isUsable, let target,
+            guard let target else {
+                anchors.hideNavigation()
+                navigationNotice = "Walking arrows need a walking route and a fresh location. Use the map or retry directions."
+                navigationBearing = nil
+                return
+            }
+            guard localizationState.isUsable,
                   let worldDirection = provider.worldDirection(forBearing: target.bearingToWaypoint) else {
                 anchors.hideNavigation()
+                navigationNotice = "Waiting for accurate location and compass alignment. Use the map while AR aligns."
                 navigationBearing = nil
                 return
             }
@@ -451,12 +465,19 @@ final class GeoAnchorManager {
         }
         guard simd_length(direction) > 0.05 else {
             anchors.hideNavigation()
+            navigationNotice = "No walking direction is available. Return to the map to check your route."
             navigationBearing = nil
             return
         }
         updateCameraGuidance(direction: direction, now: now)
         guard hasDetectedGround, let camera = cameraTransform?.translation else {
+            navigationNotice = nil // The existing ground-scanning coach supplies this instruction.
             anchors.hideNavigation()
+            return
+        }
+        guard anchors.arrows.canRender else {
+            anchors.hideNavigation()
+            navigationNotice = "The AR arrows could not load. Return to the map for directions."
             return
         }
         let candidate: SIMD3<Float>
@@ -467,12 +488,21 @@ final class GeoAnchorManager {
             guard let coordinate = target?.anchorCoordinate,
                   let point = provider.worldPosition(for: coordinate, altitude: nil, heightBelowCamera: 0) else {
                 anchors.hideNavigation()
+                navigationNotice = "No nearby route position is available. Check your location on the map."
                 return
             }
             candidate = point
         }
-        guard let ground = detectedGroundPosition(near: candidate) else {
+        let projected = SIMD3(Double(candidate.x), Double(candidate.y), Double(candidate.z))
+        // Do not move a genuine image-tracked plaque out into the street.
+        let readable = markerDistance != nil ? projected : ARStreetGuidance.readableCandidate(
+            projected: projected,
+            camera: SIMD3(Double(camera.x), Double(camera.y), Double(camera.z)),
+            routeDirection: SIMD3(Double(direction.x), Double(direction.y), Double(direction.z)))
+        guard let readable,
+              let ground = detectedGroundPosition(near: SIMD3(Float(readable.x), Float(readable.y), Float(readable.z))) else {
             anchors.hideNavigation()
+            navigationNotice = "Unable to place walking arrows. Scan the pavement or return to the map."
             return
         }
         let cue = target?.turnCue
@@ -482,6 +512,28 @@ final class GeoAnchorManager {
         anchors.arrows.setVisible(true)
         anchors.arrows.update(ground: ground, camera: camera,
                               instruction: instruction, timestamp: now)
+        if let position = anchors.arrows.guidancePosition, let arView = anchors.arView {
+            let inFront = cameraTransform.map { transform in
+                let forward = -SIMD3<Float>(transform.columns.2.x, transform.columns.2.y, transform.columns.2.z)
+                return simd_dot(forward, position - camera) > 0
+            } ?? false
+            if inFront, let screen = arView.project(position), arView.bounds.contains(screen) {
+                navigationNotice = nil
+            } else {
+                let relative = cameraTransform.flatMap { transform in
+                    ARWalkingGuidance.relativeBearing(directionX: Double(position.x - camera.x),
+                        directionZ: Double(position.z - camera.z),
+                        cameraForwardX: Double(-transform.columns.2.x), cameraForwardZ: Double(-transform.columns.2.z))
+                }
+                if let relative, abs(relative) > 35 {
+                    navigationNotice = relative > 0 ? "Turn your phone to the right to see the arrows." : "Turn your phone to the left to see the arrows."
+                } else {
+                    navigationNotice = "Raise or tilt your phone toward the route to see the arrows."
+                }
+            }
+        } else {
+            navigationNotice = "Walk a little farther along the route to bring the arrows into view."
+        }
     }
 
     /// Refine the route point against detected horizontal geometry when it is in view.

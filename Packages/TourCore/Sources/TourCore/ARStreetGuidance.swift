@@ -24,6 +24,21 @@ public enum ARStreetGuidance {
                                    distance: min(lookAheadMeters, distance))
     }
 
+    /// A geo-projected route preview can be displaced by GPS error or end at a nearby
+    /// polyline vertex. Keep a readable directional sign nearby rather than silently
+    /// rejecting it. This is approximate guidance, not a claim that the point is a street.
+    public static func readableCandidate(projected: SIMD3<Double>, camera: SIMD3<Double>,
+                                         routeDirection: SIMD3<Double>) -> SIMD3<Double>? {
+        guard [projected.x, projected.y, projected.z, camera.x, camera.y, camera.z,
+               routeDirection.x, routeDirection.z].allSatisfy(\.isFinite) else { return nil }
+        let distance = hypot(projected.x - camera.x, projected.z - camera.z)
+        if (3...14).contains(distance) { return projected }
+        let length = hypot(routeDirection.x, routeDirection.z)
+        guard length > 0.05 else { return nil }
+        return SIMD3(camera.x + routeDirection.x / length * lookAheadMeters,
+                     projected.y, camera.z + routeDirection.z / length * lookAheadMeters)
+    }
+
     /// A road-sign instruction, independent of phone heading and fine-grained polyline segments.
     public struct Instruction: Equatable, Sendable {
         public var direction: ARWalkingGuidance.Direction
