@@ -73,8 +73,10 @@ final class ARNavigationArrowEntity: Entity {
             holder.isEnabled = false
             return
         }
-        let range = hypot(pinned.position.x - cameraPoint.x, pinned.position.z - cameraPoint.z)
-        guard range >= 2, range <= 20 else { holder.isEnabled = false; return }
+        guard ARArrowCoach.keepsPinnedSignVisible(position: pinned.position, camera: cameraPoint) else {
+            holder.isEnabled = false
+            return
+        }
         holder.isEnabled = true
         guard renderedPlacement != pinned else { return }
         holder.stopAllAnimations(recursive: true)

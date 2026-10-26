@@ -65,10 +65,9 @@ struct StopsContent: View {
     /// The list shows earned place accomplishments only; reading and availability
     /// remain on the detail page and never imply a physical visit or bonus discovery.
     private func statusLabels(for stop: HistoricalStop) -> [String] {
-        var labels: [String] = []
-        if tour.activities[stop.id].visitedAt != nil || tour.isCompleted(stop) { labels.append("Visited") }
-        if tour.activities[stop.id].bonusFoundAt != nil { labels.append("On-site bonus unlocked") }
-        return labels
+        StopListStatus.labels(hasSavedVisit: tour.activities[stop.id].visitedAt != nil,
+                              itineraryCompleted: tour.isCompleted(stop),
+                              hasUnlockedBonus: tour.activities[stop.id].bonusFoundAt != nil)
     }
 
     private func restoreStopReturn() {

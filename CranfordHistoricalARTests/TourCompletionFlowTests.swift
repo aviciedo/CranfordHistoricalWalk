@@ -252,8 +252,12 @@ final class TourCompletionFlowTests: XCTestCase {
 
     func testWalkingPolylineRejectsEstimatesAndOldDestinationRoutes() async {
         let tour = await makeTour(); defer { cleanUp(tour) }
-        tour.startTour()
         let map = MapViewModel()
+        var parked = WalkingRoute.straightLineEstimate(from: stops[0].coordinate, to: stops[0].coordinate)
+        parked.source = .appleMaps
+        tour.currentRoute = parked
+        XCTAssertTrue(map.walkingRouteCoordinates(for: tour).isEmpty, "A route before the walk starts is not a walking leg")
+        tour.startTour()
         let origin = stops[0].coordinate
         tour.currentRoute = .straightLineEstimate(from: origin, to: origin)
         XCTAssertTrue(map.walkingRouteCoordinates(for: tour).isEmpty)
@@ -261,6 +265,17 @@ final class TourCompletionFlowTests: XCTestCase {
         route.source = .googleRoutesAPI
         tour.currentRoute = route
         XCTAssertEqual(map.walkingRouteCoordinates(for: tour).count, 2)
+        route.routeCoordinates = [origin]
+        tour.currentRoute = route
+        XCTAssertTrue(map.walkingRouteCoordinates(for: tour).isEmpty, "A single point is not a path")
+        route.routeCoordinates = [origin, stops[0].coordinate]
+        route.destination = GeoMath.destination(from: stops[0].coordinate, bearing: 90, distance: 0.99)
+        tour.currentRoute = route
+        XCTAssertEqual(map.walkingRouteCoordinates(for: tour).count, 2, "A fix under one metre still belongs to this stop")
+        route.destination = GeoMath.destination(from: stops[0].coordinate, bearing: 90, distance: 1)
+        tour.currentRoute = route
+        XCTAssertTrue(map.walkingRouteCoordinates(for: tour).isEmpty, "One metre away is a different destination")
+        route.destination = stops[0].coordinate
         tour.completeCurrentStopAndAdvance()
         tour.currentRoute = route // A stale provider completion must not draw the old leg.
         XCTAssertTrue(map.walkingRouteCoordinates(for: tour).isEmpty)
@@ -290,7 +305,22 @@ final class TourCompletionFlowTests: XCTestCase {
         map.updateWalkingFrame(tour: tour)
         XCTAssertEqual(map.cameraRequest, camera)
         XCTAssertEqual(map.userPuck(for: tour)?.coordinate.latitude, small.coordinate.latitude)
-        let moved = LocationSample(coordinate: GeoCoordinate(latitude: origin.latitude + 0.0003, longitude: origin.longitude + 0.0003), horizontalAccuracy: 5)
+        let inside = GeoMath.destination(from: origin, bearing: 0, distance: 14.9)
+        XCTAssertLessThan(GeoMath.distance(from: origin, to: inside), 15)
+        let insideSample = LocationSample(coordinate: inside, horizontalAccuracy: 4, timestamp: small.timestamp.addingTimeInterval(1))
+        source.emit(insideSample)
+        for _ in 0..<100 where tour.userLocation?.timestamp != insideSample.timestamp { try await Task.sleep(for: .milliseconds(2)) }
+        map.updateWalkingFrame(tour: tour)
+        XCTAssertEqual(map.cameraRequest, camera, "Walking inside 15 m leaves the framed camera alone")
+        let edge = GeoMath.destination(from: origin, bearing: 0, distance: 15)
+        XCTAssertGreaterThanOrEqual(GeoMath.distance(from: origin, to: edge), 15)
+        let edgeSample = LocationSample(coordinate: edge, horizontalAccuracy: 4, timestamp: insideSample.timestamp.addingTimeInterval(1))
+        source.emit(edgeSample)
+        for _ in 0..<100 where tour.userLocation?.timestamp != edgeSample.timestamp { try await Task.sleep(for: .milliseconds(2)) }
+        map.updateWalkingFrame(tour: tour)
+        XCTAssertNotEqual(map.cameraRequest, camera, "Fifteen metres of walking reframes the leg")
+        let moved = LocationSample(coordinate: GeoCoordinate(latitude: origin.latitude + 0.0003, longitude: origin.longitude + 0.0003),
+                                  horizontalAccuracy: 5, timestamp: edgeSample.timestamp.addingTimeInterval(1))
         source.emit(moved)
         for _ in 0..<100 where tour.userLocation?.timestamp != moved.timestamp { try await Task.sleep(for: .milliseconds(2)) }
         map.updateWalkingFrame(tour: tour)
@@ -299,6 +329,30 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertEqual(map.userPuck(for: tour)?.accuracyMeters, 5)
         XCTAssertEqual(tour.currentStop?.id, stops[0].id)
         XCTAssertEqual(tour.progress.completedCount, 0)
+    }
+
+    func testMapDotRejectsNegativeOrNonFiniteAccuracyWithoutMovingTheWalk() async throws {
+        let source = ActivityTestLocationService(status: .authorized)
+        let tour = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),
+            locationService: source, directionsService: PreviewDirectionsService())
+        await tour.loadStopsIfNeeded(); tour.startTour()
+        defer { cleanUp(tour) }
+        let origin = GeoCoordinate(latitude: 40.67, longitude: -74.32)
+        let map = MapViewModel()
+        let valid = LocationSample(coordinate: origin, horizontalAccuracy: 0, timestamp: Date())
+        source.emit(valid)
+        for _ in 0..<100 where tour.userLocation?.timestamp != valid.timestamp { try await Task.sleep(for: .milliseconds(2)) }
+        XCTAssertEqual(map.userPuck(for: tour)?.accuracyMeters, 0)
+        let progress = tour.progress
+        for (offset, accuracy) in [(1.0, -0.1), (2.0, Double.nan), (3.0, Double.infinity)] {
+            let bad = LocationSample(coordinate: origin, horizontalAccuracy: accuracy,
+                                    timestamp: valid.timestamp.addingTimeInterval(offset))
+            source.emit(bad)
+            for _ in 0..<100 where tour.userLocation?.timestamp != bad.timestamp { try await Task.sleep(for: .milliseconds(2)) }
+            XCTAssertNil(map.userPuck(for: tour), "Accuracy \(accuracy) must not draw a dot")
+            XCTAssertEqual(tour.progress, progress)
+            XCTAssertEqual(tour.currentStop?.id, stops[0].id)
+        }
     }
 
     func testHomeZoomUsesCurrentZoomWithoutChangingWalkingOrViewedStop() async {

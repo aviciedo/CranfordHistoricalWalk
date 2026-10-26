@@ -61,9 +61,48 @@ final class GPSCaptureTests: XCTestCase {
     }
 
     func testCSVNeutralizesUserLabelFormulasWithoutBreakingNegativeCoordinates() {
-        let csv = GPSCapture.csv([capture(label: "=1+1")])
-        XCTAssertTrue(csv.contains("\"'=1+1\""))
-        XCTAssertTrue(csv.contains(",-74.301047,"))
+        for label in ["=1+1", "+1+1", "-1+1", "@SUM(A1)", "  =cmd", "\n+cmd", "=1\"2"] {
+            let csv = GPSCapture.csv([capture(label: label)])
+            let escaped = label.replacingOccurrences(of: "\"", with: "\"\"")
+            XCTAssertTrue(csv.contains("\"'\(escaped)\""), label)
+        }
+        let ordinary = GPSCapture.csv([capture(label: "North-gate")])
+        XCTAssertTrue(ordinary.contains("\"North-gate\""))
+        XCTAssertFalse(ordinary.contains("'North-gate"))
+        XCTAssertTrue(GPSCapture.csv([capture(label: "=1+1")]).contains(",-74.301047,"))
+    }
+
+    func testFreshnessBoundaryAndMissingIdentityRejectDeviceEvidence() {
+        var reading = capture()
+        reading.fixTimestamp = reading.savedAt.addingTimeInterval(-29.999)
+        XCTAssertTrue(reading.isValid)
+        reading.fixTimestamp = reading.savedAt.addingTimeInterval(-30)
+        XCTAssertFalse(reading.isValid)
+        reading = capture()
+        reading.fixTimestamp = reading.savedAt.addingTimeInterval(5)
+        XCTAssertTrue(reading.isValid)
+        reading.fixTimestamp = reading.savedAt.addingTimeInterval(5.001)
+        XCTAssertFalse(reading.isValid)
+        reading = capture(); reading.stopID = ""; XCTAssertFalse(reading.isValid)
+        reading = capture(); reading.stopName = ""; XCTAssertFalse(reading.isValid)
+        reading = capture(); reading.tour = TourCatalogIdentity(tourID: " ", version: 1); XCTAssertFalse(reading.isValid)
+        reading = capture(); reading.tour.version = 0; XCTAssertFalse(reading.isValid)
+        reading = capture(); reading.horizontalAccuracy = .infinity; XCTAssertFalse(reading.isValid)
+    }
+
+    func testLegacyFiniteFixIsKeptAndPreciseLocationCopyStaysExplicit() {
+        var legacy = capture()
+        legacy.source = .legacyViewingPoint
+        legacy.preciseLocation = nil
+        legacy.fixTimestamp = legacy.savedAt
+        XCTAssertTrue(legacy.isValid)
+        XCTAssertTrue(legacy.copyText.contains("Precise Location: Unknown"))
+        var off = capture(); off.preciseLocation = false
+        XCTAssertTrue(off.copyText.contains("Precise Location: Off"))
+        XCTAssertTrue(GPSCaptureArchive(records: []).isValid)
+        XCTAssertTrue(GPSCapture.csv([]).hasPrefix("capture_id,"))
+        XCTAssertTrue(GPSCapture.csv([]).hasSuffix("\r\n"))
+        XCTAssertEqual(GPSCapture.csv([]).components(separatedBy: "\r\n").count, 2)
     }
 
     func testCopyIncludesAccuracyFixTimeAndSourceRatherThanCoordinatesAlone() {

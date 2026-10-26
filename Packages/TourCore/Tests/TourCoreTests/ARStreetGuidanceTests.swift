@@ -129,6 +129,71 @@ final class ARStreetGuidanceTests: XCTestCase {
         XCTAssertEqual(state.update(candidate: [5, 0, -6], camera: .zero, instruction: right, timestamp: 0)?.instruction, right)
     }
 
+    func testUnconfirmedTurnBlocksRepositionUntilTheInstructionSettles() throws {
+        var state = ARStreetGuidance.AnchorState()
+        let original = try XCTUnwrap(state.update(candidate: [0, 0, -8], camera: .zero, instruction: ahead, timestamp: 0))
+        XCTAssertEqual(state.update(candidate: [0, 0, -8], camera: [6, 0, 0], instruction: right, timestamp: 0.5), original)
+        XCTAssertEqual(state.update(candidate: [0, 0, -8], camera: [7, 0, 0], instruction: right, timestamp: 1.25), original)
+        let next = try XCTUnwrap(state.update(candidate: [7, 0, -8], camera: [7, 0, 0], instruction: right, timestamp: 2))
+        XCTAssertEqual(next.instruction, right)
+        XCTAssertEqual(next.position, [7, 0, -8])
+    }
+
+    func testOneSecondGapKeepsTheSettleClockAndALongerGapRestartsIt() throws {
+        var kept = ARStreetGuidance.AnchorState()
+        let original = try XCTUnwrap(kept.update(candidate: [0, 0, -8], camera: .zero, instruction: ahead, timestamp: 0))
+        XCTAssertEqual(kept.update(candidate: [0, 0, -8], camera: .zero, instruction: right, timestamp: 0.5), original)
+        // A gap of exactly one second must not discard the pending turn.
+        XCTAssertEqual(kept.update(candidate: [0, 0, -8], camera: [6, 0, 0], instruction: right, timestamp: 1.5), original)
+        let committed = try XCTUnwrap(kept.update(candidate: [6, 0, -8], camera: [6, 0, 0], instruction: right, timestamp: 2))
+        XCTAssertEqual(committed.instruction, right)
+
+        var restarted = ARStreetGuidance.AnchorState()
+        XCTAssertNotNil(restarted.update(candidate: [0, 0, -8], camera: .zero, instruction: ahead, timestamp: 0))
+        XCTAssertEqual(restarted.update(candidate: [0, 0, -8], camera: .zero, instruction: right, timestamp: 0.5), original)
+        XCTAssertEqual(restarted.update(candidate: [0, 0, -8], camera: [6, 0, 0], instruction: right, timestamp: 1.75), original)
+        // The clock restarted at 1.75, so 2.75 is only one second into the new wait.
+        XCTAssertEqual(restarted.update(candidate: [6, 0, -8], camera: [6, 0, 0], instruction: right, timestamp: 2.75)?.instruction, ahead)
+        XCTAssertEqual(restarted.update(candidate: [6, 0, -8], camera: [6, 0, 0], instruction: right, timestamp: 3.25)?.instruction, right)
+    }
+
+    func testRepositionAndFirstPlacementUseClosedDistanceThresholds() throws {
+        var state = ARStreetGuidance.AnchorState()
+        let original = try XCTUnwrap(state.update(candidate: [0, 0, -8], camera: .zero, instruction: ahead, timestamp: 0))
+        XCTAssertEqual(state.update(candidate: [0, 0, -8], camera: [4.999, 0, 0], instruction: ahead, timestamp: 0.4), original)
+        let moved = try XCTUnwrap(state.update(candidate: [0, 0, -8], camera: [5, 0, 0], instruction: ahead, timestamp: 0.8))
+        XCTAssertNotEqual(moved.facingYawRadians, original.facingYawRadians)
+
+        var edges = ARStreetGuidance.AnchorState()
+        XCTAssertNil(edges.update(candidate: [0, 0, -2.999], camera: .zero, instruction: ahead, timestamp: 0))
+        XCTAssertNotNil(edges.update(candidate: [0, 0, -3], camera: .zero, instruction: ahead, timestamp: 0))
+        edges.reset()
+        XCTAssertNotNil(edges.update(candidate: [0, 0, -14], camera: .zero, instruction: ahead, timestamp: 0))
+        edges.reset()
+        XCTAssertNil(edges.update(candidate: [0, 0, -14.001], camera: .zero, instruction: ahead, timestamp: 0))
+    }
+
+    func testReadableCandidateKeepsTheInclusiveThreeToFourteenMetreWindow() {
+        let direction = SIMD3<Double>(0, 0, -1)
+        XCTAssertEqual(ARStreetGuidance.readableCandidate(projected: [0, -1, -3], camera: .zero, routeDirection: direction), [0, -1, -3])
+        XCTAssertEqual(ARStreetGuidance.readableCandidate(projected: [0, -1, -14], camera: .zero, routeDirection: direction), [0, -1, -14])
+        XCTAssertEqual(ARStreetGuidance.readableCandidate(projected: [0, -1, -2.999], camera: .zero, routeDirection: direction), [0, -1, -8])
+        XCTAssertEqual(ARStreetGuidance.readableCandidate(projected: [0, -1, -14.001], camera: .zero, routeDirection: direction), [0, -1, -8])
+    }
+
+    func testRoutePreviewAcceptsThirtyFiveMetresOfLateralErrorAndRejectsTheNextMillimetre() throws {
+        let route = cornerRoute()
+        var progress = RouteProgressCalculator.progress(along: route, userLocation: route.origin)
+        progress.distanceFromRoute = 35
+        XCTAssertNotNil(ARStreetGuidance.routePoint(route: route, progress: progress))
+        progress.distanceFromRoute = 35.0001
+        XCTAssertNil(ARStreetGuidance.routePoint(route: route, progress: progress))
+        progress.distanceFromRoute = -0.001
+        XCTAssertNil(ARStreetGuidance.routePoint(route: route, progress: progress))
+        progress.distanceFromRoute = .nan
+        XCTAssertNil(ARStreetGuidance.routePoint(route: route, progress: progress))
+    }
+
     func testStreetNameChangeUsesTheSameSettlingRuleAndBlankLabelsAreOmitted() throws {
         var state = ARStreetGuidance.AnchorState()
         let original = try XCTUnwrap(state.update(candidate: [0, 0, -8], camera: .zero, instruction: ahead, timestamp: 0))
