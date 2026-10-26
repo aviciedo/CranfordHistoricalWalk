@@ -10,6 +10,7 @@ on:
       - 'CranfordHistoricalAR.xcodeproj/**'
       - 'Packages/TourCore/**'
       - 'Config/**'
+      - 'assets/audio/**'
       - 'project.yml'
       - '.github/workflows/apple-build.yml'
       - 'scripts/summarize-apple-checks.py'
@@ -20,6 +21,7 @@ on:
       - 'CranfordHistoricalAR.xcodeproj/**'
       - 'Packages/TourCore/**'
       - 'Config/**'
+      - 'assets/audio/**'
       - 'project.yml'
       - '.github/workflows/apple-build.yml'
       - 'scripts/summarize-apple-checks.py'
@@ -85,7 +87,7 @@ jobs:
         run: python3 scripts/summarize-apple-checks.py
       - name: Preserve compiler logs
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: apple-compiler-logs
           path: |

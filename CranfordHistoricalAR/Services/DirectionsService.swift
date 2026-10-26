@@ -254,8 +254,9 @@ struct FallbackWalkingDirectionsService: DirectionsService {
 // MARK: - Factory
 
 enum DirectionsServiceFactory {
-    static func make(configuration: AppConfiguration) -> any DirectionsService {
-        let apple = AppleWalkingDirectionsService()
+    /// The default remains Apple's real network; injection makes provider selection testable offline.
+    static func make(configuration: AppConfiguration,
+                     apple: any DirectionsService = AppleWalkingDirectionsService()) -> any DirectionsService {
         guard configuration.hasGoogleMapsKey, AppConfiguration.looksLikeKey(configuration.googleRoutesAPIKey) else {
             return CachedDirectionsService(upstream: apple)
         }

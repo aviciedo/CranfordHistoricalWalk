@@ -232,9 +232,15 @@ final class NarrationPlayerTests: XCTestCase {
 
     func testPreviewCreatorStopsMatchTheBundledContent() async throws {
         let document = try await BundledJSONHistoricalStopService().loadTour()
+        // The loader verifies recording bytes/transcripts and adds runtime checksums.
+        // Apply that same installation to the preview before comparing full values.
+        // A stale preview transcript still fails verification and the equality below.
+        var previews = HistoricalTourDocument(tourName: "Preview", stops: HistoricalStop.previewStops,
+                                               recordings: document.recordings)
+        try ProducedNarrationRelease.install(in: &previews, bundle: .main)
         for id in ["hpab-001", "hpab-002", "hpab-004"] {
             let stop = try XCTUnwrap(document.stops.first { $0.id == id })
-            var preview = try XCTUnwrap(HistoricalStop.previewStops.first { $0.id == id })
+            var preview = try XCTUnwrap(previews.stops.first { $0.id == id })
             // Previews use the equivalent derived departure radius; JSON supplies it explicitly.
             preview.departureRadius = stop.departureRadius
             XCTAssertEqual(preview, stop)

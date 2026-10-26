@@ -1767,7 +1767,7 @@ final class StopVisitStoreTests: XCTestCase {
         XCTAssertEqual(tour.visitRecords.count, 2)
     }
 
-    func testDeveloperClearResetsSavedVisitsAndProgressAndPausesSimulator() async throws {
+    func testDeveloperVisitResetPreservesStoriesAndBonusesAndPausesSimulator() async throws {
         let store = InMemoryStopVisitStore()
         store.record(StopVisitRecord(stopID: "hpab-001", activatedAt: Date(), evidence: .recognizedPlaque))
         let service = DeveloperTestLocationService()
@@ -1780,7 +1780,8 @@ final class StopVisitStoreTests: XCTestCase {
         tour.finishStory(for: "hpab-001")
         XCTAssertTrue(tour.beginPlaqueDiscovery())
         tour.confirmPlaqueArrival(for: "hpab-001")
-        XCTAssertEqual(tour.activateCurrentStop(stopID: "hpab-001", trackingReady: true, plaqueIsTracked: true), .allow(.recognizedPlaque))
+        XCTAssertEqual(tour.activateCurrentStop(stopID: "hpab-001", trackingReady: true, plaqueIsTracked: true), .alreadyActivated,
+                       "A migrated saved plaque bonus must not be awarded again")
         tour.completeCurrentStopAndAdvance()
         tour.progress.recordWalked(meters: 100)
         developer.isVisitRecordingEnabled = false
@@ -1793,6 +1794,8 @@ final class StopVisitStoreTests: XCTestCase {
         developer.clearVisitsAndResetTour()
         XCTAssertTrue(store.records().isEmpty)
         XCTAssertTrue(tour.visitRecords.isEmpty)
+        XCTAssertNotNil(tour.activities["hpab-001"].bonusFoundAt, "Visit-only reset preserves the earned stamp")
+        XCTAssertNotNil(tour.activities["hpab-001"].readAt, "Visit-only reset preserves story completion")
         XCTAssertEqual(tour.currentStop?.id, "hpab-001")
         XCTAssertEqual(tour.progress.completedCount, 0)
         XCTAssertEqual(tour.progress.walkedMeters, 0)

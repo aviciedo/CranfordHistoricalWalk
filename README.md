@@ -1,3 +1,16 @@
+## Apple CI repair
+
+The repeated emails came from native test failures, not failed compilation. A diagnostic
+run verified both simulator Debug and iPhone Release builds. Three old tests expected
+behavior that had intentionally changed: routing without Google keys now uses Apple's
+walking network; loaded stops carry verified narration checksums; a previously saved
+plaque bonus must not be awarded again. Tests now validate those behaviors. Routing
+selection uses an injected offline Apple-provider fixture while production defaults
+remain unchanged. CI runs once on main per publication, retains PR/manual checks,
+checks audio changes, and publishes actionable failure summaries. Node action
+versions are updated. The native rerun is being verified before this repair is reported
+as passing.
+
 ## On-site passport — build 65
 
 Added the selected ivory passport with engraved hunter-green stamp artwork, native

@@ -47,11 +47,23 @@ def main():
                 sections.append(f'Could not read xcresult failure summaries: {error}')
         else:
             sections.append('xcresult extraction unavailable; filtered text logs follow.')
+    has_result_failures = bool(errors)
     for log in sorted(directory.glob('*.log')):
-        lines = log_failures(log.read_text(errors='replace'))
+        log_text = log.read_text(errors='replace')
+        totals = re.findall(r'Executed \d+ tests?[^\n]*', log_text)
+        successes = re.findall(r'\*\* (?:BUILD|TEST) SUCCEEDED \*\*', log_text)
+        status = totals[-1:] + successes[-1:]
+        if status:
+            text = f"{log.name}: {'; '.join(status)}"
+            sections.append(text)
+            print(f'::notice title=Apple verification::{annotation(text)}')
+        lines = log_failures(log_text)
         if lines:
             sections.append(f'### {log.name}\n\n````text\n' + '\n'.join(lines) + '\n````')
-            errors.extend(line for line in lines if re.search(r'error:|XCTAssert|Test Case .*failed|Testing failed|Failed to', line, re.I))
+            if not has_result_failures:
+                errors.extend(line for line in lines
+                              if re.search(r'error:|XCTAssert|Test Case .*\' failed \(|Testing failed|Failed to', line, re.I)
+                              and 'Failed to send CA Event' not in line)
     unique = list(dict.fromkeys(errors))
     report = '# Apple build and test diagnostics\n\n'
     if unique:
