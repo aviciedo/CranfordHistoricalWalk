@@ -77,6 +77,7 @@
 		C1EE33CE77C02E436A62BA72 /* BottomNavigationBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = B148BB18AD21C1BBEF00414B /* BottomNavigationBar.swift */; };
 		4496C4AFC9B63D28F494F533 /* stop_01_droeschers_mill.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 03265AD0612AB5EF94C94F91 /* stop_01_droeschers_mill.mp3 */; };
 		14F82778F2AA764FAF369C87 /* stop_02_greystone.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A7D899DD74CED05AAE9F13C0 /* stop_02_greystone.mp3 */; };
+		0F307A21F6F14D88A591FE91 /* PassportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53787ACDAD6240CAB3812148 /* PassportView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -161,6 +162,7 @@
 		B148BB18AD21C1BBEF00414B /* BottomNavigationBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BottomNavigationBar.swift; sourceTree = "<group>"; };
 		03265AD0612AB5EF94C94F91 /* stop_01_droeschers_mill.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; name = stop_01_droeschers_mill.mp3; path = assets/audio/stops/stop_01_droeschers_mill.mp3; sourceTree = SOURCE_ROOT; };
 		A7D899DD74CED05AAE9F13C0 /* stop_02_greystone.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; name = stop_02_greystone.mp3; path = assets/audio/stops/stop_02_greystone.mp3; sourceTree = SOURCE_ROOT; };
+		53787ACDAD6240CAB3812148 /* PassportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PassportView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -359,6 +361,7 @@
 			children = (
 				DDC2903451606F4F4717257E /* StopsView.swift */,
 				9B30FD1A69BDAC8F5309FD15 /* StopDetailView.swift */,
+				53787ACDAD6240CAB3812148 /* PassportView.swift */,
 				3CB802D81112E6B2459FCE66 /* SharedNarrationBar.swift */,
 				1D2E22AB8873668EBFC1D7CA /* PhotoViewer.swift */,
 				B148BB18AD21C1BBEF00414B /* BottomNavigationBar.swift */,
@@ -490,6 +493,7 @@
 			files = (
 				8C5E205C91B0E4E4F44F6B47 /* StopsView.swift in Sources */,
 				DF54B06C3961D5A842D18240 /* StopDetailView.swift in Sources */,
+				0F307A21F6F14D88A591FE91 /* PassportView.swift in Sources */,
 				4BF62AB25E0B69874D9B4001 /* SharedNarrationBar.swift in Sources */,
 				5FC64123AE5CA09AC6373416 /* PhotoViewer.swift in Sources */,
 				C1EE33CE77C02E436A62BA72 /* BottomNavigationBar.swift in Sources */,
@@ -588,7 +592,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 64;
+				CURRENT_PROJECT_VERSION = 65;
 				DEVELOPMENT_TEAM = "$(DEVELOPMENT_TEAM)";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = CranfordHistoricalAR/Info.plist;
@@ -697,7 +701,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 64;
+				CURRENT_PROJECT_VERSION = 65;
 				DEVELOPMENT_TEAM = "$(DEVELOPMENT_TEAM)";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = CranfordHistoricalAR/Info.plist;

@@ -134,6 +134,17 @@ final class TourViewModel {
     var activeVisitEvidence: StopVisitEvidence?
     let visitStore: any StopVisitStore
     let activityStore: any StopActivityStore
+    /// One foreground celebration, emitted only after a new real plaque bonus is saved.
+    /// Collection itself is derived from the existing ledger, so old discoveries need no migration.
+    var pendingPassportStampStopID: String?
+    var passportStops: [HistoricalStop] { stops.filter(\.hasPlaqueReference) }
+    var passportCollectedCount: Int { passportStops.filter { activities[$0.id].bonusFoundAt != nil }.count }
+    func takePassportStamp() -> String? {
+        defer { pendingPassportStampStopID = nil }
+        guard let id = pendingPassportStampStopID,
+              passportStops.contains(where: { $0.id == id }), activities[id].bonusFoundAt != nil else { return nil }
+        return id
+    }
     var activities: StopActivityLedger
     /// AR may inspect a different physical site without changing the walking destination.
     var arStop: HistoricalStop? { arDiscoveryStopID.flatMap(stop(withID:)) ?? currentStop }
@@ -363,6 +374,7 @@ final class TourViewModel {
     func clearRecordedActivitiesAndRestart(includingStoriesAndBonuses: Bool) {
         visitStore.removeAll()
         visitRecords = visitStore.records()
+        pendingPassportStampStopID = nil
         if includingStoriesAndBonuses { activities = StopActivityLedger() }
         else { activities.clearVisits() }
         activityStore.save(activities)

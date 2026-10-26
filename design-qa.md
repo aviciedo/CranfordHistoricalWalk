@@ -1,3 +1,47 @@
+# Build 65 — On-site passport
+
+final result: blocked
+
+Source visual truth: owner-approved detailed rectangular stamp passport mockup,
+`/workspace/generated_images/exec-f814cfce-8496-49cf-8a72-0b8941d95d9c.png`, and
+attached Passport stamped integration-row crop. Source is a portrait conceptual
+render, not a pixel-perfect native screenshot. Target: native portrait iPhone
+390 × 844 points with system safe areas; also compact screens and Dynamic Type.
+
+Implementation screenshot: unavailable. This Linux environment has no Xcode,
+Simulator or iPhone capture surface. No rendered native dimensions/density or
+combined source/implementation comparison exist. Browser screenshots would not
+verify the SwiftUI/UIKit/RealityKit implementation. Full-view and focused-region
+comparison, touch tests, console/presentation-warning inspection, device camera,
+stamp animation and page-curl QA are blocked. No visual pass is claimed.
+
+Implemented source: `Views/PassportView.swift`, stop row and AR-dismissal handoff.
+New generated mill/Greystone stamp and paper assets were opened and inspected.
+Code review: native serif title/name/row heading; existing forest/ivory tokens;
+scalable unclipped text and scrollable paper leaf; persistent 48-point page controls;
+48-point-or-larger navigation targets; real transparent perforated stamp images;
+collected versus uncollected copy; Reduce Motion and VoiceOver announcement.
+These are implementation facts, not rendered fidelity findings.
+
+Required fidelity surfaces remain unverified: typography/wrapping, layout rhythm
+and curl, palette/contrast outdoors, actual rendered image crop/sharpness, and
+app-specific copy placement. Native UI intentionally uses system sans-serif Back
+and small labels consistent with existing screens. The static curled corner is
+replaced by the interactive native curl; motion cannot be assessed from source.
+
+Automated evidence: 232 core + 98 actual-model/provider tests passed. Debug with
+DEVELOPER_MENU and Release syntax passed. Native type checking remains pending.
+The first new test run had one incorrect expectation that resetTour leaves the walk
+notStarted; corrected it to the established explicit-restart inProgress behavior.
+No production restart behavior was changed to satisfy that test.
+
+Implementation checklist: perform the seven native acceptance sequences in
+`PASSPORT.md`, capture the passport and earned stop-row at matching viewport/state,
+compare both images together against references, fix any P0/P1/P2 mismatches and
+repeat. No visual comparison iteration has been fabricated. Previous reports follow.
+
+---
+
 # Build 63 — Photo-led stop details and separate reading
 
 final result: blocked

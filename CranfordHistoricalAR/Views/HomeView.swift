@@ -6,6 +6,7 @@ struct HomeView: View {
     @Environment(TourViewModel.self) private var tour
     @Environment(AppNavigation.self) private var navigation
     @State private var isShowingDeveloperControls = false
+    @State private var isShowingPassport = false
     @ScaledMetric(relativeTo: .largeTitle) private var titleSize: CGFloat = 48
 
     var body: some View {
@@ -22,6 +23,8 @@ struct HomeView: View {
             .scrollBounceBehavior(.basedOnSize, axes: .vertical)
         }
         .background(AppTheme.ivory.ignoresSafeArea()).foregroundStyle(AppTheme.forest)
+        .fullScreenCover(isPresented: $isShowingPassport) { PassportView(initialStopID: tour.passportStops.first?.id ?? "") }
+        .onChange(of: navigation.homeReturnID) { _, _ in isShowingPassport = false }
         .task {
             if tour.isWalkingActive && tour.locationAuthorization == .authorized { tour.startLocationIfPossible() }
         }
@@ -104,6 +107,21 @@ struct HomeView: View {
                 navigationRow("Explore the stops", symbol: "book", tab: .stops,
                               hint: "Listen, read and view photographs without starting a walk or enabling location")
                 Divider()
+                if !tour.passportStops.isEmpty {
+                    Button { isShowingPassport = true } label: {
+                        HStack(spacing: 14) {
+                            Image(systemName: "book.closed").font(.title2).frame(width: 28)
+                            Text("Your passport").font(.body)
+                            Spacer(minLength: 8)
+                            Text("\(tour.passportCollectedCount) of \(tour.passportStops.count)")
+                                .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
+                            Image(systemName: "chevron.right").font(.subheadline.weight(.medium))
+                        }
+                        .frame(minHeight: 56).contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain).accessibilityIdentifier("home.passport")
+                    Divider()
+                }
             }
 
             if case .failed(let message) = tour.loadState {

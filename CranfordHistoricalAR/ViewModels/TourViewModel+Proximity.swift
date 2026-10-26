@@ -160,11 +160,13 @@ extension TourViewModel {
         #if DEVELOPER_MENU
         guard isVisitRecordingEnabled else { return }
         #endif
+        let isNewStamp = evidence == .recognizedPlaque && activities[stopID].bonusFoundAt == nil
         activities.visited(stopID, at: now)
         if evidence == .recognizedPlaque { activities.foundBonus(at: stopID, date: now) }
         activityStore.save(activities)
         visitStore.record(StopVisitRecord(stopID: stopID, activatedAt: now, evidence: evidence))
         visitRecords = visitStore.records()
+        if isNewStamp { pendingPassportStampStopID = stopID }
     }
 
     /// Recognition selects an AR subject, never the guided walking destination.

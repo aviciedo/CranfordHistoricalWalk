@@ -55,6 +55,13 @@ struct ARTourView: View {
             if phase != .active { motionManager.stopDeviceMotionUpdates() }
             else if model != nil && !isLeavingAR { beginPhoneOrientationMonitoring() }
         }
+        .onChange(of: tour.pendingPassportStampStopID) { _, id in
+            if id != nil {
+                model?.isShowingSignDetails = false
+                model?.isShowingBonusPreview = false
+                returnToMap()
+            }
+        }
         .onChange(of: navigation.homeReturnID) { _, _ in
             model?.isShowingSignDetails = false
             model?.isShowingBonusPreview = false
@@ -511,6 +518,9 @@ struct PlaqueScannerView: View {
             await scanner.requestCameraAccessIfNeeded()
         }
         .onDisappear { tour.endARDiscoverySession() }
+        .onChange(of: tour.pendingPassportStampStopID) { _, id in
+            if id != nil { model?.isShowingBonusPreview = false; dismiss() }
+        }
         .onChange(of: navigation.homeReturnID) { _, _ in
             model?.isShowingBonusPreview = false
             dismiss()

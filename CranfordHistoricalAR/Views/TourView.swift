@@ -85,7 +85,11 @@ struct TourView: View {
         #if DEVELOPER_MENU
         .sheet(isPresented: $isShowingDeveloperControls) { DeveloperControlsView() }
         #endif
-        .fullScreenCover(isPresented: $isShowingAR) { ARTourView() }
+        .fullScreenCover(isPresented: $isShowingAR, onDismiss: {
+            // Present the discovered site's story only after AR has fully dismissed.
+            // StopDetail consumes the event and opens its passport above that story.
+            if let id = tour.pendingPassportStampStopID { detailStop = tour.stop(withID: id) }
+        }) { ARTourView() }
         .onChange(of: navigation.pendingStopReturn) { _, _ in restoreStopReturn() }
         .onAppear { restoreStopReturn() }
         .onChange(of: navigation.homeReturnID) { _, _ in

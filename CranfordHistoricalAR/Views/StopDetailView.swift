@@ -6,9 +6,18 @@ struct StopDetailView: View {
     @Environment(TourViewModel.self) private var tour
     @Environment(AppNavigation.self) private var navigation
     @Environment(\.dismiss) private var dismiss
-    let stop: HistoricalStop
+    let initialStop: HistoricalStop
+    init(stop: HistoricalStop, onStartDiscovery: (() -> Void)? = nil) {
+        initialStop = stop
+        self.onStartDiscovery = onStartDiscovery
+    }
+    // A scanner can identify another supported plaque. Return to that site's actual story.
+    @State private var discoveredStop: HistoricalStop?
+    private var stop: HistoricalStop { discoveredStop ?? initialStop }
+    @State private var passportPresentation: PassportPresentation?
     var onStartDiscovery: (() -> Void)? = nil
     @State private var isShowingScanner = false
+    @State private var scannerHasPresented = false
     @State private var isShowingBonus = false
     @State private var isStopDetailsExpanded = true
 
@@ -23,7 +32,7 @@ struct StopDetailView: View {
         if let onStartDiscovery, stop.hasPlaqueReference {
             onStartDiscovery()
             dismiss()
-        } else { isShowingScanner = true }
+        } else { scannerHasPresented = true; isShowingScanner = true }
     }
 
     var body: some View {
@@ -40,14 +49,19 @@ struct StopDetailView: View {
             .background(AppTheme.ivory.ignoresSafeArea()).foregroundStyle(AppTheme.forest)
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(isPresented: $isShowingStory) { StopStoryReader(stop: stop) }
-            .fullScreenCover(isPresented: $isShowingScanner) { PlaqueScannerView(stopID: stop.id) }
+            .fullScreenCover(isPresented: $isShowingScanner, onDismiss: { scannerHasPresented = false; revealNewStamp() }) { PlaqueScannerView(stopID: stop.id) }
+            .fullScreenCover(item: $passportPresentation) { presentation in
+                PassportView(initialStopID: presentation.stopID, animatedStampStopID: presentation.animated ? presentation.stopID : nil)
+            }
             .sheet(isPresented: $isShowingBonus) { OnSiteBonusPreview(stop: stop) }
-            .onAppear { tour.openStory(for: stop.id) }
+            .onAppear { tour.openStory(for: stop.id); if !scannerHasPresented { revealNewStamp() } }
         }
         .onChange(of: navigation.homeReturnID) { _, _ in
+            tour.pendingPassportStampStopID = nil
             isShowingScanner = false
             isShowingBonus = false
             isShowingStory = false
+            passportPresentation = nil
         }
         .onChange(of: stop.id) { _, _ in
             isStopDetailsExpanded = true
@@ -56,6 +70,13 @@ struct StopDetailView: View {
         .dismissOnReturnHome()
         .holdsWalkingContext()
         .environment(\.colorScheme, .light)
+    }
+
+    private func revealNewStamp() {
+        guard !isShowingScanner, passportPresentation == nil,
+              let id = tour.takePassportStamp(), let found = tour.stop(withID: id) else { return }
+        discoveredStop = found
+        passportPresentation = PassportPresentation(stopID: id, animated: true)
     }
 
     private var returnControl: some View {
@@ -68,7 +89,7 @@ struct StopDetailView: View {
             VStack(alignment: .leading, spacing: 24) {
                 VStack(alignment: .leading, spacing: 16) {
                     StopPhotoGallery(stop: stop, height: galleryHeight,
-                                     isObscured: isShowingScanner || isShowingBonus)
+                                     isObscured: isShowingScanner || isShowingBonus || passportPresentation != nil)
                     VStack(alignment: .leading, spacing: 8) {
                         Text(stop.name)
                             .font(.system(.largeTitle, design: .serif).weight(.semibold))
@@ -117,9 +138,10 @@ struct StopDetailView: View {
                         .buttonStyle(.plain)
                         .accessibilityIdentifier("stop.findPlaque")
                         if tour.activities[stop.id].bonusFoundAt != nil {
-                            Label("Bonus found", systemImage: "seal.fill")
-                                .font(.subheadline.weight(.medium)).foregroundStyle(AppTheme.forest)
-                                .accessibilityIdentifier("stop.bonusFound")
+                            PassportStampRow(stop: stop, collectedCount: tour.passportCollectedCount,
+                                             totalCount: tour.passportStops.count) {
+                                passportPresentation = PassportPresentation(stopID: stop.id, animated: false)
+                            }
                         }
                     }
                 }

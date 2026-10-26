@@ -1,3 +1,15 @@
+## On-site passport — build 65
+
+Added the selected ivory passport with engraved hunter-green stamp artwork, native
+page-curl browsing, and an earned Passport stamped row on tour-stop pages. A first
+saved real AR plaque discovery closes AR and opens the corresponding passport leaf
+with a stamp animation, then closes back to that stop. Existing bonuses become
+collected stamps automatically; new walks retain the collection. Home includes a
+secondary passport entry. No stamp is awarded for GPS arrival, story completion or
+practice scans. 232 core + 98 actual-model tests and both Swift syntax configurations
+passed. Native Xcode build, visual comparison and iPhone AR/animation checks remain
+pending. See [PASSPORT.md](PASSPORT.md).
+
 ## AR arrow visibility repair — build 64
 
 Fixed two verified code paths that could suppress every arrow: old visit/bonus
