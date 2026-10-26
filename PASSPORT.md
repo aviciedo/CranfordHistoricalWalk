@@ -67,13 +67,19 @@ recognition, GPS, itinerary, narration-model and return-walk regressions also pa
 Debug/DEVELOPER_MENU and Release Swift syntax checks passed. Syntax parsing does not
 establish Apple SDK type checking or successful native rendering.
 
-This Linux workspace cannot run Xcode, UIKit page curling, SwiftUI screenshot QA,
-AR image recognition, AVFoundation or device haptics. Native build and visual/device
-acceptance are pending; `design-qa.md` remains blocked, not passed.
+Subsequent [GitHub Apple verification](https://github.com/aviciedo/CranfordHistoricalWalk/actions/runs/40261422454)
+passed native simulator Debug compilation, iPhone Release compilation, 232 core tests
+and 145 native host-app tests. That includes the actual app models, AVFoundation
+regressions and RealityKit arrow mesh smoke test.
+
+This Linux workspace cannot capture native screens or exercise UIKit page curling,
+AR image recognition and device haptics. Visual/device acceptance remains pending;
+`design-qa.md` remains blocked, not passed.
 
 ## Required native acceptance
 
-1. Build the tracked Xcode project in Debug and Release; run host-app tests.
+1. Debug/Release builds and host-app tests completed in GitHub CI. Local signing,
+   installation and real-device interaction acceptance still require an iPhone.
 2. Mill and Greystone, fresh real discovery: close AR -> correct stop underneath ->
    correct passport page -> stamp animation/haptic exactly once -> Close/Back returns
    to that stop with the stamp row. Verify camera releases after exiting.

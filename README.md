@@ -8,8 +8,9 @@ plaque bonus must not be awarded again. Tests now validate those behaviors. Rout
 selection uses an injected offline Apple-provider fixture while production defaults
 remain unchanged. CI runs once on main per publication, retains PR/manual checks,
 checks audio changes, and publishes actionable failure summaries. Node action
-versions are updated. The native rerun is being verified before this repair is reported
-as passing.
+versions are updated. [Final verification passed](https://github.com/aviciedo/CranfordHistoricalWalk/actions/runs/40261422454):
+232 core tests, 145 native iOS tests, simulator Debug compilation and iPhone Release
+compilation. See [CI-REPAIR.md](CI-REPAIR.md) for evidence and the specific corrections.
 
 ## On-site passport — build 65
 
@@ -20,8 +21,8 @@ with a stamp animation, then closes back to that stop. Existing bonuses become
 collected stamps automatically; new walks retain the collection. Home includes a
 secondary passport entry. No stamp is awarded for GPS arrival, story completion or
 practice scans. 232 core + 98 actual-model tests and both Swift syntax configurations
-passed. Native Xcode build, visual comparison and iPhone AR/animation checks remain
-pending. See [PASSPORT.md](PASSPORT.md).
+passed. Subsequent GitHub CI passed both native builds and 145 host-app tests.
+Visual comparison and iPhone AR/animation acceptance remain pending. See [PASSPORT.md](PASSPORT.md).
 
 ## AR arrow visibility repair — build 64
 

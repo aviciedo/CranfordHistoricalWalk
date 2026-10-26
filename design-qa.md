@@ -30,7 +30,10 @@ and small labels consistent with existing screens. The static curled corner is
 replaced by the interactive native curl; motion cannot be assessed from source.
 
 Automated evidence: 232 core + 98 actual-model/provider tests passed. Debug with
-DEVELOPER_MENU and Release syntax passed. Native type checking remains pending.
+DEVELOPER_MENU and Release syntax passed. Subsequent GitHub CI run 40261422454
+passed native Debug/Release compilation and 145 iOS host-app tests (plus 232 core
+tests). Native screenshot comparison, page-curl interaction and field AR acceptance
+remain blocked here; the visual result is still blocked.
 The first new test run had one incorrect expectation that resetTour leaves the walk
 notStarted; corrected it to the established explicit-restart inProgress behavior.
 No production restart behavior was changed to satisfy that test.
