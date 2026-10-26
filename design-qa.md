@@ -1,3 +1,31 @@
+# Build 63 — Photo-led stop details and separate reading
+
+final result: blocked
+
+Visual target: the owner's two annotated direction-1/journal screenshots, with
+explicit changes: slideshow first; remove crossed-out map controls and Listen/Read
+tabs; green Play/Resume narration; Read the story at bottom; smaller serif Stop
+details heading. Confirmed separate reading page, saved-progress button wording,
+and serif heading only (body remains unchanged).
+
+Implemented source: original uncropped gallery and captions, stop metadata, green
+narration launcher, outlined AR action, default-expanded history and final reading
+link. Reader has native Back/X, approved transcript, explicit read completion and
+the same shared footer. Missing media is not fabricated. Existing gallery fit is
+retained rather than stretching/cropping portrait photos to imitate generated art.
+
+92 model regressions and Debug/Release parsing passed. Native fresh/closed/completed
+bookmark assertions were extended but not run here. Apple SDK build, reading-page
+nav/Back/X, dynamic playback, gestures, accessibility and rendered comparison are
+blocked on this Linux host. Syntax/model results are not a visual QA pass.
+
+On iPhone compare the supplied target with native default and large-text captures,
+player shown/hidden, both approved stories, all photo aspects, recording completion,
+reader return/Home, explicit read credit, AR/bonus, and no automatic walk/audio
+changes from browsing. See STOP-DETAIL-REDESIGN.md.
+
+---
+
 # Build 62 — Stops row refinement
 
 final result: blocked

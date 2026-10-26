@@ -12,8 +12,7 @@ struct StopDetailView: View {
     @State private var isShowingBonus = false
     @State private var isStopDetailsExpanded = true
 
-    // Each newly opened stop starts on Listen; switching to Read never touches playback.
-    @State private var mode: AppNavigation.StoryMode = .listen
+    @State private var isShowingStory = false
     private var script: String { stop.narrationText ?? "" }
     private func openPlaqueActivity() {
         if tour.activities[stop.id].bonusFoundAt != nil {
@@ -40,6 +39,7 @@ struct StopDetailView: View {
             }
             .background(AppTheme.ivory.ignoresSafeArea()).foregroundStyle(AppTheme.forest)
             .toolbar(.hidden, for: .navigationBar)
+            .navigationDestination(isPresented: $isShowingStory) { StopStoryReader(stop: stop) }
             .fullScreenCover(isPresented: $isShowingScanner) { PlaqueScannerView(stopID: stop.id) }
             .sheet(isPresented: $isShowingBonus) { OnSiteBonusPreview(stop: stop) }
             .onAppear { tour.openStory(for: stop.id) }
@@ -47,8 +47,12 @@ struct StopDetailView: View {
         .onChange(of: navigation.homeReturnID) { _, _ in
             isShowingScanner = false
             isShowingBonus = false
+            isShowingStory = false
         }
-        .onChange(of: stop.id) { _, _ in isStopDetailsExpanded = true }
+        .onChange(of: stop.id) { _, _ in
+            isStopDetailsExpanded = true
+            isShowingStory = false
+        }
         .dismissOnReturnHome()
         .holdsWalkingContext()
         .environment(\.colorScheme, .light)
@@ -62,7 +66,7 @@ struct StopDetailView: View {
     private func storyContent(galleryHeight: CGFloat) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: 16) {
                     StopPhotoGallery(stop: stop, height: galleryHeight,
                                      isObscured: isShowingScanner || isShowingBonus)
                     VStack(alignment: .leading, spacing: 8) {
@@ -76,50 +80,15 @@ struct StopDetailView: View {
                         Label(stop.address, systemImage: "mappin.and.ellipse")
                             .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
                             .fixedSize(horizontal: false, vertical: true)
-                        Button {
-                            navigation.showOnMap(stopID: stop.id)
-                            dismiss()
-                        } label: {
-                            Label("Show on map", systemImage: "map").frame(minHeight: 44)
-                        }.buttonStyle(.plain)
                     }
                 }
-                VStack(alignment: .leading, spacing: 16) {
-                    Picker("Enjoy the story", selection: $mode) {
-                        ForEach(AppNavigation.StoryMode.allCases, id: \.self) { value in
-                            Text(value.rawValue).tag(value)
+                if stop.narrationSource != nil {
+                    VStack(alignment: .leading, spacing: 8) {
+                        NarrationControls(stop: stop)
+                        if tour.activities[stop.id].learningCompleted {
+                            Label(learningStatus, systemImage: "checkmark.circle")
+                                .font(.footnote).foregroundStyle(AppTheme.secondaryInk)
                         }
-                    }
-                    .pickerStyle(.segmented)
-                    .accessibilityIdentifier("stop.storyMode")
-                    if mode == .listen {
-                        if stop.narrationSource == nil {
-                            Label("Narration coming soon", systemImage: "headphones")
-                                .font(.headline).padding(.vertical, 12)
-                            Text("You can explore the history and photographs below.")
-                                .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
-                        } else {
-                            NarrationControls(stop: stop)
-                        }
-                    } else {
-                        if script.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                            Text("A full reading story is not available yet. Explore the history and photographs below.")
-                                .font(.body).foregroundStyle(AppTheme.secondaryInk)
-                        } else {
-                            Text(script).font(.body).lineSpacing(5)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                            if tour.activities[stop.id].readAt == nil {
-                                Button("I've read the narration") {
-                                    tour.finishStory(for: stop.id)
-                                }
-                                .frame(minHeight: 44)
-                                .accessibilityHint("Marks only reading complete; it does not record a visit or change your walk")
-                            }
-                        }
-                    }
-                    if tour.activities[stop.id].learningCompleted {
-                        Label(learningStatus, systemImage: "checkmark.circle")
-                            .font(.footnote).foregroundStyle(AppTheme.secondaryInk)
                     }
                 }
                 if stop.hasPlaqueReference {
@@ -139,8 +108,10 @@ struct StopDetailView: View {
                             }
                             .padding(.horizontal, 16).padding(.vertical, 14)
                             .frame(maxWidth: .infinity, minHeight: 56)
-                            .foregroundStyle(.white)
-                            .background(AppTheme.forest, in: RoundedRectangle(cornerRadius: 14))
+                            .foregroundStyle(AppTheme.forest)
+                            .background(AppTheme.ivory, in: RoundedRectangle(cornerRadius: 14))
+                            .overlay(RoundedRectangle(cornerRadius: 14)
+                                .strokeBorder(AppTheme.forest.opacity(0.35), lineWidth: 1))
                             .contentShape(RoundedRectangle(cornerRadius: 14))
                         }
                         .buttonStyle(.plain)
@@ -153,6 +124,7 @@ struct StopDetailView: View {
                     }
                 }
                 if !stop.longDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Divider()
                     DisclosureGroup(isExpanded: $isStopDetailsExpanded) {
                         Text(stop.longDescription)
                             .font(.body)
@@ -161,13 +133,30 @@ struct StopDetailView: View {
                             .padding(.top, 8)
                     } label: {
                         Label("Stop details", systemImage: "doc.text")
-                            .font(.body.weight(.medium))
+                            .font(.system(.title2, design: .serif).weight(.semibold))
                             .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                             .contentShape(Rectangle())
                     }
                     .tint(AppTheme.forest)
                     .accessibilityHint("Expands or collapses the stop history")
                     .accessibilityIdentifier("stop.detailsDisclosure")
+                }
+                if !script.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Divider()
+                    Button { isShowingStory = true } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "book").font(.title2)
+                            Text("Read the story").font(.headline)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Spacer(minLength: 8)
+                            Image(systemName: "chevron.right").font(.subheadline.weight(.medium))
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                        .padding(.vertical, 6).contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Opens the full narration text without starting audio or changing your walk")
+                    .accessibilityIdentifier("stop.readStory")
                 }
 
             }
@@ -179,5 +168,51 @@ struct StopDetailView: View {
         let activity = tour.activities[stop.id]
         if activity.listenedAt != nil && activity.readAt != nil { return "Listened and read" }
         return activity.listenedAt != nil ? "Listened" : "Read"
+    }
+}
+
+
+/// A focused reading destination. Opening it never starts narration or records a visit.
+private struct StopStoryReader: View {
+    @Environment(TourViewModel.self) private var tour
+    @Environment(\.dismiss) private var dismiss
+    let stop: HistoricalStop
+
+    var body: some View {
+        GeometryReader { viewport in
+            VStack(spacing: 0) {
+                ScreenReturnBar(onBack: { dismiss() })
+                    .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 8)
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        Text("Read the story")
+                            .font(.system(.largeTitle, design: .serif).weight(.semibold))
+                            .accessibilityAddTraits(.isHeader)
+                        Text(stop.name).font(AppTheme.Fonts.title)
+                        Text(stop.narrationText ?? "")
+                            .font(.body).lineSpacing(5)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .textSelection(.enabled)
+                        if tour.activities[stop.id].readAt == nil {
+                            Button("I've read the narration") { tour.finishStory(for: stop.id) }
+                                .font(.headline).frame(minHeight: 44)
+                                .accessibilityHint("Marks only reading complete; it does not record a visit or change your walk")
+                                .accessibilityIdentifier("story.markRead")
+                        } else {
+                            Label("Read", systemImage: "checkmark.circle").font(.subheadline)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 20).padding(.bottom, 24)
+                }
+                SharedNarrationBar(availableHeight: viewport.size.height)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .background(AppTheme.ivory.ignoresSafeArea()).foregroundStyle(AppTheme.forest)
+        .toolbar(.hidden, for: .navigationBar)
+        .dismissOnReturnHome()
+        .holdsWalkingContext()
+        .accessibilityIdentifier("stop.storyReader")
     }
 }

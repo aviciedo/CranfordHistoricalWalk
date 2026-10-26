@@ -20,8 +20,12 @@ struct NarrationControls: View {
                 } label: {
                     Label(player.hasSavedResume(for: stop) ? "Resume narration" : "Play narration", systemImage: "play.fill")
                         .font(.headline)
-                        .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
-                        .contentShape(Rectangle())
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 16).padding(.vertical, 12)
+                        .frame(maxWidth: .infinity, minHeight: 56)
+                        .foregroundStyle(.white)
+                        .background(AppTheme.forest, in: RoundedRectangle(cornerRadius: 14))
+                        .contentShape(RoundedRectangle(cornerRadius: 14))
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(AppTheme.forest)

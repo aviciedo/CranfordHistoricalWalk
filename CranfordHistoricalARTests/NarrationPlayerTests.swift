@@ -12,8 +12,10 @@ final class NarrationPlayerTests: XCTestCase {
         let stop = HistoricalStop.previewStops[0]
         defer { player.stop() }
         XCTAssertFalse(player.isPersistentPlayerVisible)
+        XCTAssertFalse(player.hasSavedResume(for: stop), "A fresh story uses Play narration")
         XCTAssertTrue(player.prepare(stop))
         try await waitForAudio { player.canSeek }
+        XCTAssertFalse(player.hasSavedResume(for: stop), "Preparing alone must not offer Resume")
         XCTAssertFalse(player.isPersistentPlayerVisible, "Preparing does not show transport")
         player.seek(to: 42)
         player.play()
@@ -21,6 +23,7 @@ final class NarrationPlayerTests: XCTestCase {
         player.dismissPersistentPlayer()
         XCTAssertFalse(player.isPlaying)
         XCTAssertFalse(player.isPersistentPlayerVisible)
+        XCTAssertTrue(player.hasSavedResume(for: stop), "Closing with saved progress uses Resume narration")
         XCTAssertEqual(player.resumableStoryID, stop.id)
         XCTAssertEqual(player.resumableElapsed, 42, accuracy: 1)
         XCTAssertTrue(player.prepare(stop))
@@ -69,6 +72,7 @@ final class NarrationPlayerTests: XCTestCase {
         try await waitForAudio { player.status == .finished }
         XCTAssertEqual(tour.currentStop?.id, park.id)
         XCTAssertNil(player.resumableStoryID, "A completed recording must not be offered as unfinished")
+        XCTAssertFalse(player.hasSavedResume(for: mill), "A finished recording returns to Play narration")
         XCTAssertNotNil(tour.activities[mill.id].listenedAt)
         XCTAssertFalse(tour.activities[park.id].learningCompleted)
         XCTAssertNil(tour.activities[mill.id].visitedAt)

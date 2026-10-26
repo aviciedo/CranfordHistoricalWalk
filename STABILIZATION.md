@@ -256,3 +256,21 @@ Stops row refinement — review build 62:
   tests for this view refinement. Native Xcode build, small/large text, all five art
   proportions, player-visible layout and VoiceOver/touch acceptance remain pending.
   No publication in this task.
+
+Photo-led stop details — review build 63:
+- Owner selected direction 1, removing crossed-out Show on map and Listen/Read tabs.
+  Slideshow/caption stay first; existing uncropped original photos/arrows are retained.
+- NarrationControls becomes a green Play/Resume launch button. Existing source-matched
+  bookmarks decide the label; completion clears resume. No engine/bookmark changes.
+  Active shared player suppresses a second inline transport, as before.
+- AR action is outlined forest on ivory; scanner/bonus callbacks are unchanged.
+- Confirmed smaller serif Stop details heading only (title2 versus largeTitle); body
+  remains native body, disclosure expanded by default. Read the story sits at bottom.
+- Confirmed separate reader via native NavigationStack destination. Full approved
+  transcript, explicit read completion, shared player, Back/X and exploration holds.
+  Opening reading never starts audio, requests GPS, visits a stop or advances the tour.
+- No invented text/audio for stops without approved transcripts/recordings.
+- 92 actual-model regression tests and full Debug/Release app/test syntax passed.
+  Added native bookmark assertions for fresh/prepared, paused/closed and completed
+  states; they are not executed on Linux. Native layout/navigation/AVFoundation/
+  VoiceOver acceptance remains pending. No publication in this task.

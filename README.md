@@ -1,3 +1,17 @@
+## Photo-led stop details and reading — build 63
+
+The slideshow stays first, with captions and uncropped original photographs. The
+stop name/date/address follow; the Show on map link and Listen/Read tabs are removed.
+A full-width hunter-green Play narration action uses Resume narration when a matching
+saved bookmark exists; completed recordings clear that bookmark. Once opened, the
+shared player remains the sole transport, with the existing inline instruction.
+Plaque discovery is now an outlined secondary button; unlocked bonus access is kept.
+Stop details remains expanded by default, with a smaller serif heading matching the
+stop title and unchanged body text. Read the story at the bottom opens a separate
+reading page with the approved transcript and explicit reading-complete action.
+92 portable model regressions and Debug/Release syntax checks passed. Native visual,
+audio and navigation checks remain pending; see [STOP-DETAIL-REDESIGN.md](STOP-DETAIL-REDESIGN.md).
+
 ## Refined Stops rows — build 62
 
 Removed repeated visible Stop 1 / Stop 2 labels. Original illustrations grow from
