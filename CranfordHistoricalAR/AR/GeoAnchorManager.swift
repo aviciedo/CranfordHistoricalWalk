@@ -379,7 +379,7 @@ final class GeoAnchorManager {
         target = newTarget
         guard let newTarget else {
             anchors.hideNavigation()
-            navigationNotice = hasActivatedStop ? nil : "Walking arrows need a walking route and a fresh location. Use the map or retry directions."
+            navigationNotice = hasActivatedStop ? nil : ARArrowCoach.needsRoute
             return
         }
         lastNavigationDestination = newTarget.destination
@@ -431,7 +431,7 @@ final class GeoAnchorManager {
 
     private func placeContent(now: TimeInterval) {
         guard !hasActivatedStop, isTrackingReady, let base = cameraGroundPosition else {
-            navigationNotice = hasActivatedStop ? nil : "AR tracking is not ready. Hold still and slowly scan your surroundings."
+            navigationNotice = ARArrowCoach.trackingNotice(hasActivatedStop: hasActivatedStop)
             anchors.hideNavigation()
             navigationBearing = nil
             lastGuidanceTime = nil
@@ -449,14 +449,14 @@ final class GeoAnchorManager {
         } else {
             guard let target else {
                 anchors.hideNavigation()
-                navigationNotice = "Walking arrows need a walking route and a fresh location. Use the map or retry directions."
+                navigationNotice = ARArrowCoach.needsRoute
                 navigationBearing = nil
                 return
             }
             guard localizationState.isUsable,
                   let worldDirection = provider.worldDirection(forBearing: target.bearingToWaypoint) else {
                 anchors.hideNavigation()
-                navigationNotice = "Waiting for accurate location and compass alignment. Use the map while AR aligns."
+                navigationNotice = ARArrowCoach.waitingForAlignment
                 navigationBearing = nil
                 return
             }
@@ -465,7 +465,7 @@ final class GeoAnchorManager {
         }
         guard simd_length(direction) > 0.05 else {
             anchors.hideNavigation()
-            navigationNotice = "No walking direction is available. Return to the map to check your route."
+            navigationNotice = ARArrowCoach.noDirection
             navigationBearing = nil
             return
         }
@@ -477,7 +477,7 @@ final class GeoAnchorManager {
         }
         guard anchors.arrows.canRender else {
             anchors.hideNavigation()
-            navigationNotice = "The AR arrows could not load. Return to the map for directions."
+            navigationNotice = ARArrowCoach.arrowsCouldNotLoad
             return
         }
         let candidate: SIMD3<Float>
@@ -488,7 +488,7 @@ final class GeoAnchorManager {
             guard let coordinate = target?.anchorCoordinate,
                   let point = provider.worldPosition(for: coordinate, altitude: nil, heightBelowCamera: 0) else {
                 anchors.hideNavigation()
-                navigationNotice = "No nearby route position is available. Check your location on the map."
+                navigationNotice = ARArrowCoach.noRoutePosition
                 return
             }
             candidate = point
@@ -502,7 +502,7 @@ final class GeoAnchorManager {
         guard let readable,
               let ground = detectedGroundPosition(near: SIMD3(Float(readable.x), Float(readable.y), Float(readable.z))) else {
             anchors.hideNavigation()
-            navigationNotice = "Unable to place walking arrows. Scan the pavement or return to the map."
+            navigationNotice = ARArrowCoach.unableToPlace
             return
         }
         let cue = target?.turnCue
@@ -518,21 +518,20 @@ final class GeoAnchorManager {
                 return simd_dot(forward, position - camera) > 0
             } ?? false
             if inFront, let screen = arView.project(position), arView.bounds.contains(screen) {
-                navigationNotice = nil
+                navigationNotice = ARArrowCoach.screenNotice(canProjectPlacement: true, isInFront: true,
+                                                            isOnScreen: true, relativeBearing: nil)
             } else {
                 let relative = cameraTransform.flatMap { transform in
                     ARWalkingGuidance.relativeBearing(directionX: Double(position.x - camera.x),
                         directionZ: Double(position.z - camera.z),
                         cameraForwardX: Double(-transform.columns.2.x), cameraForwardZ: Double(-transform.columns.2.z))
                 }
-                if let relative, abs(relative) > 35 {
-                    navigationNotice = relative > 0 ? "Turn your phone to the right to see the arrows." : "Turn your phone to the left to see the arrows."
-                } else {
-                    navigationNotice = "Raise or tilt your phone toward the route to see the arrows."
-                }
+                navigationNotice = ARArrowCoach.screenNotice(canProjectPlacement: true, isInFront: inFront,
+                                                            isOnScreen: false, relativeBearing: relative)
             }
         } else {
-            navigationNotice = "Walk a little farther along the route to bring the arrows into view."
+            navigationNotice = ARArrowCoach.screenNotice(canProjectPlacement: false, isInFront: false,
+                                                        isOnScreen: false, relativeBearing: nil)
         }
     }
 
