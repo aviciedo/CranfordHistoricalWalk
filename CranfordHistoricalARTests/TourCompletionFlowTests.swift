@@ -54,6 +54,54 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertNil(reloaded.pendingPassportStampStopID, "Relaunch preserves stamps without an unsolicited celebration")
     }
 
+    func testNewerPlaqueReplacesTheCelebrationWithoutDroppingTheFirstStamp() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        XCTAssertTrue(tour.preparePlaqueScanner(stopID: stops[0].id))
+        tour.confirmPlaqueArrival(for: stops[0].id)
+        XCTAssertEqual(tour.activateCurrentStop(stopID: stops[0].id, trackingReady: true, plaqueIsTracked: true), .allow(.recognizedPlaque))
+        tour.endARDiscoverySession()
+        XCTAssertEqual(tour.pendingPassportStampStopID, stops[0].id)
+        XCTAssertTrue(tour.preparePlaqueScanner(stopID: stops[1].id))
+        tour.confirmPlaqueArrival(for: stops[1].id)
+        XCTAssertEqual(tour.activateCurrentStop(stopID: stops[1].id, trackingReady: true, plaqueIsTracked: true), .allow(.recognizedPlaque))
+        XCTAssertEqual(tour.pendingPassportStampStopID, stops[1].id)
+        XCTAssertEqual(tour.passportCollectedCount, 2)
+        XCTAssertNotNil(tour.activities[stops[0].id].bonusFoundAt)
+        tour.endARDiscoverySession()
+        XCTAssertEqual(tour.takePassportStamp(), stops[1].id)
+        XCTAssertNil(tour.takePassportStamp())
+        XCTAssertEqual(tour.passportCollectedCount, 2)
+        XCTAssertEqual(tour.phase, .notStarted)
+    }
+
+    func testPassportRevealIgnoresNonPagesMissingBonusesAndHomeDismissal() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.activities.foundBonus(at: stops[2].id)
+        tour.pendingPassportStampStopID = stops[2].id
+        XCTAssertEqual(tour.passportCollectedCount, 0, "A stop without a plaque page is not a stamp")
+        XCTAssertNil(tour.takePassportStamp())
+        XCTAssertNil(tour.pendingPassportStampStopID)
+        XCTAssertNotNil(tour.activities[stops[2].id].bonusFoundAt)
+
+        XCTAssertTrue(tour.preparePlaqueScanner(stopID: stops[0].id))
+        tour.confirmPlaqueArrival(for: stops[0].id)
+        XCTAssertEqual(tour.activateCurrentStop(stopID: stops[0].id, trackingReady: true, plaqueIsTracked: true), .allow(.recognizedPlaque))
+        tour.cancelPendingPassportPresentation()
+        XCTAssertNil(tour.pendingPassportStampStopID)
+        XCTAssertNil(tour.takePassportStamp(), "Home consumes the celebration once")
+        XCTAssertEqual(tour.passportCollectedCount, 1)
+        XCTAssertNotNil(tour.activities[stops[0].id].bonusFoundAt)
+
+        XCTAssertTrue(tour.preparePlaqueScanner(stopID: stops[1].id))
+        tour.confirmPlaqueArrival(for: stops[1].id)
+        XCTAssertEqual(tour.activateCurrentStop(stopID: stops[1].id, trackingReady: true, plaqueIsTracked: true), .allow(.recognizedPlaque))
+        tour.activities = StopActivityLedger()
+        XCTAssertEqual(tour.pendingPassportStampStopID, stops[1].id)
+        XCTAssertNil(tour.takePassportStamp(), "A queued id without a saved bonus does not open")
+        XCTAssertNil(tour.pendingPassportStampStopID)
+        XCTAssertEqual(tour.passportCollectedCount, 0)
+    }
+
     func testPracticeAndDisabledRecordingDoNotAwardPassportStamps() async {
         let practice = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),
             locationService: SimulatedLocationService(start: stops[0].coordinate), directionsService: PreviewDirectionsService())
@@ -1301,6 +1349,8 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertTrue(tour.activities[stops[1].id].learningCompleted)
         XCTAssertNil(tour.activities[stops[0].id].visitedAt)
         XCTAssertNil(tour.activities[stops[1].id].bonusFoundAt)
+        XCTAssertNil(tour.pendingPassportStampStopID)
+        XCTAssertEqual(tour.passportCollectedCount, 0)
     }
     func testListeningToMillWhileWalkingToParkDoesNotChangeDestination() async {
         let tour = await makeTour(); defer { cleanUp(tour) }
@@ -1331,6 +1381,8 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertNotNil(tour.activities[stops[0].id].visitedAt)
         XCTAssertFalse(tour.activities[stops[0].id].learningCompleted)
         XCTAssertNil(tour.activities[stops[0].id].bonusFoundAt)
+        XCTAssertNil(tour.pendingPassportStampStopID, "GPS arrival does not award a stamp")
+        XCTAssertEqual(tour.passportCollectedCount, 0)
         tour.handleLocationForProximity(sample)
         XCTAssertEqual(tour.visitRecords.count, 1)
         tour.completeCurrentStopAndAdvance()
@@ -1358,6 +1410,8 @@ final class TourCompletionFlowTests: XCTestCase {
         let tour = await makeTour(); defer { cleanUp(tour) }
         tour.handleLocationForProximity(LocationSample(coordinate: stops[3].coordinate))
         XCTAssertNotNil(tour.activities[stops[3].id].visitedAt)
+        XCTAssertNil(tour.pendingPassportStampStopID)
+        XCTAssertEqual(tour.passportCollectedCount, 0)
         XCTAssertEqual(tour.phase, .notStarted)
     }
     func testPlaqueSelectionAndRecognitionDoNotRetargetWalkOrRequireLearning() async {
@@ -1410,11 +1464,16 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertTrue(tour.beginPlaqueDiscovery())
         tour.confirmPlaqueArrival(for: stops[0].id)
         XCTAssertEqual(tour.activateCurrentStop(stopID: stops[0].id, trackingReady: true, plaqueIsTracked: true), .allow(.recognizedPlaque))
+        XCTAssertEqual(tour.pendingPassportStampStopID, stops[0].id, "The stamp follows the recognized plaque")
+        XCTAssertEqual(tour.passportCollectedCount, 1)
         XCTAssertEqual(tour.currentStop?.id, stops[1].id)
         XCTAssertNotNil(tour.activities[stops[0].id].bonusFoundAt)
         XCTAssertNil(tour.activities[stops[1].id].bonusFoundAt)
         tour.endARDiscoverySession()
+        XCTAssertEqual(tour.takePassportStamp(), stops[0].id, "The story underneath is the recognized site")
+        XCTAssertNil(tour.takePassportStamp())
         XCTAssertEqual(tour.currentStop?.id, stops[1].id)
+        XCTAssertEqual(tour.passportCollectedCount, 1)
     }
 
     func testScannerDoesNotRestartACompletedWalk() async {
@@ -1495,6 +1554,9 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertNotNil(tour.activities[stops[0].id].visitedAt)
         XCTAssertNotNil(tour.activities[stops[0].id].bonusFoundAt)
         XCTAssertFalse(tour.activities[stops[0].id].learningCompleted)
+        XCTAssertEqual(tour.passportCollectedCount, 1, "An imported plaque is already collected")
+        XCTAssertNil(tour.pendingPassportStampStopID, "Migration does not replay the celebration")
+        XCTAssertNil(tour.takePassportStamp())
     }
     func testPersistentActivityStoreHandlesCorruptionAndReload() async {
         let suite = "cranford.activities.tests.\(UUID().uuidString)"
