@@ -1,3 +1,25 @@
+# Build 66 — Match stop actions to Home menu rows
+
+final result: blocked
+
+Source: the owner's current stop and Home screenshots in this conversation. The
+confirmed target is Home's full-width Maps / Explore the stops / Your passport rows.
+The two stop actions now use the exact shared AppMenuRowLabel as Home's Maps and
+Explore rows. Both use regular body text, title2 icons, 28-point icon columns,
+14-point gaps, matching chevron weight and 56-point minimum row height. A zero-gap
+section removes the previous extra 24-point spaces around utility-row dividers.
+The detail disclosure retains its default-open binding and content, using the same
+row with a down chevron when expanded. Long text wraps; actions absent from a stop
+remain absent. The reading route and narration/passport behavior are unchanged.
+
+Debug/Release syntax checks and source diff review passed. No native rendered
+screenshot is available on this Linux host. Compare collapsed and expanded rows
+with Home at default and large Dynamic Type, and check VoiceOver disclosure state
+and reader Back behavior on an iPhone before claiming visual QA passed. Previous
+377-test native CI success applies to the preceding build, not this unrun UI change.
+
+---
+
 # Build 65 — On-site passport
 
 final result: blocked

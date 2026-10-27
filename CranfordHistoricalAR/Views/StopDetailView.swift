@@ -23,6 +23,8 @@ struct StopDetailView: View {
 
     @State private var isShowingStory = false
     private var script: String { stop.narrationText ?? "" }
+    private var hasStopDetails: Bool { !stop.longDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    private var hasStoryScript: Bool { !script.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     private func openPlaqueActivity() {
         if tour.activities[stop.id].bonusFoundAt != nil {
             isShowingBonus = true
@@ -145,40 +147,33 @@ struct StopDetailView: View {
                         }
                     }
                 }
-                if !stop.longDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    Divider()
-                    DisclosureGroup(isExpanded: $isStopDetailsExpanded) {
-                        Text(stop.longDescription)
-                            .font(.body)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.top, 8)
-                    } label: {
-                        Label("Stop details", systemImage: "doc.text")
-                            .font(.system(.title2, design: .serif).weight(.semibold))
-                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                            .contentShape(Rectangle())
-                    }
-                    .tint(AppTheme.forest)
-                    .accessibilityHint("Expands or collapses the stop history")
-                    .accessibilityIdentifier("stop.detailsDisclosure")
-                }
-                if !script.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    Divider()
-                    Button { isShowingStory = true } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: "book").font(.title2)
-                            Text("Read the story").font(.headline)
-                                .fixedSize(horizontal: false, vertical: true)
-                            Spacer(minLength: 8)
-                            Image(systemName: "chevron.right").font(.subheadline.weight(.medium))
+                if hasStopDetails || hasStoryScript {
+                    // A single zero-gap group makes both actions match Home's menu rows.
+                    VStack(alignment: .leading, spacing: 0) {
+                        if hasStopDetails {
+                            Divider()
+                            DisclosureGroup(isExpanded: $isStopDetailsExpanded) {
+                                Text(stop.longDescription)
+                                    .font(.body)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            } label: {
+                                Text("Stop details")
+                            }
+                            .disclosureGroupStyle(AppMenuDisclosureStyle(title: "Stop details", symbol: "doc.text"))
+                            .tint(AppTheme.forest)
                         }
-                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                        .padding(.vertical, 6).contentShape(Rectangle())
+                        if hasStoryScript {
+                            Divider()
+                            Button { isShowingStory = true } label: {
+                                AppMenuRowLabel(title: "Read the story", symbol: "book")
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityHint("Opens the full narration text without starting audio or changing your walk")
+                            .accessibilityIdentifier("stop.readStory")
+                        }
+                        Divider()
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityHint("Opens the full narration text without starting audio or changing your walk")
-                    .accessibilityIdentifier("stop.readStory")
                 }
 
             }

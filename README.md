@@ -1,3 +1,14 @@
+## Matching story menu rows — build 66
+
+Stop details and Read the story now share Home's full-width menu row component:
+regular body text, title2 icons in a 28-point column, 14-point label gap, matching
+chevrons, 8-point vertical padding and a 56-point minimum touch height. Their dividers
+now sit directly against the rows, matching Home's Maps and Explore the stops.
+The shared stop screen applies this consistently to available actions. Details stay
+expanded by default and retain collapse/expand; reading still opens separately.
+Debug/Release syntax checks passed. Native compilation and screenshot comparison
+for this UI change remain pending; the earlier green CI run verifies build 65.
+
 ## Apple CI repair
 
 The repeated emails came from native test failures, not failed compilation. A diagnostic

@@ -138,16 +138,7 @@ struct HomeView: View {
     private func navigationRow(_ title: String, symbol: String, tab: AppNavigation.Tab,
                                hint: String) -> some View {
         Button { navigation.selectedTab = tab } label: {
-            HStack(spacing: 14) {
-                Image(systemName: symbol).font(.title2).frame(width: 28)
-                Text(title).font(.body)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 8)
-                Image(systemName: "chevron.right").font(.subheadline.weight(.medium))
-            }
-            .padding(.vertical, 8)
-            .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
-            .contentShape(Rectangle())
+            AppMenuRowLabel(title: title, symbol: symbol)
         }
         .buttonStyle(.plain)
         .accessibilityHint(hint)

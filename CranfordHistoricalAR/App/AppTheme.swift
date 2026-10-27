@@ -76,3 +76,48 @@ struct GlassCard<Content: View>: View {
 
     }
 }
+
+/// Shared full-width action row used on Home and within a stop's story menu.
+/// Keep typography, icon column, chevron and touch geometry identical across both.
+struct AppMenuRowLabel: View {
+    let title: String
+    let symbol: String
+    var chevron = "chevron.right"
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Image(systemName: symbol).font(.title2).frame(width: 28)
+                .accessibilityHidden(true)
+            Text(title).font(.body)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 8)
+            Image(systemName: chevron).font(.subheadline.weight(.medium))
+                .accessibilityHidden(true)
+        }
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+        .contentShape(Rectangle())
+    }
+}
+
+/// Retains native disclosure state while using the same row as Home's menu actions.
+struct AppMenuDisclosureStyle: DisclosureGroupStyle {
+    let title: String
+    let symbol: String
+
+    func makeBody(configuration: Configuration) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button { configuration.isExpanded.toggle() } label: {
+                AppMenuRowLabel(title: title, symbol: symbol,
+                                chevron: configuration.isExpanded ? "chevron.down" : "chevron.right")
+            }
+            .buttonStyle(.plain)
+            .accessibilityValue(Text(configuration.isExpanded ? "Expanded" : "Collapsed"))
+            .accessibilityHint("Expands or collapses the stop history")
+            .accessibilityIdentifier("stop.detailsDisclosure")
+            if configuration.isExpanded {
+                configuration.content.padding(.top, 8).padding(.bottom, 16)
+            }
+        }
+    }
+}
