@@ -30,7 +30,7 @@ struct NextStopCard: View {
                     .accessibilityLabel("More walking controls")
                     .accessibilityIdentifier("map.more")
                 }
-                MapDestinationStatus()
+                if !tour.isWalkPaused { MapDestinationStatus() }
                 if tour.walkingProgression.hasArrived && !tour.isWalkPaused {
                     Text(tour.walkingProgression.isHeld ? "Staying here until you continue." : "Take your time. Directions move on when you leave.")
                         .font(.footnote).foregroundStyle(AppTheme.secondaryInk)
@@ -134,11 +134,7 @@ struct MapDestinationStatus: View {
         // Refresh presence even when GPS stops emitting; an old fix is not arrival.
         TimelineView(.periodic(from: .now, by: 5)) { _ in
             VStack(alignment: .leading, spacing: 8) {
-                if tour.isWalkPaused {
-                    Text("Resume when you’re ready.")
-                        .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
-                        .fixedSize(horizontal: false, vertical: true)
-                } else if tour.walkingProgression.hasArrived {
+                if tour.walkingProgression.hasArrived {
                     Label(arrivalText, systemImage: "checkmark.circle")
                         .font(.subheadline.weight(.medium))
                         .fixedSize(horizontal: false, vertical: true)

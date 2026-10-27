@@ -1,3 +1,9 @@
+## Paused map copy — build 68
+
+Removed Resume when you’re ready from the paused map. The paused panel omits the
+status row entirely, so its reserved line height does not leave an empty gap.
+Walk paused, destination, Resume walk and exploration actions remain available.
+
 ## Simplified Home actions — build 67
 
 Removed the Home Maps shortcut and the numeric passport count. Explore the stops
