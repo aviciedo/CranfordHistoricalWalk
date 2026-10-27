@@ -57,7 +57,7 @@ struct StopDetailView: View {
             .onAppear { tour.openStory(for: stop.id); if !scannerHasPresented { revealNewStamp() } }
         }
         .onChange(of: navigation.homeReturnID) { _, _ in
-            tour.pendingPassportStampStopID = nil
+            tour.cancelPendingPassportPresentation()
             isShowingScanner = false
             isShowingBonus = false
             isShowingStory = false

@@ -140,10 +140,15 @@ final class TourViewModel {
     var passportStops: [HistoricalStop] { stops.filter(\.hasPlaqueReference) }
     var passportCollectedCount: Int { passportStops.filter { activities[$0.id].bonusFoundAt != nil }.count }
     func takePassportStamp() -> String? {
-        defer { pendingPassportStampStopID = nil }
+        defer { cancelPendingPassportPresentation() }
         guard let id = pendingPassportStampStopID,
               passportStops.contains(where: { $0.id == id }), activities[id].bonusFoundAt != nil else { return nil }
         return id
+    }
+
+    /// Home dismisses a celebration that has not been opened. The saved stamp stays collected.
+    func cancelPendingPassportPresentation() {
+        pendingPassportStampStopID = nil
     }
     var activities: StopActivityLedger
     /// AR may inspect a different physical site without changing the walking destination.
@@ -374,7 +379,7 @@ final class TourViewModel {
     func clearRecordedActivitiesAndRestart(includingStoriesAndBonuses: Bool) {
         visitStore.removeAll()
         visitRecords = visitStore.records()
-        pendingPassportStampStopID = nil
+        cancelPendingPassportPresentation()
         if includingStoriesAndBonuses { activities = StopActivityLedger() }
         else { activities.clearVisits() }
         activityStore.save(activities)

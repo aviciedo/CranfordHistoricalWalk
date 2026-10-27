@@ -17,21 +17,22 @@ struct PassportView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let initialStopID: String
     var animatedStampStopID: String? = nil
-    @State private var pageIndex = 0
-    @State private var hasSelectedInitialPage = false
+    @State private var selection = PassportPageSelection()
     @State private var hasStamped = false
     @State private var bonusStop: HistoricalStop?
 
     private var stops: [HistoricalStop] { tour.passportStops }
     private var currentPageIndex: Int {
-        hasSelectedInitialPage ? min(pageIndex, max(0, stops.count - 1)) : (stops.firstIndex { $0.id == initialStopID } ?? 0)
+        selection.currentIndex(stopIDs: stops.map(\.id), initialStopID: initialStopID)
     }
     private var pageSelection: Binding<Int> {
-        Binding(get: { currentPageIndex }, set: { pageIndex = $0; hasSelectedInitialPage = true })
+        Binding(get: { currentPageIndex }, set: { selection.choose($0) })
     }
     private var isAwaitingStamp: Bool {
-        guard let id = animatedStampStopID else { return false }
-        return tour.activities[id].bonusFoundAt != nil && !hasStamped
+        PassportPageSelection.isAwaitingStampReveal(
+            animatedStopID: animatedStampStopID,
+            bonusIsSaved: animatedStampStopID.map { tour.activities[$0].bonusFoundAt != nil } ?? false,
+            hasStamped: hasStamped)
     }
 
     var body: some View {
@@ -62,7 +63,8 @@ struct PassportView: View {
                     let pages = stops.map { stop in
                         AnyView(PassportLeaf(stop: stop,
                             collected: tour.activities[stop.id].bonusFoundAt != nil,
-                            revealStamp: stop.id != animatedStampStopID || hasStamped,
+                            revealStamp: PassportPageSelection.shouldRevealStamp(
+                                stopID: stop.id, animatedStopID: animatedStampStopID, hasStamped: hasStamped),
                             reduceMotion: reduceMotion,
                             availableHeight: viewport.size.height,
                             onOpenBonus: { bonusStop = stop })
@@ -89,8 +91,8 @@ struct PassportView: View {
         .interactiveDismissDisabled(isAwaitingStamp)
         .sheet(item: $bonusStop) { OnSiteBonusPreview(stop: $0) }
         .onAppear { selectInitialPage() }
-        .onChange(of: stops.map(\.id)) { _, _ in
-            pageIndex = min(pageIndex, max(0, stops.count - 1))
+        .onChange(of: stops.map(\.id)) { _, ids in
+            selection.clampStoredIndex(stopCount: ids.count)
         }
         .task(id: scenePhase) {
             guard scenePhase == .active, !hasStamped, let id = animatedStampStopID,
@@ -109,9 +111,7 @@ struct PassportView: View {
     }
 
     private func selectInitialPage() {
-        guard !hasSelectedInitialPage, !stops.isEmpty else { return }
-        pageIndex = stops.firstIndex { $0.id == initialStopID } ?? 0
-        hasSelectedInitialPage = true
+        selection.selectInitialPage(stopIDs: stops.map(\.id), initialStopID: initialStopID)
     }
 
     private var pagination: some View {
@@ -209,13 +209,7 @@ private struct PassportLeaf: View {
 
 struct PassportStampArtwork: View {
     let stopID: String
-    private var assetName: String? {
-        switch stopID {
-        case "hpab-001": return "passport-stamp-mill"
-        case "hpab-002": return "passport-stamp-greystone"
-        default: return nil
-        }
-    }
+    private var assetName: String? { PassportPageSelection.stampAssetName(for: stopID) }
     var body: some View {
         Group {
             if let assetName {
