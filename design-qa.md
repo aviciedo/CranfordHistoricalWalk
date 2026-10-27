@@ -1,3 +1,23 @@
+# Build 67 — Simplified and rebalanced Home
+
+final result: blocked
+
+Source: owner's annotated Home screenshot. Removed the crossed-out Maps row and
+passport count; retained the passport action and bottom Map tab. The active walking
+destination now reads Next Stop: plus the actual stop name in semibold serif title3
+instead of subheadline. Start/continue/finish behavior and featured-stop selection
+are unchanged. Both remaining rows share AppMenuRowLabel. The action group has a
+12-point internal gap and 24 points before the browse menu. The existing measured
+HomeLandingLayout gives released space to the illustration within its existing
+96–340-point bounds, and permits overflow scrolling for large text or a player.
+
+Debug/Release syntax and scoped diff review passed. Native screenshots and visual
+comparison are unavailable here. Verify small/large phones, long destination names,
+Dynamic Type, visible player, pre-start, active and completed walk states on iOS.
+No claim is made that the new screen has passed native visual QA.
+
+---
+
 # Build 66 — Match stop actions to Home menu rows
 
 final result: blocked

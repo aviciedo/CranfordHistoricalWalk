@@ -1,3 +1,14 @@
+## Simplified Home actions — build 67
+
+Removed the Home Maps shortcut and the numeric passport count. Explore the stops
+and Your passport remain as matching full-width rows. During a walk the destination
+now reads Next Stop: followed by the current destination's canonical name, in larger
+semibold serif title3 type. The existing Begin at wording remains before a walk.
+The walking action and destination use a 12-point gap, with 24 points before the
+browse rows; the adaptive illustration receives the released space. Large text and
+the shared player still use the existing measured layout and scrolling behavior.
+Debug/Release syntax checks passed. Native visual verification remains pending.
+
 ## Matching story menu rows — build 66
 
 Stop details and Read the story now share Home's full-width menu row component:

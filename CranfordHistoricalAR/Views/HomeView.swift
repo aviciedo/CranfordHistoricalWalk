@@ -67,8 +67,8 @@ struct HomeView: View {
     }
 
     private var actions: some View {
-        VStack(spacing: 20) {
-            VStack(spacing: 10) {
+        VStack(spacing: 24) {
+            VStack(spacing: 12) {
                 if tour.phase == .complete {
                     Label("Tour complete", systemImage: "checkmark.circle")
                         .font(.headline)
@@ -91,8 +91,8 @@ struct HomeView: View {
                 .opacity(tour.loadState == .loaded ? 1 : 0.5)
                 .accessibilityIdentifier("home.startWalk")
                 if tour.phase != .complete, let stop = tour.homeFeaturedStop {
-                    Text(tour.phase == .notStarted ? "Begin at \(stop.name)." : "Next: \(stop.name)")
-                        .font(.subheadline)
+                    Text(tour.phase == .notStarted ? "Begin at \(stop.name)." : "Next Stop: \(stop.name)")
+                        .font(.system(.title3, design: .serif).weight(.semibold))
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("home.destination")
@@ -101,23 +101,16 @@ struct HomeView: View {
 
             VStack(spacing: 0) {
                 Divider()
-                navigationRow("Maps", symbol: "map", tab: .map,
-                              hint: "Opens the map without starting or resuming your walk")
-                Divider()
-                navigationRow("Explore the stops", symbol: "book", tab: .stops,
-                              hint: "Listen, read and view photographs without starting a walk or enabling location")
+                Button { navigation.selectedTab = .stops } label: {
+                    AppMenuRowLabel(title: "Explore the stops", symbol: "book")
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("Listen, read and view photographs without starting a walk or enabling location")
+                .accessibilityIdentifier("home.exploreStops")
                 Divider()
                 if !tour.passportStops.isEmpty {
                     Button { isShowingPassport = true } label: {
-                        HStack(spacing: 14) {
-                            Image(systemName: "book.closed").font(.title2).frame(width: 28)
-                            Text("Your passport").font(.body)
-                            Spacer(minLength: 8)
-                            Text("\(tour.passportCollectedCount) of \(tour.passportStops.count)")
-                                .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
-                            Image(systemName: "chevron.right").font(.subheadline.weight(.medium))
-                        }
-                        .frame(minHeight: 56).contentShape(Rectangle())
+                        AppMenuRowLabel(title: "Your passport", symbol: "book.closed")
                     }
                     .buttonStyle(.plain).accessibilityIdentifier("home.passport")
                     Divider()
@@ -133,16 +126,6 @@ struct HomeView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-    }
-
-    private func navigationRow(_ title: String, symbol: String, tab: AppNavigation.Tab,
-                               hint: String) -> some View {
-        Button { navigation.selectedTab = tab } label: {
-            AppMenuRowLabel(title: title, symbol: symbol)
-        }
-        .buttonStyle(.plain)
-        .accessibilityHint(hint)
-        .accessibilityIdentifier(tab == .map ? "home.maps" : "home.exploreStops")
     }
 }
 
