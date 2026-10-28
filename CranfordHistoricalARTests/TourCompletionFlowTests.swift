@@ -270,6 +270,60 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertTrue(map.walkingRouteCoordinates(for: tour).isEmpty)
     }
 
+    func testMapTurnCardNamesTheStreetAndHidesOnArrivalOrWeakGPS() async throws {
+        let source = ActivityTestLocationService(status: .authorized)
+        let tour = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),
+            locationService: source, directionsService: PreviewDirectionsService())
+        await tour.loadStopsIfNeeded()
+        tour.startTour()
+        defer { cleanUp(tour) }
+        let user = GeoMath.destination(from: stops[0].coordinate, bearing: 180, distance: 120)
+        let fix = LocationSample(coordinate: user, horizontalAccuracy: 5, timestamp: Date())
+        source.emit(fix)
+        for _ in 0..<150 where tour.userLocation?.timestamp != fix.timestamp || tour.currentRoute == nil {
+            try await Task.sleep(for: .milliseconds(2))
+        }
+        XCTAssertEqual(tour.userLocation?.timestamp, fix.timestamp)
+        XCTAssertNil(tour.locationIssue)
+        XCTAssertEqual(tour.currentRoute?.source, .simulated)
+        tour.cancelRouting()
+
+        let corner = GeoMath.destination(from: user, bearing: 0, distance: 80)
+        let route = WalkingRoute(origin: user, destination: stops[0].coordinate, distanceMeters: 120, durationSeconds: 90,
+            routeCoordinates: [user, corner, stops[0].coordinate], routeSteps: [
+                RouteStep(distanceMeters: 80, durationSeconds: 60, startCoordinate: user, endCoordinate: corner,
+                          instruction: "Head north on Lincoln Ave E", maneuver: "DEPART"),
+                RouteStep(distanceMeters: 40, durationSeconds: 30, startCoordinate: corner, endCoordinate: stops[0].coordinate,
+                          instruction: "Turn right onto Springfield Ave", maneuver: "TURN_RIGHT")
+            ], source: .appleMaps)
+        tour.currentRoute = route
+        tour.routeProgress = RouteProgressCalculator.progress(along: route, userLocation: user)
+        let cue = try XCTUnwrap(tour.mapWalkingCue)
+        XCTAssertEqual(cue.mapTurnCardText, "Turn right onto Springfield Ave")
+        XCTAssertFalse(cue.mapTurnCardText.contains("ft"))
+        XCTAssertEqual(ARWalkingGuidance.mapTurnCardSentence(phase: tour.phase, isPaused: tour.isWalkPaused,
+            hasArrived: tour.walkingProgression.hasArrived, cue: cue), cue.mapTurnCardText)
+
+        tour.currentRoute = .straightLineEstimate(from: user, to: stops[0].coordinate)
+        tour.routeProgress = RouteProgressCalculator.progress(along: tour.currentRoute!, userLocation: user)
+        XCTAssertNil(tour.mapWalkingCue, "A straight-line estimate is not a street turn")
+
+        tour.currentRoute = route
+        tour.routeProgress = RouteProgressCalculator.progress(along: route, userLocation: user)
+        tour.walkingProgression.confirmArrival()
+        XCTAssertNotNil(tour.mapWalkingCue, "The route cue remains; the card hides because this walk has arrived")
+        XCTAssertNil(ARWalkingGuidance.mapTurnCardSentence(phase: tour.phase, isPaused: tour.isWalkPaused,
+            hasArrived: tour.walkingProgression.hasArrived, cue: tour.mapWalkingCue))
+
+        let weak = LocationSample(coordinate: user, horizontalAccuracy: 30, timestamp: fix.timestamp.addingTimeInterval(1))
+        source.emit(weak)
+        for _ in 0..<150 where tour.userLocation?.horizontalAccuracy != 30 {
+            try await Task.sleep(for: .milliseconds(2))
+        }
+        XCTAssertEqual(tour.locationIssue, .poorAccuracy(meters: 30))
+        XCTAssertNil(tour.mapWalkingCue, "Weak GPS must not keep showing the last turn")
+    }
+
     func testGPSDotMovesOffRouteWithoutSnappingAndCameraIgnoresSmallJitter() async throws {
         let source = ActivityTestLocationService(status: .authorized)
         let tour = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),

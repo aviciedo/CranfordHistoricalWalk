@@ -278,4 +278,102 @@ final class ARWalkingGuidanceTests: XCTestCase {
         XCTAssertEqual(ARWalkingGuidance.instruction(for: nil), "Hold your phone up and look around")
         XCTAssertEqual(ARWalkingGuidance.instruction(for: .nan), "Hold your phone up and look around")
     }
+
+    func testMapTurnCardKeepsTheStreetOutOfTheDistanceColumn() throws {
+        let far = try upcomingCue(maneuver: "TURN_RIGHT", instruction: "Turn right onto Davis St")
+        XCTAssertEqual(far.mapTurnCardText, "Turn right onto Davis St")
+        XCTAssertFalse(far.mapTurnCardText.contains("ft"), "Feet stay in the separate distance column")
+        XCTAssertNotEqual(far.mapTurnCardText, far.instruction)
+
+        let route = turnRoute()
+        let nearCorner = GeoMath.destination(from: route.origin, bearing: 0, distance: 98)
+        let near = try XCTUnwrap(ARWalkingGuidance.routeCue(route: route, progress: RouteProgressCalculator.progress(along: route, userLocation: nearCorner)))
+        XCTAssertLessThanOrEqual(near.distanceMeters, 3)
+        XCTAssertEqual(near.instruction, "Turn right now")
+        XCTAssertEqual(near.mapTurnCardText, "Turn right onto Davis St")
+
+        let passed = GeoMath.destination(from: route.routeSteps[1].startCoordinate, bearing: 90, distance: 15)
+        let continuing = try XCTUnwrap(ARWalkingGuidance.routeCue(route: route, progress: RouteProgressCalculator.progress(along: route, userLocation: passed)))
+        XCTAssertEqual(continuing.mapTurnCardText, "Continue on Davis St")
+        XCTAssertNotEqual(continuing.mapTurnCardText, continuing.instruction)
+
+        var unnamed = turnRoute()
+        unnamed.routeSteps[1].instruction = "Turn left"
+        unnamed.routeSteps[1].maneuver = nil
+        let plain = try XCTUnwrap(ARWalkingGuidance.routeCue(route: unnamed, progress: RouteProgressCalculator.progress(along: unnamed, userLocation: unnamed.origin)))
+        XCTAssertEqual(plain.mapTurnCardText, "Turn left")
+        XCTAssertFalse(plain.mapTurnCardText.contains("Next turn"))
+
+        var noStreet = turnRoute()
+        noStreet.routeSteps[0].instruction = "Walk forward"
+        noStreet.routeSteps[0].maneuver = "STRAIGHT"
+        noStreet.routeSteps.removeLast()
+        let follow = try XCTUnwrap(ARWalkingGuidance.routeCue(route: noStreet, progress: RouteProgressCalculator.progress(along: noStreet, userLocation: noStreet.origin)))
+        XCTAssertEqual(follow.mapTurnCardText, "Follow the walking route")
+    }
+
+    func testMapTurnCardPreservesTowardOntoAndRejectsSideWords() throws {
+        let toward = try upcomingCue(maneuver: "TURN_LEFT", instruction: "Turn left towards Lincoln Ave E")
+        XCTAssertEqual(toward.mapTurnCardText, "Turn left toward Lincoln Ave E")
+        XCTAssertFalse(toward.mapTurnCardText.contains("towards"), "The card uses one spelling")
+
+        let passBy = try upcomingCue(maneuver: "TURN_RIGHT", instruction: "Turn right onto Springfield Ave Pass by the library")
+        XCTAssertEqual(passBy.mapTurnCardText, "Turn right onto Springfield Ave")
+
+        let side = try upcomingCue(maneuver: nil, instruction: "Turn left onto the left")
+        XCTAssertNil(side.streetName)
+        XCTAssertEqual(side.mapTurnCardText, "Turn left")
+
+        let destination = try upcomingCue(maneuver: nil, instruction: "Turn right\nDestination will be on the right")
+        XCTAssertNil(destination.streetName)
+        XCTAssertEqual(destination.mapTurnCardText, "Turn right")
+    }
+
+    func testUTurnAndSharpManeuversDoNotCollapseIntoTheOppositeDirection() throws {
+        let uTurn = try upcomingCue(maneuver: "UTURN_LEFT", instruction: "Make a U-turn onto Springfield Ave")
+        XCTAssertEqual(uTurn.direction, .turnAround)
+        XCTAssertEqual(uTurn.mapTurnCardText, "Turn around onto Springfield Ave")
+
+        let legacy = try upcomingCue(maneuver: "uturn-left", instruction: "Make a U-turn onto Springfield Ave")
+        XCTAssertEqual(legacy.direction, .turnAround)
+
+        let sharp = try upcomingCue(maneuver: "TURN_SHARP_LEFT", instruction: "Turn sharp left onto Union Ave")
+        XCTAssertEqual(sharp.direction, .left)
+        XCTAssertEqual(sharp.mapTurnCardText, "Turn left onto Union Ave")
+
+        let slight = try upcomingCue(maneuver: "TURN_SLIGHT_LEFT", instruction: "Slight left onto Union Ave")
+        XCTAssertEqual(slight.direction, .bearLeft)
+        XCTAssertEqual(slight.mapTurnCardText, "Bear left onto Union Ave")
+
+        let providerWins = try upcomingCue(maneuver: "TURN_RIGHT", instruction: "keep left onto Union Ave")
+        XCTAssertEqual(providerWins.direction, .right)
+        XCTAssertEqual(providerWins.mapTurnCardText, "Turn right onto Union Ave")
+
+        let keep = try upcomingCue(maneuver: nil, instruction: "Keep right toward the river path")
+        XCTAssertEqual(keep.direction, .right)
+        XCTAssertEqual(keep.mapTurnCardText, "Turn right toward the river path")
+
+        let bear = try upcomingCue(maneuver: nil, instruction: "Bear left onto North Ave E")
+        XCTAssertEqual(bear.direction, .bearLeft)
+        XCTAssertEqual(bear.mapTurnCardText, "Bear left onto North Ave E")
+    }
+
+    func testMapTurnCardIsAbsentWhenPausedArrivedOrNotWalking() {
+        let cue = ARWalkingGuidance.RouteCue(direction: .right, streetName: "Davis St", distanceMeters: 30,
+                                             coordinate: nil, stepIndex: 1, isUpcomingTurn: true, isTowardStreet: false)
+        XCTAssertEqual(ARWalkingGuidance.mapTurnCardSentence(phase: .inProgress, isPaused: false, hasArrived: false, cue: cue),
+                       "Turn right onto Davis St")
+        XCTAssertNil(ARWalkingGuidance.mapTurnCardSentence(phase: .notStarted, isPaused: false, hasArrived: false, cue: cue))
+        XCTAssertNil(ARWalkingGuidance.mapTurnCardSentence(phase: .complete, isPaused: false, hasArrived: false, cue: cue))
+        XCTAssertNil(ARWalkingGuidance.mapTurnCardSentence(phase: .inProgress, isPaused: true, hasArrived: false, cue: cue))
+        XCTAssertNil(ARWalkingGuidance.mapTurnCardSentence(phase: .inProgress, isPaused: false, hasArrived: true, cue: cue))
+        XCTAssertNil(ARWalkingGuidance.mapTurnCardSentence(phase: .inProgress, isPaused: false, hasArrived: false, cue: nil))
+    }
+
+    private func upcomingCue(maneuver: String?, instruction: String) throws -> ARWalkingGuidance.RouteCue {
+        var route = turnRoute()
+        route.routeSteps[1].maneuver = maneuver
+        route.routeSteps[1].instruction = instruction
+        return try XCTUnwrap(ARWalkingGuidance.routeCue(route: route, progress: RouteProgressCalculator.progress(along: route, userLocation: route.origin)))
+    }
 }

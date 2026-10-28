@@ -117,8 +117,9 @@ struct TourView: View {
 
     @ViewBuilder
     private var turnInstruction: some View {
-        if tour.phase == .inProgress, !tour.isWalkPaused, !tour.walkingProgression.hasArrived,
-           let cue = tour.mapWalkingCue {
+        if let cue = tour.mapWalkingCue,
+           let sentence = ARWalkingGuidance.mapTurnCardSentence(phase: tour.phase, isPaused: tour.isWalkPaused,
+                                                                hasArrived: tour.walkingProgression.hasArrived, cue: cue) {
             HStack(spacing: 16) {
                 VStack(spacing: 4) {
                     Image(systemName: cue.direction.symbolName).font(.system(size: 32, weight: .semibold))
@@ -128,10 +129,7 @@ struct TourView: View {
                 .frame(minWidth: 56)
                 Rectangle().fill(.white.opacity(0.25)).frame(width: 1, height: 44).accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(cue.streetName.map {
-                        cue.isUpcomingTurn ? "\(cue.direction.instruction) \(cue.isTowardStreet ? "toward" : "onto") \($0)" : "Continue on \($0)"
-                    } ?? (cue.isUpcomingTurn ? cue.direction.instruction : cue.streetLabel))
-                    .font(.headline).fixedSize(horizontal: false, vertical: true)
+                    Text(sentence).font(.headline).fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
