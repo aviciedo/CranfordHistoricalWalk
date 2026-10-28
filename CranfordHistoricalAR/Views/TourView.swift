@@ -123,7 +123,7 @@ struct TourView: View {
                 VStack(spacing: 4) {
                     Image(systemName: cue.direction.symbolName).font(.system(size: 32, weight: .semibold))
                         .accessibilityHidden(true)
-                    Text(cue.distanceText).font(.subheadline.weight(.semibold)).monospacedDigit()
+                    Text(cue.distanceText).font(.headline).monospacedDigit()
                 }
                 .frame(minWidth: 56)
                 Rectangle().fill(.white.opacity(0.25)).frame(width: 1, height: 44).accessibilityHidden(true)
@@ -131,7 +131,7 @@ struct TourView: View {
                     Text(cue.streetName.map {
                         cue.isUpcomingTurn ? "\(cue.direction.instruction) \(cue.isTowardStreet ? "toward" : "onto") \($0)" : "Continue on \($0)"
                     } ?? (cue.isUpcomingTurn ? cue.direction.instruction : cue.streetLabel))
-                    .font(.headline).fixedSize(horizontal: false, vertical: true)
+                    .font(.title3.weight(.semibold)).fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }

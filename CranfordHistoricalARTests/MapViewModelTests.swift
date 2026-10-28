@@ -34,7 +34,7 @@ final class MapViewModelTests: XCTestCase {
                 let proposal = CGSize(width: width, height: 1)
                 let measured = host.sizeThatFits(in: proposal)
                 let traits = UITraitCollection(preferredContentSizeCategory: category)
-                let font = UIFont.preferredFont(forTextStyle: .subheadline, compatibleWith: traits)
+                let font = UIFont.preferredFont(forTextStyle: .title3, compatibleWith: traits)
                 XCTAssertGreaterThanOrEqual(measured.height, font.lineHeight - 1,
                     "Distance/time text must retain its full line height in a short map panel")
 

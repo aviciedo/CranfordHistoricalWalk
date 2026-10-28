@@ -20,9 +20,15 @@ struct NextStopCard: View {
                     Text("Now guiding you to").font(.caption).foregroundStyle(AppTheme.secondaryInk)
                 }
                 HStack(alignment: .top, spacing: 8) {
-                    Text(current.name).font(.system(.title2, design: .serif).weight(.semibold))
-                        .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(current.name)
+                            .font(.system(.largeTitle, design: .serif).weight(.semibold))
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityAddTraits(.isHeader)
+                            .accessibilityIdentifier("map.destinationName")
+                        if !tour.isWalkPaused { MapDestinationStatus() }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     Menu { moreActions } label: {
                         Image(systemName: "ellipsis").font(.title3.weight(.semibold))
                             .frame(width: 44, height: 44).contentShape(Rectangle())
@@ -30,7 +36,6 @@ struct NextStopCard: View {
                     .accessibilityLabel("More walking controls")
                     .accessibilityIdentifier("map.more")
                 }
-                if !tour.isWalkPaused { MapDestinationStatus() }
                 if tour.walkingProgression.hasArrived && !tour.isWalkPaused {
                     Text(tour.walkingProgression.isHeld ? "Staying here until you continue." : "Take your time. Directions move on when you leave.")
                         .font(.footnote).foregroundStyle(AppTheme.secondaryInk)
@@ -121,7 +126,7 @@ struct NextStopCard: View {
 /// these, it can be measured shorter than its distance/time text in the scrolling panel.
 struct MapDestinationStatus: View {
     @Environment(TourViewModel.self) private var tour
-    @ScaledMetric(relativeTo: .subheadline) private var minimumLineHeight: CGFloat = 24
+    @ScaledMetric(relativeTo: .title3) private var minimumLineHeight: CGFloat = 24
 
     private var arrivalText: String {
         if tour.userLocation?.isSimulated == true || tour.locationService is SimulatedLocationService {
@@ -136,27 +141,27 @@ struct MapDestinationStatus: View {
             VStack(alignment: .leading, spacing: 8) {
                 if tour.walkingProgression.hasArrived {
                     Label(arrivalText, systemImage: "checkmark.circle")
-                        .font(.subheadline.weight(.medium))
+                        .font(.title3.weight(.medium))
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("map.arrived")
                 } else {
                     if tour.progress.isCurrentStopVisited {
                         Label("Visited on this walk", systemImage: "checkmark.circle")
-                            .font(.footnote).foregroundStyle(AppTheme.secondaryInk)
+                            .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
                     }
                     Text("\(tour.remainingDistanceText) · \(tour.remainingTimeText)")
-                        .font(.subheadline).monospacedDigit()
+                        .font(.title3).monospacedDigit()
                         .foregroundStyle(AppTheme.secondaryInk)
                         .fixedSize(horizontal: false, vertical: true)
                     if tour.isRoutingInFlight && tour.currentRoute == nil {
                         ProgressView("Finding a walking route")
-                            .font(.footnote)
+                            .font(.subheadline)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 if tour.locationIssue != nil && !tour.isWalkPaused {
                     Text("Waiting for a clearer location")
-                        .font(.footnote).fixedSize(horizontal: false, vertical: true)
+                        .font(.subheadline).fixedSize(horizontal: false, vertical: true)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

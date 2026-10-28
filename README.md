@@ -1,3 +1,16 @@
+## Clearer Map destination hierarchy — build 69
+
+The destination name is now largeTitle serif semibold (34 points at default text
+size, previously 22), grouped with distance/time at a 6-point gap. Distance/time and
+arrival status use title3 (20 points, previously 15). The More button keeps its
+44-point target at the top right. Turn instructions above the map increase to
+20-point semibold, with a 17-point turn distance. Loading/location notes remain
+secondary at subheadline size. All text continues to scale and wrap; measured map
+layout reserves the real turn-card and destination height before sizing the map.
+The existing native clipping regression now checks the larger status font height.
+Debug/Release syntax checks passed. Native test execution and rendered visual
+comparison for builds 66–69 remain pending; no new visual pass is claimed.
+
 ## Paused map copy — build 68
 
 Removed Resume when you’re ready from the paused map. The paused panel omits the

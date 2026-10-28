@@ -1,3 +1,31 @@
+# Build 69 — Map destination and instruction hierarchy
+
+final result: blocked
+
+Visual source: owner's current annotated Map screenshot, with the destination
+name and distance/time panel boxed in red. Requested refinement preserves the
+existing ivory/hunter-green layout while making the stop the strongest text and
+navigation information easier to read.
+
+Implemented: current-stop name uses scalable largeTitle serif semibold (34-point
+default versus 22); distance/time and arrival use title3 (20 versus 15). The name
+and status share a leading-aligned vertical group with a 6-point gap. This removes
+the artificial distance gap caused by the More menu's 44-point frame. More stays
+44 points at the top right. Turn text grows 17 -> 20 points; turn distance 15 -> 17.
+Route/loading/location text remains secondary. Names/status wrap without shrinking;
+DestinationFirstMapLayout still reserves actual top-card/footer height before the
+map receives space. No route, GPS, progression or AR behavior was edited.
+
+Debug/Release Swift syntax and a scoped diff review passed. The existing native
+status-height regression was updated to compare against title3 at normal and
+accessibility text sizes. It has not been executed here. No rendered implementation
+screenshot, matched density comparison or native visual evidence is available on
+this Linux host, so this is not a visual QA pass. Verify short and long stop names,
+long street names, loading/arrival/paused states, compact phones, larger Dynamic
+Type and a visible narration player in iOS before closing the visual check.
+
+---
+
 # Build 67 — Simplified and rebalanced Home
 
 final result: blocked
