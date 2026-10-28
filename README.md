@@ -1,3 +1,9 @@
+## Passport pagination cleanup — build 74
+
+Removed the Swipe to turn pages helper text. Page count, collection count, swipe
+page turning and previous/next arrows remain. Swift syntax verified; native visual
+review pending.
+
 ## Photo viewer cleanup — build 73
 
 Removed the visible Reset zoom button and its empty footer space. Captions keep

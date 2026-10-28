@@ -125,9 +125,6 @@ struct PassportView: View {
                 Spacer(minLength: 8)
                 pageButton("Next page", symbol: "chevron.right", disabled: currentPageIndex >= stops.count - 1) { pageSelection.wrappedValue = currentPageIndex + 1 }
             }
-            if !reduceMotion {
-                Text("Swipe to turn pages").font(.footnote).foregroundStyle(AppTheme.secondaryInk)
-            }
             Text("\(tour.passportCollectedCount) of \(stops.count) stamps collected")
                 .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
                 .accessibilityIdentifier("passport.collectionCount")
