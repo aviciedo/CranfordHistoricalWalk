@@ -116,7 +116,7 @@ struct TourView: View {
 
     @ViewBuilder
     private var turnInstruction: some View {
-        if tour.phase == .inProgress, !tour.isWalkPaused, !tour.walkingProgression.hasArrived,
+        if tour.phase == .inProgress, !tour.isWalkPaused, !tour.isCurrentVisitConfirmed,
            let cue = tour.mapWalkingCue {
             HStack(spacing: 16) {
                 VStack(spacing: 4) {

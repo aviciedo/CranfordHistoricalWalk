@@ -1,3 +1,27 @@
+## Confirmed visit offers a named next-leg button — build 78
+
+The Map destination panel now shows Visited, Next Stop: Greystone (or the actual
+following stop), and a prominent Walk to [stop] button after a confirmed visit.
+Removed You’re here, the automatic-departure message and Stay here control. GPS
+arrival and real plaque recognition both enable the CTA; prior-walk visit history
+alone does not. At the final stop, Finish walk explicitly completes the itinerary.
+
+Per the owner’s selected behavior, departure GPS never changes the destination or
+finishes the walk automatically. Arrival/visit detection still happens automatically.
+The visitor taps to start the next leg immediately. A paused, restored visit can
+start the next leg with the same single button; it resumes GPS/routing and saves
+the new destination. View stop and AR directions remain, and the duplicate More-menu
+Continue action is omitted once the main arrival CTA is shown. The old Undo/hold
+state helpers remain for existing callers; they do not trigger automatic departure.
+
+Validation: 103 portable app-model tests passed, covering GPS-confirmed visit,
+physical plaque recognition before GPS dwell, no departure-based advancement,
+next-leg selection after paused relaunch, repeat-tap protection for unvisited stops,
+independent story/stamp preservation and explicit final completion with skipped
+sites. Older automatic-progression tests were updated to the selected manual-next-
+leg behavior; none disabled. Debug/Release Swift syntax passed. Native Map rendering,
+route presentation and outdoor acceptance remain pending.
+
 ## AR walking-arrow reliability repair — build 77
 
 Fixed three rendering blockers: GPS arrival suppressing walking arrows before

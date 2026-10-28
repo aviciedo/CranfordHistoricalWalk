@@ -26,7 +26,7 @@ struct NextStopCard: View {
                             .fixedSize(horizontal: false, vertical: true)
                             .accessibilityAddTraits(.isHeader)
                             .accessibilityIdentifier("map.destinationName")
-                        if !tour.isWalkPaused { MapDestinationStatus() }
+                        if !tour.isWalkPaused || tour.isCurrentVisitConfirmed { MapDestinationStatus() }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     Menu { moreActions } label: {
@@ -36,21 +36,27 @@ struct NextStopCard: View {
                     .accessibilityLabel("More walking controls")
                     .accessibilityIdentifier("map.more")
                 }
-                if tour.walkingProgression.hasArrived && !tour.isWalkPaused {
-                    Text(tour.walkingProgression.isHeld ? "Staying here until you continue." : "Take your time. Directions move on when you leave.")
-                        .font(.footnote).foregroundStyle(AppTheme.secondaryInk)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Button(tour.walkingProgression.isHeld ? "Guide me when I leave" : "Stay here") {
-                        tour.toggleAutomaticDepartureHold()
+                if tour.isCurrentVisitConfirmed {
+                    if let next = tour.nextStop {
+                        Text("Next Stop: \(next.name)")
+                            .font(.title3.weight(.semibold))
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier("map.nextStopName")
                     }
-                    .buttonStyle(.plain).font(.subheadline.weight(.medium)).frame(minHeight: 44)
+                    Button { tour.startNextLegAfterConfirmedVisit() } label: {
+                        Label(tour.nextStop.map { "Walk to \($0.name)" } ?? "Finish walk",
+                              systemImage: tour.nextStop == nil ? "checkmark" : "figure.walk")
+                            .font(.headline).fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, minHeight: 48)
+                            .padding(.horizontal, 16).padding(.vertical, 6)
+                            .foregroundStyle(.white)
+                            .background(AppTheme.forest, in: RoundedRectangle(cornerRadius: 14))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Starts directions to the next stop, or finishes the walk at the final stop")
+                    .accessibilityIdentifier("map.startNextLeg")
                 }
-                if tour.walkingProgression.isHeld && !tour.walkingProgression.hasArrived {
-                    Text("Continue when you’re ready to move on.")
-                        .font(.footnote).foregroundStyle(AppTheme.secondaryInk)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                if tour.isWalkPaused {
+                if tour.isWalkPaused && !tour.isCurrentVisitConfirmed {
                     Button { tour.startTour() } label: {
                         Label("Resume walk", systemImage: "figure.walk").frame(minHeight: 44)
                     }
@@ -112,7 +118,7 @@ struct NextStopCard: View {
             }
             .accessibilityIdentifier("map.previousStop")
         }
-        if tour.canContinueCurrentStop {
+        if tour.canContinueCurrentStop && !tour.isCurrentVisitConfirmed {
             Button { tour.completeCurrentStopAndAdvance() } label: {
                 Label(tour.nextStop == nil ? "Finish walk" : "Continue now", systemImage: "arrow.right")
             }
@@ -132,14 +138,14 @@ struct MapDestinationStatus: View {
         if tour.userLocation?.isSimulated == true || tour.locationService is SimulatedLocationService {
             return "Practice arrival · Not saved"
         }
-        return tour.isAtCurrentStopNow ? "You’re here · Visited" : "Visited · Ready when you are"
+        return "Visited"
     }
 
     var body: some View {
         // Refresh presence even when GPS stops emitting; an old fix is not arrival.
         TimelineView(.periodic(from: .now, by: 5)) { _ in
             VStack(alignment: .leading, spacing: 8) {
-                if tour.walkingProgression.hasArrived {
+                if tour.isCurrentVisitConfirmed {
                     Label(arrivalText, systemImage: "checkmark.circle")
                         .font(.title3.weight(.medium))
                         .fixedSize(horizontal: false, vertical: true)

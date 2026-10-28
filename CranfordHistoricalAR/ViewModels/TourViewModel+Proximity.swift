@@ -197,6 +197,8 @@ extension TourViewModel {
         visitRecords.filter { $0.stopID == stop.id }.max { $0.activatedAt < $1.activatedAt }
     }
     var isCurrentStopVisited: Bool { currentStop.map { progress.isCurrentStopVisited || activities[$0.id].visitedAt != nil } ?? false }
+    /// Prior-walk history is not a confirmed arrival on this itinerary.
+    var isCurrentVisitConfirmed: Bool { phase == .inProgress && progress.isCurrentStopVisited }
     var canContinueCurrentStop: Bool { isWalkingActive && currentStop != nil }
     var canContinueARStop: Bool { canContinueCurrentStop && arStop?.id == currentStop?.id }
 
@@ -234,48 +236,31 @@ extension TourViewModel {
         destinationDidChange()
     }
 
+    /// The visible arrival CTA also resumes a restored walk before selecting its next leg.
+    func startNextLegAfterConfirmedVisit() {
+        guard isCurrentVisitConfirmed else { return }
+        if isWalkPaused { startTour() }
+        completeCurrentStopAndAdvance()
+    }
+
 
     /// Called exactly once per new location event, never recursively from destination reset.
     func evaluateAutomaticProgression(_ sample: LocationSample, now: Date = Date()) {
         guard isWalkingActive, sample.coordinate.isValid, let stop = currentStop else { walkingProgression.interrupt(); return }
-        let previousFix = walkingProgression.lastFix
         let event = walkingProgression.update(
             distance: GeoMath.distance(from: sample.coordinate, to: stop.coordinate),
             accuracy: sample.horizontalAccuracy, timestamp: sample.timestamp, now: now,
             arrivalRadius: stop.arrivalRadius, departureRadius: max(50, stop.effectiveDepartureRadius),
-            allowsDeparture: isAutomaticNavigationAllowed)
+            allowsDeparture: false)
         switch event {
         case .arrived:
             progress.markCurrentStopVisited()
             if !sample.isSimulated && !(locationService is SimulatedLocationService), activities[stop.id].visitedAt == nil {
                 savePhysicalActivity(for: stop.id, evidence: .onSiteARMarker, now: now)
             }
-            // Last arrival completes only when the visitor is back on the Map.
-            if nextStop == nil && isAutomaticNavigationAllowed && !walkingProgression.isHeld {
-                advanceAutomatically(from: stop)
-            }
-        case .departed:
-            advanceAutomatically(from: stop)
-        case nil:
-            if walkingProgression.lastFix != previousFix,
-               walkingProgression.hasArrived, nextStop == nil, isAutomaticNavigationAllowed,
-               !walkingProgression.isHeld,
-               StopActivationPolicy.isFresh(sample.timestamp, now: now),
-               case .allow = StopActivationPolicy.decide(trackingReady: true, plaqueIsTracked: false,
-                    isSimulated: sample.isSimulated,
-                    distanceMeters: GeoMath.distance(from: sample.coordinate, to: stop.coordinate),
-                    horizontalAccuracy: sample.horizontalAccuracy, locationTimestamp: sample.timestamp,
-                    arrivalRadius: stop.arrivalRadius, now: now) {
-                advanceAutomatically(from: stop)
-            }
+        case .departed, nil:
+            break // Arrival is automatic; destination changes require an explicit tap.
         }
-    }
-
-    private func advanceAutomatically(from stop: HistoricalStop) {
-        let snapshot = progress
-        completeCurrentStopAndAdvance()
-        automaticTransitionFromStopID = stop.id
-        automaticTransitionProgress = snapshot
     }
 
     /// Undo changes only the destination. Real visits, stories, bonuses and audio survive.
