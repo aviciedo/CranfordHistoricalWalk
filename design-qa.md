@@ -1,3 +1,21 @@
+# Build 79 — closer stop-page buttons and final passport section
+
+final result: blocked
+
+Reference: owner-supplied stop page showing Resume narration and View the bonus.
+Implementation groups these actions at 12 points instead of the previous outer
+24-point section gap. Their full-width bounds, minimum 56-point heights, typography,
+wrapping and corners are retained. Other sections remain 24 points apart. Confirmed
+that PassportStampRow follows the details/story group and is the final scroll section
+for both collected and locked states; it is not duplicated near the AR button.
+
+Debug/Release syntax passed. Native iOS capture and same-viewport visual comparison
+cannot be performed in this Linux environment. Check default/large type, active
+player, learned status text and expanded/collapsed details on iPhone before visual
+acceptance. No new field behavior or stamp award logic was changed.
+
+---
+
 # Build 72 — bottom passport row, locked and collected states
 
 final result: blocked

@@ -105,40 +105,45 @@ struct StopDetailView: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
-                if stop.narrationSource != nil {
-                    VStack(alignment: .leading, spacing: 8) {
-                        NarrationControls(stop: stop)
-                        if tour.activities[stop.id].learningCompleted {
-                            Label(learningStatus, systemImage: "checkmark.circle")
-                                .font(.footnote).foregroundStyle(AppTheme.secondaryInk)
-                        }
-                    }
-                }
-                if stop.hasPlaqueReference {
+                // Related primary/secondary actions share a closer gap; other sections keep 24 points.
+                if stop.narrationSource != nil || stop.hasPlaqueReference {
                     VStack(alignment: .leading, spacing: 12) {
-                        Button(action: openPlaqueActivity) {
-                            HStack(spacing: 12) {
-                                HStack(spacing: 12) {
-                                    Image(systemName: "camera")
-                                        .font(.title2)
-                                    Text(tour.activities[stop.id].bonusFoundAt == nil ? "Find on-site plaque with AR" : "View the bonus")
-                                        .font(.headline)
-                                        .fixedSize(horizontal: false, vertical: true)
+                        if stop.narrationSource != nil {
+                            VStack(alignment: .leading, spacing: 8) {
+                                NarrationControls(stop: stop)
+                                if tour.activities[stop.id].learningCompleted {
+                                    Label(learningStatus, systemImage: "checkmark.circle")
+                                        .font(.footnote).foregroundStyle(AppTheme.secondaryInk)
                                 }
-                                .frame(maxWidth: .infinity)
-                                Image(systemName: "chevron.right")
-                                    .font(.subheadline.weight(.semibold))
                             }
-                            .padding(.horizontal, 16).padding(.vertical, 14)
-                            .frame(maxWidth: .infinity, minHeight: 56)
-                            .foregroundStyle(AppTheme.forest)
-                            .background(AppTheme.ivory, in: RoundedRectangle(cornerRadius: 14))
-                            .overlay(RoundedRectangle(cornerRadius: 14)
-                                .strokeBorder(AppTheme.forest.opacity(0.35), lineWidth: 1))
-                            .contentShape(RoundedRectangle(cornerRadius: 14))
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("stop.findPlaque")
+                        if stop.hasPlaqueReference {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Button(action: openPlaqueActivity) {
+                                    HStack(spacing: 12) {
+                                        HStack(spacing: 12) {
+                                            Image(systemName: "camera")
+                                                .font(.title2)
+                                            Text(tour.activities[stop.id].bonusFoundAt == nil ? "Find on-site plaque with AR" : "View the bonus")
+                                                .font(.headline)
+                                                .fixedSize(horizontal: false, vertical: true)
+                                        }
+                                        .frame(maxWidth: .infinity)
+                                        Image(systemName: "chevron.right")
+                                            .font(.subheadline.weight(.semibold))
+                                    }
+                                    .padding(.horizontal, 16).padding(.vertical, 14)
+                                    .frame(maxWidth: .infinity, minHeight: 56)
+                                    .foregroundStyle(AppTheme.forest)
+                                    .background(AppTheme.ivory, in: RoundedRectangle(cornerRadius: 14))
+                                    .overlay(RoundedRectangle(cornerRadius: 14)
+                                        .strokeBorder(AppTheme.forest.opacity(0.35), lineWidth: 1))
+                                    .contentShape(RoundedRectangle(cornerRadius: 14))
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityIdentifier("stop.findPlaque")
+                            }
+                        }
                     }
                 }
                 if hasStopDetails || hasStoryScript {

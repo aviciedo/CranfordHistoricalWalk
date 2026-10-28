@@ -1,3 +1,14 @@
+## Stop-page action spacing — build 79
+
+Narration and plaque/bonus actions now share a 12-point vertical group instead of
+being separated by the outer 24-point section spacing. Existing full-width geometry,
+minimum 56-point button heights, scalable wrapping labels and 14-point corners stay
+consistent. Other sections keep their 24-point separation. The passport stamp row
+is the final stop-page section after Stop details and Read the story, in both locked
+and collected states (the build 72 placement is retained). No playback, AR, award or
+navigation behavior changed. Debug/Release syntax verified; native visual acceptance
+at small/large text sizes remains pending.
+
 ## Confirmed visit offers a named next-leg button — build 78
 
 The Map destination panel now shows Visited, Next Stop: Greystone (or the actual
