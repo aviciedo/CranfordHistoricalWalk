@@ -349,7 +349,8 @@ final class TourViewModel {
         isShowingTour = false
     }
 
-    func resetTour() {
+    /// Explicit replay can start immediately; developer resets return to the welcome state.
+    func resetTour(startImmediately: Bool = true) {
         walkSessionID = UUID()
         automaticTransitionFromStopID = nil
         automaticTransitionProgress = nil
@@ -364,9 +365,10 @@ final class TourViewModel {
         continuedARStopIDs = []
         arDiscoveryStopID = nil
         progress.reset()
-        progress.start()
+        if startImmediately { progress.start() }
+        else { isShowingTour = false }
         destinationDidChange()
-        loadTourSummaryLegsIfNeeded()
+        if startImmediately { loadTourSummaryLegsIfNeeded() }
     }
 
     #if DEVELOPER_MENU
@@ -378,7 +380,7 @@ final class TourViewModel {
         if includingStoriesAndBonuses { activities = StopActivityLedger() }
         else { activities.clearVisits() }
         activityStore.save(activities)
-        resetTour()
+        resetTour(startImmediately: false)
     }
     #endif
 

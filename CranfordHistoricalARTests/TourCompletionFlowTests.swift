@@ -492,6 +492,55 @@ final class TourCompletionFlowTests: XCTestCase {
     }
 
     #if DEVELOPER_MENU
+    func testDeveloperHistoryResetRequiresStartThenResumesDestinationAcrossRelaunch() async {
+        for includingStoriesAndBonuses in [false, true] {
+            let walks = InMemoryWalkResumeStore()
+            let activities = InMemoryStopActivityStore()
+            let visits = InMemoryStopVisitStore()
+            func makeModel() async -> TourViewModel {
+                let model = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),
+                    locationService: ActivityTestLocationService(), directionsService: PreviewDirectionsService(),
+                    visitStore: visits, activityStore: activities, walkResumeStore: walks)
+                await model.loadStopsIfNeeded()
+                return model
+            }
+            let tour = await makeModel(); defer { cleanUp(tour) }
+            tour.startTour()
+            tour.completeCurrentStopAndAdvance()
+            XCTAssertNotNil(walks.load())
+            tour.clearRecordedActivitiesAndRestart(includingStoriesAndBonuses: includingStoriesAndBonuses)
+            XCTAssertEqual(tour.phase, .notStarted)
+            XCTAssertEqual(tour.homeWalkActionTitle, "Start walk")
+            XCTAssertNil(tour.currentStop, "An unstarted walk has no active destination")
+            XCTAssertEqual(tour.homeFeaturedStop?.id, stops[0].id)
+            XCTAssertFalse(tour.isWalkingActive)
+            XCTAssertNil(walks.load(), "Reset must remove the old resume checkpoint")
+            tour.checkpointWalk()
+
+            let fresh = await makeModel(); defer { cleanUp(fresh) }
+            XCTAssertEqual(fresh.homeWalkActionTitle, "Start walk", "Relaunch after reset stays unstarted")
+            fresh.startTour()
+            XCTAssertEqual(fresh.homeWalkActionTitle, "Continue walk")
+            XCTAssertEqual(fresh.currentStop?.id, stops[0].id)
+            fresh.completeCurrentStopAndAdvance()
+            let destination = fresh.currentStop?.id
+            XCTAssertEqual(destination, stops[1].id)
+
+            let resumed = await makeModel(); defer { cleanUp(resumed) }
+            XCTAssertEqual(resumed.homeWalkActionTitle, "Continue walk")
+            XCTAssertTrue(resumed.isWalkPaused)
+            XCTAssertEqual(resumed.currentStop?.id, destination)
+            resumed.startTour()
+            XCTAssertFalse(resumed.isWalkPaused)
+            XCTAssertEqual(resumed.currentStop?.id, destination, "Resume must not restart at Stop 1")
+            let developer = DeveloperModeController(tour: resumed, realLocationService: resumed.locationService)
+            developer.resetTour()
+            XCTAssertEqual(resumed.homeWalkActionTitle, "Start walk")
+            XCTAssertFalse(resumed.isWalkingActive)
+            XCTAssertNil(walks.load(), "Plain developer Reset tour also clears the resume checkpoint")
+        }
+    }
+
     func testVisitOnlyResetKeepsStoriesAndBonusesSeparate() async {
         let visits = InMemoryStopVisitStore()
         let activities = InMemoryStopActivityStore()
@@ -507,7 +556,8 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertNotNil(tour.activities[stops[1].id].listenedAt)
         XCTAssertNotNil(tour.activities[stops[1].id].readAt)
         XCTAssertNotNil(tour.activities[stops[1].id].bonusFoundAt)
-        XCTAssertEqual(tour.currentStop?.id, stops[0].id)
+        XCTAssertNil(tour.currentStop, "An unstarted walk has no active destination")
+        XCTAssertEqual(tour.homeFeaturedStop?.id, stops[0].id)
         XCTAssertEqual(tour.progress.completedCount, 0)
         XCTAssertEqual(activities.load(), tour.activities)
     }
@@ -528,7 +578,8 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertTrue(tour.visitRecords.isEmpty)
         for stop in stops { XCTAssertEqual(tour.activities[stop.id], StopActivities()) }
         XCTAssertEqual(tour.progress.completedCount, 0)
-        XCTAssertEqual(tour.currentStop?.id, stops[0].id)
+        XCTAssertNil(tour.currentStop, "An unstarted walk has no active destination")
+        XCTAssertEqual(tour.homeFeaturedStop?.id, stops[0].id)
         XCTAssertTrue(tour.discoveriesByStopID[stops[1].id] == nil)
         let reloaded = await makeTour(visitStore: visits, activityStore: activities); defer { cleanUp(reloaded) }
         for stop in stops { XCTAssertEqual(reloaded.activities[stop.id], StopActivities()) }
@@ -1759,6 +1810,8 @@ final class StopVisitStoreTests: XCTestCase {
 
         developer.isVisitRecordingEnabled = true
         developer.resetTour()
+        XCTAssertEqual(tour.homeWalkActionTitle, "Start walk")
+        tour.startTour()
         tour.finishStory(for: firstID)
         XCTAssertTrue(tour.beginPlaqueDiscovery())
         tour.confirmPlaqueArrival(for: firstID)
@@ -1796,7 +1849,9 @@ final class StopVisitStoreTests: XCTestCase {
         XCTAssertTrue(tour.visitRecords.isEmpty)
         XCTAssertNotNil(tour.activities["hpab-001"].bonusFoundAt, "Visit-only reset preserves the earned stamp")
         XCTAssertNotNil(tour.activities["hpab-001"].readAt, "Visit-only reset preserves story completion")
-        XCTAssertEqual(tour.currentStop?.id, "hpab-001")
+        XCTAssertNil(tour.currentStop)
+        XCTAssertEqual(tour.homeFeaturedStop?.id, "hpab-001")
+        XCTAssertEqual(tour.homeWalkActionTitle, "Start walk")
         XCTAssertEqual(tour.progress.completedCount, 0)
         XCTAssertEqual(tour.progress.walkedMeters, 0)
         XCTAssertFalse(tour.isCurrentStopVisited)

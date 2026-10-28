@@ -196,7 +196,7 @@ final class DeveloperModeController {
 
     func resetTour() {
         (tour.locationService as? SimulatedLocationService)?.stopWalking()
-        tour.resetTour()
+        tour.resetTour(startImmediately: false)
     }
 
     /// Suppresses saved history only; marker activation and Continue still exercise the real flow.

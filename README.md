@@ -1,3 +1,20 @@
+## Developer reset returns Home to Start walk — build 75
+
+Fixed the reset path that immediately restarted and checkpointed an active walk
+after clearing history. Developer Reset tour, Clear visits, and Clear all activity
+now leave progress notStarted and clear the saved walk checkpoint. Home therefore
+shows Start walk immediately and after relaunch. The first explicit start changes
+Home to Continue walk; later resume retains the saved destination. Explicit replay
+from tour completion keeps its immediate-start behavior. Visit-only resets still
+preserve stories and stamps; full activity resets clear them as before.
+
+Validation: 99 portable app-model tests passed, including a new regression that
+covers both history reset modes, clearing saved resume state, relaunch before
+starting, first start, advancement to Stop 2, paused relaunch/resume without changing
+destination, and plain developer Reset tour. Older reset assertions now expect an
+unstarted walk with the first Home illustration and no active destination. Both
+Swift syntax configurations passed. Native iOS execution remains pending.
+
 ## Passport pagination cleanup — build 74
 
 Removed the Swipe to turn pages helper text. Page count, collection count, swipe
