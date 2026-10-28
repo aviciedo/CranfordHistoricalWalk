@@ -1,3 +1,19 @@
+## Locked-to-collected passport row — build 72
+
+Plaque-enabled stop pages now end with the reference-style passport row: shared
+perforated landmark stamp, serif heading, subtitle, chevron and divider lines.
+Before collection, gray artwork and Stamp your passport open the corresponding
+locked passport page. A saved recognized-plaque discovery changes the row to
+Passport stamped with the colored artwork and discovery count. Both surfaces use
+the same asset and bonus ledger; existing stamps and the one-shot animated AR
+reveal are retained. Stops without approved plaque references do not offer stamps.
+
+Validation: Debug/Release Swift syntax passed. Four existing passport flow tests
+passed in the portable model harness (recognition, persistence, adoption and reset/
+practice safeguards). Native SwiftUI/ARKit rendering and field acceptance remain
+pending; portable tests do not exercise camera recognition or screen layout.
+
+
 ## First Baptist Church slideshow — build 71
 
 Added all five owner-supplied church photographs in upload order, each with a

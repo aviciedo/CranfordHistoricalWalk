@@ -1,3 +1,16 @@
+## Build 72 — stop-page passport entry
+
+The stamp row is now the last section of a plaque-enabled stop page, below details
+and Read the story. It remains visible before collection: Stamp your passport,
+gray/desaturated art, Find the on-site plaque with AR, and a chevron. Tapping opens
+that stop’s locked passport leaf without awarding anything. Collected rows use
+Passport stamped and the global discovery count, matching the reference layout.
+PassportStampArtwork shares identical assets and gray/color treatment between
+row and passport leaf. Real plaque recognition still saves bonusFoundAt before
+presenting the one-shot stamp animation; dismissal returns to the stop page.
+Existing discoveries remain collected; ordinary visits and story actions never
+award stamps. No collection or AR policy was changed for this presentation update.
+
 # On-site passport — build 65
 
 ## Experience

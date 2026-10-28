@@ -139,12 +139,6 @@ struct StopDetailView: View {
                         }
                         .buttonStyle(.plain)
                         .accessibilityIdentifier("stop.findPlaque")
-                        if tour.activities[stop.id].bonusFoundAt != nil {
-                            PassportStampRow(stop: stop, collectedCount: tour.passportCollectedCount,
-                                             totalCount: tour.passportStops.count) {
-                                passportPresentation = PassportPresentation(stopID: stop.id, animated: false)
-                            }
-                        }
                     }
                 }
                 if hasStopDetails || hasStoryScript {
@@ -172,10 +166,17 @@ struct StopDetailView: View {
                             .accessibilityHint("Opens the full narration text without starting audio or changing your walk")
                             .accessibilityIdentifier("stop.readStory")
                         }
-                        Divider()
+                        if !stop.hasPlaqueReference { Divider() }
                     }
                 }
-
+                if stop.hasPlaqueReference {
+                    PassportStampRow(stop: stop,
+                                     isCollected: tour.activities[stop.id].bonusFoundAt != nil,
+                                     collectedCount: tour.passportCollectedCount,
+                                     totalCount: tour.passportStops.count) {
+                        passportPresentation = PassportPresentation(stopID: stop.id, animated: false)
+                    }
+                }
             }
             .padding(.horizontal, 20).padding(.top, 4).padding(.bottom, 24)
         }

@@ -1,3 +1,27 @@
+# Build 72 — bottom passport row, locked and collected states
+
+final result: blocked
+
+Reference: owner-supplied Passport stamped row with perforated engraved mill art,
+serif heading, stop/count subtitle, chevron and top/bottom lines. Reuses the approved
+detailed mill/Greystone stamp PNGs from the passport. Collected heading is title2
+serif semibold; row artwork is 88 points wide at default type size and scales up
+to 112 points. Text wraps and scales; the full row is tappable. Locked artwork is
+desaturated at 35% opacity; text uses readable secondary ink and explicitly says
+Stamp your passport. VoiceOver announces Collected/Not collected and the action.
+Both states open the correct passport page. Row is last in the scroll content;
+duplicate divider after Read the story is removed for plaque-enabled stops.
+
+Checks: Debug/Release syntax passed; four existing passport-flow tests passed in
+the portable model harness. Initial cache-path mismatch was resolved with a fresh
+container build directory. These checks do not run SwiftUI or ARKit.
+
+Native iOS rendering, exact reference comparison, VoiceOver, large-text layout and
+physical AR recognition need device/Simulator acceptance. This Linux environment
+cannot capture or run SwiftUI/ARKit. Source checks do not establish pixel fidelity.
+
+---
+
 # Build 70 — First Baptist Church photo-informed illustration
 
 final result: blocked

@@ -160,8 +160,8 @@ private struct PassportLeaf: View {
             VStack(spacing: 20) {
                 Spacer(minLength: 24)
                 Button(action: onOpenBonus) {
-                    PassportStampArtwork(stopID: stop.id)
-                        .opacity(collected ? (revealStamp ? 1 : 0) : 0.18)
+                    PassportStampArtwork(stopID: stop.id, isCollected: collected)
+                        .opacity(collected && !revealStamp ? 0 : 1)
                         .scaleEffect(collected && !revealStamp && !reduceMotion ? 1.45 : 1)
                         .rotationEffect(.degrees(collected && !revealStamp && !reduceMotion ? -9 : 0))
                         .padding(.horizontal, 20)
@@ -209,6 +209,7 @@ private struct PassportLeaf: View {
 
 struct PassportStampArtwork: View {
     let stopID: String
+    var isCollected = true
     private var assetName: String? {
         switch stopID {
         case "hpab-001": return "passport-stamp-mill"
@@ -227,34 +228,48 @@ struct PassportStampArtwork: View {
             }
         }
         .aspectRatio(1.4, contentMode: .fit)
+        .saturation(isCollected ? 1 : 0)
+        .opacity(isCollected ? 1 : 0.35)
         .accessibilityHidden(true)
     }
 }
 
 struct PassportStampRow: View {
     let stop: HistoricalStop
+    let isCollected: Bool
     let collectedCount: Int
     let totalCount: Int
     let action: () -> Void
+    @ScaledMetric(relativeTo: .title2) private var stampWidth: CGFloat = 88
+
     var body: some View {
         VStack(spacing: 0) {
             Divider()
             Button(action: action) {
                 HStack(spacing: 12) {
-                    PassportStampArtwork(stopID: stop.id).frame(width: 88, height: 68)
+                    PassportStampArtwork(stopID: stop.id, isCollected: isCollected)
+                        .frame(width: min(stampWidth, 112))
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Passport stamped").font(.system(.title3, design: .serif).weight(.semibold))
-                        Text("\(stop.name) · \(collectedCount) of \(totalCount) discoveries")
+                        Text(isCollected ? "Passport stamped" : "Stamp your passport")
+                            .font(.system(.title2, design: .serif).weight(.semibold))
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text(isCollected
+                             ? "\(stop.name) · \(collectedCount) of \(totalCount) discoveries"
+                             : "Find the on-site plaque with AR")
                             .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     Image(systemName: "chevron.right").font(.subheadline)
                 }
+                .foregroundStyle(isCollected ? AppTheme.forest : AppTheme.secondaryInk)
                 .padding(.vertical, 12).contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityHint("Opens your passport at this collected stamp")
+            .accessibilityValue(isCollected ? "Collected" : "Not collected")
+            .accessibilityHint(isCollected
+                ? "Opens your passport at this collected stamp"
+                : "Opens your passport at this locked stamp. Recognize the on-site plaque with AR to collect it.")
             .accessibilityIdentifier("stop.passportStamped")
             Divider()
         }
