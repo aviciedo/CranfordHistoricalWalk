@@ -88,10 +88,13 @@ extension TourViewModel {
     /// Called by the location pipeline on every accepted sample.
     func handleLocationForRouting(_ sample: LocationSample) {
         guard isWalkingActive, let destination = currentStop?.coordinate else { return }
-        if retryRouteOnFreshLocation, StopActivationPolicy.isFresh(sample.timestamp),
-           sample.horizontalAccuracy >= 0, sample.horizontalAccuracy <= Self.poorAccuracyThreshold {
+        if case .request(let origin) = RouteRecoveryPolicy.onLocationSample(
+            deferred: retryRouteOnFreshLocation,
+            walking: true,
+            hasDestination: true,
+            fix: recoveryFix(for: sample)) {
             retryRouteOnFreshLocation = false
-            requestRoute(from: sample.coordinate, to: destination, reason: .stale)
+            requestRoute(from: origin, to: destination, reason: .stale)
             return
         }
         if let route = currentRoute {
@@ -187,36 +190,58 @@ extension TourViewModel {
 
     /// Finite recovery budget; retries never advance the itinerary or use an old GPS fix.
     func scheduleRouteRecovery() {
-        guard routeRecoveryAttempts < 5 else { return }
+        guard RouteRecoveryPolicy.canSchedule(attempts: routeRecoveryAttempts) else { return }
         routeRecoveryAttempts += 1
         let generation = routingGeneration
         routeRecoveryTask?.cancel()
         let delay = routeRecoveryDelay
         routeRecoveryTask = Task { @MainActor [weak self] in
             try? await Task.sleep(for: delay)
-            guard !Task.isCancelled, let self, self.routingGeneration == generation,
-                  self.isWalkingActive, self.routingTask == nil else { return }
-            guard let sample = self.userLocation, StopActivationPolicy.isFresh(sample.timestamp),
-                  sample.horizontalAccuracy >= 0, sample.horizontalAccuracy <= Self.poorAccuracyThreshold,
-                  let destination = self.currentStop?.coordinate else {
-                self.retryRouteOnFreshLocation = true
+            guard !Task.isCancelled, let self else { return }
+            switch RouteRecoveryPolicy.onScheduledWake(
+                walking: self.isWalkingActive,
+                routingIdle: self.routingTask == nil,
+                generationCurrent: self.routingGeneration == generation,
+                fix: self.userLocation.map({ self.recoveryFix(for: $0) }),
+                hasDestination: self.currentStop?.coordinate != nil) {
+            case .ignore:
                 return
+            case .deferUntilFreshFix:
+                self.retryRouteOnFreshLocation = true
+            case .request(let origin):
+                guard let destination = self.currentStop?.coordinate else {
+                    self.retryRouteOnFreshLocation = true
+                    return
+                }
+                self.requestRoute(from: origin, to: destination, reason: .stale)
             }
-            self.requestRoute(from: sample.coordinate, to: destination, reason: .stale)
         }
     }
 
     func retryWalkingRoute() {
-        guard isWalkingActive else { return }
-        routeRecoveryAttempts = 0
-        guard let sample = userLocation, StopActivationPolicy.isFresh(sample.timestamp),
-              sample.horizontalAccuracy >= 0, sample.horizontalAccuracy <= Self.poorAccuracyThreshold,
-              let destination = currentStop?.coordinate else {
+        switch RouteRecoveryPolicy.onManualRetry(
+            walking: isWalkingActive,
+            fix: userLocation.map({ recoveryFix(for: $0) }),
+            hasDestination: currentStop?.coordinate != nil) {
+        case .ignore:
+            return
+        case .deferUntilFreshFix:
+            routeRecoveryAttempts = 0
             retryRouteOnFreshLocation = true
             locationService.requestFreshLocation()
-            return
+        case .request(let origin):
+            routeRecoveryAttempts = 0
+            guard let destination = currentStop?.coordinate else {
+                retryRouteOnFreshLocation = true
+                locationService.requestFreshLocation()
+                return
+            }
+            requestRoute(from: origin, to: destination, reason: .stale)
         }
-        requestRoute(from: sample.coordinate, to: destination, reason: .stale)
+    }
+
+    private func recoveryFix(for sample: LocationSample) -> RouteRecoveryPolicy.Fix {
+        .init(coordinate: sample.coordinate, horizontalAccuracy: sample.horizontalAccuracy, timestamp: sample.timestamp)
     }
 
     // MARK: Destination changes
