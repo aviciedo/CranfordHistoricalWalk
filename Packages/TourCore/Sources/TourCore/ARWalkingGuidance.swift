@@ -48,6 +48,25 @@ public enum ARWalkingGuidance {
             guard isUpcomingTurn else { return "Continue for \(distanceText)" }
             return distanceMeters <= 3 ? "\(direction.instruction) now" : "\(direction.instruction) in \(distanceText)"
         }
+
+        /// Map card copy. Distance stays in its own column, so this never says "now" or "in 100 ft".
+        /// A missing street stays a plain direction; "toward" and "onto" are not interchangeable.
+        public var mapTurnCardText: String {
+            if let streetName {
+                if isUpcomingTurn {
+                    return "\(direction.instruction) \(isTowardStreet ? "toward" : "onto") \(streetName)"
+                }
+                return "Continue on \(streetName)"
+            }
+            return isUpcomingTurn ? direction.instruction : streetLabel
+        }
+    }
+
+    /// The green card above the map. Arrival, pause, and a missing cue leave no sentence,
+    /// so the layout does not reserve an empty card.
+    public static func mapTurnCardSentence(phase: TourPhase, isPaused: Bool, hasArrived: Bool, cue: RouteCue?) -> String? {
+        guard phase == .inProgress, !isPaused, !hasArrived, let cue else { return nil }
+        return cue.mapTurnCardText
     }
 
     /// Entry guidance settles only after sustained alignment. Different show/hide angles
