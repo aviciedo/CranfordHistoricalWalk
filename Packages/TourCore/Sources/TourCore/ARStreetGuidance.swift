@@ -9,6 +9,31 @@ public enum ARStreetGuidance {
     public static let repositionDistanceMeters = 5.0
     public static let instructionSettleSeconds = 1.5
 
+    public struct Candidate: Equatable, Sendable {
+        public let position: SIMD3<Double>
+        public let isLocalSign: Bool
+    }
+
+    /// A route sign must be readable on first entry, not behind the camera or dependent
+    /// on outdoor plane detection. A local sign shows a maneuver, not a registered street.
+    public static func visibleCandidate(projected: SIMD3<Double>?, camera: SIMD3<Double>,
+                                        cameraForward: SIMD3<Double>, groundHeight: Double) -> Candidate? {
+        guard [camera.x, camera.y, camera.z, cameraForward.x, cameraForward.z, groundHeight]
+            .allSatisfy(\.isFinite) else { return nil }
+        let length = hypot(cameraForward.x, cameraForward.z)
+        guard length > 0.15 else { return nil }
+        let forward = SIMD2(cameraForward.x / length, cameraForward.z / length)
+        if let projected, [projected.x, projected.y, projected.z].allSatisfy(\.isFinite) {
+            let dx = projected.x - camera.x, dz = projected.z - camera.z
+            let range = hypot(dx, dz)
+            if (3...14).contains(range), (dx * forward.x + dz * forward.y) / range > cos(35 * .pi / 180) {
+                return Candidate(position: [projected.x, groundHeight, projected.z], isLocalSign: false)
+            }
+        }
+        return Candidate(position: [camera.x + forward.x * lookAheadMeters, groundHeight,
+                                    camera.z + forward.y * lookAheadMeters], isLocalSign: true)
+    }
+
     /// Stay on the current segment: a short preview must never cut across a corner.
     public static func routePoint(route: WalkingRoute, progress: RouteProgress) -> GeoCoordinate? {
         guard route.source != .straightLineEstimate, progress.snappedCoordinate.isValid,

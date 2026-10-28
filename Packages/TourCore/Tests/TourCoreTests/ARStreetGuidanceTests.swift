@@ -2,6 +2,45 @@ import XCTest
 @testable import TourCore
 
 final class ARStreetGuidanceTests: XCTestCase {
+    func testFirstSignDoesNotRequireGroundPlaneCompassOrGeoProjection() throws {
+        let candidate = try XCTUnwrap(ARStreetGuidance.visibleCandidate(projected: nil,
+            camera: [2, 1.6, 3], cameraForward: [0, 0, -1], groundHeight: 0.45))
+        XCTAssertEqual(candidate.position, [2, 0.45, -5])
+        XCTAssertTrue(candidate.isLocalSign)
+        var state = ARStreetGuidance.AnchorState()
+        XCTAssertNotNil(state.update(candidate: candidate.position, camera: [2, 1.6, 3],
+            instruction: .init(direction: .left, streetName: "Alden St"), timestamp: 0))
+    }
+
+    func testBehindSidewaysAndOutOfRangeRoutePointsProduceVisibleLocalSign() throws {
+        for point: SIMD3<Double> in [[0, 0, 8], [8, 0, 0], [0, 0, -1], [0, 0, -50], [.nan, 0, -8]] {
+            let candidate = try XCTUnwrap(ARStreetGuidance.visibleCandidate(projected: point,
+                camera: .zero, cameraForward: [0, 0, -1], groundHeight: -1.15))
+            XCTAssertEqual(candidate.position, [0, -1.15, -8])
+            XCTAssertTrue(candidate.isLocalSign)
+        }
+        let projected = try XCTUnwrap(ARStreetGuidance.visibleCandidate(projected: [1, 50, -8],
+            camera: .zero, cameraForward: [0, 0, -1], groundHeight: -1.15))
+        XCTAssertFalse(projected.isLocalSign)
+        XCTAssertEqual(projected.position, [1, -1.15, -8])
+    }
+
+    func testLocalSignStaysPinnedWhilePhoneTurnsAndRepositionsAfterFiveMetres() throws {
+        var state = ARStreetGuidance.AnchorState()
+        let cue = ARStreetGuidance.Instruction(direction: .right, streetName: "Canal St")
+        let first = try XCTUnwrap(ARStreetGuidance.visibleCandidate(projected: nil,
+            camera: .zero, cameraForward: [0, 0, -1], groundHeight: -1.15))
+        let pinned = state.update(candidate: first.position, camera: .zero, instruction: cue, timestamp: 0)
+        let turned = try XCTUnwrap(ARStreetGuidance.visibleCandidate(projected: nil,
+            camera: .zero, cameraForward: [1, 0, 0], groundHeight: -1.15))
+        XCTAssertEqual(state.update(candidate: turned.position, camera: .zero, instruction: cue, timestamp: 1), pinned)
+        let moved = try XCTUnwrap(ARStreetGuidance.visibleCandidate(projected: nil,
+            camera: [5.1, 0, 0], cameraForward: [1, 0, 0], groundHeight: -1.15))
+        XCTAssertEqual(state.update(candidate: moved.position, camera: [5.1, 0, 0], instruction: cue, timestamp: 2)?.position, moved.position)
+        XCTAssertNil(ARStreetGuidance.visibleCandidate(projected: nil, camera: .zero,
+            cameraForward: [0, -1, 0], groundHeight: -1.15))
+    }
+
     func testReadableCandidateKeepsActualNearbyRouteProjection() {
         XCTAssertEqual(ARStreetGuidance.readableCandidate(projected: [2, -1.4, -8], camera: .zero,
             routeDirection: [0, 0, -1]), [2, -1.4, -8])

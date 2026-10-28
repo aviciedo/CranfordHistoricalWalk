@@ -49,6 +49,7 @@ final class GeoAnchorManager {
     var placementMode: SignPlacementMode = .hidden
     var hasActivatedStop = false
     private(set) var hasDetectedGround = false
+    private(set) var hasPlacedNavigation = false
     private(set) var navigationNotice: String?
     private(set) var navigationBearing: Double?
     private(set) var isWindowBonusAccessible = false
@@ -65,6 +66,7 @@ final class GeoAnchorManager {
         var bearingToWaypoint: Double
         var anchorCoordinate: GeoCoordinate?
         var turnCue: ARWalkingGuidance.RouteCue?
+        var locationTimestamp: Date = Date()
     }
 
     /// Sign content requested by the view model; placed as soon as the camera is tracking.
@@ -141,6 +143,7 @@ final class GeoAnchorManager {
         navigationBearing = nil
         groundHeight = nil
         hasDetectedGround = false
+        hasPlacedNavigation = false
         lastGuidanceTime = nil
         lastFrameTime = 0
         anchors.attach(to: arView)
@@ -152,6 +155,7 @@ final class GeoAnchorManager {
     }
 
     func sessionDidStop() {
+        hasPlacedNavigation = false
         clearWindowBonus()
         anchors.arrows.resetAnchor()
         provider.detach()
@@ -164,6 +168,7 @@ final class GeoAnchorManager {
     }
 
     func sessionWasInterrupted() {
+        hasPlacedNavigation = false
         anchors.arrows.resetAnchor()
         hasDetectedGround = false
         groundHeight = nil
@@ -201,13 +206,18 @@ final class GeoAnchorManager {
         let timestamp = frame.timestamp
         guard timestamp - lastFrameTime >= GeoAnchorManager.frameInterval else { return }
         lastFrameTime = timestamp
-        let cameraTransform = frame.camera.transform
-        let trackingState = frame.camera.trackingState
+        provider.update(frame: frame)
+        updateGroundHeight(frame: frame)
+        updateNavigationPose(cameraTransform: frame.camera.transform,
+                             trackingState: frame.camera.trackingState, timestamp: timestamp)
+    }
+
+    /// The live frame path and native placement tests exercise the same orchestration.
+    func updateNavigationPose(cameraTransform: simd_float4x4, trackingState: ARCamera.TrackingState,
+                              timestamp: TimeInterval) {
         self.cameraTransform = cameraTransform
         self.trackingState = trackingState
-        provider.update(frame: frame)
         provider.update(cameraTransform: cameraTransform, trackingState: trackingState, timestamp: timestamp)
-        updateGroundHeight(frame: frame)
         refreshLocalizationState()
         considerGeospatialFallback()
         placeContent(now: timestamp)
@@ -437,74 +447,51 @@ final class GeoAnchorManager {
             lastGuidanceTime = nil
             return
         }
-        let direction: SIMD3<Float>
-        let markerDistance: Float?
+        guard let cameraTransform else { return }
+        let camera = cameraTransform.translation
+        let cameraForward = -SIMD3<Float>(cameraTransform.columns.2.x, 0, cameraTransform.columns.2.z)
+        let direction: SIMD3<Float>?
+        let projected: SIMD3<Float>?
         if anchors.sign.isPresented,
            placementMode == .plaqueAnchored || (placementMode == .geoFallback && localizationState.isUsable) {
-            // A real image anchor is stronger than the bundled geocode. Point to the
-            // actual marker, not back toward a potentially incorrect GPS destination.
             let marker = anchors.sign.position(relativeTo: anchors.worldRoot)
             direction = SIMD3(marker.x - base.x, 0, marker.z - base.z)
-            markerDistance = simd_length(direction)
+            projected = marker
         } else {
-            guard let target else {
+            guard let target, StopActivationPolicy.isFresh(target.locationTimestamp) else {
                 anchors.hideNavigation()
                 navigationNotice = "Walking arrows need a walking route and a fresh location. Use the map or retry directions."
                 navigationBearing = nil
                 return
             }
-            guard localizationState.isUsable,
-                  let worldDirection = provider.worldDirection(forBearing: target.bearingToWaypoint) else {
-                anchors.hideNavigation()
-                navigationNotice = "Waiting for accurate location and compass alignment. Use the map while AR aligns."
-                navigationBearing = nil
-                return
+            // Geographic alignment improves placement but is not a prerequisite for a
+            // local maneuver sign. It never becomes an invented street registration.
+            direction = localizationState.isUsable ? provider.worldDirection(forBearing: target.bearingToWaypoint) : nil
+            projected = direction == nil ? nil : target.anchorCoordinate.flatMap {
+                provider.worldPosition(for: $0, altitude: nil, heightBelowCamera: 0)
             }
-            direction = worldDirection
-            markerDistance = nil
         }
-        guard simd_length(direction) > 0.05 else {
-            anchors.hideNavigation()
-            navigationNotice = "No walking direction is available. Return to the map to check your route."
+        if let direction, simd_length(direction) > 0.05 {
+            updateCameraGuidance(direction: direction, now: now)
+        } else {
             navigationBearing = nil
-            return
-        }
-        updateCameraGuidance(direction: direction, now: now)
-        guard hasDetectedGround, let camera = cameraTransform?.translation else {
-            navigationNotice = nil // The existing ground-scanning coach supplies this instruction.
-            anchors.hideNavigation()
-            return
         }
         guard anchors.arrows.canRender else {
             anchors.hideNavigation()
             navigationNotice = "The AR arrows could not load. Return to the map for directions."
             return
         }
-        let candidate: SIMD3<Float>
-        if let markerDistance {
-            let distance = min(ARNavigationArrowEntity.firstArrowDistance, max(0, markerDistance - 1.2))
-            candidate = base + simd_normalize(direction) * distance
-        } else {
-            guard let coordinate = target?.anchorCoordinate,
-                  let point = provider.worldPosition(for: coordinate, altitude: nil, heightBelowCamera: 0) else {
-                anchors.hideNavigation()
-                navigationNotice = "No nearby route position is available. Check your location on the map."
-                return
-            }
-            candidate = point
-        }
-        let projected = SIMD3(Double(candidate.x), Double(candidate.y), Double(candidate.z))
-        // Do not move a genuine image-tracked plaque out into the street.
-        let readable = markerDistance != nil ? projected : ARStreetGuidance.readableCandidate(
-            projected: projected,
+        guard let candidate = ARStreetGuidance.visibleCandidate(
+            projected: projected.map { SIMD3(Double($0.x), Double($0.y), Double($0.z)) },
             camera: SIMD3(Double(camera.x), Double(camera.y), Double(camera.z)),
-            routeDirection: SIMD3(Double(direction.x), Double(direction.y), Double(direction.z)))
-        guard let readable,
-              let ground = detectedGroundPosition(near: SIMD3(Float(readable.x), Float(readable.y), Float(readable.z))) else {
+            cameraForward: SIMD3(Double(cameraForward.x), Double(cameraForward.y), Double(cameraForward.z)),
+            groundHeight: Double(base.y)) else {
             anchors.hideNavigation()
-            navigationNotice = "Unable to place walking arrows. Scan the pavement or return to the map."
+            navigationNotice = "Hold your phone upright to place the direction sign."
             return
         }
+        var ground = SIMD3<Float>(Float(candidate.position.x), Float(candidate.position.y), Float(candidate.position.z))
+        if hasDetectedGround, let refined = detectedGroundPosition(near: ground) { ground.y = refined.y }
         let cue = target?.turnCue
         let instruction = ARStreetGuidance.Instruction(
             direction: cue?.direction ?? .ahead,
@@ -512,19 +499,18 @@ final class GeoAnchorManager {
         anchors.arrows.setVisible(true)
         anchors.arrows.update(ground: ground, camera: camera,
                               instruction: instruction, timestamp: now)
+        if anchors.arrows.guidancePosition != nil { hasPlacedNavigation = true }
         if let position = anchors.arrows.guidancePosition, let arView = anchors.arView {
-            let inFront = cameraTransform.map { transform in
-                let forward = -SIMD3<Float>(transform.columns.2.x, transform.columns.2.y, transform.columns.2.z)
-                return simd_dot(forward, position - camera) > 0
-            } ?? false
+            let forward = -SIMD3<Float>(cameraTransform.columns.2.x, cameraTransform.columns.2.y, cameraTransform.columns.2.z)
+            let inFront = simd_dot(forward, position - camera) > 0
             if inFront, let screen = arView.project(position), arView.bounds.contains(screen) {
-                navigationNotice = nil
+                navigationNotice = candidate.isLocalSign
+                    ? "Direction sign only — not aligned to the street. Follow the map for your walking path."
+                    : (hasDetectedGround ? nil : "Approximate direction sign — ground height is estimated.")
             } else {
-                let relative = cameraTransform.flatMap { transform in
-                    ARWalkingGuidance.relativeBearing(directionX: Double(position.x - camera.x),
-                        directionZ: Double(position.z - camera.z),
-                        cameraForwardX: Double(-transform.columns.2.x), cameraForwardZ: Double(-transform.columns.2.z))
-                }
+                let relative = ARWalkingGuidance.relativeBearing(directionX: Double(position.x - camera.x),
+                    directionZ: Double(position.z - camera.z),
+                    cameraForwardX: Double(-cameraTransform.columns.2.x), cameraForwardZ: Double(-cameraTransform.columns.2.z))
                 if let relative, abs(relative) > 35 {
                     navigationNotice = relative > 0 ? "Turn your phone to the right to see the arrows." : "Turn your phone to the left to see the arrows."
                 } else {

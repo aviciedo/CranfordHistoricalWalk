@@ -103,13 +103,16 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertFalse(tour.shouldSuppressWalkingAR, "Still guide the user toward a previously visited destination")
         XCTAssertFalse(tour.hasPlaqueConfirmedArrival)
         confirmArrival(tour)
-        XCTAssertTrue(tour.shouldSuppressWalkingAR, "Actual current-session arrival ends walking guidance")
+        XCTAssertFalse(tour.shouldSuppressWalkingAR, "GPS arrival alone must not hide directions before finding the plaque")
+        tour.confirmPlaqueArrival(for: stops[0].id)
+        XCTAssertTrue(tour.shouldSuppressWalkingAR, "Current-session plaque confirmation ends walking guidance")
     }
 
     func testWalkingArrowsResumeOnAdvanceAndPreviousWithoutErasingVisits() async {
         let tour = await makeTour(); defer { cleanUp(tour) }
         tour.startTour()
         confirmArrival(tour)
+        tour.confirmPlaqueArrival(for: stops[0].id)
         XCTAssertTrue(tour.shouldSuppressWalkingAR)
         tour.completeCurrentStopAndAdvance()
         XCTAssertFalse(tour.shouldSuppressWalkingAR)

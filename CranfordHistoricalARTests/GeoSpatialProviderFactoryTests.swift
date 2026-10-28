@@ -1,10 +1,51 @@
 import XCTest
+import simd
 import RealityKit
 @testable import CranfordHistoricalAR
 import TourCore
 
 @MainActor
 final class GeoSpatialProviderFactoryTests: XCTestCase {
+    func testNormalTrackingPlacesChunkySignWithoutGroundOrGeographicLocalization() throws {
+        let manager = GeoAnchorManager(provider: CoreLocationGeoSpatialProvider(hasCompass: false))
+        manager.setNavigationTarget(.init(destination: .init(latitude: 40.65, longitude: -74.30),
+            bearingToWaypoint: 90, anchorCoordinate: nil, turnCue: nil))
+        manager.updateNavigationPose(cameraTransform: matrix_identity_float4x4, trackingState: .normal, timestamp: 1)
+        XCTAssertFalse(manager.hasDetectedGround)
+        XCTAssertFalse(manager.localizationState.isUsable)
+        XCTAssertTrue(manager.hasPlacedNavigation)
+        let position = try XCTUnwrap(manager.anchors.arrows.guidancePosition)
+        XCTAssertEqual(position.z, -8, accuracy: 0.01)
+        let bounds = manager.anchors.arrows.visualBounds(relativeTo: nil)
+        XCTAssertGreaterThan(bounds.extents.x, 1)
+        XCTAssertGreaterThan(bounds.extents.y, 1)
+        XCTAssertGreaterThan(bounds.extents.z, 0.1)
+
+        let turned = simd_float4x4(simd_quatf(angle: .pi / 2, axis: [0, 1, 0]))
+        manager.updateNavigationPose(cameraTransform: turned, trackingState: .normal, timestamp: 2)
+        XCTAssertEqual(manager.anchors.arrows.guidancePosition, position, "Turning the phone must not move the sign")
+        manager.updateNavigationPose(cameraTransform: turned, trackingState: .limited(.insufficientFeatures), timestamp: 3)
+        XCTAssertNil(manager.anchors.arrows.guidancePosition)
+        manager.updateNavigationPose(cameraTransform: turned, trackingState: .normal, timestamp: 4)
+        XCTAssertEqual(manager.anchors.arrows.guidancePosition, position, "Recovery restores the fixed world anchor")
+
+        manager.hasActivatedStop = true
+        manager.updateNavigationPose(cameraTransform: turned, trackingState: .normal, timestamp: 5)
+        XCTAssertNil(manager.anchors.arrows.guidancePosition)
+    }
+
+    func testNoRouteAndStaleLocationDoNotCreateInventedARInstructions() {
+        let manager = GeoAnchorManager(provider: CoreLocationGeoSpatialProvider(hasCompass: false))
+        manager.updateNavigationPose(cameraTransform: matrix_identity_float4x4, trackingState: .normal, timestamp: 1)
+        XCTAssertNil(manager.anchors.arrows.guidancePosition)
+        manager.setNavigationTarget(.init(destination: .init(latitude: 40.65, longitude: -74.30),
+            bearingToWaypoint: 90, anchorCoordinate: nil, turnCue: nil,
+            locationTimestamp: Date().addingTimeInterval(-60)))
+        manager.updateNavigationPose(cameraTransform: matrix_identity_float4x4, trackingState: .normal, timestamp: 2)
+        XCTAssertNil(manager.anchors.arrows.guidancePosition)
+        XCTAssertTrue(manager.navigationNotice?.contains("fresh location") == true)
+    }
+
     func testNavigationArrowMeshesAndInitialGroundedPlacementAreRenderable() {
         let arrow = ARNavigationArrowEntity()
         XCTAssertTrue(arrow.canRender, "Body and face meshes must both generate successfully")

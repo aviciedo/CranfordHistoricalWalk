@@ -99,7 +99,8 @@ struct ARTourView: View {
 
     @ViewBuilder
     private func content(_ model: ARViewModel) -> some View {
-        let isShowingIntroduction = !model.isPlaqueScanner && model.availability == .ready && !model.geoAnchors.hasDetectedGround
+        let isShowingIntroduction = !model.isPlaqueScanner && model.availability == .ready
+            && !model.geoAnchors.hasDetectedGround && !model.geoAnchors.hasPlacedNavigation
         ZStack {
             switch model.availability {
             case .ready:
@@ -244,7 +245,7 @@ struct ARHUDView: View {
                 if let hint = model.plaqueHint, !model.tour.isARStopVisited {
                     notice(hint, symbol: "viewfinder.circle")
                 }
-                if model.availability == .ready && !model.geoAnchors.hasDetectedGround {
+                if model.availability == .ready && !model.geoAnchors.hasDetectedGround && !model.geoAnchors.hasPlacedNavigation {
                     ARScanIntroduction()
                 }
                 Spacer(minLength: 8)
@@ -301,18 +302,21 @@ struct ARHUDView: View {
             }
             .foregroundStyle(AppTheme.forest).padding(18)
             .background(AppTheme.ivory, in: RoundedRectangle(cornerRadius: 20))
-        } else if model.tour.isPlaqueDiscoveryStop && (model.tour.discovery.hasArrived || model.tour.discovery.stage == .searching || model.tour.discovery.hasVerifiedPlaque) {
+        } else if model.tour.isPlaqueDiscoveryStop && model.tour.hasPlaqueConfirmedArrival {
             discoveryControls
-        } else if model.tour.isARStopVisited {
+        } else if model.tour.shouldSuppressWalkingAR && model.tour.isARStopVisited {
             storyControls
         } else {
             VStack(spacing: 10) {
                 ARNavigationArrowView(detail: model.guidanceDetail,
                                       cue: model.isMarkerAvailable ? nil : model.walkingCue,
                                       isApproximate: model.isGuidanceApproximate,
-                                      needsGroundScan: model.geoAnchors.isTrackingReady && !model.geoAnchors.hasDetectedGround,
+                                      needsGroundScan: model.geoAnchors.isTrackingReady && !model.geoAnchors.hasDetectedGround && !model.geoAnchors.hasPlacedNavigation,
                                       needsOrientation: model.isShowingWalkingOrientation && abs(model.relativeBearingToWaypoint ?? 0) > 50)
                 if let message = model.activationMessage { notice(message, symbol: "location.circle") }
+                if model.tour.isPlaqueDiscoveryStop && model.tour.discovery.hasArrived {
+                    primaryButton("Find on-site plaque with AR", symbol: "viewfinder", action: model.startPlaqueDiscovery)
+                }
                 if model.isMarkerAvailable {
                     primaryButton("Activate stop marker", symbol: "viewfinder.circle", action: model.activateMarker)
                         .accessibilityHint("Opens the historical sign, starts narration and records an on-site visit when your position is accurate enough.")

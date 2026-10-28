@@ -21,7 +21,10 @@ extension TourViewModel {
     /// Saved accomplishments are not current presence. Returning to a visited stop
     /// still needs navigation until this walking session actually arrives.
     var shouldSuppressWalkingAR: Bool {
-        isAtCurrentStopNow || walkingProgression.hasArrived || hasPlaqueConfirmedArrival
+        // A broad GPS arrival radius is not evidence that the visitor found the plaque.
+        // Keep walking guidance until this session actually recognizes it or opens the scanner.
+        if currentStop?.hasPlaqueReference == true { return hasPlaqueConfirmedArrival }
+        return isAtCurrentStopNow || walkingProgression.hasArrived || hasPlaqueConfirmedArrival
     }
 
     var isARStopVisited: Bool { arStop.map { activities[$0.id].visitedAt != nil || ($0.id == currentStop?.id && progress.isCurrentStopVisited) } ?? false }

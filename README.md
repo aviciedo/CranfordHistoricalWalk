@@ -1,3 +1,19 @@
+## AR walking-arrow reliability repair — build 77
+
+Fixed three rendering blockers: GPS arrival suppressing walking arrows before
+plaque recognition, mandatory outdoor ground-plane detection, and mandatory
+compass/geographic localization. With a real route, fresh location and normal AR
+tracking, a nearby world-anchored 3D maneuver sign can now appear using estimated
+height and camera orientation. The fallback is explicitly not street-aligned.
+Existing chunky hunter-green/white meshes and five-metre anchoring policy remain.
+GPS arrival no longer replaces the walking HUD with plaque controls; scanner entry
+is explicit and real recognition still awards the passport stamp.
+
+235 TourCore + 101 portable app-model tests passed (336 total). Added two native
+RealityKit orchestration tests; native compilation/rendering and outdoor acceptance
+remain pending. See [AR-ARROWS-REPAIR.md](AR-ARROWS-REPAIR.md) for evidence, safeguards,
+verified versus suspected causes, changes and the device acceptance checklist.
+
 ## Live Map positioning while paused — build 76
 
 Root Map visibility now starts the shared location stream even before a walk starts

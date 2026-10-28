@@ -257,10 +257,6 @@ final class ARViewModel {
                 isShowingDiscoveryConfirmation = false
             }
         }
-        if !isPlaqueScanner, tour.isPlaqueDiscoveryStop, tour.arrivalStoryStopID == tour.arStop?.id,
-           tour.discovery.stage != .searching, tour.discovery.stage != .unlocked {
-            isShowingSignDetails = true
-        }
         if !isPlaqueScanner { geoAnchors.locationDidUpdate(tour.userLocation, heading: tour.heading) }
         applySignPlacement()
         if tour.presentedSignStop == nil {
@@ -270,7 +266,9 @@ final class ARViewModel {
         }
         guard !isPlaqueScanner, tour.arStop?.id == tour.currentStop?.id,
               !tour.shouldSuppressWalkingAR, !tour.isRouteAnEstimate,
-              tour.currentRoute != nil, let stop = tour.arStop, let user = tour.userLocation else {
+              tour.currentRoute != nil, let stop = tour.arStop, let user = tour.userLocation,
+              StopActivationPolicy.isFresh(user.timestamp), user.horizontalAccuracy.isFinite,
+              user.horizontalAccuracy >= 0 else {
             geoAnchors.setNavigationTarget(nil)
             return
         }
@@ -284,7 +282,8 @@ final class ARViewModel {
             destination: stop.coordinate,
             bearingToWaypoint: bearing,
             anchorCoordinate: ARStreetGuidance.routePoint(route: route, progress: progress),
-            turnCue: walkingCue
+            turnCue: walkingCue,
+            locationTimestamp: user.timestamp
         ))
     }
 
