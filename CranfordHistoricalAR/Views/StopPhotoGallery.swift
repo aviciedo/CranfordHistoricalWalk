@@ -10,7 +10,7 @@ struct StopPhotoGallery: View {
     @State private var expanded: ExpandedPhoto?
     private var photos: [HistoricalStopPhoto] { stop.galleryPhotos }
     private var selection: Int {
-        get { min(max(0, navigation.photoSelections[stop.id] ?? 0), max(0, photos.count - 1)) }
+        get { PhotoGalleryIndex.displayed(stored: navigation.photoSelections[stop.id], count: photos.count) }
         nonmutating set { navigation.photoSelections[stop.id] = newValue }
     }
 
@@ -78,7 +78,7 @@ struct StopPhotoGallery: View {
     }
 
     private func move(by amount: Int) {
-        selection = (selection + amount + photos.count) % photos.count
+        selection = PhotoGalleryIndex.advanced(stored: navigation.photoSelections[stop.id], by: amount, count: photos.count)
     }
 
     private struct ExpandedPhoto: Identifiable {

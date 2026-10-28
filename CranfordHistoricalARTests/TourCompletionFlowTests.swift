@@ -1148,6 +1148,82 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertEqual(source.startRequests, 0)
     }
 
+    func testPausedAndCompletedWalksDoNotRequestDirections() async throws {
+        let storage = InMemoryWalkResumeStore()
+        let first = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),
+            locationService: ActivityTestLocationService(), directionsService: PreviewDirectionsService(),
+            walkResumeStore: storage)
+        await first.loadStopsIfNeeded()
+        first.startTour()
+        first.completeCurrentStopAndAdvance()
+        cleanUp(first)
+
+        let paused = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),
+            locationService: ActivityTestLocationService(status: .notDetermined),
+            directionsService: PreviewDirectionsService(), walkResumeStore: storage)
+        await paused.loadStopsIfNeeded()
+        defer { cleanUp(paused) }
+        let origin = stops[0].coordinate
+        paused.evaluateRouteRefresh(userLocation: origin, destination: stops[1].coordinate)
+        paused.handleLocationForRouting(LocationSample(coordinate: origin, horizontalAccuracy: 5))
+        XCTAssertNil(paused.lastRouteRequest)
+        XCTAssertNil(paused.currentRoute)
+        XCTAssertNil(paused.routingTask)
+        XCTAssertNil(paused.summaryLegsTask)
+        XCTAssertFalse(paused.isRoutingInFlight)
+        XCTAssertEqual(paused.currentStop?.id, stops[1].id)
+
+        paused.startTour()
+        paused.evaluateRouteRefresh(userLocation: origin, destination: stops[1].coordinate)
+        XCTAssertNotNil(paused.lastRouteRequest)
+        for _ in 0..<100 where paused.currentRoute == nil {
+            try await Task.sleep(for: .milliseconds(2))
+        }
+        XCTAssertEqual(paused.currentRoute?.source, .simulated)
+        XCTAssertEqual(paused.currentStop?.id, stops[1].id)
+
+        for _ in stops.dropFirst() { paused.completeCurrentStopAndAdvance() }
+        XCTAssertEqual(paused.phase, .complete)
+        paused.lastRouteRequest = nil
+        paused.currentRoute = nil
+        paused.evaluateRouteRefresh(userLocation: origin, destination: stops[0].coordinate)
+        XCTAssertNil(paused.lastRouteRequest)
+        XCTAssertNil(paused.currentRoute)
+        XCTAssertNil(paused.routingTask)
+        XCTAssertEqual(paused.phase, .complete)
+    }
+
+    func testMapMarkersSeparateSavedVisitsFromTheWalkingDestination() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.startTour()
+        let map = MapViewModel()
+        func states() -> [StopMarkerModel.State] { map.markers(for: tour).map(\.state) }
+        var expected = Array(repeating: StopMarkerModel.State.upcoming, count: stops.count)
+        expected[0] = .current
+        XCTAssertEqual(states(), expected)
+
+        let later = stops[2]
+        tour.activities.read(later.id)
+        tour.activities.foundBonus(at: later.id)
+        XCTAssertEqual(states()[2], .upcoming, "Reading or a saved bonus is not a visit pin")
+
+        tour.activities.visited(later.id)
+        XCTAssertEqual(states()[0], .current)
+        XCTAssertEqual(states()[2], .visited)
+
+        tour.activities.visited(stops[0].id)
+        XCTAssertEqual(states()[0], .visited, "A saved visit outranks the current-destination pin")
+        tour.activities.clearVisits()
+        XCTAssertEqual(states()[0], .current)
+        XCTAssertEqual(states()[2], .upcoming)
+        XCTAssertTrue(tour.progress.markCurrentStopVisited())
+        XCTAssertEqual(states()[0], .visited, "Itinerary completion still marks the pin after visit history is cleared")
+        tour.completeCurrentStopAndAdvance()
+        XCTAssertEqual(states()[0], .visited)
+        XCTAssertEqual(states()[1], .current)
+        XCTAssertEqual(tour.currentStop?.id, stops[1].id)
+    }
+
     func testViewedPlaceAndWalkingDestinationRemainSeparate() async {
         let tour = await makeTour(); defer { cleanUp(tour) }
         tour.startTour()

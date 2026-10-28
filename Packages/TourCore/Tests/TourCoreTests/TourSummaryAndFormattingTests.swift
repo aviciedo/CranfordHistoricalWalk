@@ -22,6 +22,31 @@ final class TourSummaryAndFormattingTests: XCTestCase {
         XCTAssertEqual(withVisits.totalVisitSeconds, 90 + 90 + 120)
     }
 
+    func testAppleAndLegacyRoutesStayRealWhileEstimatesDoNot() throws {
+        let stops = try Fixtures.sampleStops()
+        let origin = cranfordCenter
+        func leg(_ source: RouteSource) -> WalkingRoute {
+            WalkingRoute(origin: origin, destination: stops[0].coordinate, distanceMeters: 120,
+                         durationSeconds: 90, routeCoordinates: [origin, stops[0].coordinate], source: source)
+        }
+        for source in [RouteSource.appleMaps, .googleRoutesAPI, .googleDirectionsLegacy] {
+            let partial = TourSummary.make(stops: stops, legs: [leg(source)] + Array(repeating: nil, count: stops.count - 1))
+            XCTAssertFalse(partial.isFromWalkingRoutes)
+            XCTAssertEqual(partial.pendingLegCount, stops.count - 1)
+            let complete = TourSummary.make(stops: [stops[0]], legs: [leg(source)])
+            XCTAssertTrue(complete.isFromWalkingRoutes, "\(source) is a street route")
+            XCTAssertEqual(complete.totalDistanceMeters, 120, accuracy: 0.001)
+            XCTAssertEqual(complete.totalWalkingSeconds, 90, accuracy: 0.001)
+            let decoded = try JSONDecoder().decode(WalkingRoute.self, from: JSONEncoder().encode(leg(source)))
+            XCTAssertEqual(decoded.source, source)
+        }
+        let estimate = TourSummary.make(stops: [stops[0]], legs: [
+            WalkingRoute.straightLineEstimate(from: origin, to: stops[0].coordinate)
+        ])
+        XCTAssertFalse(estimate.isFromWalkingRoutes)
+        XCTAssertEqual(estimate.pendingLegCount, 0)
+    }
+
     func testSummaryFlagsPendingAndEstimatedLegs() throws {
         let stops = try Fixtures.sampleStops()
         var legs: [WalkingRoute?] = Array(repeating: nil, count: stops.count)
