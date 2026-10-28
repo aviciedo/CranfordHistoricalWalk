@@ -1,3 +1,9 @@
+## Photo viewer cleanup — build 73
+
+Removed the visible Reset zoom button and its empty footer space. Captions keep
+16-point bottom padding. Pinch, panning, double-tap reset and the VoiceOver reset
+action remain available. Swift syntax verified; native visual review pending.
+
 ## Locked-to-collected passport row — build 72
 
 Plaque-enabled stop pages now end with the reference-style passport row: shared

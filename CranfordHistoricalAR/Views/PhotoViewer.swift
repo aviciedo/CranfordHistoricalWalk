@@ -72,6 +72,7 @@ struct StopPhotoViewer: View {
                         })
                     .onTapGesture(count: 2) { scale = 1; offset = .zero }
                     .accessibilityLabel("\(image.kind == .illustration ? "Illustration" : "Photograph") of \(title)")
+                    .accessibilityAction(named: "Reset zoom") { scale = 1; offset = .zero }
             }
             .clipped()
             VStack(alignment: .leading, spacing: 6) {
@@ -86,15 +87,13 @@ struct StopPhotoViewer: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 24).padding(.top, 16)
+            .padding(.horizontal, 24).padding(.vertical, 16)
             .layoutPriority(1)
-            HStack {
-                if image.isPlaceholder { Text("Placeholder image").font(.footnote) }
-                Spacer()
-                Button("Reset zoom") { scale = 1; offset = .zero }
-                    .frame(minHeight: 44)
+            if image.isPlaceholder {
+                Text("Placeholder image").font(.footnote)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 24).padding(.bottom, 8)
             }
-            .font(.subheadline).padding(.horizontal, 24).padding(.vertical, 8)
         }
         .foregroundStyle(AppTheme.forest)
         .background(AppTheme.ivory.ignoresSafeArea())
