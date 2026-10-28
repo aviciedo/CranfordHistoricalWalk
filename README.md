@@ -1,3 +1,9 @@
+## Stops list status cleanup — build 82
+
+Removed On-site bonus unlocked from stop rows and their VoiceOver labels. Visited
+remains for visited stops. Stop-page bonus controls, passport stamps and saved
+discoveries are unchanged. Debug/Release syntax checks passed.
+
 ## Home previews the next stop after confirmation — build 81
 
 Diagnosed the screenshot’s Mill artwork and label: Home selected currentStop until
