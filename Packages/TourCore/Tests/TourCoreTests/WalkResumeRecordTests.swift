@@ -59,4 +59,29 @@ final class WalkResumeRecordTests: XCTestCase {
         XCTAssertEqual(restored.progress.completedCount, 0)
         XCTAssertEqual(restored.completionSummary, summary)
     }
+
+    func testDepartureHoldMustMatchTheCurrentStopAndOlderPayloadsStillRestore() throws {
+        var progress = TourProgress(stopIDs: ["mill", "park"])
+        progress.start()
+        let held = WalkResumeRecord(progress: progress, departureHoldStopID: "mill")
+        let restored = try JSONDecoder().decode(WalkResumeRecord.self, from: JSONEncoder().encode(held))
+        XCTAssertEqual(restored.departureHoldStopID, "mill")
+        XCTAssertTrue(restored.isValid(for: progress.stopIDs))
+
+        var mismatched = held
+        mismatched.departureHoldStopID = "park"
+        XCTAssertFalse(mismatched.isValid(for: progress.stopIDs), "A hold for another stop must not restore")
+        mismatched.departureHoldStopID = ""
+        XCTAssertFalse(mismatched.isValid(for: progress.stopIDs))
+
+        progress.advanceCurrentStop()
+        XCTAssertFalse(WalkResumeRecord(progress: progress, departureHoldStopID: "mill").isValid(for: progress.stopIDs))
+        XCTAssertTrue(WalkResumeRecord(progress: progress, departureHoldStopID: "park").isValid(for: progress.stopIDs))
+
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(WalkResumeRecord(progress: progress))) as? [String: Any])
+        object.removeValue(forKey: "departureHoldStopID")
+        let legacy = try JSONDecoder().decode(WalkResumeRecord.self, from: JSONSerialization.data(withJSONObject: object))
+        XCTAssertNil(legacy.departureHoldStopID)
+        XCTAssertTrue(legacy.isValid(for: progress.stopIDs))
+    }
 }
