@@ -1,4 +1,5 @@
 import XCTest
+import ARKit
 import simd
 import RealityKit
 @testable import CranfordHistoricalAR
@@ -6,6 +7,43 @@ import TourCore
 
 @MainActor
 final class GeoSpatialProviderFactoryTests: XCTestCase {
+    func testWalkingSessionNeverEnablesPlaqueRecognitionOrChangesToScanner() async {
+        let dependencies = AppDependencies.preview()
+        let tour = dependencies.tourViewModel
+        await tour.loadStopsIfNeeded()
+        // Persisted discoveries/search state must not change the session's purpose.
+        tour.activities.foundBonus(at: "hpab-001")
+        let model = ARViewModel(tour: tour, provider: CoreLocationGeoSpatialProvider(),
+            imageLoader: dependencies.imageLoader, narrationPlayer: dependencies.narrationPlayer)
+        let config = model.makeSessionConfiguration()
+        XCTAssertTrue(config.detectionImages?.isEmpty ?? true)
+        XCTAssertFalse(model.imageTrackingAvailable)
+        XCTAssertTrue(config.planeDetection.contains(.horizontal))
+        model.startPlaqueDiscovery()
+        model.showSign()
+        model.activateMarker()
+        XCTAssertFalse(model.isPlaqueScanner, "Walking cannot silently change into plaque scanning")
+        XCTAssertFalse(model.isShowingSignDetails)
+        XCTAssertFalse(model.isShowingBonusPreview)
+        XCTAssertNil(tour.pendingPassportStampStopID)
+    }
+
+    func testExplicitScannerSessionRegistersPlaqueImagesWithoutStartingWalk() async {
+        let dependencies = AppDependencies.preview()
+        let tour = dependencies.tourViewModel
+        await tour.loadStopsIfNeeded()
+        let model = ARViewModel(tour: tour, provider: CoreLocationGeoSpatialProvider(),
+            imageLoader: dependencies.imageLoader, narrationPlayer: dependencies.narrationPlayer,
+            isPlaqueScanner: true)
+        let config = model.makeSessionConfiguration()
+        XCTAssertTrue(model.isPlaqueScanner)
+        XCTAssertTrue(model.imageTrackingAvailable, "The explicit scanner must retain bundled image recognition")
+        XCTAssertFalse(config.detectionImages?.isEmpty ?? true)
+        XCTAssertTrue(config.planeDetection.isEmpty)
+        XCTAssertEqual(tour.phase, .notStarted)
+        XCTAssertNil(tour.pendingPassportStampStopID, "Opening the scanner does not award a stamp")
+    }
+
     func testNormalTrackingPlacesChunkySignWithoutGroundOrGeographicLocalization() throws {
         let manager = GeoAnchorManager(provider: CoreLocationGeoSpatialProvider(hasCompass: false))
         manager.setNavigationTarget(.init(destination: .init(latitude: 40.65, longitude: -74.30),

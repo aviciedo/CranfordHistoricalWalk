@@ -1,5 +1,15 @@
 # AR walking arrows repair — build 77
 
+## Subsequent mode separation — build 80
+
+The owner clarified that AR directions must never become plaque discovery. Walking
+now has an immutable purpose, no registered plaque images and no plaque callback or
+interaction path. Its HUD always uses the green directions card; its confirmed-visit
+next-leg action remains. The near-arrival scanner button described under build 77
+below was removed. Only a tour-stop page can open the separate scanner. Plaque
+recognition and passport awards remain in that explicit scanner. Two added native
+configuration tests are pending Xcode execution; Debug/Release syntax passed.
+
 ## Evidence and diagnosis
 
 The supplied outdoor screenshots show plaque-search controls and no arrows. They

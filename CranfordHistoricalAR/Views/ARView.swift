@@ -119,30 +119,14 @@ struct ARTourView: View {
             if isShowingIntroduction {
                 Color.gray.opacity(0.28).ignoresSafeArea().allowsHitTesting(false)
             }
-            Group {
-                if model.isPlaqueScanner {
-                    PlaqueScannerHUD(model: model, onClose: returnToMap)
-                } else {
-                    ARHUDView(model: model, onClose: returnToMap)
-                }
-            }
+            ARHUDView(model: model, onClose: returnToMap)
         }
         .onAppear { beginPhoneOrientationMonitoring() }
         .onDisappear {
             motionManager.stopDeviceMotionUpdates()
             tour.endARDiscoverySession()
         }
-        .sheet(isPresented: Binding(get: { model.isShowingSignDetails }, set: { model.isShowingSignDetails = $0 })) {
-            if let stop = tour.arStop {
-                HistoricalSignSheet(stop: stop,
-                                    onStartDiscovery: model.startPlaqueDiscovery)
-                    .presentationDetents([.large])
-                    .presentationDragIndicator(.visible)
-            }
-        }
-        .sheet(isPresented: Binding(get: { model.isShowingBonusPreview }, set: { model.isShowingBonusPreview = $0 })) {
-            if let stop = tour.arStop { OnSiteBonusPreview(stop: stop).presentationDetents([.large]) }
-        }
+
     }
 }
 
@@ -200,13 +184,8 @@ private struct ScanPhoneMotion: View {
 
 /// A quiet camera frame with one direction surface and one on-site action.
 struct ARHUDView: View {
-    @Environment(AppNavigation.self) private var navigation
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let model: ARViewModel
     var onClose: () -> Void
-    #if DEVELOPER_MENU
-    @State private var isShowingCalibration = false
-    #endif
 
     var body: some View {
         GeometryReader { geometry in
@@ -215,36 +194,13 @@ struct ARHUDView: View {
                 ScrollView { hudContent(height: geometry.size.height) }
                     .scrollBounceBehavior(.basedOnSize)
             }
-            .overlay {
-                if model.isShowingDiscoveryConfirmation {
-                    VStack(spacing: 12) {
-                        Image(systemName: "checkmark.circle.fill").font(.system(size: 54, weight: .light))
-                        Text(model.visitConfirmation).font(.headline)
-                        Text("On-site extra unlocked").font(.subheadline)
-                    }
-                    .foregroundStyle(AppTheme.forest).padding(24)
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24))
-                    .padding(24)
-                    .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.96)))
-                    .allowsHitTesting(false)
-                    .accessibilityElement(children: .combine)
-                }
-            }
-            .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: model.isShowingDiscoveryConfirmation)
         }
-        #if DEVELOPER_MENU
-        .sheet(isPresented: $isShowingCalibration) { DeveloperControlsView() }
-        .onChange(of: navigation.homeReturnID) { _, _ in isShowingCalibration = false }
-        #endif
     }
 
     private func hudContent(height: CGFloat) -> some View {
         VStack(spacing: 10) {
                 topBar
                 if let message = model.statusMessage { notice(message, symbol: "viewfinder") }
-                if let hint = model.plaqueHint, !model.tour.isARStopVisited {
-                    notice(hint, symbol: "viewfinder.circle")
-                }
                 if model.availability == .ready && !model.geoAnchors.hasDetectedGround && !model.geoAnchors.hasPlacedNavigation {
                     ARScanIntroduction()
                 }
@@ -302,95 +258,15 @@ struct ARHUDView: View {
             }
             .foregroundStyle(AppTheme.forest).padding(18)
             .background(AppTheme.ivory, in: RoundedRectangle(cornerRadius: 20))
-        } else if model.tour.isPlaqueDiscoveryStop && model.tour.hasPlaqueConfirmedArrival {
-            discoveryControls
-        } else if model.tour.shouldSuppressWalkingAR && model.tour.isARStopVisited {
-            storyControls
         } else {
-            VStack(spacing: 10) {
-                ARNavigationArrowView(detail: model.guidanceDetail,
-                                      cue: model.isMarkerAvailable ? nil : model.walkingCue,
-                                      isApproximate: model.isGuidanceApproximate,
-                                      needsGroundScan: model.geoAnchors.isTrackingReady && !model.geoAnchors.hasDetectedGround && !model.geoAnchors.hasPlacedNavigation,
-                                      needsOrientation: model.isShowingWalkingOrientation && abs(model.relativeBearingToWaypoint ?? 0) > 50)
-                if let message = model.activationMessage { notice(message, symbol: "location.circle") }
-                if model.tour.isPlaqueDiscoveryStop && model.tour.discovery.hasArrived {
-                    primaryButton("Find on-site plaque with AR", symbol: "viewfinder", action: model.startPlaqueDiscovery)
-                }
-                if model.isMarkerAvailable {
-                    primaryButton("Activate stop marker", symbol: "viewfinder.circle", action: model.activateMarker)
-                        .accessibilityHint("Opens the historical sign, starts narration and records an on-site visit when your position is accurate enough.")
-                } else if model.canShowSignManually {
-                    primaryButton("Show stop marker", symbol: "viewfinder", action: model.showSign)
-                }
-            }
+            ARNavigationArrowView(detail: model.guidanceDetail,
+                                  cue: model.walkingCue,
+                                  isApproximate: model.isGuidanceApproximate,
+                                  needsGroundScan: model.geoAnchors.isTrackingReady && !model.geoAnchors.hasDetectedGround && !model.geoAnchors.hasPlacedNavigation,
+                                  needsOrientation: model.isShowingWalkingOrientation && abs(model.relativeBearingToWaypoint ?? 0) > 50,
+                                  nextStopName: model.tour.nextStop?.name,
+                                  onContinue: model.tour.isCurrentVisitConfirmed ? model.continueToNextStop : nil)
         }
-    }
-
-    private var discoveryControls: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            if model.tour.discovery.hasVerifiedPlaque {
-                if model.geoAnchors.isWindowBonusAccessible {
-                    Button(action: model.openBonus) {
-                        Label("Open on-site extra", systemImage: "photo.on.rectangle.angled")
-                            .font(.headline).frame(maxWidth: .infinity, minHeight: 48)
-                    }
-                    .buttonStyle(.plain)
-                } else {
-                    Text("Point at the plaque to view your on-site extra.").font(.subheadline)
-                }
-            } else if model.tour.discovery.stage == .searching {
-                Text(model.discoverySearchHint).font(.headline)
-                Text(model.discoveryPlacementInstruction)
-                    .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
-            } else {
-                primaryButton("Find the plaque in AR", symbol: "viewfinder", action: model.startPlaqueDiscovery)
-            }
-            if model.tour.canContinueARStop {
-                Button(action: model.continueToNextStop) {
-                    Label(model.tour.nextStop.map { "Continue to \($0.name)" } ?? "Finish walk", systemImage: "arrow.right")
-                        .font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 44)
-                }
-                .buttonStyle(.plain)
-            }
-            HStack {
-                Button("Story") { model.isShowingSignDetails = true }.frame(minHeight: 44)
-                #if DEVELOPER_MENU
-                Spacer()
-                Button("Align bonus") { isShowingCalibration = true }.frame(minHeight: 44)
-                #endif
-            }
-            .font(.footnote.weight(.medium)).buttonStyle(.plain)
-        }
-        .foregroundStyle(AppTheme.forest).padding(16)
-        .background(AppTheme.ivory.opacity(0.93), in: RoundedRectangle(cornerRadius: 18))
-    }
-
-    private var storyControls: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Label(model.visitConfirmation, systemImage: "checkmark.circle.fill")
-                .font(.subheadline.weight(.semibold)).foregroundStyle(AppTheme.forest)
-            HStack(spacing: 12) {
-                Button { model.isShowingSignDetails = true } label: {
-                    Label("Stop details", systemImage: "doc.text").frame(maxWidth: .infinity, minHeight: 44)
-                }
-                Button {
-                    model.tour.isSignPresented ? model.closeSign() : model.showSign()
-                } label: {
-                    Text(model.tour.isSignPresented ? "Hide AR card" : "Show AR card")
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                }
-            }
-            .buttonStyle(.plain).font(.subheadline.weight(.medium)).foregroundStyle(AppTheme.forest)
-            if let next = model.tour.nextStop {
-                Text("Next: \(next.name)").font(.subheadline).foregroundStyle(AppTheme.forest.opacity(0.8))
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            primaryButton(model.tour.nextStop == nil ? "Finish walk" : "Continue to next stop",
-                          symbol: "arrow.right", action: model.continueToNextStop)
-        }
-        .padding(16).background(AppTheme.ivory, in: RoundedRectangle(cornerRadius: 20))
-        .environment(\.colorScheme, .light)
     }
 
     private func primaryButton(_ title: String, symbol: String, action: @escaping () -> Void) -> some View {

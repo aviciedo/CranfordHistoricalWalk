@@ -1,3 +1,11 @@
+## Build 80 — explicit scanner entry only
+
+Walking AR does not register or process plaque images and does not award stamps.
+The stop-page Find on-site plaque with AR button opens the separate scanner, where
+real recognition still saves the bonus and reveals the passport. Saved stamps never
+change a walking session into plaque mode. A walking-card next-stop action changes
+the itinerary only; it neither scans nor awards a passport stamp.
+
 ## Build 72 — stop-page passport entry
 
 The stamp row is now the last section of a plaque-enabled stop page, below details

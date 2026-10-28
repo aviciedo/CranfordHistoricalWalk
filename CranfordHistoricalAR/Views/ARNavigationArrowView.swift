@@ -8,6 +8,8 @@ struct ARNavigationArrowView: View {
     var isApproximate: Bool
     var needsGroundScan = false
     var needsOrientation = false
+    var nextStopName: String? = nil
+    var onContinue: (() -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -39,6 +41,18 @@ struct ARNavigationArrowView: View {
             } else if isApproximate {
                 Text("GPS alignment is approximate").font(.caption)
                     .foregroundStyle(.white.opacity(0.85))
+            }
+            if let onContinue {
+                Divider().overlay(.white.opacity(0.25))
+                Button(action: onContinue) {
+                    Label(nextStopName.map { "Walk to \($0)" } ?? "Finish walk",
+                          systemImage: nextStopName == nil ? "checkmark" : "figure.walk")
+                        .font(.headline).fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("ar.startNextLeg")
             }
         }
         .foregroundStyle(.white)

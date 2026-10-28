@@ -1,3 +1,28 @@
+## Separate walking AR from plaque scanning — build 80
+
+Investigated the screenshot’s plaque controls in AR directions. The shared session
+registered plaque detection images for both entry points, and the walking HUD
+selected discovery/story controls from visit and plaque state. Build 77 narrowed
+those conditions but still permitted recognition and mode switching in walking AR.
+
+AR directions now always uses the green turn/street/distance card and 3D arrow
+scene. It has no plaque card, plaque hint, Story/Align bonus controls, marker actions,
+or plaque/story sheets. Its immutable walking purpose does not register reference
+images, ignores plaque-recognition callbacks, hides sign/bonus entities and blocks
+scanner/bonus/marker interaction methods. Saved discovery state cannot change the
+HUD. The green card retains Walk to [next stop] / Finish walk after a confirmed visit.
+
+Only the separate Find on-site plaque with AR entry from a stop page launches the
+camera-only scanner with reference images. Recognition, bonus and passport awards
+remain there. These changes do not make GPS street registration exact; build 77’s
+world-anchored approximate sign fallback and its honest alignment notices remain.
+
+Validation: Debug/Release Swift syntax passed. Two native regression tests cover
+walking configuration with no image detection or mode switching, and explicit scanner
+configuration retaining bundled recognition without starting a walk. Native tests,
+rendered HUD acceptance and field testing cannot run in this Linux environment and
+remain pending. No production publication performed for this task.
+
 ## Stop-page action spacing — build 79
 
 Narration and plaque/bonus actions now share a 12-point vertical group instead of
