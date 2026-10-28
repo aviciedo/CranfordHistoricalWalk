@@ -3,7 +3,7 @@ import RealityKit
 import simd
 
 /// Owns the RealityKit scene graph for the tour: one world anchor at the origin, the reusable
-/// navigation entities, historical sign and on-site window bonus. Nothing here knows about GPS;
+/// navigation entities and historical sign. Nothing here knows about GPS;
 /// `GeoAnchorManager` decides *where* things go, this type only moves entities.
 @MainActor
 final class ARAnchorManager {
@@ -11,7 +11,6 @@ final class ARAnchorManager {
     private let rootAnchor = AnchorEntity(world: SIMD3<Float>(repeating: 0))
     let arrows = ARNavigationArrowEntity()
     let sign = ARHistoricalSignEntity()
-    let windowBonus = ARHistoricalSignEntity()
     /// World-space parent for the geo sign. The plaque controller re-parents `sign` onto an image anchor.
     var worldRoot: Entity { rootAnchor }
 
@@ -19,7 +18,6 @@ final class ARAnchorManager {
         rootAnchor.name = "tour-root"
         rootAnchor.addChild(arrows)
         rootAnchor.addChild(sign)
-        rootAnchor.addChild(windowBonus)
     }
 
     func attach(to arView: ARView) {
@@ -51,6 +49,5 @@ final class ARAnchorManager {
     func hideAll() {
         hideNavigation()
         sign.dismiss()
-        windowBonus.dismiss()
     }
 }

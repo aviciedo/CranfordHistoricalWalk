@@ -1,3 +1,21 @@
+# Build 83 — passport-only plaque discovery
+
+final result: blocked
+
+The owner requested removal of the test bonus screen. Removed the screen, all
+presentation links, tappable bonus action on passport art, and calibrated window/
+pillar AR overlays. Scanner retains the plaque reference photograph and finding
+instructions. A saved new recognition dismisses the scanner and opens the correct
+passport leaf; Passport stamp unlocked text accompanies the existing animation,
+haptic and VoiceOver announcement. Collected stop CTA now reads View passport stamp.
+Practice/recording-disabled feedback states that no stamp was saved.
+
+339 portable tests passed, including legacy saved-stamp date migration. Native
+camera recognition, scanner dismissal/presentation timing, page curl and accessible
+stamp animation cannot be rendered here and remain pending iPhone acceptance.
+
+---
+
 # Build 79 — closer stop-page buttons and final passport section
 
 final result: blocked

@@ -76,7 +76,7 @@ final class NarrationPlayerTests: XCTestCase {
         XCTAssertNotNil(tour.activities[mill.id].listenedAt)
         XCTAssertFalse(tour.activities[park.id].learningCompleted)
         XCTAssertNil(tour.activities[mill.id].visitedAt)
-        XCTAssertNil(tour.activities[mill.id].bonusFoundAt)
+        XCTAssertNil(tour.activities[mill.id].plaqueUnlockedAt)
     }
 
     func testAutomaticWalkingTransitionAndUndoLeavePlayingMillNarrationAlone() async throws {

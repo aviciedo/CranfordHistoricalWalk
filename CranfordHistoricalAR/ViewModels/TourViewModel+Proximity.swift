@@ -33,7 +33,7 @@ extension TourViewModel {
         var state = discoveriesByStopID[stopID] ?? StopDiscovery()
         let saved = activities[stopID]
         if saved.learningCompleted { state.finishStory() }
-        if saved.bonusFoundAt != nil && !state.hasVerifiedPlaque {
+        if saved.plaqueUnlockedAt != nil && !state.hasVerifiedPlaque {
             state.beginDiscovery()
             state.recognizePlaque(isMatching: true, trackingReady: true, isSimulated: false)
         }
@@ -77,7 +77,7 @@ extension TourViewModel {
         if let userLocation { handleLocationForProximity(userLocation) }
     }
 
-    /// Physical visits do not finish stories, find bonuses or change playback.
+    /// Physical visits do not finish stories, collect stamps or change playback.
     func handleLocationForProximity(_ sample: LocationSample) {
         guard sample.coordinate.isValid, StopActivationPolicy.isFresh(sample.timestamp),
               sample.horizontalAccuracy >= 0, sample.horizontalAccuracy <= 100 else { return }
@@ -163,9 +163,9 @@ extension TourViewModel {
         #if DEVELOPER_MENU
         guard isVisitRecordingEnabled else { return }
         #endif
-        let isNewStamp = evidence == .recognizedPlaque && activities[stopID].bonusFoundAt == nil
+        let isNewStamp = evidence == .recognizedPlaque && activities[stopID].plaqueUnlockedAt == nil
         activities.visited(stopID, at: now)
-        if evidence == .recognizedPlaque { activities.foundBonus(at: stopID, date: now) }
+        if evidence == .recognizedPlaque { activities.collectStamp(at: stopID, date: now) }
         activityStore.save(activities)
         visitStore.record(StopVisitRecord(stopID: stopID, activatedAt: now, evidence: evidence))
         visitRecords = visitStore.records()
@@ -263,7 +263,7 @@ extension TourViewModel {
         }
     }
 
-    /// Undo changes only the destination. Real visits, stories, bonuses and audio survive.
+    /// Undo changes only the destination. Real visits, stories, stamps and audio survive.
     func undoAutomaticTransition() {
         guard let snapshot = automaticTransitionProgress, let previousID = snapshot.currentStopID else { return }
         automaticTransitionFromStopID = nil
@@ -290,7 +290,6 @@ extension TourViewModel {
 
     var isPlaqueDiscoveryStop: Bool { arStop?.hasPlaqueReference == true }
     var isMillDiscoveryStop: Bool { arStop?.plaque?.referenceImageName == SignPlacementPolicy.millReferenceImageName }
-    var currentBonusLayout: WindowBonusLayout { isMillDiscoveryStop ? windowBonusLayout : parkBonusLayout }
 
     func openStory(for stopID: String) {
         guard stop(withID: stopID) != nil else { return }

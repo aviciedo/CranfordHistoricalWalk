@@ -1,3 +1,21 @@
+## Build 83 — passport is the only plaque reward
+
+Supersedes the earlier bonus-preview and window-placement descriptions below.
+There is no On-site extra screen, placeholder content or facade bonus overlay.
+The stop page opens the explicit scanner with the plaque photograph. Successful
+real recognition persists plaqueUnlockedAt, emits the one-shot pending stamp event,
+dismisses AR, and reveals the discovered stop’s passport leaf with unlocked text,
+animation, haptic and accessibility announcement. Closing returns to that stop page.
+Collected stamps and their row open the passport, never bonus content. Passport-leaf
+artwork has no bonus action. A fresh walk or visit-only reset preserves stamps.
+
+Legacy persisted bonusFoundAt maps to plaqueUnlockedAt via CodingKeys; it is only
+an on-disk compatibility key. Existing users keep their collection dates and repeat
+recognition cannot create a duplicate award. WindowBonusLayout and its native
+rendering/calibration paths have been deleted. Three obsolete geometry tests were
+removed; all recognition/persistence/reset safeguards remain, plus a new migration
+regression. 339 portable tests and syntax checks passed; iPhone flow QA pending.
+
 ## Build 80 — explicit scanner entry only
 
 Walking AR does not register or process plaque images and does not award stamps.

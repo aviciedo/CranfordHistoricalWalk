@@ -58,13 +58,11 @@ struct ARTourView: View {
         .onChange(of: tour.pendingPassportStampStopID) { _, id in
             if id != nil {
                 model?.isShowingSignDetails = false
-                model?.isShowingBonusPreview = false
                 returnToMap()
             }
         }
         .onChange(of: navigation.homeReturnID) { _, _ in
             model?.isShowingSignDetails = false
-            model?.isShowingBonusPreview = false
             returnToMap()
         }
     }
@@ -84,7 +82,7 @@ struct ARTourView: View {
             guard error == nil, let gravity = motion?.gravity, !isLeavingAR else { return }
             if phoneDown.update(x: gravity.x, y: gravity.y, z: gravity.z,
                 timestamp: motion?.timestamp ?? 0,
-                suspended: scenePhase != .active || model?.isShowingSignDetails == true || model?.isShowingBonusPreview == true) {
+                suspended: scenePhase != .active || model?.isShowingSignDetails == true) {
                 returnToMap()
             }
         }
@@ -253,7 +251,7 @@ struct ARHUDView: View {
         if model.tour.phase == .complete && model.tour.arStop == nil {
             VStack(alignment: .leading, spacing: 14) {
                 Text("Walk complete").font(.system(.title2, design: .serif).weight(.semibold))
-                Text("You’ve reached the end of your itinerary. Your stories and bonuses remain available.").font(.subheadline)
+                Text("You’ve reached the end of your itinerary. Your stories and passport stamps remain available.").font(.subheadline)
                 primaryButton("See your summary", symbol: "checkmark.circle", action: onClose)
             }
             .foregroundStyle(AppTheme.forest).padding(18)
@@ -335,7 +333,7 @@ struct CameraExplanationView: View {
     private var message: String {
         switch state {
         case .requesting:
-            return isPlaqueScanner ? "Allow camera access to recognize the plaque and unlock its optional bonus." : "Cranford Historical AR shows walking arrows and historical signs over the live camera. Allow camera access to enter the AR view."
+            return isPlaqueScanner ? "Allow camera access to recognize the plaque and collect its passport stamp." : "Cranford Historical AR shows walking arrows and historical signs over the live camera. Allow camera access to enter the AR view."
         case .denied:
             return "Enable the camera for Cranford Historical AR in Settings to use the AR view."
         case .restricted:
@@ -399,16 +397,12 @@ struct PlaqueScannerView: View {
         }
         .onDisappear { tour.endARDiscoverySession() }
         .onChange(of: tour.pendingPassportStampStopID) { _, id in
-            if id != nil { model?.isShowingBonusPreview = false; dismiss() }
+            if id != nil { dismiss() }
         }
         .onChange(of: navigation.homeReturnID) { _, _ in
-            model?.isShowingBonusPreview = false
             dismiss()
         }
-        .sheet(isPresented: Binding(get: { model?.isShowingBonusPreview ?? false },
-                                   set: { model?.isShowingBonusPreview = $0 })) {
-            if let stop = tour.arStop { OnSiteBonusPreview(stop: stop) }
-        }
+
     }
 }
 
@@ -453,13 +447,9 @@ private struct PlaqueScannerHUD: View {
                         }
                     }
                     if model.tour.discovery.hasVerifiedPlaque {
-                        Label(model.tour.discovery.isPracticeUnlock ? "Practice bonus · Not saved" : "Bonus found",
+                        Label(model.scannerStampResult,
                               systemImage: "seal.fill")
                             .font(.subheadline.weight(.medium))
-                        Button(action: model.openScannerBonus) {
-                            Text("View the bonus").font(.headline).frame(minHeight: 44)
-                        }
-                        .buttonStyle(.plain)
                     }
                     Button(action: model.retryPlaqueScanner) {
                         Label("Retry", systemImage: "arrow.clockwise").frame(minHeight: 44)

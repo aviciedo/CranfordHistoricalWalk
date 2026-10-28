@@ -15,26 +15,6 @@ final class StopDiscoveryTests: XCTestCase {
         XCTAssertFalse(SignPlacementPolicy.discoveryHint(referenceImageName: park).contains("doors"))
     }
 
-    func testGreystoneBonusIsAbovePlaqueRatherThanAtMillWindows() throws {
-        let layout = WindowBonusLayout.abovePlaque
-        let offset = try XCTUnwrap(layout.translation(plaqueWidthMeters: SignPlacementPolicy.assumedParkReferenceWidthMeters))
-        XCTAssertLessThan(abs(offset.x), 0.1, "Card remains approximately centered on the plaque")
-        XCTAssertLessThan(offset.z, 0, "Negative image Z places the extra above the plaque")
-        XCTAssertGreaterThan(offset.y, 0, "Card sits off the wall")
-        XCTAssertNotEqual(layout, WindowBonusLayout())
-    }
-
-    func testGreystoneDefaultFitsPillarAndLeavesPlaqueVisible() {
-        let layout = WindowBonusLayout.abovePlaque
-        // From the photos: the pillar is about 1.1 close-up reference widths wide,
-        // and the plaque's top is about 0.22 reference widths above the frame center.
-        XCTAssertLessThan(layout.width, 1.1)
-        XCTAssertGreaterThan(layout.up - layout.height / 2, 0.22)
-        XCTAssertLessThan(layout.up + layout.height / 2, 1.1)
-        XCTAssertEqual(layout.width / layout.height, 720.0 / 470.0, accuracy: 0.02,
-                       "Keep the bonus texture close to its natural aspect ratio")
-    }
-
     func testArrivalOffersStoryOnceWithoutRecordingOrStartingNarration() {
         var discovery = StopDiscovery()
         XCTAssertTrue(discovery.arrive())
@@ -97,19 +77,4 @@ final class StopDiscoveryTests: XCTestCase {
         XCTAssertTrue(discovery.arrive())
     }
 
-    func testWindowPlacementMovesRightAndUpAndScalesWithPlaque() throws {
-        let layout = WindowBonusLayout()
-        let small = try XCTUnwrap(layout.dimensions(plaqueWidthMeters: 0.18))
-        let large = try XCTUnwrap(layout.dimensions(plaqueWidthMeters: 0.36))
-        XCTAssertEqual(large.width, small.width * 2, accuracy: 0.0001)
-        XCTAssertEqual(large.height, small.height * 2, accuracy: 0.0001)
-        let offset = try XCTUnwrap(layout.translation(plaqueWidthMeters: 0.18))
-        XCTAssertGreaterThan(offset.x, 0)
-        XCTAssertLessThan(offset.z, 0)
-        XCTAssertGreaterThan(offset.y, 0)
-        for invalid in [Double.nan, .infinity, 0, -1] {
-            XCTAssertNil(layout.dimensions(plaqueWidthMeters: invalid))
-        }
-        XCTAssertNil(WindowBonusLayout(width: -1).translation(plaqueWidthMeters: 0.18))
-    }
 }

@@ -62,38 +62,3 @@ public struct StopDiscovery: Equatable, Sendable {
     public var canContinue: Bool { hasFinishedStory }
     public var canOfferDiscovery: Bool { !hasVerifiedPlaque }
 }
-
-/// Estimated bounds of the TWO glass panes in the mill's red doors, measured in plaque widths.
-/// This is a plaque-relative placement, not independent window recognition or surveyed geometry.
-/// Developer calibration refines the four ratios on site; the actual plaque width is unmeasured.
-public struct WindowBonusLayout: Equatable, Sendable {
-    /// Greystone's extra floats above the reference plaque, without using the mill's door offsets.
-    // Photo-relative bounds fit the pillar above the black sign. Ratios use the original
-    // close-up reference frame, including stone, not a claimed physical measurement.
-    public static let abovePlaque = WindowBonusLayout(right: 0.03, up: 0.55, width: 0.9, height: 0.59)
-
-    public var right: Double
-    public var up: Double
-    public var width: Double
-    public var height: Double
-
-    public init(right: Double = 3.4, up: Double = 0.55, width: Double = 4.6, height: Double = 3.0) {
-        self.right = right
-        self.up = up
-        self.width = width
-        self.height = height
-    }
-
-    public func dimensions(plaqueWidthMeters: Double) -> (width: Double, height: Double)? {
-        guard plaqueWidthMeters.isFinite, plaqueWidthMeters > 0,
-              [right, up, width, height].allSatisfy(\.isFinite),
-              width > 0, height > 0 else { return nil }
-        return (width * plaqueWidthMeters, height * plaqueWidthMeters)
-    }
-
-    /// ARKit image anchors lie in XZ: +X right, +Y out of the plaque, -Z up the facade.
-    public func translation(plaqueWidthMeters: Double) -> (x: Double, y: Double, z: Double)? {
-        guard dimensions(plaqueWidthMeters: plaqueWidthMeters) != nil else { return nil }
-        return (right * plaqueWidthMeters, 0.035, -up * plaqueWidthMeters)
-    }
-}

@@ -1,3 +1,31 @@
+## Plaque recognition collects a passport stamp — build 83
+
+Removed the On-site extra test placeholder and all links to it from stop details,
+scanner and passport. Removed window/pillar bonus entities, placement/resize/close
+logic, calibration imports and WindowBonusLayout geometry. The developer reset now
+names stamps, not bonuses. Passport stamps are display artwork rather than buttons
+that open additional content.
+
+The flow is now: stop page -> Find on-site plaque with AR -> scanner with reference
+photograph -> matching live plaque recognition -> save plaque unlock -> dismiss
+scanner -> open passport at the discovered stop -> Passport stamp unlocked banner,
+stamp animation, success haptic and VoiceOver announcement -> close to stop page.
+Collected stops offer View passport stamp and the bottom Passport stamped row.
+Walking AR stays separate. Practice/saving-off scans do not claim a saved stamp.
+
+Renamed the collection API to plaqueUnlockedAt / collectStamp. Codable retains the
+legacy bonusFoundAt storage key deliberately so existing collected stamps and dates
+survive; no obsolete bonus feature remains behind that compatibility key. Visit-only
+reset still preserves stamps; full reset clears them as selected. Repeated discovery
+keeps the original date and does not replay a new-award event.
+
+Validation: 233 TourCore + 106 portable app-model tests passed (339 total). Added a
+legacy-data migration/round-trip/date-preservation regression. Three tests specific
+to the deleted bonus-placement geometry were removed with that feature; plaque,
+persistence, practice and one-shot passport event tests remain. Debug/Release syntax
+and obsolete-reference searches passed. Native Apple compilation, camera recognition,
+modal handoff and stamp animation require Xcode/iPhone acceptance and remain pending.
+
 ## Stops list status cleanup — build 82
 
 Removed On-site bonus unlocked from stop rows and their VoiceOver labels. Visited

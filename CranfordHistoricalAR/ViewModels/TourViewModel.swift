@@ -134,15 +134,15 @@ final class TourViewModel {
     var activeVisitEvidence: StopVisitEvidence?
     let visitStore: any StopVisitStore
     let activityStore: any StopActivityStore
-    /// One foreground celebration, emitted only after a new real plaque bonus is saved.
+    /// One foreground celebration, emitted only after a new real plaque stamp is saved.
     /// Collection itself is derived from the existing ledger, so old discoveries need no migration.
     var pendingPassportStampStopID: String?
     var passportStops: [HistoricalStop] { stops.filter(\.hasPlaqueReference) }
-    var passportCollectedCount: Int { passportStops.filter { activities[$0.id].bonusFoundAt != nil }.count }
+    var passportCollectedCount: Int { passportStops.filter { activities[$0.id].plaqueUnlockedAt != nil }.count }
     func takePassportStamp() -> String? {
         defer { pendingPassportStampStopID = nil }
         guard let id = pendingPassportStampStopID,
-              passportStops.contains(where: { $0.id == id }), activities[id].bonusFoundAt != nil else { return nil }
+              passportStops.contains(where: { $0.id == id }), activities[id].plaqueUnlockedAt != nil else { return nil }
         return id
     }
     var activities: StopActivityLedger
@@ -160,8 +160,6 @@ final class TourViewModel {
     }
     var continuedARStopIDs: Set<String> = []
     var arrivalStoryStopID: String?
-    var windowBonusLayout = WindowBonusLayout()
-    var parkBonusLayout = WindowBonusLayout.abovePlaque
     #if DEVELOPER_MENU
     /// Testing only. Defaults to recording on each launch; does not affect this walk's progress.
     var isVisitRecordingEnabled = true
@@ -236,7 +234,7 @@ final class TourViewModel {
         stops.first.map { "Start walk: \($0.name)" } ?? "Start walk"
     }
 
-    /// Only this walk's arrival matters; saved story/bonus progress never changes its wording.
+    /// Only this walk's arrival matters; saved story/stamp progress never changes its wording.
     var isHeadingToFirstStop: Bool {
         phase == .inProgress && currentStop?.id == stops.first?.id
             && heldDepartureStopID != currentStop?.id
@@ -389,11 +387,11 @@ final class TourViewModel {
 
     #if DEVELOPER_MENU
     /// Visit-only and full testing resets are explicit, separate operations.
-    func clearRecordedActivitiesAndRestart(includingStoriesAndBonuses: Bool) {
+    func clearRecordedActivitiesAndRestart(includingStoriesAndStamps: Bool) {
         visitStore.removeAll()
         visitRecords = visitStore.records()
         pendingPassportStampStopID = nil
-        if includingStoriesAndBonuses { activities = StopActivityLedger() }
+        if includingStoriesAndStamps { activities = StopActivityLedger() }
         else { activities.clearVisits() }
         activityStore.save(activities)
         resetTour(startImmediately: false)

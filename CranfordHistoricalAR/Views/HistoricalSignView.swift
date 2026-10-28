@@ -4,7 +4,7 @@ import TourCore
 /// The rasterized RealityKit sign, in post and plaque-card forms. The interactive
 /// reading and photo experience is shared by maps, stop lists and AR via StopDetailView.
 struct HistoricalSignView: View {
-    enum Style { case arTexture, arPlaqueCard, activationMarker, windowBonus }
+    enum Style { case arTexture, arPlaqueCard, activationMarker }
 
     let stop: HistoricalStop
     var image: LoadedImage?
@@ -18,29 +18,7 @@ struct HistoricalSignView: View {
         case .arTexture: textureBody
         case .arPlaqueCard: plaqueCardBody
         case .activationMarker: activationMarkerBody
-        case .windowBonus: windowBonusBody
         }
-    }
-
-    private var windowBonusBody: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HStack {
-                Label("UNLOCKED HERE", systemImage: "sparkles").font(.system(size: 22, weight: .semibold))
-                Spacer()
-                Image(systemName: "xmark.circle.fill").font(.system(size: 34))
-            }
-            Text(stop.name).font(.system(size: 44, weight: .semibold, design: .serif))
-            Label("A little more history", systemImage: "photo.on.rectangle.angled")
-                .font(.system(size: 34, weight: .medium))
-            Text("Bonus photographs, video and stories will appear here.")
-                .font(.system(size: 28)).lineSpacing(4)
-            Spacer(minLength: 0)
-            Text("TEST PLACEHOLDER · TAP TO PREVIEW").font(.system(size: 20, weight: .medium))
-        }
-        .foregroundStyle(AppTheme.ivory).padding(40)
-        .frame(width: 720, height: 470)
-        .background(AppTheme.forest.opacity(0.72), in: RoundedRectangle(cornerRadius: 24))
-        .environment(\.colorScheme, .light)
     }
 
     /// This is the tappable RealityKit marker, not a button that can fake a visit from home.
@@ -214,43 +192,12 @@ struct HistoricalSignView: View {
 
 }
 
-struct OnSiteBonusPreview: View {
-    let stop: HistoricalStop
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: 22) {
-                Label("Unlocked on site", systemImage: "checkmark.circle.fill")
-                    .font(.subheadline.weight(.semibold))
-                Text("A little more history").font(.system(.largeTitle, design: .serif).weight(.semibold))
-                Text(stop.name).font(.title3)
-                Image(systemName: "photo.on.rectangle.angled").font(.system(size: 70, weight: .light))
-                    .frame(maxWidth: .infinity, minHeight: 170)
-                    .background(AppTheme.playerSurface, in: RoundedRectangle(cornerRadius: 18))
-                Text("This is a test placeholder for future photographs, video or additional narration.")
-                    .font(.body).foregroundStyle(AppTheme.secondaryInk)
-                Text("You found the plaque to unlock this extra here.").font(.subheadline)
-                Spacer()
-            }
-            .padding(24).foregroundStyle(AppTheme.ink).background(AppTheme.parchment)
-            .navigationTitle("On-site extra").navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { ScreenBackButton { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) { ScreenHomeButton() }
-            }
-        }
-        .dismissOnReturnHome()
-    }
-}
-
 /// Shared details presentation used from maps, stops, audio and the AR screen.
 struct HistoricalSignSheet: View {
     let stop: HistoricalStop
-    var onStartDiscovery: (() -> Void)? = nil
 
     var body: some View {
-        StopDetailView(stop: stop, onStartDiscovery: onStartDiscovery)
+        StopDetailView(stop: stop)
             .presentationBackground(AppTheme.ivory)
     }
 }

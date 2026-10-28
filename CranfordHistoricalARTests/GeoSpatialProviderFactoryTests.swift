@@ -12,7 +12,7 @@ final class GeoSpatialProviderFactoryTests: XCTestCase {
         let tour = dependencies.tourViewModel
         await tour.loadStopsIfNeeded()
         // Persisted discoveries/search state must not change the session's purpose.
-        tour.activities.foundBonus(at: "hpab-001")
+        tour.activities.collectStamp(at: "hpab-001")
         let model = ARViewModel(tour: tour, provider: CoreLocationGeoSpatialProvider(),
             imageLoader: dependencies.imageLoader, narrationPlayer: dependencies.narrationPlayer)
         let config = model.makeSessionConfiguration()
@@ -24,7 +24,6 @@ final class GeoSpatialProviderFactoryTests: XCTestCase {
         model.activateMarker()
         XCTAssertFalse(model.isPlaqueScanner, "Walking cannot silently change into plaque scanning")
         XCTAssertFalse(model.isShowingSignDetails)
-        XCTAssertFalse(model.isShowingBonusPreview)
         XCTAssertNil(tour.pendingPassportStampStopID)
     }
 

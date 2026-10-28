@@ -2,6 +2,16 @@ import XCTest
 @testable import TourCore
 
 final class StopActivityTests: XCTestCase {
+    func testExistingSavedPlaqueUnlockMigratesToPassportStampWithoutLosingDate() throws {
+        let old = Data(#"{"entries":{"mill":{"bonusFoundAt":1234,"visitedAt":1200}}}"#.utf8)
+        var ledger = try JSONDecoder().decode(StopActivityLedger.self, from: old)
+        XCTAssertEqual(ledger["mill"].plaqueUnlockedAt, Date(timeIntervalSinceReferenceDate: 1234))
+        ledger.collectStamp(at: "mill", date: Date())
+        XCTAssertEqual(ledger["mill"].plaqueUnlockedAt, Date(timeIntervalSinceReferenceDate: 1234), "Repeat recognition keeps the original stamp date")
+        let saved = try JSONEncoder().encode(ledger)
+        XCTAssertEqual(try JSONDecoder().decode(StopActivityLedger.self, from: saved), ledger)
+        XCTAssertTrue(String(decoding: saved, as: UTF8.self).contains("bonusFoundAt"), "Preserve the legacy on-disk key")
+    }
     func testListeningAndReadingEachCompleteLearningWithoutVisitOrBonus() {
         var ledger = StopActivityLedger()
         ledger.listened(to: "mill")
@@ -9,7 +19,7 @@ final class StopActivityTests: XCTestCase {
         for id in ["mill", "park"] {
             XCTAssertTrue(ledger[id].learningCompleted)
             XCTAssertNil(ledger[id].visitedAt)
-            XCTAssertNil(ledger[id].bonusFoundAt)
+            XCTAssertNil(ledger[id].plaqueUnlockedAt)
         }
         ledger.read("mill")
         XCTAssertNotNil(ledger["mill"].listenedAt)
@@ -18,9 +28,9 @@ final class StopActivityTests: XCTestCase {
     func testVisitAndBonusDoNotManufactureLearning() {
         var ledger = StopActivityLedger()
         ledger.visited("mill")
-        ledger.foundBonus(at: "park")
+        ledger.collectStamp(at: "park")
         XCTAssertFalse(ledger["mill"].learningCompleted)
-        XCTAssertNil(ledger["mill"].bonusFoundAt)
+        XCTAssertNil(ledger["mill"].plaqueUnlockedAt)
         XCTAssertFalse(ledger["park"].learningCompleted)
         XCTAssertNil(ledger["park"].visitedAt)
     }
@@ -29,10 +39,10 @@ final class StopActivityTests: XCTestCase {
         ledger.listened(to: "mill")
         ledger.read("park")
         ledger.visited("mill")
-        ledger.foundBonus(at: "mill")
+        ledger.collectStamp(at: "mill")
         ledger.clearVisits()
         XCTAssertTrue(ledger["mill"].learningCompleted)
-        XCTAssertNotNil(ledger["mill"].bonusFoundAt)
+        XCTAssertNotNil(ledger["mill"].plaqueUnlockedAt)
         XCTAssertNil(ledger["mill"].visitedAt)
         XCTAssertEqual(try JSONDecoder().decode(StopActivityLedger.self, from: JSONEncoder().encode(ledger)), ledger)
     }
@@ -43,10 +53,10 @@ final class StopActivityTests: XCTestCase {
             StopVisitRecord(stopID: "park", activatedAt: Date(), evidence: .onSiteARMarker),
             StopVisitRecord(stopID: "practice", activatedAt: Date(), evidence: .simulation)
         ])
-        XCTAssertNotNil(ledger["mill"].bonusFoundAt)
+        XCTAssertNotNil(ledger["mill"].plaqueUnlockedAt)
         XCTAssertFalse(ledger["mill"].learningCompleted)
         XCTAssertNotNil(ledger["park"].visitedAt)
-        XCTAssertNil(ledger["park"].bonusFoundAt)
+        XCTAssertNil(ledger["park"].plaqueUnlockedAt)
         XCTAssertEqual(ledger["practice"], StopActivities())
     }
     func testSkippingAnItineraryStopIsNotAVisit() {

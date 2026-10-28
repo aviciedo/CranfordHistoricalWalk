@@ -21,8 +21,6 @@ final class ARHistoricalSignEntity: Entity {
         case plaqueCard
         /// On-site activation target before the visitor starts the story.
         case visitMarker
-        /// Translucent, calibrated rectangle over the two glass panes in the red doors.
-        case windowBonus
     }
 
     private let pivot = Entity()
@@ -125,8 +123,8 @@ final class ARHistoricalSignEntity: Entity {
     }
 
     private func layoutCloseControl(cardWidth: Float, cardHeight: Float, planeY: Float) {
-        let size: Float = appearance == .windowBonus ? max(0.05, cardWidth * 0.12) : (appearance == .plaqueCard ? 0.09 : 0.22)
-        let inset: Float = appearance == .plaqueCard || appearance == .windowBonus ? cardWidth * (54 / 720) : 0.16
+        let size: Float = appearance == .plaqueCard ? 0.09 : 0.22
+        let inset: Float = appearance == .plaqueCard ? cardWidth * (54 / 720) : 0.16
         if closeControl == nil {
             var material = UnlitMaterial(color: UIColor.clear)
             material.blending = .transparent(opacity: .init(floatLiteral: 0.02))
@@ -143,8 +141,7 @@ final class ARHistoricalSignEntity: Entity {
     }
 
     private static func renderTexture(for stop: HistoricalStop, image: LoadedImage?, scale: CGFloat, appearance: Appearance) -> (TextureResource, CGFloat)? {
-        let style: HistoricalSignView.Style = appearance == .windowBonus ? .windowBonus :
-            (appearance == .visitMarker ? .activationMarker : (appearance == .plaqueCard ? .arPlaqueCard : .arTexture))
+        let style: HistoricalSignView.Style = (appearance == .visitMarker ? .activationMarker : (appearance == .plaqueCard ? .arPlaqueCard : .arTexture))
         let view = HistoricalSignView(stop: stop, image: image, style: style)
         let renderer = ImageRenderer(content: view)
         renderer.scale = min(scale, 2) // 2x of 720 pt = 1440 px wide: sharp, still cheap on GPU memory
@@ -168,14 +165,6 @@ final class ARHistoricalSignEntity: Entity {
     }
 
     // MARK: Presentation
-
-    /// Resizing the calibrated window surface does not regenerate its texture.
-    func setWindowSize(width: Float, height: Float) {
-        guard appearance == .windowBonus, width > 0, height > 0, width.isFinite, height.isFinite else { return }
-        plane?.model?.mesh = .generatePlane(width: width, height: height)
-        plane?.collision = CollisionComponent(shapes: [.generateBox(width: width, height: height, depth: 0.04)])
-        layoutCloseControl(cardWidth: width, cardHeight: height, planeY: 0)
-    }
 
     /// Places the sign so its bottom edge sits at `basePosition` (ground-ish) and plays the entrance.
     func present(at basePosition: SIMD3<Float>, facing cameraPosition: SIMD3<Float>) {

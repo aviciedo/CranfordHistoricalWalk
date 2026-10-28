@@ -7,18 +7,15 @@ struct StopDetailView: View {
     @Environment(AppNavigation.self) private var navigation
     @Environment(\.dismiss) private var dismiss
     let initialStop: HistoricalStop
-    init(stop: HistoricalStop, onStartDiscovery: (() -> Void)? = nil) {
+    init(stop: HistoricalStop) {
         initialStop = stop
-        self.onStartDiscovery = onStartDiscovery
     }
     // A scanner can identify another supported plaque. Return to that site's actual story.
     @State private var discoveredStop: HistoricalStop?
     private var stop: HistoricalStop { discoveredStop ?? initialStop }
     @State private var passportPresentation: PassportPresentation?
-    var onStartDiscovery: (() -> Void)? = nil
     @State private var isShowingScanner = false
     @State private var scannerHasPresented = false
-    @State private var isShowingBonus = false
     @State private var isStopDetailsExpanded = true
 
     @State private var isShowingStory = false
@@ -26,15 +23,13 @@ struct StopDetailView: View {
     private var hasStopDetails: Bool { !stop.longDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     private var hasStoryScript: Bool { !script.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     private func openPlaqueActivity() {
-        if tour.activities[stop.id].bonusFoundAt != nil {
-            isShowingBonus = true
+        if tour.activities[stop.id].plaqueUnlockedAt != nil {
+            passportPresentation = PassportPresentation(stopID: stop.id, animated: false)
             return
         }
         guard tour.preparePlaqueScanner(stopID: stop.id) else { return }
-        if let onStartDiscovery, stop.hasPlaqueReference {
-            onStartDiscovery()
-            dismiss()
-        } else { scannerHasPresented = true; isShowingScanner = true }
+        scannerHasPresented = true
+        isShowingScanner = true
     }
 
     var body: some View {
@@ -55,13 +50,11 @@ struct StopDetailView: View {
             .fullScreenCover(item: $passportPresentation) { presentation in
                 PassportView(initialStopID: presentation.stopID, animatedStampStopID: presentation.animated ? presentation.stopID : nil)
             }
-            .sheet(isPresented: $isShowingBonus) { OnSiteBonusPreview(stop: stop) }
             .onAppear { tour.openStory(for: stop.id); if !scannerHasPresented { revealNewStamp() } }
         }
         .onChange(of: navigation.homeReturnID) { _, _ in
             tour.pendingPassportStampStopID = nil
             isShowingScanner = false
-            isShowingBonus = false
             isShowingStory = false
             passportPresentation = nil
         }
@@ -91,7 +84,7 @@ struct StopDetailView: View {
             VStack(alignment: .leading, spacing: 24) {
                 VStack(alignment: .leading, spacing: 16) {
                     StopPhotoGallery(stop: stop, height: galleryHeight,
-                                     isObscured: isShowingScanner || isShowingBonus || passportPresentation != nil)
+                                     isObscured: isShowingScanner || passportPresentation != nil)
                     VStack(alignment: .leading, spacing: 8) {
                         Text(stop.name)
                             .font(.system(.largeTitle, design: .serif).weight(.semibold))
@@ -124,7 +117,7 @@ struct StopDetailView: View {
                                         HStack(spacing: 12) {
                                             Image(systemName: "camera")
                                                 .font(.title2)
-                                            Text(tour.activities[stop.id].bonusFoundAt == nil ? "Find on-site plaque with AR" : "View the bonus")
+                                            Text(tour.activities[stop.id].plaqueUnlockedAt == nil ? "Find on-site plaque with AR" : "View passport stamp")
                                                 .font(.headline)
                                                 .fixedSize(horizontal: false, vertical: true)
                                         }
@@ -176,7 +169,7 @@ struct StopDetailView: View {
                 }
                 if stop.hasPlaqueReference {
                     PassportStampRow(stop: stop,
-                                     isCollected: tour.activities[stop.id].bonusFoundAt != nil,
+                                     isCollected: tour.activities[stop.id].plaqueUnlockedAt != nil,
                                      collectedCount: tour.passportCollectedCount,
                                      totalCount: tour.passportStops.count) {
                         passportPresentation = PassportPresentation(stopID: stop.id, animated: false)

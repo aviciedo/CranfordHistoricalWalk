@@ -69,14 +69,14 @@ struct DeveloperControlsView: View {
                     dependencies.narrationPlayer.stop()
                     developer.clearAllActivitiesAndResetTour()
                 } label: {
-                    Label("Clear visits, stories & bonuses", systemImage: "arrow.counterclockwise")
+                    Label("Clear visits, stories & stamps", systemImage: "arrow.counterclockwise")
                 }
                 .disabled(tour.loadState != .loaded)
                 .accessibilityHint("Clears all three activity records and restarts the walk at stop 1")
             } header: {
                 Text("Visit testing")
             } footer: {
-                Text("Turn saving off for test walks. AR cards, narration and Continue still work. Existing saved visits stay until you clear them. Saving turns on again when you reopen the app. Clear visits restarts at stop 1 and keeps story and bonus progress. Use Clear visits, stories & bonuses for a fresh activity test. GPS can record a new visit while you remain on site.")
+                Text("Turn saving off for test walks. AR cards, narration and Continue still work. Existing saved visits stay until you clear them. Saving turns on again when you reopen the app. Clear visits restarts at stop 1 and keeps story and passport stamp progress. Use Clear visits, stories & stamps for a fresh activity test. GPS can record a new visit while you remain on site.")
             }
 
             Section {

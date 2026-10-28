@@ -12,8 +12,6 @@ final class DeveloperModeController {
     private let realLocationService: any LocationService
     private let defaults: UserDefaults
     private static let viewingKey = "cranford.developer.mill-viewing-point.v1"
-    private static let windowKey = "cranford.developer.mill-window-layout.v1"
-    private static let parkKey = "cranford.developer.greystone-bonus-layout.v1"
     private(set) var isRefreshingGPS = false
     private(set) var gpsRefreshMessage: String?
     @ObservationIgnored private var gpsRefreshTask: Task<Void, Never>?
@@ -157,17 +155,7 @@ final class DeveloperModeController {
                 defaults.set(true, forKey: Self.viewingImportKey)
             }
         }
-        // Existing bonus placements remain read-only so retiring editors does not move bonuses.
-        if let values = defaults.array(forKey: Self.windowKey) as? [Double], values.count == 4 {
-            let layout = WindowBonusLayout(right: values[0], up: values[1], width: values[2], height: values[3])
-            if layout.dimensions(plaqueWidthMeters: 0.18) != nil { tour.windowBonusLayout = layout }
-        }
-        if let values = defaults.array(forKey: Self.parkKey) as? [Double], values.count == 4 {
-            let layout = WindowBonusLayout(right: values[0], up: values[1], width: values[2], height: values[3])
-            if layout.dimensions(plaqueWidthMeters: SignPlacementPolicy.assumedParkReferenceWidthMeters) != nil {
-                tour.parkBonusLayout = layout
-            }
-        }
+
     }
 
     func markStoryRead() {
@@ -207,12 +195,12 @@ final class DeveloperModeController {
 
     func clearVisitsAndResetTour() {
         (tour.locationService as? SimulatedLocationService)?.stopWalking()
-        tour.clearRecordedActivitiesAndRestart(includingStoriesAndBonuses: false)
+        tour.clearRecordedActivitiesAndRestart(includingStoriesAndStamps: false)
     }
 
     func clearAllActivitiesAndResetTour() {
         (tour.locationService as? SimulatedLocationService)?.stopWalking()
-        tour.clearRecordedActivitiesAndRestart(includingStoriesAndBonuses: true)
+        tour.clearRecordedActivitiesAndRestart(includingStoriesAndStamps: true)
     }
 
     // MARK: Diagnostics

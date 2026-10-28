@@ -8,7 +8,7 @@ struct PassportPresentation: Identifiable {
     let animated: Bool
 }
 
-/// The saved bonus ledger is the collection. There is no second award store to drift out of sync.
+/// The saved plaque-unlock ledger is the collection. There is no second award store to drift out of sync.
 struct PassportView: View {
     @Environment(TourViewModel.self) private var tour
     @Environment(\.dismiss) private var dismiss
@@ -20,7 +20,6 @@ struct PassportView: View {
     @State private var pageIndex = 0
     @State private var hasSelectedInitialPage = false
     @State private var hasStamped = false
-    @State private var bonusStop: HistoricalStop?
 
     private var stops: [HistoricalStop] { tour.passportStops }
     private var currentPageIndex: Int {
@@ -31,7 +30,7 @@ struct PassportView: View {
     }
     private var isAwaitingStamp: Bool {
         guard let id = animatedStampStopID else { return false }
-        return tour.activities[id].bonusFoundAt != nil && !hasStamped
+        return tour.activities[id].plaqueUnlockedAt != nil && !hasStamped
     }
 
     var body: some View {
@@ -54,6 +53,11 @@ struct PassportView: View {
                 .font(.system(.largeTitle, design: .serif).weight(.semibold))
                 .accessibilityAddTraits(.isHeader)
                 .padding(.horizontal, 24)
+            if animatedStampStopID != nil && hasStamped {
+                Label("Passport stamp unlocked", systemImage: "checkmark.seal.fill")
+                    .font(.headline).padding(.horizontal, 24)
+                    .accessibilityIdentifier("passport.stampUnlocked")
+            }
             if stops.isEmpty {
                 ContentUnavailableView("No on-site stamps yet", systemImage: "book.closed",
                                        description: Text("Plaque discoveries will appear here when they become available."))
@@ -61,11 +65,10 @@ struct PassportView: View {
                 GeometryReader { viewport in
                     let pages = stops.map { stop in
                         AnyView(PassportLeaf(stop: stop,
-                            collected: tour.activities[stop.id].bonusFoundAt != nil,
+                            collected: tour.activities[stop.id].plaqueUnlockedAt != nil,
                             revealStamp: stop.id != animatedStampStopID || hasStamped,
                             reduceMotion: reduceMotion,
-                            availableHeight: viewport.size.height,
-                            onOpenBonus: { bonusStop = stop })
+                            availableHeight: viewport.size.height)
                             .environment(\.dynamicTypeSize, dynamicTypeSize))
                     }
                     if reduceMotion {
@@ -87,14 +90,13 @@ struct PassportView: View {
         .holdsWalkingContext()
         .dismissOnReturnHome()
         .interactiveDismissDisabled(isAwaitingStamp)
-        .sheet(item: $bonusStop) { OnSiteBonusPreview(stop: $0) }
         .onAppear { selectInitialPage() }
         .onChange(of: stops.map(\.id)) { _, _ in
             pageIndex = min(pageIndex, max(0, stops.count - 1))
         }
         .task(id: scenePhase) {
             guard scenePhase == .active, !hasStamped, let id = animatedStampStopID,
-                  tour.activities[id].bonusFoundAt != nil else { return }
+                  tour.activities[id].plaqueUnlockedAt != nil else { return }
             selectInitialPage()
             do { try await Task.sleep(for: .milliseconds(reduceMotion ? 100 : 350)) }
             catch { return }
@@ -103,7 +105,7 @@ struct PassportView: View {
             }
             UINotificationFeedbackGenerator().notificationOccurred(.success)
             UIAccessibility.post(notification: .announcement,
-                                 argument: "Passport stamped. \(tour.stop(withID: id)?.name ?? "Stamp") collected.")
+                                 argument: "Passport stamp unlocked. \(tour.stop(withID: id)?.name ?? "Stamp") collected.")
         }
         .accessibilityIdentifier("passport.screen")
     }
@@ -149,23 +151,17 @@ private struct PassportLeaf: View {
     let revealStamp: Bool
     let reduceMotion: Bool
     let availableHeight: CGFloat
-    let onOpenBonus: () -> Void
     @ScaledMetric(relativeTo: .title) private var titleSize: CGFloat = 28
 
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
                 Spacer(minLength: 24)
-                Button(action: onOpenBonus) {
-                    PassportStampArtwork(stopID: stop.id, isCollected: collected)
-                        .opacity(collected && !revealStamp ? 0 : 1)
-                        .scaleEffect(collected && !revealStamp && !reduceMotion ? 1.45 : 1)
-                        .rotationEffect(.degrees(collected && !revealStamp && !reduceMotion ? -9 : 0))
-                        .padding(.horizontal, 20)
-                }
-                .buttonStyle(.plain).disabled(!collected || !revealStamp)
-                .accessibilityLabel("\(stop.name) stamp, \(collected ? "collected" : "not collected")")
-                .accessibilityHint(collected ? "Opens the on-site bonus" : "Find the plaque with AR to collect this stamp")
+                PassportStampArtwork(stopID: stop.id, isCollected: collected)
+                    .opacity(collected && !revealStamp ? 0 : 1)
+                    .scaleEffect(collected && !revealStamp && !reduceMotion ? 1.45 : 1)
+                    .rotationEffect(.degrees(collected && !revealStamp && !reduceMotion ? -9 : 0))
+                    .padding(.horizontal, 20)
                 Text(stop.name)
                     .font(.system(size: titleSize, weight: .semibold, design: .serif))
                     .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
