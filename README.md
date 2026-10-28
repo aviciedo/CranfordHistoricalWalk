@@ -1,3 +1,15 @@
+## First Baptist Church painted landmark — build 70
+
+Added a detailed original-color transparent church painting, grounded in the owner's
+provided photograph and matching the mill/Greystone landmark style. It replaces the
+flat church Canvas in the shared StopListIllustration. The Stops menu gives its
+portrait silhouette a 104-point-high area, preserving the full tower and steps.
+Home, Map and any shared player illustration also resolve the new asset. The old
+church-only Canvas is removed. Church photos, route coordinates, plaque references,
+narration and passport eligibility are unchanged. PNG dimensions: 1122 × 1402 with
+transparent exterior and safe margins. Asset/alpha/reference checks and Debug/Release
+Swift syntax passed; native rendered visual acceptance remains pending.
+
 ## Clearer Map destination hierarchy — build 69
 
 The destination name is now largeTitle serif semibold (34 points at default text

@@ -1,3 +1,29 @@
+# Build 70 — First Baptist Church photo-informed illustration
+
+final result: blocked
+
+Reference: owner's contemporary church photograph and the existing original-color
+Mill/Greystone cutouts. Created a painterly transparent PNG with white clapboard,
+open square belfry, slate roof, rose/arched stained glass, wood doors, brick steps,
+black railings, right brick chimney and natural foliage. The obstructing freestanding
+message board, sky, wires and neighbors are omitted for a clear landmark silhouette.
+A second asset pass restores transparent safety margins above the finial and around
+all edges. Final RGBA dimensions: 1122 × 1402; alpha bounds (14,24)-(1109,1384).
+
+Asset inspected: /workspace/generated_images/exec-9adb262a-8b08-449b-8996-74f27b9663ba.png.
+App asset: first-baptist-church-illustration.imageset. Stops replaces the previous
+church-only Canvas with original-color scaledToFit artwork, in a 104 × 104 area;
+other stop thumbnail sizes remain unchanged. Shared illustration consumers also use
+that asset. App photos and AR image-reference assets were not replaced.
+
+Verified alpha transparency/margins, manifest filename, SwiftUI reference and both
+Swift syntax configurations. No native rendered screen is available here. Verify
+thumbnail legibility, proportions, ivory edge integration, large Home artwork and
+Google/Apple marker rendering on iOS before marking visual QA passed. Original Mill,
+Greystone and River images are preserved. Prior reports follow.
+
+---
+
 # Build 69 — Map destination and instruction hierarchy
 
 final result: blocked
