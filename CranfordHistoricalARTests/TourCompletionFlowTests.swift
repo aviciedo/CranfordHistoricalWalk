@@ -193,6 +193,60 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertTrue(tour.activities[stops[0].id].learningCompleted)
     }
 
+    func testHomePreviewsGreystoneAfterMillVisitWithoutChangingDestinationUntilTap() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.performHomeWalkAction()
+        XCTAssertEqual(tour.homeFeaturedStop?.id, stops[0].id)
+        confirmArrival(tour)
+        XCTAssertEqual(tour.currentStop?.id, stops[0].id)
+        XCTAssertEqual(tour.homeFeaturedStop?.name, "Greystone")
+        XCTAssertEqual(tour.homeFeaturedStop?.id, stops[1].id)
+        XCTAssertEqual(tour.homeWalkActionTitle, "Continue walk")
+        tour.openStory(for: stops[4].id)
+        XCTAssertEqual(tour.homeFeaturedStop?.id, stops[1].id, "Browsing cannot replace the next-leg preview")
+        tour.performHomeWalkAction()
+        XCTAssertEqual(tour.currentStop?.id, stops[1].id)
+        XCTAssertEqual(tour.homeFeaturedStop?.id, stops[1].id)
+        XCTAssertFalse(tour.isCurrentVisitConfirmed)
+        XCTAssertNotNil(tour.activities[stops[0].id].visitedAt)
+    }
+
+    func testHomeNextLegPreviewSurvivesPausedRelaunchAndContinueMatchesIllustration() async {
+        let storage = InMemoryWalkResumeStore()
+        func model() async -> TourViewModel {
+            let tour = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),
+                locationService: ActivityTestLocationService(), directionsService: PreviewDirectionsService(),
+                walkResumeStore: storage)
+            await tour.loadStopsIfNeeded()
+            return tour
+        }
+        let first = await model(); defer { cleanUp(first) }
+        first.performHomeWalkAction(); confirmArrival(first)
+        let resumed = await model(); defer { cleanUp(resumed) }
+        XCTAssertTrue(resumed.isWalkPaused)
+        XCTAssertEqual(resumed.currentStop?.id, stops[0].id)
+        XCTAssertEqual(resumed.homeFeaturedStop?.id, stops[1].id)
+        resumed.performHomeWalkAction()
+        XCTAssertFalse(resumed.isWalkPaused)
+        XCTAssertEqual(resumed.currentStop?.id, stops[1].id)
+        XCTAssertEqual(storage.load()?.progress.currentStopID, stops[1].id)
+    }
+
+    func testHomeAtConfirmedFinalStopOffersFinishWithoutPreviewingAnotherStop() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.performHomeWalkAction()
+        for _ in 0..<(stops.count - 1) { tour.completeCurrentStopAndAdvance() }
+        confirmArrival(tour)
+        XCTAssertEqual(tour.homeFeaturedStop?.id, stops.last?.id)
+        XCTAssertEqual(tour.homeWalkActionTitle, "Finish walk")
+        tour.performHomeWalkAction()
+        XCTAssertEqual(tour.phase, .complete)
+        XCTAssertEqual(tour.homeWalkActionTitle, "Start another walk")
+        tour.performHomeWalkAction()
+        XCTAssertEqual(tour.currentStop?.id, stops[0].id)
+        XCTAssertEqual(tour.homeFeaturedStop?.id, stops[0].id)
+    }
+
     func testWalkingFrameFocusesDestinationWithoutGPSAndKeepsDepartureAfterAdvance() async throws {
         let tour = await makeTour(); defer { cleanUp(tour) }
         tour.startTour()

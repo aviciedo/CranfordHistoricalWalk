@@ -50,6 +50,7 @@ struct HomeView: View {
     private var featuredIllustration: some View {
         if let stop = tour.homeFeaturedStop {
             StopListIllustration(stopID: stop.id)
+                .id(stop.id)
                 .aspectRatio(stop.id == "hpab-004" ? 1 : stop.id == "hpab-005" ? 100.0 / 90.0 : 4.0 / 3.0,
                              contentMode: .fit)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -75,8 +76,7 @@ struct HomeView: View {
                         .accessibilityIdentifier("home.tourComplete")
                 }
                 Button {
-                    if tour.phase == .complete { tour.resetTour() }
-                    tour.startTour()
+                    tour.performHomeWalkAction()
                     navigation.selectedTab = .map
                 } label: {
                     Label(tour.homeWalkActionTitle, systemImage: "figure.walk")
@@ -91,7 +91,9 @@ struct HomeView: View {
                 .opacity(tour.loadState == .loaded ? 1 : 0.5)
                 .accessibilityIdentifier("home.startWalk")
                 if tour.phase != .complete, let stop = tour.homeFeaturedStop {
-                    Text(tour.phase == .notStarted ? "Begin at \(stop.name)." : "Next Stop: \(stop.name)")
+                    Text(tour.isCurrentVisitConfirmed && tour.nextStop == nil
+                         ? "Final stop visited"
+                         : (tour.phase == .notStarted ? "Begin at \(stop.name)." : "Next Stop: \(stop.name)"))
                         .font(.system(.title3, design: .serif).weight(.semibold))
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)

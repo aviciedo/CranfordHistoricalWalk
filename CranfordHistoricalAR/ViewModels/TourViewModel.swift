@@ -203,18 +203,33 @@ final class TourViewModel {
     var nextStop: HistoricalStop? { progress.nextStopID.flatMap(stop(withID:)) }
     var lastCompletedStop: HistoricalStop? { progress.previousCompletedStopID.flatMap(stop(withID:)) }
 
-    /// Home follows the walking destination, never the story being read or played.
-    /// Completion is a welcome for another walk, not a claim of a further destination.
+    /// Home previews the next leg after a confirmed visit without changing routing.
+    /// Explicit backtracking still features the selected previous destination.
+    private var homeOffersNextLeg: Bool {
+        isCurrentVisitConfirmed && heldDepartureStopID != currentStop?.id
+    }
     var homeFeaturedStop: HistoricalStop? {
-        phase == .inProgress ? currentStop : stops.first
+        guard phase == .inProgress else { return stops.first }
+        return homeOffersNextLeg ? (nextStop ?? currentStop) : currentStop
     }
 
     var homeWalkActionTitle: String {
         switch phase {
         case .notStarted: return "Start walk"
-        case .inProgress: return "Continue walk"
+        case .inProgress: return homeOffersNextLeg && nextStop == nil ? "Finish walk" : "Continue walk"
         case .complete: return "Start another walk"
         }
+    }
+
+    /// Act on the same leg Home presents. Merely opening Home never advances the walk.
+    func performHomeWalkAction() {
+        guard loadState == .loaded, !stops.isEmpty else { return }
+        if phase == .complete { resetTour() }
+        else if homeOffersNextLeg {
+            startNextLegAfterConfirmedVisit()
+            return
+        }
+        startTour()
     }
 
     var startWalkTitle: String {

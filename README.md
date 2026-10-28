@@ -1,3 +1,26 @@
+## Home previews the next stop after confirmation — build 81
+
+Diagnosed the screenshot’s Mill artwork and label: Home selected currentStop until
+explicit advancement, so a confirmed Mill visit still featured the Mill while
+Greystone was waiting as the next leg. Per the owner’s clarification, Home now
+previews the next itinerary stop immediately after a confirmed current-walk visit.
+The illustration and Next Stop label use the same homeFeaturedStop; the artwork
+also has stop-specific SwiftUI identity. There is no separate cached featured ID.
+
+Continue walk now acts on the previewed leg: it starts directions to Greystone after
+the Mill visit, including from a restored paused walk. Merely opening Home never
+advances the destination. Browsing or playing another story does not change the
+preview. Explicit Previous-stop backtracking remains focused on that selected site.
+At the final confirmed stop, Home says Final stop visited and offers Finish walk;
+completion retains Start another walk and a first-stop welcome. Developer reset
+still returns Start walk and the first illustration. No artwork assets changed.
+
+Validation: 106 portable app-model tests passed. New regressions cover Mill-to-
+Greystone preview before departure, Continue selecting the shown leg, unrelated
+story browsing, paused relaunch, and final completion/restart. Existing backtracking
+and reset checks remain. Debug/Release syntax passed. Native rendering and real
+location/navigation acceptance remain pending; no publication performed.
+
 ## Separate walking AR from plaque scanning — build 80
 
 Investigated the screenshot’s plaque controls in AR directions. The shared session
