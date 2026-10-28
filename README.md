@@ -1,3 +1,28 @@
+## Clear plaque scanner with stamp-unlock celebration — build 84
+
+Searching now shows the existing top Frame this plaque/reference-photo header and
+clear camera space, with no bottom card. Failure-only retry controls and practice/
+unsaved-recognition feedback sit under the header. Normal searching has no status,
+Retry or Return to story card; Back/Close remain at the top.
+
+A new saved stamp overlays the camera in gray and animates the matching passport
+artwork with a spring stamp-in and expanding ring, plus Passport stamp unlocked!,
+stop name, success haptic and VoiceOver announcement. Reduce Motion uses a fade.
+Artwork scales down on shorter screens; large text remains scrollable. Open passport
+lets the visitor continue immediately; otherwise the scanner dismisses after 2.4
+seconds (4.5 with VoiceOver) and the existing stop host opens the animated passport.
+The award is saved before the celebration. Its pending event is not consumed by the
+overlay, and its delay cancels/restarts across inactive scenes without losing the
+stamp. Home/Close cancellation keeps already-saved collection state. Practice and
+recording-disabled scans do not celebrate a saved award. Removed the old unused
+model confirmation timer; presentation now owns its cancellable reveal task.
+
+Validation: Debug/Release Swift syntax and reference checks passed. No collection or
+recognition policy changed; build 83’s 339-test portable baseline remains applicable
+to that unchanged model. Native timing, lifecycle cancellation, gray overlay contrast,
+Reduce Motion, VoiceOver and camera recognition require iPhone acceptance. No native
+rendered visual pass is claimed; changes remain unpublished.
+
 ## Plaque recognition collects a passport stamp — build 83
 
 Removed the On-site extra test placeholder and all links to it from stop details,

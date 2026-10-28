@@ -24,8 +24,6 @@ final class ARViewModel {
     private(set) var availability: Availability
     /// Presents the readable 2D sheet for the sign (tap on the AR sign or "Read").
     var isShowingSignDetails = false
-    private(set) var isShowingDiscoveryConfirmation = false
-    @ObservationIgnored private var confirmationTask: Task<Void, Never>?
     let geoAnchors: GeoAnchorManager
     let tour: TourViewModel
     let imageLoader: any ImageLoader
@@ -170,9 +168,6 @@ final class ARViewModel {
     }
 
     func arViewWillUnload() {
-        confirmationTask?.cancel()
-        confirmationTask = nil
-        isShowingDiscoveryConfirmation = false
         observationTask?.cancel()
         observationTask = nil
         imageTask?.cancel()
@@ -242,8 +237,6 @@ final class ARViewModel {
     private func pushTourStateToAnchors() {
         // Reads tracked properties: userLocation, heading, currentStop, routeProgress, presentedSignStopID.
         if observedStopID != tour.arStop?.id {
-            confirmationTask?.cancel()
-            isShowingDiscoveryConfirmation = false
             observedStopID = tour.arStop?.id
             scannerAttemptStartedAt = Date()
             activationMessage = nil
@@ -252,12 +245,6 @@ final class ARViewModel {
             walkingOrientation = ARWalkingGuidance.OrientationState()
         }
         geoAnchors.hasActivatedStop = isPlaqueScanner ? tour.isARStopVisited : tour.shouldSuppressWalkingAR
-        if !tour.discovery.hasVerifiedPlaque {
-            if isShowingDiscoveryConfirmation {
-                confirmationTask?.cancel()
-                isShowingDiscoveryConfirmation = false
-            }
-        }
         if !isPlaqueScanner { geoAnchors.locationDidUpdate(tour.userLocation, heading: tour.heading) }
         applySignPlacement()
         if tour.presentedSignStop == nil {
@@ -404,7 +391,6 @@ final class ARViewModel {
                 tour.confirmPlaqueArrival(for: stop.id)
                 let decision = tour.activateCurrentStop(stopID: stop.id, trackingReady: true, plaqueIsTracked: true)
                 guard case .allow = decision else { return }
-                showDiscoveryConfirmation(for: stop.id)
             }
             if !geoAnchors.hasActivatedStop { geoAnchors.hasActivatedStop = true }
             applySignPlacement()
@@ -421,16 +407,6 @@ final class ARViewModel {
         geoAnchors.frameDidUpdate(frame)
         updateWalkingOrientation(timestamp: frame.timestamp)
 
-    }
-
-    private func showDiscoveryConfirmation(for stopID: String) {
-        confirmationTask?.cancel()
-        isShowingDiscoveryConfirmation = true
-        confirmationTask = Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .milliseconds(1600))
-            guard !Task.isCancelled, let self, self.tour.arStop?.id == stopID else { return }
-            self.isShowingDiscoveryConfirmation = false
-        }
     }
 
     func startPlaqueDiscovery() {

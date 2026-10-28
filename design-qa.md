@@ -1,3 +1,22 @@
+# Build 84 — uncluttered scanner and stamp celebration
+
+final result: blocked
+
+Reference: owner screenshot with top Frame this plaque card and unwanted bottom
+status/action card. Searching preserves the top directions/reference picture and
+removes the entire bottom card. Compact failure-only retry and unsaved/practice
+recognition feedback appear below the header, not at the bottom. A real saved new
+stamp uses a gray camera overlay with matching artwork, spring stamp-in, expanding
+ring and unlocked wording. Reduce Motion fades only. The passport follows after a
+readable pause, with a manual Open passport action. Short viewports scale stamp art
+and large content can scroll. No bonus or placeholder screen is reintroduced.
+
+Syntax/reference checks passed. Native same-viewport comparison, animation timing,
+modal handoff after interruption, VoiceOver reading and outdoor camera tests remain
+blocked in this Linux environment. Verify these on iPhone before visual acceptance.
+
+---
+
 # Build 83 — passport-only plaque discovery
 
 final result: blocked

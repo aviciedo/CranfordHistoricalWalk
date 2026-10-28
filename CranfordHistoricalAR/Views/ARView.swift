@@ -1,5 +1,6 @@
 import SwiftUI
 import CoreMotion
+import UIKit
 import TourCore
 
 /// The AR experience (spec §6): camera, 3D arrows, distance/time, status messaging.
@@ -350,9 +351,17 @@ struct PlaqueScannerView: View {
     @Environment(TourViewModel.self) private var tour
     @Environment(AppDependencies.self) private var dependencies
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
     let stopID: String
     @State private var model: ARViewModel?
     @State private var unavailable = false
+    private struct RevealContext: Equatable {
+        let stopID: String?
+        let isActive: Bool
+    }
+    private var revealContext: RevealContext {
+        RevealContext(stopID: tour.pendingPassportStampStopID, isActive: scenePhase == .active)
+    }
 
     var body: some View {
         ZStack {
@@ -382,6 +391,12 @@ struct PlaqueScannerView: View {
                     Spacer()
                 }
             }
+            if let id = tour.pendingPassportStampStopID,
+               tour.activities[id].plaqueUnlockedAt != nil, let stop = tour.stop(withID: id) {
+                PassportUnlockCelebration(stop: stop, onOpenPassport: { dismiss() })
+                    .id(id)
+                    .zIndex(1)
+            }
         }
         .preferredColorScheme(.dark)
         .holdsWalkingContext()
@@ -396,8 +411,15 @@ struct PlaqueScannerView: View {
             await scanner.requestCameraAccessIfNeeded()
         }
         .onDisappear { tour.endARDiscoverySession() }
-        .onChange(of: tour.pendingPassportStampStopID) { _, id in
-            if id != nil { dismiss() }
+        .task(id: revealContext) {
+            guard scenePhase == .active, let id = tour.pendingPassportStampStopID,
+                  tour.activities[id].plaqueUnlockedAt != nil else { return }
+            // Keep the durable award event for the stop host to consume after dismissal.
+            // Restart the readable celebration if the app returns from an interruption.
+            do { try await Task.sleep(for: .milliseconds(UIAccessibility.isVoiceOverRunning ? 4500 : 2400)) }
+            catch { return }
+            guard scenePhase == .active, tour.pendingPassportStampStopID == id else { return }
+            dismiss()
         }
         .onChange(of: navigation.homeReturnID) { _, _ in
             dismiss()
@@ -436,35 +458,97 @@ private struct PlaqueScannerHUD: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(14).background(AppTheme.ivory, in: RoundedRectangle(cornerRadius: 14))
             .accessibilityIdentifier("scanner.stopName")
-            Spacer(minLength: 12)
-            if model.availability == .ready {
-                VStack(alignment: .leading, spacing: 12) {
-                    TimelineView(.periodic(from: .now, by: 1)) { context in
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(model.scannerPhaseTitle).font(.headline)
-                            Text(model.scannerInstruction(at: context.date))
-                                .font(.subheadline).fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
-                    if model.tour.discovery.hasVerifiedPlaque {
-                        Label(model.scannerStampResult,
-                              systemImage: "seal.fill")
-                            .font(.subheadline.weight(.medium))
-                    }
-                    Button(action: model.retryPlaqueScanner) {
-                        Label("Retry", systemImage: "arrow.clockwise").frame(minHeight: 44)
-                    }
-                    .buttonStyle(.plain).font(.subheadline.weight(.medium))
-                    .accessibilityHint("Restarts plaque scanning without changing your walk or saved activities")
-                    .accessibilityIdentifier("scanner.retry")
-                    Button("Return to story", action: onClose)
-                        .buttonStyle(.plain).font(.subheadline.weight(.medium)).frame(minHeight: 44)
+            if model.availability == .ready && needsRetry {
+                HStack(spacing: 12) {
+                    Text("Scanning unavailable. Please try again.").font(.subheadline)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button("Retry", action: model.retryPlaqueScanner).frame(minHeight: 44)
+                        .accessibilityIdentifier("scanner.retry")
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(16).background(AppTheme.ivory, in: RoundedRectangle(cornerRadius: 16))
+                .padding(12).background(AppTheme.ivory, in: RoundedRectangle(cornerRadius: 12))
+            } else if model.tour.discovery.hasVerifiedPlaque && model.tour.pendingPassportStampStopID == nil {
+                Text(model.scannerStampResult).font(.subheadline)
+                    .padding(12).background(AppTheme.ivory, in: Capsule())
             }
+            Spacer(minLength: 12)
         }
         .foregroundStyle(AppTheme.forest)
         .padding(.horizontal, 16).padding(.vertical, 12)
+    }
+
+    private var needsRetry: Bool {
+        if !model.imageTrackingAvailable { return true }
+        if case .failed = model.localizationState { return true }
+        return false
+    }
+}
+
+/// Recognition celebrates the already-saved award; it never creates or consumes one.
+private struct PassportUnlockCelebration: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
+    let stop: HistoricalStop
+    let onOpenPassport: () -> Void
+    @State private var hasStamped = false
+
+    var body: some View {
+        ZStack {
+            Color(white: 0.18).opacity(0.90).ignoresSafeArea()
+            GeometryReader { viewport in
+                let stampSize = min(240.0, max(144.0, viewport.size.height * 0.32))
+                ScrollView {
+                    VStack(spacing: 24) {
+                        ZStack {
+                            if !reduceMotion {
+                                Circle().stroke(.white.opacity(0.6), lineWidth: 2)
+                                    .frame(width: stampSize, height: stampSize)
+                                    .scaleEffect(hasStamped ? 1.45 : 0.8)
+                                    .opacity(hasStamped ? 0 : 0.7)
+                                    .animation(.easeOut(duration: 0.85), value: hasStamped)
+                                    .accessibilityHidden(true)
+                            }
+                            PassportStampArtwork(stopID: stop.id)
+                                .frame(maxWidth: stampSize)
+                                .scaleEffect(reduceMotion ? 1 : (hasStamped ? 1 : 1.6))
+                                .rotationEffect(.degrees(reduceMotion || hasStamped ? 0 : -14))
+                                .opacity(hasStamped ? 1 : 0)
+                        }
+                        .frame(minHeight: stampSize)
+                        VStack(spacing: 10) {
+                            Label("Passport stamp unlocked!", systemImage: "checkmark.seal.fill")
+                                .font(.system(.title, design: .serif).weight(.semibold))
+                                .accessibilityAddTraits(.isHeader)
+                            Text(stop.name).font(.title3)
+                            Text("A new discovery for your passport.").font(.body)
+                        }
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                        Button("Open passport", action: onOpenPassport)
+                            .font(.headline).frame(minHeight: 48)
+                            .padding(.horizontal, 24)
+                            .foregroundStyle(AppTheme.forest)
+                            .background(AppTheme.ivory, in: Capsule())
+                            .buttonStyle(.plain)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: max(0, viewport.size.height - 64))
+                    .padding(.horizontal, 24).padding(.vertical, 32)
+                }
+                .scrollBounceBehavior(.basedOnSize)
+            }
+        }
+        .foregroundStyle(.white)
+        .accessibilityAddTraits(.isModal)
+        .accessibilityIdentifier("scanner.passportUnlock")
+        .task(id: scenePhase) {
+            guard scenePhase == .active, !hasStamped else { return }
+            do { try await Task.sleep(for: .milliseconds(120)) }
+            catch { return }
+            withAnimation(reduceMotion ? .easeIn(duration: 0.2) : .spring(response: 0.5, dampingFraction: 0.6)) {
+                hasStamped = true
+            }
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            UIAccessibility.post(notification: .announcement,
+                                 argument: "Passport stamp unlocked. \(stop.name). Opening your passport.")
+        }
     }
 }
