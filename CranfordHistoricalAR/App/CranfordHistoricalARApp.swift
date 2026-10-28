@@ -26,6 +26,7 @@ struct RootView: View {
     @Environment(AppDependencies.self) private var dependencies
     @State private var navigation = AppNavigation()
     @Environment(\.scenePhase) private var scenePhase
+    private var isMapActive: Bool { navigation.selectedTab == .map && scenePhase == .active }
 
     var body: some View {
         GeometryReader { viewport in
@@ -76,5 +77,15 @@ struct RootView: View {
             }
         }
         .task { await tour.loadStopsIfNeeded() }
+        .task(id: isMapActive) {
+            guard isMapActive else { return }
+            // A paused itinerary still needs live positioning. This never starts the walk.
+            tour.startLocationIfPossible()
+            while !Task.isCancelled {
+                tour.refreshMapLocationIfNeeded()
+                do { try await Task.sleep(for: .seconds(5)) }
+                catch { return }
+            }
+        }
     }
 }

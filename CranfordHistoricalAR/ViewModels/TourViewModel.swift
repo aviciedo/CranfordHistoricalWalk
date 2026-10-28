@@ -174,6 +174,7 @@ final class TourViewModel {
     let directionsService: any DirectionsService
     private(set) var locationService: any LocationService
     private var locationTask: Task<Void, Never>?
+    private var lastMapLocationRefreshAt: Date?
 
     init(stopService: any HistoricalStopService, locationService: any LocationService, directionsService: any DirectionsService, visitStore: (any StopVisitStore)? = nil, activityStore: (any StopActivityStore)? = nil, walkResumeStore: (any WalkResumeStore)? = nil) {
         self.walkResumeStore = walkResumeStore ?? InMemoryWalkResumeStore()
@@ -398,6 +399,8 @@ final class TourViewModel {
     /// Idempotent: subscribes to the location service and asks for permission when needed.
     func startLocationIfPossible() {
         if locationTask == nil {
+            // Give the continuous stream time to acquire its first fix before recovery.
+            lastMapLocationRefreshAt = Date()
             let stream = locationService.events()
             locationTask = Task { [weak self] in
                 for await event in stream {
@@ -418,7 +421,19 @@ final class TourViewModel {
         refreshLocationIssue()
     }
 
+    /// Recovery only: healthy continuous updates are never replaced by polling.
+    /// Called while the foreground Map is visible, independently of itinerary pause state.
+    func refreshMapLocationIfNeeded(now: Date = Date()) {
+        refreshLocationIssue()
+        guard locationTask != nil, locationAuthorization == .authorized else { return }
+        if let sample = userLocation, now.timeIntervalSince(sample.timestamp) < 10 { return }
+        if let last = lastMapLocationRefreshAt, now.timeIntervalSince(last) < 15 { return }
+        lastMapLocationRefreshAt = now
+        locationService.requestFreshLocation()
+    }
+
     func stopLocation() {
+        lastMapLocationRefreshAt = nil
         locationTask?.cancel()
         locationTask = nil
         locationService.stop()

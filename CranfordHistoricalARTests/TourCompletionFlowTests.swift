@@ -301,6 +301,74 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertEqual(tour.progress.completedCount, 0)
     }
 
+    func testMapGPSUpdatesSmallMovementsBeforeStartAndDuringPausedWalk() async throws {
+        for hasStarted in [false, true] {
+            let walks = InMemoryWalkResumeStore()
+            if hasStarted {
+                let first = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),
+                    locationService: ActivityTestLocationService(), directionsService: PreviewDirectionsService(),
+                    walkResumeStore: walks)
+                await first.loadStopsIfNeeded()
+                first.startTour(); first.completeCurrentStopAndAdvance()
+                cleanUp(first)
+            }
+            let source = ActivityTestLocationService(status: .authorized)
+            let tour = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),
+                locationService: source, directionsService: PreviewDirectionsService(), walkResumeStore: walks)
+            await tour.loadStopsIfNeeded(); defer { cleanUp(tour) }
+            let phase = tour.phase, destination = tour.currentStop?.id
+            let map = MapViewModel()
+            XCTAssertNil(map.userPuck(for: tour), "Never invent a dot before GPS arrives")
+            tour.startLocationIfPossible() // Map entry does not call startTour.
+            XCTAssertGreaterThan(source.startRequests, 0)
+            map.userDidMoveCamera()
+            let camera = map.cameraRequest
+            let time = Date()
+            for step in 0..<4 {
+                let sample = LocationSample(coordinate: GeoCoordinate(latitude: 40.67 + Double(step) * 0.000003,
+                    longitude: -74.32), horizontalAccuracy: 4, timestamp: time.addingTimeInterval(Double(step) * 0.01))
+                source.emit(sample)
+                for _ in 0..<100 where tour.userLocation?.timestamp != sample.timestamp {
+                    try await Task.sleep(for: .milliseconds(2))
+                }
+                map.updateWalkingFrame(tour: tour)
+                XCTAssertEqual(map.userPuck(for: tour)?.coordinate.latitude, sample.coordinate.latitude)
+                XCTAssertEqual(map.userPuck(for: tour)?.accuracyMeters, 4)
+                XCTAssertEqual(map.cameraRequest, camera, "Panning does not freeze the dot or move the camera")
+            }
+            XCTAssertEqual(tour.phase, phase)
+            XCTAssertEqual(tour.currentStop?.id, destination)
+            XCTAssertEqual(tour.isWalkPaused, hasStarted)
+            XCTAssertFalse(tour.isWalkingActive)
+        }
+    }
+
+    func testMapLocationRecoveryOnlyRefreshesStalledAuthorizedStream() async throws {
+        let source = ActivityTestLocationService(status: .authorized)
+        let tour = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),
+            locationService: source, directionsService: PreviewDirectionsService())
+        await tour.loadStopsIfNeeded(); defer { cleanUp(tour) }
+        let now = Date()
+        tour.refreshMapLocationIfNeeded(now: now)
+        XCTAssertEqual(source.refreshRequests, 0, "No recovery before Map subscribes")
+        tour.startLocationIfPossible()
+        tour.refreshMapLocationIfNeeded(now: now)
+        XCTAssertEqual(source.refreshRequests, 0, "Allow the first continuous fix to arrive")
+        let sample = LocationSample(coordinate: GeoCoordinate(latitude: 40.67, longitude: -74.32), timestamp: now)
+        source.emit(sample)
+        for _ in 0..<100 where tour.userLocation == nil { try await Task.sleep(for: .milliseconds(2)) }
+        tour.refreshMapLocationIfNeeded(now: now.addingTimeInterval(5))
+        XCTAssertEqual(source.refreshRequests, 0, "Healthy continuous GPS is not interrupted")
+        tour.refreshMapLocationIfNeeded(now: now.addingTimeInterval(20))
+        XCTAssertEqual(source.refreshRequests, 1)
+        tour.refreshMapLocationIfNeeded(now: now.addingTimeInterval(25))
+        XCTAssertEqual(source.refreshRequests, 1, "Throttle recovery while awaiting a fix")
+        tour.stopLocation()
+        tour.refreshMapLocationIfNeeded(now: now.addingTimeInterval(50))
+        XCTAssertEqual(source.refreshRequests, 1, "A stopped stream must not restart itself")
+        XCTAssertEqual(tour.homeWalkActionTitle, "Start walk")
+    }
+
     func testHomeZoomUsesCurrentZoomWithoutChangingWalkingOrViewedStop() async {
         let tour = await makeTour(); defer { cleanUp(tour) }
         tour.startTour()

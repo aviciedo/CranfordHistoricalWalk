@@ -1,3 +1,26 @@
+## Live Map positioning while paused — build 76
+
+Root Map visibility now starts the shared location stream even before a walk starts
+or when a restored walk is paused. Returning to the foreground reasserts continuous
+Core Location updates without starting/resuming the itinerary. Removed the older
+active-walk-only Map startup gate. Permission/signal banners also remain visible
+while paused. GPS keeps best accuracy with no distance filter, automatic pausing
+disabled, and each provider sample feeds the existing real-coordinate blue puck
+(0.35-second rendering interpolation); camera throttling does not throttle the dot.
+
+A foreground-Map-only 5-second health check requests a one-shot recovery after the
+latest fix is at least 10 seconds old, at most once per 15 seconds, with first-fix
+grace and overlapping refresh protection. It never interrupts healthy continuous
+updates or fabricates position. No recovery runs after the stream stops. Actual fix
+cadence remains controlled by iOS/GPS reception, not a guaranteed application timer.
+Recovery task cancels when Map is hidden or the scene is inactive. Existing shared
+location ownership and simulator distinction remain.
+
+Validation: 101 portable model tests passed, including sub-metre puck movement in
+unstarted/paused walks, manual camera independence and stalled-stream recovery.
+Debug/Release Swift syntax passed. Native Core Location delivery, Google/Apple map
+rendering, permission dialogs and outdoor/foreground return testing remain pending.
+
 ## Developer reset returns Home to Start walk — build 75
 
 Fixed the reset path that immediately restarted and checkpointed an active walk

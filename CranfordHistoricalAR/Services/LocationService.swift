@@ -172,7 +172,8 @@ final class CoreLocationService: NSObject, LocationService {
         super.init()
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyBest
-        manager.distanceFilter = 2
+        // Deliver every location Core Location provides; camera movement has its own throttling.
+        manager.distanceFilter = kCLDistanceFilterNone
         manager.activityType = .fitness
         manager.pausesLocationUpdatesAutomatically = false
         manager.headingFilter = 2
@@ -197,7 +198,6 @@ final class CoreLocationService: NSObject, LocationService {
     }
 
     func start() {
-        guard !isRunning else { return }
         isRunning = true
         manager.startUpdatingLocation()
         if CLLocationManager.headingAvailable() {
@@ -210,6 +210,7 @@ final class CoreLocationService: NSObject, LocationService {
     /// requestLocation() is ignored while startUpdatingLocation() is active.
     func requestFreshLocation() {
         guard authorization == .authorized else { requestWhenInUseAuthorization(); return }
+        guard !isRequestingFreshLocation else { return }
         manager.stopUpdatingLocation()
         isRequestingFreshLocation = true
         manager.requestLocation()

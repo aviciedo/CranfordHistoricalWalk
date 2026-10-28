@@ -109,7 +109,6 @@ struct TourView: View {
             dependencies.imageLoader.prefetch([tour.currentStop, tour.nextStop].compactMap { $0 })
         }
         .task {
-            if tour.isWalkingActive { tour.startLocationIfPossible() }
             focusRequestedStop()
             dependencies.imageLoader.prefetch([tour.currentStop, tour.nextStop].compactMap { $0 })
         }

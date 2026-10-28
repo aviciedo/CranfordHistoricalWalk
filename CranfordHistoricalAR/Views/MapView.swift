@@ -46,7 +46,7 @@ struct TourMapView: View {
                         .padding(.horizontal, 12).padding(.top, tour.locationIssue == nil ? 8 : 110)
                         .allowsHitTesting(false)
                 }
-                if let issue = tour.locationIssue, !tour.isWalkPaused {
+                if let issue = tour.locationIssue {
                     LocationIssueBanner(issue: issue)
                         .padding(.top, 8).padding(.trailing, 12)
                         .transition(.move(edge: .top).combined(with: .opacity))
