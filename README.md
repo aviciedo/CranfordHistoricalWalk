@@ -1,3 +1,12 @@
+## First Baptist Church slideshow — build 71
+
+Added all five owner-supplied church photographs in upload order, each with a
+descriptive caption. The original JPEGs are bundled unchanged and use the existing
+swipe/arrow gallery and tap-to-enlarge photo viewer. Portrait and landscape photos
+retain their aspect ratios. Bundled catalog, test fixture and preview data match.
+Asset decoding, checksums, references and catalog consistency verified; native iOS
+slideshow and zoom interaction remain pending device/Simulator review.
+
 ## First Baptist Church painted landmark — build 70
 
 Added a detailed original-color transparent church painting, grounded in the owner's

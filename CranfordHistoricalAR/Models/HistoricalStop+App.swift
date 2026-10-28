@@ -178,6 +178,14 @@ extension HistoricalStop {
             address: "100 High St, Cranford, NJ",
             shortDescription: "New narration is coming soon.",
             longDescription: "",
+            imageName: "first-baptist-church-belfry",
+            photos: [
+                HistoricalStopPhoto(imageName: "first-baptist-church-belfry", caption: "Belfry and rose window at First Baptist Church"),
+                HistoricalStopPhoto(imageName: "first-baptist-church-front", caption: "First Baptist Church, viewed from the front"),
+                HistoricalStopPhoto(imageName: "first-baptist-church-stained-glass", caption: "Rose window and stained-glass lettering above the entrance"),
+                HistoricalStopPhoto(imageName: "first-baptist-church-entrance-window", caption: "Close-up of the stained-glass window above the entrance"),
+                HistoricalStopPhoto(imageName: "first-baptist-church-side", caption: "First Baptist Church’s side windows and belfry"),
+            ],
             order: 4, isSample: false, coordinatesUnverified: true, narrationPending: true
         ),
         HistoricalStop(

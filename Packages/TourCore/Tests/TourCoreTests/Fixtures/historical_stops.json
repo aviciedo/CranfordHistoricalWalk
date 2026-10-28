@@ -151,7 +151,29 @@
       "shortDescription": "New narration is coming soon.",
       "longDescription": "",
       "historicalDate": null,
-      "imageName": null,
+      "imageName": "first-baptist-church-belfry",
+      "photos": [
+        {
+          "imageName": "first-baptist-church-belfry",
+          "caption": "Belfry and rose window at First Baptist Church"
+        },
+        {
+          "imageName": "first-baptist-church-front",
+          "caption": "First Baptist Church, viewed from the front"
+        },
+        {
+          "imageName": "first-baptist-church-stained-glass",
+          "caption": "Rose window and stained-glass lettering above the entrance"
+        },
+        {
+          "imageName": "first-baptist-church-entrance-window",
+          "caption": "Close-up of the stained-glass window above the entrance"
+        },
+        {
+          "imageName": "first-baptist-church-side",
+          "caption": "First Baptist Church’s side windows and belfry"
+        }
+      ],
       "imageURL": null,
       "illustrationURL": null,
       "audioURL": null,
