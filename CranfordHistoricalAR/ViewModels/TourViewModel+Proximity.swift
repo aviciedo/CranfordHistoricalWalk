@@ -172,6 +172,24 @@ extension TourViewModel {
         if isNewStamp { pendingPassportStampStopID = stopID }
     }
 
+    /// Every configured plaque uses this one award path. Site differences are catalog data,
+    /// never separate bonus screens or stop-specific recognition branches.
+    @discardableResult
+    func recognizePassportPlaque(imageName: String?, isTracked: Bool,
+                                 trackingReady: Bool, now: Date = Date()) -> StopActivationDecision {
+        guard trackingReady else { return .deny(.trackingNotReady) }
+        guard selectRecognizedPlaque(imageName: imageName, isTracked: isTracked,
+                                    trackingReady: trackingReady), let stop = arStop else {
+            return .deny(.markerNotReady)
+        }
+        discovery.arrive()
+        if !discovery.hasVerifiedPlaque { _ = beginPlaqueDiscovery() }
+        confirmPlaqueArrival(for: stop.id)
+        // Saves the stamp before queuing the shared scanner celebration and passport reveal.
+        return activateCurrentStop(stopID: stop.id, trackingReady: trackingReady,
+                                   plaqueIsTracked: isTracked, now: now)
+    }
+
     /// Recognition selects an AR subject, never the guided walking destination.
     @discardableResult
     func selectRecognizedPlaque(imageName: String?, isTracked: Bool, trackingReady: Bool) -> Bool {
@@ -303,7 +321,6 @@ extension TourViewModel {
     }
 
     var isPlaqueDiscoveryStop: Bool { arStop?.hasPlaqueReference == true }
-    var isMillDiscoveryStop: Bool { arStop?.plaque?.referenceImageName == SignPlacementPolicy.millReferenceImageName }
 
     func openStory(for stopID: String) {
         guard stop(withID: stopID) != nil else { return }

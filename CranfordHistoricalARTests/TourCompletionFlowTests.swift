@@ -11,6 +11,50 @@ import CoreLocation
 /// The same state-flow tests run against the native model and its Linux Foundation harness.
 @MainActor
 final class TourCompletionFlowTests: XCTestCase {
+    func testEveryConfiguredPlaqueUsesTheSamePassportUnlockLifecycle() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        let plaqueStops = tour.passportStops
+        XCTAssertGreaterThanOrEqual(plaqueStops.count, 2)
+        for (index, stop) in plaqueStops.enumerated() {
+            let storeDate = Date(timeIntervalSince1970: Double(1000 + index))
+            XCTAssertTrue(tour.preparePlaqueScanner(stopID: stop.id))
+            XCTAssertNil(tour.pendingPassportStampStopID)
+            XCTAssertEqual(tour.recognizePassportPlaque(imageName: stop.plaque?.referenceImageName,
+                isTracked: true, trackingReady: true, now: storeDate), .allow(.recognizedPlaque))
+            XCTAssertEqual(tour.activities[stop.id].plaqueUnlockedAt, storeDate)
+            XCTAssertEqual(tour.pendingPassportStampStopID, stop.id)
+            // Repeated ARKit updates must neither change the award nor restart celebration.
+            XCTAssertEqual(tour.recognizePassportPlaque(imageName: stop.plaque?.referenceImageName,
+                isTracked: true, trackingReady: true), .alreadyActivated)
+            XCTAssertEqual(tour.activities[stop.id].plaqueUnlockedAt, storeDate)
+            tour.endARDiscoverySession()
+            XCTAssertEqual(tour.takePassportStamp(), stop.id)
+            XCTAssertNil(tour.takePassportStamp())
+            XCTAssertTrue(tour.preparePlaqueScanner(stopID: stop.id))
+            XCTAssertEqual(tour.recognizePassportPlaque(imageName: stop.plaque?.referenceImageName,
+                isTracked: true, trackingReady: true), .alreadyActivated)
+            XCTAssertNil(tour.pendingPassportStampStopID)
+            XCTAssertEqual(tour.passportCollectedCount, index + 1)
+            tour.endARDiscoverySession()
+        }
+        XCTAssertEqual(tour.phase, .notStarted, "The same camera-only flow applies without a walk")
+    }
+
+    func testSharedPassportRecognitionRejectsUntrackedUnknownAndLimitedImages() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        for stop in tour.passportStops {
+            XCTAssertTrue(tour.preparePlaqueScanner(stopID: stop.id))
+            XCTAssertEqual(tour.recognizePassportPlaque(imageName: stop.plaque?.referenceImageName,
+                isTracked: false, trackingReady: true), .deny(.markerNotReady))
+            XCTAssertEqual(tour.recognizePassportPlaque(imageName: stop.plaque?.referenceImageName,
+                isTracked: true, trackingReady: false), .deny(.trackingNotReady))
+            XCTAssertEqual(tour.recognizePassportPlaque(imageName: "unknown",
+                isTracked: true, trackingReady: true), .deny(.markerNotReady))
+            XCTAssertNil(tour.activities[stop.id].plaqueUnlockedAt)
+            XCTAssertNil(tour.pendingPassportStampStopID)
+        }
+    }
+
     func testPassportUsesExistingBonusHistoryWithoutReplayingCelebration() async {
         let store = InMemoryStopActivityStore()
         var ledger = StopActivityLedger()

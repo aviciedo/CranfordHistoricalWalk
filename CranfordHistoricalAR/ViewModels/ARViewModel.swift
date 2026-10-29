@@ -296,12 +296,6 @@ final class ARViewModel {
         SignPlacementPolicy.discoveryHint(referenceImageName: tour.arStop?.plaque?.referenceImageName)
     }
 
-    var discoveryPlacementInstruction: String {
-        tour.isMillDiscoveryStop
-            ? "Frame the entire plaque to collect your passport stamp."
-            : "Include the plaque and its stone surround in view to collect your passport stamp."
-    }
-
     private func applySignPlacement() {
         guard isPlaqueScanner else {
             geoAnchors.dismissSign()
@@ -371,33 +365,18 @@ final class ARViewModel {
     /// A supported tracked image is the evidence. Story completion is independent, and image
     /// callbacks never start playback or retarget the walking itinerary.
     private func handleRecognizedPlaque(_ imageAnchor: ARImageAnchor) {
-        guard isPlaqueScanner, isSessionRunning,
-              tour.selectRecognizedPlaque(imageName: imageAnchor.referenceImage.name,
-                                          isTracked: imageAnchor.isTracked,
-                                          trackingReady: geoAnchors.isTrackingReady),
-              let expected = expectedPlaqueImageName,
-              geoAnchors.plaqueAnchors.matches(imageAnchor, expectedName: expected) else { return }
-        // Apply a recovered destination before revealing its passport stamp. Otherwise the
-        // observation loop's destination-change cleanup could hide the new site's sheet.
-        if observedStopID != tour.arStop?.id { pushTourStateToAnchors() }
-        guard let stop = tour.arStop else { return }
-        if stop.hasPlaqueReference {
-            guard isSessionRunning, geoAnchors.isTrackingReady else { return }
-            tour.discovery.arrive()
-            // The physical plaque is the evidence. Reading/listening is independent.
-            if !tour.discovery.hasVerifiedPlaque { _ = tour.beginPlaqueDiscovery() }
-            geoAnchors.plaqueAnchors.observe(imageAnchor)
-            if !tour.discovery.hasVerifiedPlaque {
-                tour.confirmPlaqueArrival(for: stop.id)
-                let decision = tour.activateCurrentStop(stopID: stop.id, trackingReady: true, plaqueIsTracked: true)
-                guard case .allow = decision else { return }
-            }
-            if !geoAnchors.hasActivatedStop { geoAnchors.hasActivatedStop = true }
-            applySignPlacement()
-            return
+        guard isPlaqueScanner, isSessionRunning else { return }
+        let decision = tour.recognizePassportPlaque(imageName: imageAnchor.referenceImage.name,
+            isTracked: imageAnchor.isTracked, trackingReady: geoAnchors.isTrackingReady)
+        switch decision {
+        case .deny: return
+        case .allow, .alreadyActivated: break
         }
-        tour.confirmPlaqueArrival(for: stop.id)
-        geoAnchors.plaqueAnchors.bind(imageAnchor: imageAnchor, sign: geoAnchors.anchors.sign, offset: .abovePlaque)
+        // Resolve the recognized site before synchronizing its visual state. The shared
+        // scanner then celebrates the persisted event and its host opens that passport leaf.
+        if observedStopID != tour.arStop?.id { pushTourStateToAnchors() }
+        geoAnchors.plaqueAnchors.observe(imageAnchor)
+        geoAnchors.hasActivatedStop = true
         applySignPlacement()
     }
 

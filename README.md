@@ -1,3 +1,18 @@
+## Consistent plaque-to-passport experience — build 86
+
+All plaque-enabled stops use one catalog-driven recognition and award path, including
+Droescher’s Mill and Greystone. The scanner shows the top “Frame this plaque” reference
+card without a bottom discovery card. A newly saved stamp triggers the shared gray
+celebration overlay, then opens the correct passport page with its matching stamp.
+Closing the passport returns to that tour stop. Existing stamps remain collected;
+repeated recognition does not award or celebrate twice. No on-site bonus viewer remains.
+Future stops with configured plaque references use this same flow.
+
+Validation: 111 actual-model tests passed, including the complete shared unlock lifecycle
+for every configured plaque and rejection of unknown/untracked/limited-tracking evidence.
+Debug and Release syntax checks passed. Native Apple compilation, camera recognition and
+animation require Xcode/iPhone validation; this change is not yet published.
+
 ## Automatic next-stop Map with retained walked trail — build 85
 
 Per the owner’s new selection, this supersedes build 78’s tap-to-start-next-leg rule.

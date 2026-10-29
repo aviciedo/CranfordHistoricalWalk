@@ -1,3 +1,20 @@
+# Build 86 — one plaque/passport flow for every configured stop
+
+Native visual result: pending iPhone validation.
+
+The supplied Greystone screenshots show the retired bonus HUD and placeholder viewer.
+Those views were already removed in local builds 83–84, which have not been published.
+Build 86 consolidates the camera callback into the same catalog-driven model operation
+for all supported references and removes the remaining unused Mill-specific instruction.
+The UI remains the shared scanner header → gray stamp celebration → matching animated
+passport leaf → tour-stop page. No separate reward viewer or per-site unlock branch.
+
+111 portable actual-model tests pass. New coverage loops through all configured plaque
+stops, verifies durable award identity/date and one pending reveal, duplicate callbacks,
+scanner teardown, event consumption and repeat scans. Invalid tracking/reference inputs
+cannot award a stamp. Debug/Release app/test syntax parsing passes. No native rendering,
+ARKit camera or physical field result is claimed on this Linux environment.
+
 # Build 85 — next-stop illustration, route and walked trail
 
 final result: blocked
