@@ -37,7 +37,16 @@ final class GeoSpatialProviderFactoryTests: XCTestCase {
         let config = model.makeSessionConfiguration()
         XCTAssertTrue(model.isPlaqueScanner)
         XCTAssertTrue(model.imageTrackingAvailable, "The explicit scanner must retain bundled image recognition")
-        XCTAssertFalse(config.detectionImages?.isEmpty ?? true)
+        let bundledNames = Set(PlaqueAnchorController.loadReferenceImages().compactMap(\.name))
+        let configuredNames = Set(tour.passportStops.compactMap { $0.plaque?.referenceImageName })
+        XCTAssertFalse(configuredNames.isEmpty)
+        XCTAssertTrue(configuredNames.isSubset(of: bundledNames),
+                      "Every configured passport stop needs its bundled recognition image")
+        // Simulator loads the asset catalog but ARKit can discard detectionImages because
+        // world tracking is unsupported there. Inspect retained configuration on devices.
+        if ARWorldTrackingConfiguration.isSupported {
+            XCTAssertFalse(config.detectionImages?.isEmpty ?? true)
+        }
         XCTAssertTrue(config.planeDetection.isEmpty)
         XCTAssertEqual(tour.phase, .notStarted)
         XCTAssertNil(tour.pendingPassportStampStopID, "Opening the scanner does not award a stamp")

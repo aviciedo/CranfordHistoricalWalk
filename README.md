@@ -1,3 +1,12 @@
+## Simulator plaque-configuration validation — build 88
+
+Build 87 compiled successfully for Simulator and iPhone Release. Its native run passed
+161 of 162 tests; the scanner configuration test expected Simulator ARKit to retain
+unsupported image-detection configuration. Build 88 verifies that every configured
+passport stop has a bundled reference image on all targets, while checking ARKit’s
+retained detectionImages only when world tracking is supported. The scanner’s runtime
+configuration and recognition behavior are unchanged. All 233 Apple TourCore tests passed.
+
 ## Apple compiler repair — build 87
 
 Build 86 passed all 233 Apple TourCore tests but Xcode’s type checker failed while
