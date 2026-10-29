@@ -1,3 +1,19 @@
+## Stable map landmark rendering — build 89
+
+Google Maps previously enabled live icon-view snapshots and restarted the snapshot
+freeze timer on every map/GPS/camera refresh, even when no illustration pixels changed.
+The shared artwork view also reassigned unchanged images and geometry. Build 89 refreshes
+the cached marker texture only after an actual artwork or pixel-size change. Repeated
+position-only updates retain the texture; subpixel size jitter is rounded to display
+pixels. Marker placement updates disable implicit animations and skip unchanged positions
+and visibility. The actual GPS puck continues updating independently.
+
+The shared artwork view retains its 44-point touch target and still supports deliberate
+zooming and next-stop artwork replacement. Two native regression tests cover repeated
+subpixel refreshes, artwork identity, zoom, minimum touch size and stop replacement.
+Debug/Release syntax checks passed; native tests and Google Maps/iPhone visual verification
+remain pending. This build is not yet published.
+
 ## Simulator plaque-configuration validation — build 88
 
 Build 87 compiled successfully for Simulator and iPhone Release. Its native run passed

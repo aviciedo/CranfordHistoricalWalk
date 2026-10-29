@@ -182,10 +182,13 @@ struct GoogleMapView: UIViewRepresentable {
             }
             if markerStyle == .numberedDot {
                 let view = (marker.iconView as? StopMapIconView) ?? StopMapIconView()
-                view.setArtwork(image)
-                marker.icon = nil
-                marker.iconView = view
-                marker.tracksViewChanges = false
+                let artworkChanged = view.setArtwork(image)
+                let viewChanged = marker.iconView !== view
+                if viewChanged {
+                    marker.icon = nil
+                    marker.iconView = view
+                }
+                if artworkChanged || viewChanged { refreshSnapshot(of: marker) }
                 return
             }
             let view = UIImageView(image: image)
@@ -297,21 +300,33 @@ struct GoogleMapView: UIViewRepresentable {
                                                          zoomControls: parent.reservesZoomControls)
             let layout = MapMarkerSizing.layout(points: points, metersPerPoint: metersPerPoint,
                                                 viewport: viewport, reservedAreas: reserved)
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
             for (model, placement) in zip(models, layout.placements) {
                 guard let marker = markersByID[model.id], let view = marker.iconView as? StopMapIconView else { continue }
-                marker.tracksViewChanges = true
-                view.resize(scale: CGFloat(layout.scale))
+                if view.resize(scale: CGFloat(layout.scale)) { refreshSnapshot(of: marker) }
                 // This display coordinate is derived anew from the original GPS point each frame.
                 // Models, walking routes, camera fitting and location services retain the true site.
                 if placement.isVisible {
-                    marker.position = mapView.projection.coordinate(for: CGPoint(x: placement.center.x, y: placement.center.y))
+                    let position = mapView.projection.coordinate(for: CGPoint(x: placement.center.x, y: placement.center.y))
+                    if GeoMath.distance(from: marker.position.geoCoordinate, to: position.geoCoordinate) > 0.01 {
+                        marker.position = position
+                    }
                 }
-                marker.opacity = placement.isVisible ? 1 : 0
-                marker.isTappable = placement.isVisible
-                marker.groundAnchor = CGPoint(x: 0.5, y: 0.5)
+                let opacity: Float = placement.isVisible ? 1 : 0
+                if marker.opacity != opacity { marker.opacity = opacity }
+                if marker.isTappable != placement.isVisible { marker.isTappable = placement.isVisible }
             }
+            CATransaction.commit()
             markerLeaders.update(layout, in: mapView)
             updatePopupPlacement()
+        }
+
+        /// Position/GPS updates reuse the SDK's cached texture. Only changed artwork or
+        /// pixel dimensions need another snapshot; never restart this timer on a no-op.
+        private func refreshSnapshot(of marker: GMSMarker) {
+            marker.iconView?.layoutIfNeeded()
+            marker.tracksViewChanges = true
             markerSnapshotTask?.cancel()
             markerSnapshotTask = Task { @MainActor [weak self] in
                 try? await Task.sleep(for: .milliseconds(100))
@@ -604,17 +619,34 @@ final class StopMapIconView: UIView {
 
     required init?(coder: NSCoder) { nil }
 
-    func setArtwork(_ image: UIImage?) {
+    private var sourceArtwork: UIImage?
+
+    @discardableResult
+    func setArtwork(_ image: UIImage?) -> Bool {
+        guard sourceArtwork !== image else { return false }
+        sourceArtwork = image
         imageView.image = image?.withRenderingMode(.alwaysOriginal)
+        return true
     }
 
-    func resize(scale: CGFloat) {
-        let size = CGSize(width: CGFloat(MapMarkerSizing.width) * scale,
-                          height: CGFloat(MapMarkerSizing.height) * scale)
-        bounds = CGRect(x: 0, y: 0, width: max(44, size.width), height: max(44, size.height))
-        imageView.frame = CGRect(x: (bounds.width - size.width) / 2,
-                                 y: (bounds.height - size.height) / 2,
-                                 width: size.width, height: size.height)
+    @discardableResult
+    func resize(scale: CGFloat) -> Bool {
+        // Tiny projection/latitude changes must not invalidate the Maps texture. Round
+        // visible dimensions to physical pixels while retaining the 44-point hit target.
+        let pixels = max(1, traitCollection.displayScale)
+        let safeScale = scale.isFinite ? max(0, scale) : 0
+        let size = CGSize(width: (CGFloat(MapMarkerSizing.width) * safeScale * pixels).rounded() / pixels,
+                          height: (CGFloat(MapMarkerSizing.height) * safeScale * pixels).rounded() / pixels)
+        let targetBounds = CGRect(x: 0, y: 0, width: max(44, size.width), height: max(44, size.height))
+        let artworkFrame = CGRect(x: (targetBounds.width - size.width) / 2,
+                                  y: (targetBounds.height - size.height) / 2,
+                                  width: size.width, height: size.height)
+        guard bounds != targetBounds || imageView.frame != artworkFrame else { return false }
+        UIView.performWithoutAnimation {
+            bounds = targetBounds
+            imageView.frame = artworkFrame
+        }
+        return true
     }
 }
 

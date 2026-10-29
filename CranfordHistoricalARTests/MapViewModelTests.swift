@@ -7,6 +7,52 @@ import TourCore
 
 @MainActor
 final class MapViewModelTests: XCTestCase {
+    func testLandmarkTextureStaysStableDuringSubpixelCameraUpdates() {
+        let icon = StopMapIconView()
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 100, height: 80)).image { context in
+            UIColor.systemGreen.setFill()
+            context.cgContext.fill(CGRect(x: 0, y: 0, width: 100, height: 80))
+        }
+        XCTAssertTrue(icon.setArtwork(image))
+        icon.resize(scale: 0.75)
+        let initialBounds = icon.bounds
+        let initialFrame = icon.imageView.frame
+        let displayedImage = icon.imageView.image
+        for index in 0..<120 {
+            let jitter = index.isMultiple(of: 2) ? 0.00001 : -0.00001
+            XCTAssertFalse(icon.resize(scale: 0.75 + jitter),
+                           "Subpixel camera changes must reuse the existing texture")
+            XCTAssertFalse(icon.setArtwork(image), "The same cached art must not be reassigned")
+        }
+        XCTAssertEqual(icon.bounds, initialBounds)
+        XCTAssertEqual(icon.imageView.frame, initialFrame)
+        XCTAssertTrue(icon.imageView.image === displayedImage)
+        XCTAssertTrue(icon.resize(scale: 1), "An intentional zoom still resizes the illustration")
+        XCTAssertGreaterThan(icon.bounds.width, initialBounds.width)
+        icon.resize(scale: 0.1)
+        XCTAssertGreaterThanOrEqual(icon.bounds.width, 44)
+        XCTAssertGreaterThanOrEqual(icon.bounds.height, 44)
+    }
+
+    func testLandmarkReplacementKeepsItsLayoutAndUsesNewArtwork() {
+        let icon = StopMapIconView()
+        icon.resize(scale: 0.8)
+        let first = StopMapArtwork.image(for: StopMarkerModel(id: "hpab-001",
+            coordinate: CLLocationCoordinate2D(latitude: 40.65, longitude: -74.3),
+            order: 1, name: "Droescher’s Mill", state: .current))
+        let next = StopMapArtwork.image(for: StopMarkerModel(id: "hpab-002",
+            coordinate: CLLocationCoordinate2D(latitude: 40.66, longitude: -74.3),
+            order: 2, name: "Greystone", state: .current))
+        icon.setArtwork(first)
+        let bounds = icon.bounds
+        let firstDisplayed = icon.imageView.image
+        XCTAssertTrue(icon.setArtwork(next))
+        XCTAssertEqual(icon.bounds, bounds)
+        XCTAssertFalse(icon.imageView.image === firstDisplayed)
+        XCTAssertNotNil(icon.imageView.image)
+        XCTAssertFalse(icon.setArtwork(next))
+    }
+
     func testMapLayoutFitsDestinationWithAndWithoutPlayerSpace() {
         for availableHeight in [420.0, 580.0] {
             let available = CGSize(width: 393, height: availableHeight)

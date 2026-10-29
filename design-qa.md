@@ -1,3 +1,19 @@
+# Build 89 — map illustration flicker repair
+
+Native visual result: pending iPhone validation.
+
+Source investigation found unconditional live Google marker snapshotting and geometry
+rewrites on every camera/GPS update. The repair retains cached artwork and pixel-rounded
+layout for no-op updates, snapshots only changed image/size, and disables implicit marker
+position/visibility animation. Puck updates remain independent. The Apple fallback shares
+the no-op-safe artwork view. No visual layout or illustration assets changed.
+
+Focused native tests cover 120 subpixel camera-size updates without layout/image changes,
+intentional zoom, the 44-point target and replacing Mill with Greystone artwork. These
+UIKit tests cannot execute on the Linux host. Debug/Release syntax parsing and diff checks
+pass. Field acceptance: verify on Google Maps at overview and close zoom, with live GPS,
+stationary phone, panning, pinch zoom, recenter and automatic destination advancement.
+
 # Build 86 — one plaque/passport flow for every configured stop
 
 Native visual result: pending iPhone validation.
