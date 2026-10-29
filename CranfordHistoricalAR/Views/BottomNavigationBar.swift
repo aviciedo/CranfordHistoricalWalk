@@ -10,7 +10,7 @@ struct BottomNavigationBar: View {
         HStack(spacing: 0) {
             tab(.home, title: "Home", symbol: "house", selectedSymbol: "house.fill")
             tab(.map, title: "Map", symbol: "map", selectedSymbol: "map.fill")
-            tab(.stops, title: "Stops", symbol: "mappin", selectedSymbol: "mappin")
+            tab(.stops, title: "Stops", symbol: "signpost.right.and.left.fill", selectedSymbol: "signpost.right.and.left.fill")
         }
         .padding(.vertical, 4)
         .background(AppTheme.navigationBackground)

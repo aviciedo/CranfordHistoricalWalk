@@ -7,6 +7,46 @@ import TourCore
 
 @MainActor
 final class MapViewModelTests: XCTestCase {
+    func testRiverHomeAssetsAndSignpostAreAvailableInTheAppBundle() throws {
+        var engravedStops = 0
+        for stop in HistoricalStop.previewStops {
+            guard let asset = HomeStopEmblem.assetName(for: stop.id) else { continue }
+            engravedStops += 1
+            let image = try XCTUnwrap(UIImage(named: asset), "Missing Home illustration for \(stop.name)")
+            XCTAssertEqual(image.size.width, image.size.height, accuracy: 1,
+                           "Circular artwork must not be stretched by the Home layout")
+        }
+        XCTAssertGreaterThanOrEqual(engravedStops, 4)
+        for asset in ["home-river-crest-mask", "home-river-bank-mask"] {
+            XCTAssertNotNil(UIImage(named: asset), "Missing decorative edge mask")
+        }
+        XCTAssertNotNil(UIImage(systemName: "signpost.right.and.left.fill"))
+    }
+
+    func testRiverHomeKeepsControlsSizedWhenArtworkYieldsSpace() {
+        for width in [280.0, 390.0] {
+            for height in [320.0, 660.0] {
+                let available = CGSize(width: width, height: height)
+                let content = HomeLandingLayout(availableSize: available) {
+                    Color.clear.frame(height: 140)
+                    Color.clear
+                    Color.clear.frame(height: 240)
+                }
+                let host = UIHostingController(rootView: content)
+                let measured = host.sizeThatFits(in: available)
+                XCTAssertEqual(measured.width, available.width, accuracy: 1)
+                XCTAssertGreaterThanOrEqual(measured.height, 140 + 240 + 96,
+                    "The header/actions and minimum decorative area must not compress")
+                if height == 320 {
+                    XCTAssertGreaterThan(measured.height, available.height,
+                        "Short windows should scroll instead of clipping controls")
+                } else {
+                    XCTAssertLessThanOrEqual(measured.height, available.height + 1)
+                }
+            }
+        }
+    }
+
     func testEveryPlaqueStopHasItsSketchAndSketchbookPaperInTheAppBundle() throws {
         let stops = HistoricalStop.previewStops.filter(\.hasPlaqueReference)
         XCTAssertFalse(stops.isEmpty)

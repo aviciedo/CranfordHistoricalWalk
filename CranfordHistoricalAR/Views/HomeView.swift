@@ -1,7 +1,7 @@
 import SwiftUI
 import TourCore
 
-/// Illustration-led welcome: navigation lives on Map, stories live on Stops.
+/// Native controls stay live; only the river and stop emblems are decorative image assets.
 struct HomeView: View {
     @Environment(TourViewModel.self) private var tour
     @Environment(AppNavigation.self) private var navigation
@@ -12,18 +12,21 @@ struct HomeView: View {
     var body: some View {
         GeometryReader { viewport in
             ScrollView {
-                HomeLandingLayout(availableSize: CGSize(width: max(0, viewport.size.width - 48),
-                                                        height: max(0, viewport.size.height - 24))) {
+                HomeLandingLayout(availableSize: CGSize(width: viewport.size.width,
+                                                        height: max(0, viewport.size.height - 8))) {
                     heading
-                    featuredIllustration
+                    HomeRiverHero(stop: tour.homeFeaturedStop, loadState: tour.loadState)
                     actions
                 }
-                .padding(.horizontal, 24).padding(.top, 8).padding(.bottom, 16)
+                .padding(.top, 8)
             }
             .scrollBounceBehavior(.basedOnSize, axes: .vertical)
         }
         .background(AppTheme.ivory.ignoresSafeArea()).foregroundStyle(AppTheme.forest)
-        .fullScreenCover(isPresented: $isShowingSketchbook) { SketchbookView(initialStopID: tour.sketchbookStops.first?.id ?? "") }
+        .environment(\.colorScheme, .light)
+        .fullScreenCover(isPresented: $isShowingSketchbook) {
+            SketchbookView(initialStopID: tour.sketchbookStops.first?.id ?? "")
+        }
         .onChange(of: navigation.homeReturnID) { _, _ in isShowingSketchbook = false }
         .task {
             if tour.isWalkingActive && tour.locationAuthorization == .authorized { tour.startLocationIfPossible() }
@@ -40,115 +43,113 @@ struct HomeView: View {
                 .accessibilityIdentifier("home.heading")
                 .modifier(DebugMenuGesture(isPresented: $isShowingDeveloperControls))
             Text("Discover the stories along the river.")
-                .font(.body)
+                .font(.body.weight(.medium))
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    @ViewBuilder
-    private var featuredIllustration: some View {
-        if let stop = tour.homeFeaturedStop {
-            StopListIllustration(stopID: stop.id)
-                .id(stop.id)
-                .aspectRatio(stop.id == "hpab-004" ? 1 : stop.id == "hpab-005" ? 100.0 / 90.0 : 4.0 / 3.0,
-                             contentMode: .fit)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .accessibilityHidden(true) // The destination is named immediately below.
-                .accessibilityIdentifier("home.illustration.\(stop.id)")
-        } else if tour.loadState.isFailure {
-            Label("Tour unavailable", systemImage: "exclamationmark.circle")
-                .font(.headline)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else {
-            // Loading has no placeholder landmark or invented destination.
-            ProgressView("Loading tour")
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
+        .padding(.horizontal, 24)
     }
 
     private var actions: some View {
-        VStack(spacing: 24) {
-            VStack(spacing: 12) {
-                if tour.phase == .complete {
-                    Label("Tour complete", systemImage: "checkmark.circle")
-                        .font(.headline)
-                        .accessibilityIdentifier("home.tourComplete")
-                }
-                Button {
-                    tour.performHomeWalkAction()
-                    navigation.selectedTab = .map
-                } label: {
-                    Label(tour.homeWalkActionTitle, systemImage: "figure.walk")
-                        .font(.title3.weight(.semibold))
-                        .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: .infinity, minHeight: 56)
-                        .padding(.horizontal, 16).padding(.vertical, 6)
-                }
-                .buttonStyle(.plain).foregroundStyle(.white)
-                .background(AppTheme.forest, in: RoundedRectangle(cornerRadius: 14))
-                .disabled(tour.loadState != .loaded)
-                .opacity(tour.loadState == .loaded ? 1 : 0.5)
-                .accessibilityIdentifier("home.startWalk")
-                if tour.phase != .complete, let stop = tour.homeFeaturedStop {
-                    Text(tour.isCurrentVisitConfirmed && tour.nextStop == nil
-                         ? "Final stop visited"
-                         : (tour.phase == .notStarted ? "Begin at \(stop.name)." : "Next Stop: \(stop.name)"))
-                        .font(.system(.title3, design: .serif).weight(.semibold))
-                        .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityIdentifier("home.destination")
-                }
-            }
+        VStack(spacing: 0) {
+            walkingActions
+                .padding(.horizontal, 24).padding(.top, 12).padding(.bottom, 18)
+                .frame(maxWidth: .infinity)
+                .foregroundStyle(.white)
+                .background(AppTheme.riverBlue)
+            // The attachment's curved lower edge sits below the destination, not the button.
+            HomeRiverEdge(asset: "home-river-bank-mask", window: CGRect(x: 0, y: 0.45, width: 1, height: 0.30))
+                .frame(height: 24)
+                .overlay(alignment: .top) { AppTheme.riverBlue.frame(height: 1) }
+                .accessibilityHidden(true)
+            explorationActions
+                .padding(.horizontal, 24).padding(.top, 6).padding(.bottom, 8)
+        }
+    }
 
-            VStack(spacing: 0) {
-                Divider()
-                Button { navigation.selectedTab = .stops } label: {
-                    AppMenuRowLabel(title: "Explore the stops", symbol: "book")
-                }
-                .buttonStyle(.plain)
-                .accessibilityHint("Listen, read and view photographs without starting a walk or enabling location")
-                .accessibilityIdentifier("home.exploreStops")
-                Divider()
-                if !tour.sketchbookStops.isEmpty {
-                    Button { isShowingSketchbook = true } label: {
-                        AppMenuRowLabel(title: "Your sketchbook", symbol: "book.closed")
-                    }
-                    .buttonStyle(.plain).accessibilityIdentifier("home.sketchbook")
-                    Divider()
-                }
+    private var walkingActions: some View {
+        VStack(spacing: 10) {
+            if tour.phase == .complete {
+                Label("Tour complete", systemImage: "checkmark.circle")
+                    .font(.headline).accessibilityIdentifier("home.tourComplete")
             }
+            Button {
+                tour.performHomeWalkAction()
+                navigation.selectedTab = .map
+            } label: {
+                Label(tour.homeWalkActionTitle, systemImage: "figure.walk")
+                    .font(.title3.weight(.semibold))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 16)
+                    .frame(maxWidth: .infinity, minHeight: 56)
+            }
+            .buttonStyle(.plain).foregroundStyle(.white)
+            .background(AppTheme.forest, in: RoundedRectangle(cornerRadius: 14))
+            .disabled(tour.loadState != .loaded)
+            .opacity(tour.loadState == .loaded ? 1 : 0.5)
+            .accessibilityIdentifier("home.startWalk")
+            if tour.phase != .complete, let stop = tour.homeFeaturedStop {
+                Text(tour.isCurrentVisitConfirmed && tour.nextStop == nil
+                     ? "Final stop visited"
+                     : (tour.phase == .notStarted ? "Begin at \(stop.name)." : "Next Stop: \(stop.name)"))
+                    .font(.system(.title2, design: .serif).weight(.semibold))
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("home.destination")
+            }
+        }
+    }
 
+    private var explorationActions: some View {
+        VStack(spacing: 0) {
+            // No divider above the first row in the approved design.
+            Button { navigation.selectedTab = .stops } label: {
+                AppMenuRowLabel(title: "Explore the stops", symbol: "book")
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Listen, read and view photographs without starting a walk or enabling location")
+            .accessibilityIdentifier("home.exploreStops")
+            Divider()
+            if !tour.sketchbookStops.isEmpty {
+                Button { isShowingSketchbook = true } label: {
+                    AppMenuRowLabel(title: "Your sketchbook", symbol: "book.closed")
+                }
+                .buttonStyle(.plain).accessibilityIdentifier("home.sketchbook")
+                Divider()
+            }
             if case .failed(let message) = tour.loadState {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(message).font(.footnote).foregroundStyle(AppTheme.warning)
                     Button("Try again") { Task { await tour.loadStopsIfNeeded() } }
                         .frame(minHeight: 44)
                 }
+                .padding(.top, 12)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
+        .foregroundStyle(AppTheme.forest)
     }
 }
 
-/// Measure the real heading and actions first. Only the decorative hero yields space
-/// to the shared player or larger text; touch targets and copy are never compressed.
+/// Measure text and actions before giving the remaining space to decorative artwork.
+/// Short windows and large text scroll naturally instead of compressing controls.
 struct HomeLandingLayout: Layout {
     let availableSize: CGSize
-    private let gap: CGFloat = 20
+    private let headingGap: CGFloat = 16
 
     private func sizes(_ subviews: Subviews) -> (heading: CGFloat, hero: CGFloat, actions: CGFloat) {
         let proposal = ProposedViewSize(width: availableSize.width, height: nil)
         let heading = subviews[0].sizeThatFits(proposal).height
         let actions = subviews[2].sizeThatFits(proposal).height
-        let hero = max(96, min(340, availableSize.height - heading - actions - 2 * gap))
+        let maximumHero = min(340, max(96, availableSize.width * 0.78))
+        let hero = max(96, min(maximumHero, availableSize.height - heading - actions - headingGap))
         return (heading, hero, actions)
     }
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         guard subviews.count == 3 else { return .zero }
         let sizes = sizes(subviews)
-        return CGSize(width: availableSize.width, height: sizes.heading + sizes.hero + sizes.actions + 2 * gap)
+        return CGSize(width: availableSize.width, height: sizes.heading + sizes.hero + sizes.actions + headingGap)
     }
 
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
@@ -159,8 +160,104 @@ struct HomeLandingLayout: Layout {
         for index in 0..<3 {
             subviews[index].place(at: CGPoint(x: bounds.minX, y: y), anchor: .topLeading,
                                  proposal: ProposedViewSize(width: availableSize.width, height: heights[index]))
-            y += heights[index] + gap
+            y += heights[index] + (index == 0 ? headingGap : 0)
         }
+    }
+}
+
+/// Stop-specific circular engraving; no route coordinates or saved progress live here.
+struct HomeStopEmblem: View {
+    let stopID: String
+
+    static func assetName(for stopID: String) -> String? {
+        switch stopID {
+        case "hpab-001": return "home-emblem-mill"
+        case "hpab-002": return "home-emblem-greystone"
+        case "hpab-003": return "home-emblem-river"
+        case "hpab-004": return "home-emblem-church"
+        default: return nil
+        }
+    }
+
+    private var insetFraction: CGFloat {
+        switch stopID {
+        case "hpab-002": return 0.006
+        case "hpab-003": return 0.03
+        case "hpab-004": return 0.04
+        default: return 0
+        }
+    }
+
+    var body: some View {
+        GeometryReader { viewport in
+            ZStack {
+                // A fine ivory rim separates green engraving from the blue river.
+                Circle().fill(AppTheme.ivory).padding(viewport.size.width * 0.034)
+                if let asset = Self.assetName(for: stopID) {
+                    Image(asset).renderingMode(.original).resizable().scaledToFit()
+                        .padding(viewport.size.width * insetFraction)
+                } else {
+                    // Preserve the existing Hotel illustration until reference art is supplied.
+                    StopListIllustration(stopID: stopID)
+                        .saturation(0).colorMultiply(AppTheme.forest)
+                        .padding(24)
+                        .background(AppTheme.ivory, in: Circle())
+                        .clipShape(Circle())
+                        .overlay(Circle().strokeBorder(AppTheme.forest, lineWidth: 2))
+                        .padding(viewport.size.width * 0.04)
+                }
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+}
+
+private struct HomeRiverHero: View {
+    let stop: HistoricalStop?
+    let loadState: TourViewModel.LoadState
+
+    var body: some View {
+        GeometryReader { viewport in
+            let diameter = min(viewport.size.width * 0.78, viewport.size.height)
+            ZStack(alignment: .bottom) {
+                HomeRiverEdge(asset: "home-river-crest-mask")
+                    .frame(height: max(44, diameter * 0.3))
+                    .overlay(alignment: .bottom) { AppTheme.riverBlue.frame(height: 1) }
+                if let stop {
+                    HomeStopEmblem(stopID: stop.id)
+                        .id(stop.id)
+                        .frame(width: diameter, height: diameter)
+                        .accessibilityIdentifier("home.illustration.\(stop.id)")
+                } else if loadState.isFailure {
+                    Label("Tour unavailable", systemImage: "exclamationmark.circle")
+                        .font(.headline).frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    ProgressView("Loading tour")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            }
+            .frame(width: viewport.size.width, height: viewport.size.height, alignment: .bottom)
+        }
+    }
+}
+
+/// Template masks let the native blue color meet the solid section without a raster-color seam.
+private struct HomeRiverEdge: View {
+    let asset: String
+    var window = CGRect(x: 0, y: 0, width: 1, height: 1)
+
+    var body: some View {
+        GeometryReader { viewport in
+            Image(asset).renderingMode(.template).resizable()
+                .frame(width: viewport.size.width, height: viewport.size.height / window.height)
+                .offset(y: -window.minY * viewport.size.height / window.height)
+                .frame(width: viewport.size.width, height: viewport.size.height, alignment: .topLeading)
+                .clipped()
+        }
+        .foregroundStyle(AppTheme.riverBlue)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }
 

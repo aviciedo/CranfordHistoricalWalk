@@ -1,3 +1,46 @@
+# Build 95 — approved vintage river Home
+
+final result: blocked
+
+Source visual truth: docs/design/home-river-approved.jpg (590×1280 px user attachment).
+The owner explicitly chose the attachment's CURVED lower blue edge over the earlier
+straight-edge revision, and chose next-stop-dependent circular artwork. This is the
+reference used for implementation. Native safe areas and the shared navigation/player
+remain runtime UI rather than imagery. Target phone reference is approximately 390×846.
+Implementation screenshot: unavailable. This Linux host has no Xcode/Simulator, so native
+viewport/density normalization, full-view and focused visual comparison remain pending.
+
+Implemented:
+- Existing 48-point scaled serif two-line title, medium native tagline, 24-point margins.
+- Separate circular green engravings for Mill/Greystone/River/Church, a fine ivory rim,
+  normalized visible circle sizing, next-stop identity binding and existing Hotel fallback.
+- Scalloped upper river mask, native #527784 blue band, hunter-green 56-point-minimum walk
+  action, 22-point semibold serif white destination. Large titles wrap instead of clipping.
+- Curved lower river mask below destination, ivory menu area, regular-weight shared rows,
+  no divider above first row. House/folded-map/two-signpost bottom navigation on ivory.
+- Separate text/control layers, preserved Start/Continue/Finish/restart and collection
+  behavior, loading/error/retry, developer access and Dynamic Type/short-height scrolling.
+
+Required fidelity surfaces: font family/weight and hierarchy use existing native fonts;
+layout measures text/actions first and gives artwork remaining space; colors use native
+brand tokens and readable white-on-blue/green; imagery uses RGBA assets with no rasterized
+text or controls. Copy is unchanged. These are source/asset findings, not a rendered pass.
+
+Validation completed: 111 portable state-flow tests pass; full Debug/Release app/test
+syntax passes; six asset manifests and RGBA dimensions/alpha checked. New native bundle/
+signpost and width/height layout tests are written but cannot run on this host. No native
+visual pass, GPU rendering or Apple typecheck is inferred from those checks.
+
+Native review checklist:
+1. Capture the selected Mill/Continue state, compare the approved attachment and native
+   content at matched safe-area viewport/density, then inspect title/circle/river boundaries
+   and 22-point destination/menu spacing in focused crops.
+2. Check fresh Start, next-leg Greystone, River/Church/Hotel, last stop, completed restart,
+   loading and failure/retry. Confirm emblem/destination/action stay in agreement.
+3. Check short phone, active narration player, narrow width and accessibility text sizes.
+   All controls must scroll/reflow without clipping or compressing touch targets.
+4. Verify arrow/navigation/sketchbook actions and confirm existing data stays intact.
+
 # Build 94 — active walking panel consistency
 
 final result: blocked

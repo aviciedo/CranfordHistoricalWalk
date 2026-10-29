@@ -1,3 +1,30 @@
+## Vintage river Home — build 95
+
+Implements the selected river-blue Home design, including the owner's final choices:
+curved lower blue edge from the attachment and a circular illustration that follows
+the next stop. The large two-line heading, hunter-green walk button, white serif
+next-stop line, engraved circle, scalloped river crest and ivory menu/navigation remain
+native interactive UI. There is no line above Explore the stops. Stops now uses the
+filled two-direction signpost symbol throughout the shared bottom navigation.
+
+Four separate circular ink assets cover the Mill, Greystone, Rahway River and First
+Baptist Church. The Hotel retains its existing illustration inside the same frame;
+no new unsupported architecture was invented. River edges are template image masks,
+so native river-blue color meets the solid button/destination section consistently.
+Map/Stops illustrations and sketchbook collection art are unchanged.
+
+Home still uses homeFeaturedStop and performHomeWalkAction: Start walk on a fresh walk,
+Continue walk after starting, next-stop preview after confirmed visits, and completion/
+restart behavior. Loading, error/retry, developer access, playback space and sketchbook
+entry remain supported. Text/actions are measured first, decorative art yields space,
+and short/large-text layouts scroll instead of compressing controls.
+
+Validation: 111 portable actual-model tests passed, Debug/Release app/test syntax parsed,
+all six PNGs and catalog manifests were checked for dimensions/alpha. Two native tests
+were added for resource/symbol availability and responsive layout; native execution,
+Apple typechecking and visual comparison require Xcode/Simulator and remain pending.
+Approved reference is docs/design/home-river-approved.jpg. Build 95 is not published.
+
 ## Active walking panel matched to paused design — build 94
 
 Active directions use the same Next stop label, prominent serif destination, circular
