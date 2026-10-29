@@ -11,30 +11,36 @@ struct NextStopCard: View {
 
     var body: some View {
         if let current = tour.currentStop {
-            VStack(alignment: .leading, spacing: 10) {
-                if tour.isWalkPaused {
-                    Text("Walk paused").font(.caption).foregroundStyle(AppTheme.secondaryInk)
-                } else if tour.walkingProgression.isConfirmingArrival {
-                    Text("Arriving at").font(.caption).foregroundStyle(AppTheme.secondaryInk)
-                } else if !tour.isCurrentVisitConfirmed {
-                    Text("Next stop").font(.caption).foregroundStyle(AppTheme.secondaryInk)
-                }
-                HStack(alignment: .top, spacing: 8) {
-                    VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: 6) {
+                    if tour.walkingProgression.isConfirmingArrival && !tour.isWalkPaused {
+                        Text("Arriving at")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(AppTheme.secondaryInk)
+                    } else if !tour.isCurrentVisitConfirmed {
+                        Text("Next stop")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(AppTheme.forest.opacity(0.8))
+                    }
+                    HStack(alignment: .top, spacing: 12) {
                         Text(current.name)
                             .font(.system(.largeTitle, design: .serif).weight(.semibold))
                             .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .layoutPriority(1)
                             .accessibilityAddTraits(.isHeader)
                             .accessibilityIdentifier("map.destinationName")
-                        if !tour.isWalkPaused || tour.isCurrentVisitConfirmed { MapDestinationStatus() }
+                        Menu { moreActions } label: {
+                            Image(systemName: "ellipsis").font(.body.weight(.semibold))
+                                .frame(width: 44, height: 44)
+                                .background(AppTheme.forest.opacity(0.05), in: Circle())
+                                .contentShape(Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("More walking controls")
+                        .accessibilityIdentifier("map.more")
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    Menu { moreActions } label: {
-                        Image(systemName: "ellipsis").font(.title3.weight(.semibold))
-                            .frame(width: 44, height: 44).contentShape(Rectangle())
-                    }
-                    .accessibilityLabel("More walking controls")
-                    .accessibilityIdentifier("map.more")
+                    if !tour.isWalkPaused || tour.isCurrentVisitConfirmed { MapDestinationStatus() }
                 }
                 if tour.isCurrentVisitConfirmed {
                     if let next = tour.nextStop {
@@ -44,13 +50,8 @@ struct NextStopCard: View {
                             .accessibilityIdentifier("map.nextStopName")
                     }
                     Button { tour.startNextLegAfterConfirmedVisit() } label: {
-                        Label(tour.nextStop.map { "Walk to \($0.name)" } ?? "Finish walk",
-                              systemImage: tour.nextStop == nil ? "checkmark" : "figure.walk")
-                            .font(.headline).fixedSize(horizontal: false, vertical: true)
-                            .frame(maxWidth: .infinity, minHeight: 48)
-                            .padding(.horizontal, 16).padding(.vertical, 6)
-                            .foregroundStyle(.white)
-                            .background(AppTheme.forest, in: RoundedRectangle(cornerRadius: 14))
+                        primaryActionLabel(tour.nextStop.map { "Walk to \($0.name)" } ?? "Finish walk",
+                                           symbol: tour.nextStop == nil ? "checkmark" : "figure.walk")
                     }
                     .buttonStyle(.plain)
                     .accessibilityHint("Starts directions to the next stop, or finishes the walk at the final stop")
@@ -58,9 +59,10 @@ struct NextStopCard: View {
                 }
                 if tour.isWalkPaused && !tour.isCurrentVisitConfirmed {
                     Button { tour.startTour() } label: {
-                        Label("Resume walk", systemImage: "figure.walk").frame(minHeight: 44)
+                        primaryActionLabel("Resume walk", symbol: "figure.walk")
                     }
-                    .buttonStyle(.plain).font(.headline)
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("map.resumeWalk")
                 }
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 12) { explorationActions }
@@ -93,6 +95,16 @@ struct NextStopCard: View {
                 .accessibilityHint("Opens optional camera walking guidance to the current destination")
                 .accessibilityIdentifier("map.enterAR")
         }
+    }
+
+    private func primaryActionLabel(_ title: String, symbol: String) -> some View {
+        Label(title, systemImage: symbol)
+            .font(.headline)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, 16)
+            .frame(maxWidth: .infinity, minHeight: 56)
+            .foregroundStyle(.white)
+            .background(AppTheme.forest, in: RoundedRectangle(cornerRadius: 14))
     }
 
     private func actionLabel(_ title: String, symbol: String) -> some View {

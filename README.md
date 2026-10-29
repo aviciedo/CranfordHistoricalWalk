@@ -1,3 +1,16 @@
+## Map walking panel hierarchy — build 93
+
+Implements the approved walking-panel mockup with the requested removal of “Walk paused.”
+The destination remains the prominent serif heading; Next stop is a clearer quiet
+semibold label. The ellipsis menu aligns to the first title line in a subtle 44-point
+circular target. Resume walk is a full-width 56-point hunter-green primary action with
+white icon/text. View stop and AR directions remain equal secondary actions beneath it,
+with a vertical fallback on narrow/large-text layouts. Shared margins and spacing align
+the controls, and next-leg/finish actions use the same primary-button treatment.
+
+Walking state and actions are unchanged. Debug/Release syntax and diff checks passed.
+Native visual verification remains pending on this Linux host. Not published.
+
 ## Plaque copy simplified — build 92
 
 Removed “with AR” from the shared tour-stop plaque button and sketch collection row,

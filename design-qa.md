@@ -1,3 +1,30 @@
+# Build 93 — Map walking section
+
+final result: blocked
+
+Source visual truth: /workspace/generated_images/exec-fe43b471-73bc-4c96-8f23-76678d0be5a4.png
+User approved implementation with exactly one change: remove Walk paused.
+Implementation screenshot: unavailable; no Xcode/Simulator on this Linux host. Native
+viewport/density normalization and full/focused visual comparison remain pending.
+
+Implemented in NextStopCard: unchanged prominent large-title serif destination; 15-point
+native semibold Next stop label at 80% forest; 6-point heading grouping, 14-point action
+gaps and shared 24-point horizontal margins. Ellipsis uses 44×44-point pale circular
+target, title-row top alignment and 12-point separation. Primary actions have 56-point
+minimum height, 14-point corners, forest fill and white native headline icon/text.
+Equal white outlined secondary actions retain the horizontal/vertical adaptive fallback.
+Pause caption is removed; paused routing remains paused until Resume is tapped.
+
+Fidelity surfaces: typography and colors use existing native app tokens; spacing follows
+approved hierarchy; map imagery/assets and action labels are retained. No new artwork or
+features were introduced. Debug/Release Swift syntax and diff checks passed. No model
+logic changed, so previous state-flow results are not represented as newly run tests.
+
+Native acceptance: check paused/resumed/confirmed/final-stop panels on standard phone
+and narrow/large-text sizes; inspect first-line menu placement, title wrap, main-button
+height, secondary-action alignment and remaining map height. Verify existing menu and
+walking actions. No visual pass is inferred from source inspection.
+
 # Build 91 — selected Sunday Fieldbook design
 
 final result: blocked
