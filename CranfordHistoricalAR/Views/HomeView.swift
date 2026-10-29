@@ -221,7 +221,9 @@ private struct HomeRiverHero: View {
         GeometryReader { viewport in
             let diameter = min(viewport.size.width * 0.78, viewport.size.height)
             ZStack(alignment: .bottom) {
-                HomeRiverEdge(asset: "home-river-crest-mask")
+                // Trim the raster mask’s transparent side margins so water reaches both screen edges.
+                HomeRiverEdge(asset: "home-river-crest-mask",
+                              window: CGRect(x: 0.01, y: 0, width: 0.98, height: 1))
                     .frame(height: max(44, diameter * 0.3))
                     .overlay(alignment: .bottom) { AppTheme.riverBlue.frame(height: 1) }
                 if let stop {
@@ -250,8 +252,9 @@ private struct HomeRiverEdge: View {
     var body: some View {
         GeometryReader { viewport in
             Image(asset).renderingMode(.template).resizable()
-                .frame(width: viewport.size.width, height: viewport.size.height / window.height)
-                .offset(y: -window.minY * viewport.size.height / window.height)
+                .frame(width: viewport.size.width / window.width, height: viewport.size.height / window.height)
+                .offset(x: -window.minX * viewport.size.width / window.width,
+                        y: -window.minY * viewport.size.height / window.height)
                 .frame(width: viewport.size.width, height: viewport.size.height, alignment: .topLeading)
                 .clipped()
         }

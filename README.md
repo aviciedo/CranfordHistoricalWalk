@@ -1,3 +1,7 @@
+## Build 96 — edge-to-edge Home river
+
+Crops the transparent side margins of the Home river crest at display time, extending the blue water to both screen edges. Artwork, controls and the curved lower edge are preserved. Native visual verification requires Xcode.
+
 ## Vintage river Home — build 95
 
 Implements the selected river-blue Home design, including the owner's final choices:
