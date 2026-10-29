@@ -8,15 +8,16 @@ import TourCore
 @MainActor
 final class MapViewModelTests: XCTestCase {
     func testRiverHomeAssetsAndSignpostAreAvailableInTheAppBundle() throws {
-        var engravedStops = 0
+        var sketchStops = 0
         for stop in HistoricalStop.previewStops {
-            guard let asset = HomeStopEmblem.assetName(for: stop.id) else { continue }
-            engravedStops += 1
+            let asset = try XCTUnwrap(HomeStopEmblem.assetName(for: stop.id),
+                                      "Every configured stop needs a pencil-and-ink Home illustration")
+            sketchStops += 1
             let image = try XCTUnwrap(UIImage(named: asset), "Missing Home illustration for \(stop.name)")
             XCTAssertEqual(image.size.width, image.size.height, accuracy: 1,
                            "Circular artwork must not be stretched by the Home layout")
         }
-        XCTAssertGreaterThanOrEqual(engravedStops, 4)
+        XCTAssertEqual(sketchStops, HistoricalStop.previewStops.count)
         for asset in ["home-river-crest-mask", "home-river-bank-mask"] {
             XCTAssertNotNil(UIImage(named: asset), "Missing decorative edge mask")
         }

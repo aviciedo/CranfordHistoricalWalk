@@ -255,6 +255,24 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertNotNil(tour.activities[stops[0].id].visitedAt)
     }
 
+    func testHomeArtworkDestinationFollowsEveryConfirmedVisit() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.performHomeWalkAction()
+        for index in stops.indices {
+            XCTAssertEqual(tour.homeFeaturedStop?.id, stops[index].id)
+            confirmArrival(tour)
+            let expected = stops[min(index + 1, stops.count - 1)].id
+            XCTAssertEqual(tour.homeFeaturedStop?.id, expected,
+                           "Artwork should preview the next stop immediately after logging the visit")
+            XCTAssertEqual(tour.currentStop?.id, stops[index].id,
+                           "Home preview alone must not change routing")
+            if index + 1 < stops.count {
+                tour.performHomeWalkAction()
+                XCTAssertEqual(tour.currentStop?.id, expected)
+            }
+        }
+    }
+
     func testHomeNextLegPreviewSurvivesPausedRelaunchAndContinueMatchesIllustration() async {
         let storage = InMemoryWalkResumeStore()
         func model() async -> TourViewModel {

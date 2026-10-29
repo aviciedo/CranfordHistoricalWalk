@@ -1,3 +1,9 @@
+## Build 98 — pencil-and-ink Home artwork
+
+Home uses unpainted pencil-and-ink circular artwork for the next tour stop, matching the approved Mill mockup. Confirmed visits immediately preview the next illustration through the existing homeFeaturedStop state. Sketchbook watercolor artwork remains unchanged. The Hotel retains its existing simplified silhouette, interpreted as linework.
+
+Validation: 113 model-flow tests passed, including confirmed-visit artwork progression across every stop; Swift syntax checks passed. Native visual verification remains pending.
+
 ## Build 97 — Stop walk
 
 The active Map panel now offers Stop walk. It cancels guidance, removes the destination route and turn banner, and stays on Map with Resume walk available. Saved progress, visits, sketches and the walked trail are preserved.

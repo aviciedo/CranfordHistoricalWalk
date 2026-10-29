@@ -1,3 +1,11 @@
+## Build 98 — approved pencil-and-ink Home circles
+
+Source: docs/design/home-pencil-ink-approved.png. Replace only Home circle artwork, keeping existing native layout, colors, river edges and actions. Individual unpainted circular pencil-and-ink assets cover all five stops; Mill and Greystone derive from their sketchbook illustrations, River/Church from existing landmark art, Hotel preserves its simplified existing fallback silhouette. Sketchbook watercolor resources and other map/stops illustrations are unchanged.
+
+113 portable model tests passed, including every confirmed visit previewing the next Home destination without silently changing routing. Swift syntax parse passed. Native bundle tests now require every configured stop to have square Home artwork.
+
+Final result: blocked — iOS rendering, bundle tests and pixel comparison require Xcode/Simulator, unavailable on this Linux host. Individual generated artwork is inspected directly; this is not native screenshot verification.
+
 ## Build 97 — Stop walk
 
 Added a visible 44-point Stop walk action beneath the Map exploration buttons. Stops active guidance, cancels route tasks, clears destination geometry and instructions, and preserves itinerary/activity/trail state. Resume uses the existing startTour flow.

@@ -165,39 +165,30 @@ struct HomeLandingLayout: Layout {
     }
 }
 
-/// Stop-specific circular engraving; no route coordinates or saved progress live here.
+/// Stop-specific pencil-and-ink circle; no route coordinates or saved progress live here.
 struct HomeStopEmblem: View {
     let stopID: String
 
     static func assetName(for stopID: String) -> String? {
         switch stopID {
-        case "hpab-001": return "home-emblem-mill"
-        case "hpab-002": return "home-emblem-greystone"
-        case "hpab-003": return "home-emblem-river"
-        case "hpab-004": return "home-emblem-church"
+        case "hpab-001": return "home-sketch-mill"
+        case "hpab-002": return "home-sketch-greystone"
+        case "hpab-003": return "home-sketch-river"
+        case "hpab-004": return "home-sketch-church"
+        case "hpab-005": return "home-sketch-hotel"
         default: return nil
-        }
-    }
-
-    private var insetFraction: CGFloat {
-        switch stopID {
-        case "hpab-002": return 0.006
-        case "hpab-003": return 0.03
-        case "hpab-004": return 0.04
-        default: return 0
         }
     }
 
     var body: some View {
         GeometryReader { viewport in
             ZStack {
-                // A fine ivory rim separates green engraving from the blue river.
+                // A fine ivory rim separates ink drawing from the blue river.
                 Circle().fill(AppTheme.ivory).padding(viewport.size.width * 0.034)
                 if let asset = Self.assetName(for: stopID) {
                     Image(asset).renderingMode(.original).resizable().scaledToFit()
-                        .padding(viewport.size.width * insetFraction)
                 } else {
-                    // Preserve the existing Hotel illustration until reference art is supplied.
+                    // Unknown catalog entries retain their existing illustration fallback.
                     StopListIllustration(stopID: stopID)
                         .saturation(0).colorMultiply(AppTheme.forest)
                         .padding(24)
