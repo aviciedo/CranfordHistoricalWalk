@@ -56,7 +56,7 @@ struct ARTourView: View {
             if phase != .active { motionManager.stopDeviceMotionUpdates() }
             else if model != nil && !isLeavingAR { beginPhoneOrientationMonitoring() }
         }
-        .onChange(of: tour.pendingPassportStampStopID) { _, id in
+        .onChange(of: tour.pendingSketchStopID) { _, id in
             if id != nil {
                 model?.isShowingSignDetails = false
                 returnToMap()
@@ -252,7 +252,7 @@ struct ARHUDView: View {
         if model.tour.phase == .complete && model.tour.arStop == nil {
             VStack(alignment: .leading, spacing: 14) {
                 Text("Walk complete").font(.system(.title2, design: .serif).weight(.semibold))
-                Text("You’ve reached the end of your itinerary. Your stories and passport stamps remain available.").font(.subheadline)
+                Text("You’ve reached the end of your itinerary. Your stories and sketchbook discoveries remain available.").font(.subheadline)
                 primaryButton("See your summary", symbol: "checkmark.circle", action: onClose)
             }
             .foregroundStyle(AppTheme.forest).padding(18)
@@ -349,7 +349,7 @@ struct CameraExplanationView: View {
     private var message: String {
         switch state {
         case .requesting:
-            return isPlaqueScanner ? "Allow camera access to recognize the plaque and collect its passport stamp." : "Cranford Historical AR shows walking arrows and historical signs over the live camera. Allow camera access to enter the AR view."
+            return isPlaqueScanner ? "Allow camera access to recognize the plaque and unlock its sketch." : "Cranford Historical AR shows walking arrows and historical signs over the live camera. Allow camera access to enter the AR view."
         case .denied:
             return "Enable the camera for Cranford Historical AR in Settings to use the AR view."
         case .restricted:
@@ -375,7 +375,7 @@ struct PlaqueScannerView: View {
         let isActive: Bool
     }
     private var revealContext: RevealContext {
-        RevealContext(stopID: tour.pendingPassportStampStopID, isActive: scenePhase == .active)
+        RevealContext(stopID: tour.pendingSketchStopID, isActive: scenePhase == .active)
     }
 
     var body: some View {
@@ -406,9 +406,9 @@ struct PlaqueScannerView: View {
                     Spacer()
                 }
             }
-            if let id = tour.pendingPassportStampStopID,
+            if let id = tour.pendingSketchStopID,
                tour.activities[id].plaqueUnlockedAt != nil, let stop = tour.stop(withID: id) {
-                PassportUnlockCelebration(stop: stop, onOpenPassport: { dismiss() })
+                SketchUnlockCelebration(stop: stop, onOpenSketchbook: { dismiss() })
                     .id(id)
                     .zIndex(1)
             }
@@ -427,13 +427,13 @@ struct PlaqueScannerView: View {
         }
         .onDisappear { tour.endARDiscoverySession() }
         .task(id: revealContext) {
-            guard scenePhase == .active, let id = tour.pendingPassportStampStopID,
+            guard scenePhase == .active, let id = tour.pendingSketchStopID,
                   tour.activities[id].plaqueUnlockedAt != nil else { return }
             // Keep the durable award event for the stop host to consume after dismissal.
             // Restart the readable celebration if the app returns from an interruption.
             do { try await Task.sleep(for: .milliseconds(UIAccessibility.isVoiceOverRunning ? 4500 : 2400)) }
             catch { return }
-            guard scenePhase == .active, tour.pendingPassportStampStopID == id else { return }
+            guard scenePhase == .active, tour.pendingSketchStopID == id else { return }
             dismiss()
         }
         .onChange(of: navigation.homeReturnID) { _, _ in
@@ -481,8 +481,8 @@ private struct PlaqueScannerHUD: View {
                         .accessibilityIdentifier("scanner.retry")
                 }
                 .padding(12).background(AppTheme.ivory, in: RoundedRectangle(cornerRadius: 12))
-            } else if model.tour.discovery.hasVerifiedPlaque && model.tour.pendingPassportStampStopID == nil {
-                Text(model.scannerStampResult).font(.subheadline)
+            } else if model.tour.discovery.hasVerifiedPlaque && model.tour.pendingSketchStopID == nil {
+                Text(model.scannerSketchResult).font(.subheadline)
                     .padding(12).background(AppTheme.ivory, in: Capsule())
             }
             Spacer(minLength: 12)
@@ -499,46 +499,38 @@ private struct PlaqueScannerHUD: View {
 }
 
 /// Recognition celebrates the already-saved award; it never creates or consumes one.
-private struct PassportUnlockCelebration: View {
+private struct SketchUnlockCelebration: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
     let stop: HistoricalStop
-    let onOpenPassport: () -> Void
-    @State private var hasStamped = false
+    let onOpenSketchbook: () -> Void
+    @State private var hasRevealedSketch = false
 
     var body: some View {
         ZStack {
             Color(white: 0.18).opacity(0.90).ignoresSafeArea()
             GeometryReader { viewport in
-                let stampSize = min(240.0, max(144.0, viewport.size.height * 0.32))
+                let sketchSize = min(240.0, max(144.0, viewport.size.height * 0.32))
                 ScrollView {
                     VStack(spacing: 24) {
-                        ZStack {
-                            if !reduceMotion {
-                                Circle().stroke(.white.opacity(0.6), lineWidth: 2)
-                                    .frame(width: stampSize, height: stampSize)
-                                    .scaleEffect(hasStamped ? 1.45 : 0.8)
-                                    .opacity(hasStamped ? 0 : 0.7)
-                                    .animation(.easeOut(duration: 0.85), value: hasStamped)
-                                    .accessibilityHidden(true)
-                            }
-                            PassportStampArtwork(stopID: stop.id)
-                                .frame(maxWidth: stampSize)
-                                .scaleEffect(reduceMotion ? 1 : (hasStamped ? 1 : 1.6))
-                                .rotationEffect(.degrees(reduceMotion || hasStamped ? 0 : -14))
-                                .opacity(hasStamped ? 1 : 0)
-                        }
-                        .frame(minHeight: stampSize)
+                        SketchArtwork(stopID: stop.id)
+                            .padding(20)
+                            .frame(maxWidth: sketchSize + 40)
+                            .background { SketchbookPaper() }
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .scaleEffect(reduceMotion ? 1 : (hasRevealedSketch ? 1 : 0.94))
+                            .rotationEffect(.degrees(reduceMotion || hasRevealedSketch ? 0 : -3))
+                            .opacity(hasRevealedSketch ? 1 : 0)
                         VStack(spacing: 10) {
-                            Label("Passport stamp unlocked!", systemImage: "checkmark.seal.fill")
+                            Label("Sketch unlocked!", systemImage: "checkmark.circle.fill")
                                 .font(.system(.title, design: .serif).weight(.semibold))
                                 .accessibilityAddTraits(.isHeader)
                             Text(stop.name).font(.title3)
-                            Text("A new discovery for your passport.").font(.body)
+                            Text("Added to your sketchbook.").font(.body)
                         }
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
-                        Button("Open passport", action: onOpenPassport)
+                        Button("Open sketchbook", action: onOpenSketchbook)
                             .font(.headline).frame(minHeight: 48)
                             .padding(.horizontal, 24)
                             .foregroundStyle(AppTheme.forest)
@@ -553,17 +545,17 @@ private struct PassportUnlockCelebration: View {
         }
         .foregroundStyle(.white)
         .accessibilityAddTraits(.isModal)
-        .accessibilityIdentifier("scanner.passportUnlock")
+        .accessibilityIdentifier("scanner.sketchUnlock")
         .task(id: scenePhase) {
-            guard scenePhase == .active, !hasStamped else { return }
+            guard scenePhase == .active, !hasRevealedSketch else { return }
             do { try await Task.sleep(for: .milliseconds(120)) }
             catch { return }
-            withAnimation(reduceMotion ? .easeIn(duration: 0.2) : .spring(response: 0.5, dampingFraction: 0.6)) {
-                hasStamped = true
+            withAnimation(.easeOut(duration: reduceMotion ? 0.2 : 0.7)) {
+                hasRevealedSketch = true
             }
             UINotificationFeedbackGenerator().notificationOccurred(.success)
             UIAccessibility.post(notification: .announcement,
-                                 argument: "Passport stamp unlocked. \(stop.name). Opening your passport.")
+                                 argument: "Sketch unlocked. \(stop.name). Opening your sketchbook.")
         }
     }
 }

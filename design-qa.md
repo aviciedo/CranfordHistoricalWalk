@@ -1,3 +1,44 @@
+# Build 91 — selected Sunday Fieldbook design
+
+final result: blocked
+
+Source visual truth: /workspace/generated_images/exec-2c09a3a2-d952-48fc-8871-f79b4ee56994.png
+First displayed page concept from the latest ideation set, explicitly selected as option 1.
+Source: 853×1844 pixels, approximately 390×844 logical viewport. Native target is the
+app-owned SwiftUI sketchbook content, with system safe areas retained.
+Implementation screenshot: unavailable (Linux host, no Xcode/Simulator). No density
+normalization, full-view or focused native visual comparison can be completed here.
+
+Implemented components: SketchbookView, SketchbookLeaf, SketchbookPaper, SketchArtwork,
+SketchCollectionRow and SketchUnlockCelebration. User-facing passport/stamp copy is
+replaced throughout Home, tour stops, scanner, accessibility and developer controls.
+Both approved original Mill watercolor and the matching Greystone watercolor are placed
+unframed directly on the cream cloth-bound page. Gray ghosted previews remain locked.
+The recognition ledger, v1 wire format and one-shot reveal event remain compatible.
+
+Fidelity surfaces pending native comparison:
+- Typography: existing native serif title and sans controls/status are retained.
+- Spacing: 24-point header sides, near-edge page, 16-point artwork margins, centered
+  stop/status, arrows and collection count outside leaf. Dynamic Type uses scroll fallback.
+- Colors: forest/ivory app tokens, dedicated cream paper asset, grayscale locked artwork,
+  dark gray recognition overlay. No stamp outlines or perforations remain in the UI.
+- Imagery: original transparent 1536×1024 Mill sketch copied unchanged; matching Greystone
+  also 1536×1024 RGBA; 1024×1536 paper texture fills the page. Full art uses scaledToFit.
+- Copy: Your sketchbook, Sketch unlocked, Sketch added, Added to your sketchbook,
+  Not discovered, and sketches found. No imaginary notes, dates or extra index controls.
+
+Checks: 111 portable model + 233 core tests passed; both Debug/Release Swift syntax checks
+passed, as did whitespace/asset checks. A new native bundle regression test checks all
+configured sketch asset names and alpha-capable artwork; native execution is pending.
+
+Implementation checklist for native acceptance:
+1. Capture unlocked Mill and Greystone, locked leaf, tour-stop row and recognition overlay.
+2. Compare against the selected mock at matched phone viewport/density and inspect imagery
+   at full page and 88-point row size, title wrapping and the gutter/corner treatment.
+3. Verify arrow/swipe page curl, Reduced Motion and large text, recognition/reveal/close,
+   app interruption, old saved collection restoration and developer visit-only/full resets.
+No P0/P1/P2 visual findings or visual pass are inferred from source inspection alone.
+
 # Build 90 — selected scalloped stamp design
 
 final result: blocked

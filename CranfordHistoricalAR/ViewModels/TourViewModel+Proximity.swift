@@ -77,7 +77,7 @@ extension TourViewModel {
         if let userLocation { handleLocationForProximity(userLocation) }
     }
 
-    /// Physical visits do not finish stories, collect stamps or change playback.
+    /// Physical visits do not finish stories, collect sketches or change playback.
     func handleLocationForProximity(_ sample: LocationSample) {
         guard sample.coordinate.isValid, StopActivationPolicy.isFresh(sample.timestamp),
               sample.horizontalAccuracy >= 0, sample.horizontalAccuracy <= 100 else { return }
@@ -163,19 +163,19 @@ extension TourViewModel {
         #if DEVELOPER_MENU
         guard isVisitRecordingEnabled else { return }
         #endif
-        let isNewStamp = evidence == .recognizedPlaque && activities[stopID].plaqueUnlockedAt == nil
+        let isNewSketch = evidence == .recognizedPlaque && activities[stopID].plaqueUnlockedAt == nil
         activities.visited(stopID, at: now)
-        if evidence == .recognizedPlaque { activities.collectStamp(at: stopID, date: now) }
+        if evidence == .recognizedPlaque { activities.collectSketch(at: stopID, date: now) }
         activityStore.save(activities)
         visitStore.record(StopVisitRecord(stopID: stopID, activatedAt: now, evidence: evidence))
         visitRecords = visitStore.records()
-        if isNewStamp { pendingPassportStampStopID = stopID }
+        if isNewSketch { pendingSketchStopID = stopID }
     }
 
     /// Every configured plaque uses this one award path. Site differences are catalog data,
     /// never separate bonus screens or stop-specific recognition branches.
     @discardableResult
-    func recognizePassportPlaque(imageName: String?, isTracked: Bool,
+    func recognizeSketchPlaque(imageName: String?, isTracked: Bool,
                                  trackingReady: Bool, now: Date = Date()) -> StopActivationDecision {
         guard trackingReady else { return .deny(.trackingNotReady) }
         guard selectRecognizedPlaque(imageName: imageName, isTracked: isTracked,
@@ -185,7 +185,7 @@ extension TourViewModel {
         discovery.arrive()
         if !discovery.hasVerifiedPlaque { _ = beginPlaqueDiscovery() }
         confirmPlaqueArrival(for: stop.id)
-        // Saves the stamp before queuing the shared scanner celebration and passport reveal.
+        // Saves the sketch before queuing the shared scanner celebration and sketchbook reveal.
         return activateCurrentStop(stopID: stop.id, trackingReady: trackingReady,
                                    plaqueIsTracked: isTracked, now: now)
     }
@@ -295,7 +295,7 @@ extension TourViewModel {
         automaticTransitionProgress = snapshot
     }
 
-    /// Undo changes only the destination. Real visits, stories, stamps and audio survive.
+    /// Undo changes only the destination. Real visits, stories, sketches and audio survive.
     func undoAutomaticTransition() {
         guard let snapshot = automaticTransitionProgress, let previousID = snapshot.currentStopID else { return }
         automaticTransitionFromStopID = nil

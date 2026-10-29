@@ -1,13 +1,13 @@
 import Foundation
 
-/// Independent reading, listening, physical visits and passport stamp collection.
+/// Independent reading, listening, physical visits and sketchbook collection.
 public struct StopActivities: Codable, Equatable, Sendable {
     public var listenedAt: Date?
     public var readAt: Date?
     public var visitedAt: Date?
     public var plaqueUnlockedAt: Date?
     public var learningCompleted: Bool { listenedAt != nil || readAt != nil }
-    // Preserve the v1 on-disk key so existing earned stamps survive the feature cleanup.
+    // Preserve the v1 on-disk key so existing passport stamps become collected sketches.
     private enum CodingKeys: String, CodingKey {
         case listenedAt, readAt, visitedAt
         case plaqueUnlockedAt = "bonusFoundAt"
@@ -28,7 +28,7 @@ public struct StopActivityLedger: Codable, Equatable, Sendable {
     public mutating func visited(_ stopID: String, at date: Date = Date()) {
         var entry = self[stopID]; entry.visitedAt = entry.visitedAt ?? date; entries[stopID] = entry
     }
-    public mutating func collectStamp(at stopID: String, date: Date = Date()) {
+    public mutating func collectSketch(at stopID: String, date: Date = Date()) {
         var entry = self[stopID]; entry.plaqueUnlockedAt = entry.plaqueUnlockedAt ?? date; entries[stopID] = entry
     }
     public mutating func clearVisits() {
@@ -38,7 +38,7 @@ public struct StopActivityLedger: Codable, Equatable, Sendable {
     public mutating func importVisits(_ visits: [StopVisitRecord]) {
         for visit in visits where visit.evidence != .simulation {
             visited(visit.stopID, at: visit.activatedAt)
-            if visit.evidence == .recognizedPlaque { collectStamp(at: visit.stopID, date: visit.activatedAt) }
+            if visit.evidence == .recognizedPlaque { collectSketch(at: visit.stopID, date: visit.activatedAt) }
         }
     }
 }

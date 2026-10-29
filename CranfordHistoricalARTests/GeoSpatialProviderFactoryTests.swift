@@ -12,7 +12,7 @@ final class GeoSpatialProviderFactoryTests: XCTestCase {
         let tour = dependencies.tourViewModel
         await tour.loadStopsIfNeeded()
         // Persisted discoveries/search state must not change the session's purpose.
-        tour.activities.collectStamp(at: "hpab-001")
+        tour.activities.collectSketch(at: "hpab-001")
         let model = ARViewModel(tour: tour, provider: CoreLocationGeoSpatialProvider(),
             imageLoader: dependencies.imageLoader, narrationPlayer: dependencies.narrationPlayer)
         let config = model.makeSessionConfiguration()
@@ -24,7 +24,7 @@ final class GeoSpatialProviderFactoryTests: XCTestCase {
         model.activateMarker()
         XCTAssertFalse(model.isPlaqueScanner, "Walking cannot silently change into plaque scanning")
         XCTAssertFalse(model.isShowingSignDetails)
-        XCTAssertNil(tour.pendingPassportStampStopID)
+        XCTAssertNil(tour.pendingSketchStopID)
     }
 
     func testExplicitScannerSessionRegistersPlaqueImagesWithoutStartingWalk() async {
@@ -38,7 +38,7 @@ final class GeoSpatialProviderFactoryTests: XCTestCase {
         XCTAssertTrue(model.isPlaqueScanner)
         XCTAssertTrue(model.imageTrackingAvailable, "The explicit scanner must retain bundled image recognition")
         let bundledNames = Set(PlaqueAnchorController.loadReferenceImages().compactMap(\.name))
-        let configuredNames = Set(tour.passportStops.compactMap { $0.plaque?.referenceImageName })
+        let configuredNames = Set(tour.sketchbookStops.compactMap { $0.plaque?.referenceImageName })
         XCTAssertFalse(configuredNames.isEmpty)
         XCTAssertTrue(configuredNames.isSubset(of: bundledNames),
                       "Every configured passport stop needs its bundled recognition image")
@@ -49,7 +49,7 @@ final class GeoSpatialProviderFactoryTests: XCTestCase {
         }
         XCTAssertTrue(config.planeDetection.isEmpty)
         XCTAssertEqual(tour.phase, .notStarted)
-        XCTAssertNil(tour.pendingPassportStampStopID, "Opening the scanner does not award a stamp")
+        XCTAssertNil(tour.pendingSketchStopID, "Opening the scanner does not award a stamp")
     }
 
     func testNormalTrackingPlacesChunkySignWithoutGroundOrGeographicLocalization() throws {

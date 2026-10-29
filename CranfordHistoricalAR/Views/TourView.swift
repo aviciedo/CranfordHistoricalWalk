@@ -87,8 +87,8 @@ struct TourView: View {
         #endif
         .fullScreenCover(isPresented: $isShowingAR, onDismiss: {
             // Present the discovered site's story only after AR has fully dismissed.
-            // StopDetail consumes the event and opens its passport above that story.
-            if let id = tour.pendingPassportStampStopID { detailStop = tour.stop(withID: id) }
+            // StopDetail consumes the event and opens its sketchbook above that story.
+            if let id = tour.pendingSketchStopID { detailStop = tour.stop(withID: id) }
         }) { ARTourView() }
         .onChange(of: navigation.pendingStopReturn) { _, _ in restoreStopReturn() }
         .onAppear { restoreStopReturn() }

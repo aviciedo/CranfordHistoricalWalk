@@ -13,28 +13,28 @@ import CoreLocation
 final class TourCompletionFlowTests: XCTestCase {
     func testEveryConfiguredPlaqueUsesTheSamePassportUnlockLifecycle() async {
         let tour = await makeTour(); defer { cleanUp(tour) }
-        let plaqueStops = tour.passportStops
+        let plaqueStops = tour.sketchbookStops
         XCTAssertGreaterThanOrEqual(plaqueStops.count, 2)
         for (index, stop) in plaqueStops.enumerated() {
             let storeDate = Date(timeIntervalSince1970: Double(1000 + index))
             XCTAssertTrue(tour.preparePlaqueScanner(stopID: stop.id))
-            XCTAssertNil(tour.pendingPassportStampStopID)
-            XCTAssertEqual(tour.recognizePassportPlaque(imageName: stop.plaque?.referenceImageName,
+            XCTAssertNil(tour.pendingSketchStopID)
+            XCTAssertEqual(tour.recognizeSketchPlaque(imageName: stop.plaque?.referenceImageName,
                 isTracked: true, trackingReady: true, now: storeDate), .allow(.recognizedPlaque))
             XCTAssertEqual(tour.activities[stop.id].plaqueUnlockedAt, storeDate)
-            XCTAssertEqual(tour.pendingPassportStampStopID, stop.id)
+            XCTAssertEqual(tour.pendingSketchStopID, stop.id)
             // Repeated ARKit updates must neither change the award nor restart celebration.
-            XCTAssertEqual(tour.recognizePassportPlaque(imageName: stop.plaque?.referenceImageName,
+            XCTAssertEqual(tour.recognizeSketchPlaque(imageName: stop.plaque?.referenceImageName,
                 isTracked: true, trackingReady: true), .alreadyActivated)
             XCTAssertEqual(tour.activities[stop.id].plaqueUnlockedAt, storeDate)
             tour.endARDiscoverySession()
-            XCTAssertEqual(tour.takePassportStamp(), stop.id)
-            XCTAssertNil(tour.takePassportStamp())
+            XCTAssertEqual(tour.takeUnlockedSketch(), stop.id)
+            XCTAssertNil(tour.takeUnlockedSketch())
             XCTAssertTrue(tour.preparePlaqueScanner(stopID: stop.id))
-            XCTAssertEqual(tour.recognizePassportPlaque(imageName: stop.plaque?.referenceImageName,
+            XCTAssertEqual(tour.recognizeSketchPlaque(imageName: stop.plaque?.referenceImageName,
                 isTracked: true, trackingReady: true), .alreadyActivated)
-            XCTAssertNil(tour.pendingPassportStampStopID)
-            XCTAssertEqual(tour.passportCollectedCount, index + 1)
+            XCTAssertNil(tour.pendingSketchStopID)
+            XCTAssertEqual(tour.sketchbookCollectedCount, index + 1)
             tour.endARDiscoverySession()
         }
         XCTAssertEqual(tour.phase, .notStarted, "The same camera-only flow applies without a walk")
@@ -42,31 +42,31 @@ final class TourCompletionFlowTests: XCTestCase {
 
     func testSharedPassportRecognitionRejectsUntrackedUnknownAndLimitedImages() async {
         let tour = await makeTour(); defer { cleanUp(tour) }
-        for stop in tour.passportStops {
+        for stop in tour.sketchbookStops {
             XCTAssertTrue(tour.preparePlaqueScanner(stopID: stop.id))
-            XCTAssertEqual(tour.recognizePassportPlaque(imageName: stop.plaque?.referenceImageName,
+            XCTAssertEqual(tour.recognizeSketchPlaque(imageName: stop.plaque?.referenceImageName,
                 isTracked: false, trackingReady: true), .deny(.markerNotReady))
-            XCTAssertEqual(tour.recognizePassportPlaque(imageName: stop.plaque?.referenceImageName,
+            XCTAssertEqual(tour.recognizeSketchPlaque(imageName: stop.plaque?.referenceImageName,
                 isTracked: true, trackingReady: false), .deny(.trackingNotReady))
-            XCTAssertEqual(tour.recognizePassportPlaque(imageName: "unknown",
+            XCTAssertEqual(tour.recognizeSketchPlaque(imageName: "unknown",
                 isTracked: true, trackingReady: true), .deny(.markerNotReady))
             XCTAssertNil(tour.activities[stop.id].plaqueUnlockedAt)
-            XCTAssertNil(tour.pendingPassportStampStopID)
+            XCTAssertNil(tour.pendingSketchStopID)
         }
     }
 
     func testPassportUsesExistingBonusHistoryWithoutReplayingCelebration() async {
         let store = InMemoryStopActivityStore()
         var ledger = StopActivityLedger()
-        ledger.collectStamp(at: stops[0].id)
+        ledger.collectSketch(at: stops[0].id)
         ledger.visited(stops[1].id)
         ledger.read(stops[1].id)
         store.save(ledger)
         let tour = await makeTour(activityStore: store); defer { cleanUp(tour) }
-        XCTAssertEqual(tour.passportStops.map(\.id), [stops[0].id, stops[1].id])
-        XCTAssertEqual(tour.passportCollectedCount, 1, "Visits and reading do not award stamps")
-        XCTAssertNil(tour.pendingPassportStampStopID)
-        XCTAssertNil(tour.takePassportStamp())
+        XCTAssertEqual(tour.sketchbookStops.map(\.id), [stops[0].id, stops[1].id])
+        XCTAssertEqual(tour.sketchbookCollectedCount, 1, "Visits and reading do not award stamps")
+        XCTAssertNil(tour.pendingSketchStopID)
+        XCTAssertNil(tour.takeUnlockedSketch())
         XCTAssertEqual(tour.phase, .notStarted)
     }
 
@@ -76,26 +76,26 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertTrue(tour.preparePlaqueScanner(stopID: stops[1].id))
         tour.confirmPlaqueArrival(for: stops[1].id)
         XCTAssertEqual(tour.activateCurrentStop(stopID: stops[1].id, trackingReady: true, plaqueIsTracked: true), .allow(.recognizedPlaque))
-        XCTAssertEqual(tour.passportCollectedCount, 1)
+        XCTAssertEqual(tour.sketchbookCollectedCount, 1)
         XCTAssertNotNil(store.load()[stops[1].id].plaqueUnlockedAt, "Persist before announcing the stamp")
-        XCTAssertEqual(tour.pendingPassportStampStopID, stops[1].id)
+        XCTAssertEqual(tour.pendingSketchStopID, stops[1].id)
         tour.endARDiscoverySession()
-        XCTAssertEqual(tour.takePassportStamp(), stops[1].id, "Retain event through AR teardown")
-        XCTAssertNil(tour.takePassportStamp(), "Consume only once")
+        XCTAssertEqual(tour.takeUnlockedSketch(), stops[1].id, "Retain event through AR teardown")
+        XCTAssertNil(tour.takeUnlockedSketch(), "Consume only once")
         XCTAssertTrue(tour.preparePlaqueScanner(stopID: stops[1].id))
         tour.confirmPlaqueArrival(for: stops[1].id)
         XCTAssertEqual(tour.activateCurrentStop(stopID: stops[1].id, trackingReady: true, plaqueIsTracked: true), .alreadyActivated)
-        XCTAssertNil(tour.pendingPassportStampStopID)
-        XCTAssertEqual(tour.passportCollectedCount, 1)
+        XCTAssertNil(tour.pendingSketchStopID)
+        XCTAssertEqual(tour.sketchbookCollectedCount, 1)
         tour.endARDiscoverySession()
         XCTAssertEqual(tour.phase, .notStarted, "Plaque discovery alone never starts a walk")
         tour.resetTour()
-        XCTAssertEqual(tour.passportCollectedCount, 1)
+        XCTAssertEqual(tour.sketchbookCollectedCount, 1)
         XCTAssertEqual(tour.phase, .inProgress, "Explicit Start another walk retains the existing restart behavior")
         XCTAssertFalse(tour.activities[stops[1].id].learningCompleted)
         let reloaded = await makeTour(activityStore: store); defer { cleanUp(reloaded) }
-        XCTAssertEqual(reloaded.passportCollectedCount, 1)
-        XCTAssertNil(reloaded.pendingPassportStampStopID, "Relaunch preserves stamps without an unsolicited celebration")
+        XCTAssertEqual(reloaded.sketchbookCollectedCount, 1)
+        XCTAssertNil(reloaded.pendingSketchStopID, "Relaunch preserves stamps without an unsolicited celebration")
     }
 
     func testPracticeAndDisabledRecordingDoNotAwardPassportStamps() async {
@@ -105,16 +105,16 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertTrue(practice.preparePlaqueScanner(stopID: stops[0].id))
         practice.confirmPlaqueArrival(for: stops[0].id)
         XCTAssertEqual(practice.activateCurrentStop(stopID: stops[0].id, trackingReady: true, plaqueIsTracked: true), .allow(.simulation))
-        XCTAssertEqual(practice.passportCollectedCount, 0)
-        XCTAssertNil(practice.pendingPassportStampStopID)
+        XCTAssertEqual(practice.sketchbookCollectedCount, 0)
+        XCTAssertNil(practice.pendingSketchStopID)
         #if DEVELOPER_MENU
         let tour = await makeTour(); defer { cleanUp(tour) }
         tour.isVisitRecordingEnabled = false
         XCTAssertTrue(tour.preparePlaqueScanner(stopID: stops[1].id))
         tour.confirmPlaqueArrival(for: stops[1].id)
         _ = tour.activateCurrentStop(stopID: stops[1].id, trackingReady: true, plaqueIsTracked: true)
-        XCTAssertEqual(tour.passportCollectedCount, 0)
-        XCTAssertNil(tour.pendingPassportStampStopID)
+        XCTAssertEqual(tour.sketchbookCollectedCount, 0)
+        XCTAssertNil(tour.pendingSketchStopID)
         #endif
     }
 
@@ -124,13 +124,13 @@ final class TourCompletionFlowTests: XCTestCase {
         tour.confirmPlaqueArrival(for: stops[0].id)
         _ = tour.activateCurrentStop(stopID: stops[0].id, trackingReady: true, plaqueIsTracked: true)
         #if DEVELOPER_MENU
-        tour.clearRecordedActivitiesAndRestart(includingStoriesAndStamps: false)
-        XCTAssertEqual(tour.passportCollectedCount, 1)
+        tour.clearRecordedActivitiesAndRestart(includingStoriesAndSketches: false)
+        XCTAssertEqual(tour.sketchbookCollectedCount, 1)
         XCTAssertNil(tour.activities[stops[0].id].visitedAt)
-        XCTAssertNil(tour.pendingPassportStampStopID)
-        tour.clearRecordedActivitiesAndRestart(includingStoriesAndStamps: true)
-        XCTAssertEqual(tour.passportCollectedCount, 0)
-        XCTAssertNil(tour.pendingPassportStampStopID)
+        XCTAssertNil(tour.pendingSketchStopID)
+        tour.clearRecordedActivitiesAndRestart(includingStoriesAndSketches: true)
+        XCTAssertEqual(tour.sketchbookCollectedCount, 0)
+        XCTAssertNil(tour.pendingSketchStopID)
         #endif
     }
 
@@ -138,7 +138,7 @@ final class TourCompletionFlowTests: XCTestCase {
         let store = InMemoryStopActivityStore()
         var ledger = StopActivityLedger()
         ledger.visited(stops[0].id)
-        ledger.collectStamp(at: stops[0].id)
+        ledger.collectSketch(at: stops[0].id)
         store.save(ledger)
         let tour = await makeTour(activityStore: store); defer { cleanUp(tour) }
         tour.startTour()
@@ -720,7 +720,7 @@ final class TourCompletionFlowTests: XCTestCase {
         let title = "Start walk: \(stops[0].name)"
         XCTAssertEqual(tour.walkActionTitle, title)
         tour.finishListening(for: stops[1].id)
-        tour.activities.collectStamp(at: stops[1].id)
+        tour.activities.collectSketch(at: stops[1].id)
         tour.activities.visited(stops[0].id) // A prior walk must not suppress this walk's start.
         tour.startTour()
         XCTAssertTrue(tour.isHeadingToFirstStop)
@@ -739,7 +739,7 @@ final class TourCompletionFlowTests: XCTestCase {
 
     #if DEVELOPER_MENU
     func testDeveloperHistoryResetRequiresStartThenResumesDestinationAcrossRelaunch() async {
-        for includingStoriesAndStamps in [false, true] {
+        for includingStoriesAndSketches in [false, true] {
             let walks = InMemoryWalkResumeStore()
             let activities = InMemoryStopActivityStore()
             let visits = InMemoryStopVisitStore()
@@ -754,7 +754,7 @@ final class TourCompletionFlowTests: XCTestCase {
             tour.startTour()
             tour.completeCurrentStopAndAdvance()
             XCTAssertNotNil(walks.load())
-            tour.clearRecordedActivitiesAndRestart(includingStoriesAndStamps: includingStoriesAndStamps)
+            tour.clearRecordedActivitiesAndRestart(includingStoriesAndSketches: includingStoriesAndSketches)
             XCTAssertEqual(tour.phase, .notStarted)
             XCTAssertEqual(tour.homeWalkActionTitle, "Start walk")
             XCTAssertNil(tour.currentStop, "An unstarted walk has no active destination")
@@ -796,7 +796,7 @@ final class TourCompletionFlowTests: XCTestCase {
         tour.finishStory(for: stops[1].id)
         tour.startTour()
         tour.completeCurrentStopAndAdvance()
-        tour.clearRecordedActivitiesAndRestart(includingStoriesAndStamps: false)
+        tour.clearRecordedActivitiesAndRestart(includingStoriesAndSketches: false)
         XCTAssertTrue(visits.records().isEmpty)
         XCTAssertNil(tour.activities[stops[1].id].visitedAt)
         XCTAssertNotNil(tour.activities[stops[1].id].listenedAt)
@@ -819,7 +819,7 @@ final class TourCompletionFlowTests: XCTestCase {
         tour.completeCurrentStopAndAdvance()
         tour.openStory(for: stops[1].id)
         XCTAssertNotNil(tour.activities[stops[1].id].plaqueUnlockedAt)
-        tour.clearRecordedActivitiesAndRestart(includingStoriesAndStamps: true)
+        tour.clearRecordedActivitiesAndRestart(includingStoriesAndSketches: true)
         XCTAssertTrue(visits.records().isEmpty)
         XCTAssertTrue(tour.visitRecords.isEmpty)
         for stop in stops { XCTAssertEqual(tour.activities[stop.id], StopActivities()) }
@@ -874,7 +874,7 @@ final class TourCompletionFlowTests: XCTestCase {
         let tour = await makeTour(); defer { cleanUp(tour) }
         tour.startTour(); tour.isAutomaticNavigationVisible = true
         tour.finishListening(for: stops[0].id)
-        tour.activities.collectStamp(at: stops[0].id)
+        tour.activities.collectSketch(at: stops[0].id)
         confirmArrival(tour)
         XCTAssertFalse(tour.isCurrentVisitConfirmed)
         XCTAssertEqual(tour.currentStop?.name, "Greystone")
@@ -1084,7 +1084,7 @@ final class TourCompletionFlowTests: XCTestCase {
         tour.startTour()
         tour.progress.markCurrentStopVisited()
         tour.finishListening(for: stops[0].id)
-        tour.activities.collectStamp(at: stops[1].id)
+        tour.activities.collectSketch(at: stops[1].id)
         for _ in 0..<3 { tour.completeCurrentStopAndAdvance() }
         tour.progress.markCurrentStopVisited()
         tour.progress.recordWalked(meters: 123)
@@ -1848,7 +1848,7 @@ final class TourCompletionFlowTests: XCTestCase {
         var ledger = StopActivityLedger()
         ledger.read("park")
         ledger.visited("mill")
-        ledger.collectStamp(at: "mill")
+        ledger.collectSketch(at: "mill")
         store.save(ledger)
         XCTAssertEqual(LocalStopActivityStore(defaults: defaults).load(), ledger)
     }
@@ -1965,7 +1965,7 @@ final class TourCompletionFlowTests: XCTestCase {
 
     func testBonusRestoredAfterReopenRemainsIndependent() async {
         let store = InMemoryStopActivityStore()
-        var ledger = StopActivityLedger(); ledger.collectStamp(at: stops[1].id)
+        var ledger = StopActivityLedger(); ledger.collectSketch(at: stops[1].id)
         store.save(ledger)
         let tour = await makeTour(activityStore: store); defer { cleanUp(tour) }
         XCTAssertTrue(tour.prepareForARFromDetails(stopID: stops[1].id))

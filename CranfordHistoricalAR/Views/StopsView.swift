@@ -62,7 +62,7 @@ struct StopsContent: View {
         .onChange(of: navigation.homeReturnID) { _, _ in detailStop = nil }
     }
 
-    /// The list shows visit status only; passport collection stays on the stop page/passport.
+    /// The list shows visit status only; sketchbook collection stays on the stop page/sketchbook.
     private func statusLabels(for stop: HistoricalStop) -> [String] {
         var labels: [String] = []
         if tour.activities[stop.id].visitedAt != nil || tour.isCompleted(stop) { labels.append("Visited") }

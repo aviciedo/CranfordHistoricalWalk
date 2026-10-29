@@ -41,7 +41,7 @@ final class ARViewModel {
     let isPlaqueScanner: Bool
     private(set) var scannerAttemptStartedAt = Date()
     /// True when world tracking accepted a non-empty `PlaqueAnchors` group. Missing assets
-    /// disable the passport stamp; they never fall back to a GPS-only verification.
+    /// disable the sketchbook discovery; they never fall back to a GPS-only verification.
     private(set) var imageTrackingAvailable = false
     private(set) var placementMode: SignPlacementMode = .hidden
     /// Restrained HUD line while looking for the mill plate.
@@ -73,7 +73,7 @@ final class ARViewModel {
     }
     var destinationName: String? { tour.arStop?.name }
     var distanceText: String {
-        if tour.arStop?.id != tour.currentStop?.id { return "Passport stamp" }
+        if tour.arStop?.id != tour.currentStop?.id { return "Sketch discovery" }
         return tour.hasPlaqueConfirmedArrival ? "At plaque" : tour.remainingDistanceText
     }
     var timeText: String {
@@ -290,7 +290,7 @@ final class ARViewModel {
         }
     }
 
-    // MARK: Plaque recognition and passport collection
+    // MARK: Plaque recognition and sketchbook collection
 
     var discoverySearchHint: String {
         SignPlacementPolicy.discoveryHint(referenceImageName: tour.arStop?.plaque?.referenceImageName)
@@ -305,7 +305,7 @@ final class ARViewModel {
             return
         }
         if tour.isPlaqueDiscoveryStop {
-            // Story is read outside AR. Only the passport unlock is recorded.
+            // Story is read outside AR. Only the sketch unlock is recorded.
             geoAnchors.dismissSign()
             if placementMode != .hidden { placementMode = .hidden }
             if geoAnchors.placementMode != .hidden { geoAnchors.placementMode = .hidden }
@@ -366,14 +366,14 @@ final class ARViewModel {
     /// callbacks never start playback or retarget the walking itinerary.
     private func handleRecognizedPlaque(_ imageAnchor: ARImageAnchor) {
         guard isPlaqueScanner, isSessionRunning else { return }
-        let decision = tour.recognizePassportPlaque(imageName: imageAnchor.referenceImage.name,
+        let decision = tour.recognizeSketchPlaque(imageName: imageAnchor.referenceImage.name,
             isTracked: imageAnchor.isTracked, trackingReady: geoAnchors.isTrackingReady)
         switch decision {
         case .deny: return
         case .allow, .alreadyActivated: break
         }
         // Resolve the recognized site before synchronizing its visual state. The shared
-        // scanner then celebrates the persisted event and its host opens that passport leaf.
+        // scanner then celebrates the persisted event and its host opens that sketchbook leaf.
         if observedStopID != tour.arStop?.id { pushTourStateToAnchors() }
         geoAnchors.plaqueAnchors.observe(imageAnchor)
         geoAnchors.hasActivatedStop = true
@@ -410,12 +410,12 @@ final class ARViewModel {
         return tour.discovery.hasVerifiedPlaque ? "Plaque found" : "Looking for plaque"
     }
 
-    var scannerStampResult: String {
-        if tour.discovery.isPracticeUnlock { return "Practice recognition · Stamp not saved" }
+    var scannerSketchResult: String {
+        if tour.discovery.isPracticeUnlock { return "Practice recognition · Sketch not saved" }
         guard let id = tour.arStop?.id, tour.activities[id].plaqueUnlockedAt != nil else {
-            return "Plaque recognized · Stamp not saved"
+            return "Plaque recognized · Sketch not saved"
         }
-        return "Passport stamp unlocked"
+        return "Sketch unlocked"
     }
 
     func scannerInstruction(at date: Date) -> String {
@@ -423,7 +423,7 @@ final class ARViewModel {
         guard imageTrackingAvailable else { return "Plaque recognition is unavailable. Return to the story or try again." }
         if case .failed = localizationState { return "Scanning stopped. Try again, or return to the story." }
         if tour.discovery.hasVerifiedPlaque {
-            return scannerStampResult
+            return scannerSketchResult
         }
         if date.timeIntervalSince(scannerAttemptStartedAt) >= 12 {
             return "Move closer until the whole plaque is visible. Hold steady, avoid glare and try better light. You can retry or return to the story."
@@ -431,7 +431,7 @@ final class ARViewModel {
         return "Frame the entire plaque and some surrounding wall in good light."
     }
 
-    /// Retry discards camera tracking only; saved learning/visits/stamps and routing survive.
+    /// Retry discards camera tracking only; saved learning/visits/sketches and routing survive.
     func retryPlaqueScanner() {
         guard isPlaqueScanner else { return }
         scannerAttemptStartedAt = Date()

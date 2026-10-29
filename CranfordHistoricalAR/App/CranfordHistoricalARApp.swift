@@ -62,7 +62,7 @@ struct RootView: View {
         .background(AppTheme.ivory.ignoresSafeArea())
         .environment(navigation)
         .tint(AppTheme.accent)
-        .onChange(of: navigation.homeReturnID) { _, _ in tour.pendingPassportStampStopID = nil }
+        .onChange(of: navigation.homeReturnID) { _, _ in tour.pendingSketchStopID = nil }
         .onChange(of: tour.isShowingTour) { _, showing in
             navigation.selectedTab = showing ? .map : .home
         }

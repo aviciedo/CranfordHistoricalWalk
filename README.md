@@ -1,3 +1,29 @@
+## Sunday Fieldbook sketch collection — build 91
+
+Implements selected sketchbook option 1. Home now opens **Your sketchbook**. A real
+on-site plaque unlock adds the corresponding loose pen-and-watercolor sketch, shows a
+gray **Sketch unlocked** celebration, then opens its sketchbook leaf with a gentle
+paint reveal. Closing returns to that tour stop. Its bottom row reads **Sketch added**
+and opens that sketch. Locked rows/pages show a faded preview and explain how to find
+the plaque. Both Mill and Greystone have matching transparent artwork.
+
+The cream page uses a dedicated subtly worn paper image with a green cloth gutter,
+faint creases and turned corner. Physical page curls, arrow controls, Reduce Motion,
+VoiceOver, explicit plaque-only recognition and saved activity/reset semantics remain.
+No stamp frame or old stamp artwork is used in the sketchbook UI. Approved Mill artwork
+is copied unchanged; this update does not change Home/Map landmark illustrations.
+
+Existing discoveries use the same plaqueUnlockedAt field and original v1 JSON key
+bonusFoundAt. No data rewrite is needed and saved passport discoveries become sketches
+without another award animation. Internal APIs and user-facing labels now use sketchbook
+terminology; activity files retain their original compatible schema.
+
+Validation: 111 actual-model tests and 233 TourCore tests passed; Debug/Release syntax
+parsing passed. PNG dimensions and transparent artwork were checked. A native bundle test
+was added for every configured sketch and paper asset; it requires Xcode to execute.
+Native Apple typechecking, screen capture, visual fidelity, page-curl and device camera
+validation are pending on this Linux host. Build 91 is not published.
+
 ## Vintage scalloped passport frame — build 90
 
 Implements selected proposal 1: warm ivory scalloped paper with a fine hunter-green

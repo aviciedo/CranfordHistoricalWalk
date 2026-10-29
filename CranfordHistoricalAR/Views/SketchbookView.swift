@@ -2,35 +2,35 @@ import SwiftUI
 import UIKit
 import TourCore
 
-struct PassportPresentation: Identifiable {
+struct SketchbookPresentation: Identifiable {
     let id = UUID()
     let stopID: String
     let animated: Bool
 }
 
 /// The saved plaque-unlock ledger is the collection. There is no second award store to drift out of sync.
-struct PassportView: View {
+struct SketchbookView: View {
     @Environment(TourViewModel.self) private var tour
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let initialStopID: String
-    var animatedStampStopID: String? = nil
+    var animatedSketchStopID: String? = nil
     @State private var pageIndex = 0
     @State private var hasSelectedInitialPage = false
-    @State private var hasStamped = false
+    @State private var hasRevealedSketch = false
 
-    private var stops: [HistoricalStop] { tour.passportStops }
+    private var stops: [HistoricalStop] { tour.sketchbookStops }
     private var currentPageIndex: Int {
         hasSelectedInitialPage ? min(pageIndex, max(0, stops.count - 1)) : (stops.firstIndex { $0.id == initialStopID } ?? 0)
     }
     private var pageSelection: Binding<Int> {
         Binding(get: { currentPageIndex }, set: { pageIndex = $0; hasSelectedInitialPage = true })
     }
-    private var isAwaitingStamp: Bool {
-        guard let id = animatedStampStopID else { return false }
-        return tour.activities[id].plaqueUnlockedAt != nil && !hasStamped
+    private var isAwaitingSketch: Bool {
+        guard let id = animatedSketchStopID else { return false }
+        return tour.activities[id].plaqueUnlockedAt != nil && !hasRevealedSketch
     }
 
     var body: some View {
@@ -44,29 +44,24 @@ struct PassportView: View {
                         .frame(width: 44, height: 44).background(.white, in: Circle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Close passport")
-                .accessibilityHint("Returns to the previous screen; your stamps stay collected")
-                .accessibilityIdentifier("passport.close")
+                .accessibilityLabel("Close sketchbook")
+                .accessibilityHint("Returns to the previous screen; your sketches stay collected")
+                .accessibilityIdentifier("sketchbook.close")
             }
             .padding(.horizontal, 24).padding(.top, 8)
-            Text("Your passport")
+            Text("Your sketchbook")
                 .font(.system(.largeTitle, design: .serif).weight(.semibold))
                 .accessibilityAddTraits(.isHeader)
                 .padding(.horizontal, 24)
-            if animatedStampStopID != nil && hasStamped {
-                Label("Passport stamp unlocked", systemImage: "checkmark.seal.fill")
-                    .font(.headline).padding(.horizontal, 24)
-                    .accessibilityIdentifier("passport.stampUnlocked")
-            }
             if stops.isEmpty {
-                ContentUnavailableView("No on-site stamps yet", systemImage: "book.closed",
+                ContentUnavailableView("No on-site sketches yet", systemImage: "book.closed",
                                        description: Text("Plaque discoveries will appear here when they become available."))
             } else {
                 GeometryReader { viewport in
                     let pages = stops.map { stop in
-                        AnyView(PassportLeaf(stop: stop,
+                        AnyView(SketchbookLeaf(stop: stop,
                             collected: tour.activities[stop.id].plaqueUnlockedAt != nil,
-                            revealStamp: stop.id != animatedStampStopID || hasStamped,
+                            revealSketch: stop.id != animatedSketchStopID || hasRevealedSketch,
                             reduceMotion: reduceMotion,
                             availableHeight: viewport.size.height)
                             .environment(\.dynamicTypeSize, dynamicTypeSize))
@@ -74,11 +69,11 @@ struct PassportView: View {
                     if reduceMotion {
                         pages[currentPageIndex]
                     } else {
-                        PassportPageCurl(pages: pages, index: pageSelection, enabled: !isAwaitingStamp)
+                        SketchbookPageCurl(pages: pages, index: pageSelection, enabled: !isAwaitingSketch)
                     }
                 }
-                .padding(.horizontal, 12)
-                .accessibilityIdentifier("passport.pages")
+                .padding(.horizontal, 4)
+                .accessibilityIdentifier("sketchbook.pages")
                 pagination
             }
         }
@@ -89,25 +84,25 @@ struct PassportView: View {
         .environment(\.colorScheme, .light)
         .holdsWalkingContext()
         .dismissOnReturnHome()
-        .interactiveDismissDisabled(isAwaitingStamp)
+        .interactiveDismissDisabled(isAwaitingSketch)
         .onAppear { selectInitialPage() }
         .onChange(of: stops.map(\.id)) { _, _ in
             pageIndex = min(pageIndex, max(0, stops.count - 1))
         }
         .task(id: scenePhase) {
-            guard scenePhase == .active, !hasStamped, let id = animatedStampStopID,
+            guard scenePhase == .active, !hasRevealedSketch, let id = animatedSketchStopID,
                   tour.activities[id].plaqueUnlockedAt != nil else { return }
             selectInitialPage()
             do { try await Task.sleep(for: .milliseconds(reduceMotion ? 100 : 350)) }
             catch { return }
-            withAnimation(reduceMotion ? .easeIn(duration: 0.2) : .spring(response: 0.48, dampingFraction: 0.66)) {
-                hasStamped = true
+            withAnimation(.easeOut(duration: reduceMotion ? 0.2 : 0.9)) {
+                hasRevealedSketch = true
             }
             UINotificationFeedbackGenerator().notificationOccurred(.success)
             UIAccessibility.post(notification: .announcement,
-                                 argument: "Passport stamp unlocked. \(tour.stop(withID: id)?.name ?? "Stamp") collected.")
+                                 argument: "Sketch unlocked. \(tour.stop(withID: id)?.name ?? "Sketch") added to your sketchbook.")
         }
-        .accessibilityIdentifier("passport.screen")
+        .accessibilityIdentifier("sketchbook.screen")
     }
 
     private func selectInitialPage() {
@@ -123,13 +118,13 @@ struct PassportView: View {
                 Spacer(minLength: 8)
                 Text("Page \(currentPageIndex + 1) of \(stops.count)")
                     .font(.system(.headline, design: .serif)).monospacedDigit()
-                    .accessibilityIdentifier("passport.pageCount")
+                    .accessibilityIdentifier("sketchbook.pageCount")
                 Spacer(minLength: 8)
                 pageButton("Next page", symbol: "chevron.right", disabled: currentPageIndex >= stops.count - 1) { pageSelection.wrappedValue = currentPageIndex + 1 }
             }
-            Text("\(tour.passportCollectedCount) of \(stops.count) stamps collected")
+            Text("\(tour.sketchbookCollectedCount) of \(stops.count) sketches found")
                 .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
-                .accessibilityIdentifier("passport.collectionCount")
+                .accessibilityIdentifier("sketchbook.collectionCount")
         }
         .padding(.horizontal, 32)
     }
@@ -139,16 +134,16 @@ struct PassportView: View {
             Image(systemName: symbol).font(.title3.weight(.medium))
                 .frame(width: 48, height: 48).background(.white, in: Circle())
         }
-        .buttonStyle(.plain).disabled(disabled || isAwaitingStamp)
+        .buttonStyle(.plain).disabled(disabled || isAwaitingSketch)
         .opacity(disabled ? 0.3 : 1)
         .accessibilityLabel(title)
     }
 }
 
-private struct PassportLeaf: View {
+private struct SketchbookLeaf: View {
     let stop: HistoricalStop
     let collected: Bool
-    let revealStamp: Bool
+    let revealSketch: Bool
     let reduceMotion: Bool
     let availableHeight: CGFloat
     @ScaledMetric(relativeTo: .title) private var titleSize: CGFloat = 28
@@ -157,138 +152,100 @@ private struct PassportLeaf: View {
         ScrollView {
             VStack(spacing: 20) {
                 Spacer(minLength: 24)
-                PassportStampArtwork(stopID: stop.id, isCollected: collected)
-                    .opacity(collected && !revealStamp ? 0 : 1)
-                    .scaleEffect(collected && !revealStamp && !reduceMotion ? 1.45 : 1)
-                    .rotationEffect(.degrees(collected && !revealStamp && !reduceMotion ? -9 : 0))
-                    .padding(.horizontal, 20)
+                SketchArtwork(stopID: stop.id, isCollected: collected)
+                    .opacity(collected && !revealSketch ? 0 : 1)
+                    .mask(alignment: .leading) {
+                        Rectangle().scaleEffect(x: collected && !revealSketch && !reduceMotion ? 0 : 1,
+                                                y: 1, anchor: .leading)
+                    }
+                    .padding(.horizontal, 16)
                 Text(stop.name)
                     .font(.system(size: titleSize, weight: .semibold, design: .serif))
                     .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
                     .accessibilityAddTraits(.isHeader)
                 if collected {
-                    Label("Collected", systemImage: "checkmark.circle.fill")
-                        .font(.system(.title3, design: .serif))
-                        .opacity(revealStamp ? 1 : 0)
+                    Label("Added to your sketchbook", systemImage: "checkmark.circle.fill")
+                        .font(.subheadline)
+                        .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                        .opacity(revealSketch ? 1 : 0)
                 } else {
                     VStack(spacing: 8) {
-                        Label("Not collected", systemImage: "circle")
-                        Text("Find the on-site plaque with AR to add this stamp.")
+                        Label("Not discovered", systemImage: "lock")
+                        Text("Find the on-site plaque with AR to unlock this sketch.")
                             .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
                     }
-                    .multilineTextAlignment(.center)
+                    .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 24)
             }
-            .padding(.horizontal, 8).padding(.vertical, 20)
+            .padding(.leading, 16).padding(.trailing, 8).padding(.vertical, 24)
             .frame(maxWidth: .infinity, minHeight: max(0, availableHeight - 12))
-            .animation(reduceMotion ? .easeIn(duration: 0.2) : .spring(response: 0.48, dampingFraction: 0.66), value: revealStamp)
+            .animation(.easeOut(duration: reduceMotion ? 0.2 : 0.9), value: revealSketch)
         }
         .scrollBounceBehavior(.basedOnSize)
-        // UIKit hosting controllers do not inherit the parent SwiftUI environment.
         .foregroundStyle(AppTheme.forest)
         .environment(\.colorScheme, .light)
-        .background {
-            Image("passport-paper").resizable().scaledToFill()
-                .accessibilityHidden(true)
-        }
-        .background(AppTheme.ivory)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(AppTheme.sand.opacity(0.65), lineWidth: 1))
-        .padding(4)
+        .background { SketchbookPaper() }
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.vertical, 4)
         .shadow(color: AppTheme.forest.opacity(0.12), radius: 3, x: 1, y: 3)
     }
 }
 
-/// One frame for the passport, tour-stop row and recognition celebration. The existing
-/// engraved PNGs stay untouched; a source window excludes only their old postage borders.
-struct PassportStampArtwork: View {
+/// Shared physical paper surface: the green cloth gutter and worn corners are in the asset.
+struct SketchbookPaper: View {
+    var body: some View {
+        Image("sketchbook-paper").resizable()
+            .accessibilityHidden(true)
+    }
+}
+
+/// Original transparent watercolor files, without stamp outlines, frame or image cropping.
+/// A future plaque stop can use its existing tour illustration until its sketch is supplied.
+struct SketchArtwork: View {
     let stopID: String
     var isCollected = true
 
-    private var source: (name: String, window: CGRect)? {
+    static func assetName(for stopID: String) -> String? {
         switch stopID {
-        case "hpab-001":
-            return ("passport-stamp-mill", CGRect(x: 88, y: 131, width: 1308, height: 811))
-        case "hpab-002":
-            return ("passport-stamp-greystone", CGRect(x: 96, y: 129, width: 1293, height: 800))
+        case "hpab-001": return "sketchbook-mill"
+        case "hpab-002": return "sketchbook-greystone"
         default: return nil
         }
     }
 
     var body: some View {
-        GeometryReader { geometry in
-            let size = geometry.size
-            // Opening measured from the reusable frame asset, relative to its paper bounds.
-            let opening = CGRect(x: size.width * 77 / 1466, y: size.height * 70 / 855,
-                                 width: size.width * 1308 / 1466, height: size.height * 704 / 855)
-            ZStack(alignment: .topLeading) {
-                Image("passport-paper").resizable()
-                    .frame(width: opening.width, height: opening.height)
-                    .position(x: opening.midX, y: opening.midY)
-                if let source {
-                    PassportImageWindow(asset: source.name, canvas: CGSize(width: 1484, height: 1060),
-                                        window: source.window)
-                        // Preserve the complete original illustration and its proportions.
-                        .aspectRatio(source.window.width / source.window.height, contentMode: .fit)
-                        .frame(width: opening.width, height: opening.height)
-                        .position(x: opening.midX, y: opening.midY)
-                } else {
-                    // Future plaque stops share the same paper frame before custom art arrives.
-                    Image(systemName: "seal").resizable().scaledToFit()
-                        .foregroundStyle(AppTheme.forest)
-                        .frame(width: opening.height * 0.5, height: opening.height * 0.5)
-                        .position(x: opening.midX, y: opening.midY)
-                }
-                PassportImageWindow(asset: "passport-vintage-frame", canvas: CGSize(width: 1561, height: 1008),
-                                    window: CGRect(x: 49, y: 82, width: 1466, height: 855))
-                    .frame(width: size.width, height: size.height)
+        Group {
+            if let name = Self.assetName(for: stopID) {
+                Image(name).renderingMode(.original).resizable().scaledToFit()
+            } else {
+                StopListIllustration(stopID: stopID)
             }
         }
         .aspectRatio(1.5, contentMode: .fit)
         .saturation(isCollected ? 1 : 0)
-        .opacity(isCollected ? 1 : 0.35)
+        .opacity(isCollected ? 1 : 0.22)
         .accessibilityHidden(true)
     }
 }
 
-/// Displays a source-image rectangle without rewriting, regenerating or stretching the art.
-/// The decorative paper frame can size to its container; illustration callers fix their ratio.
-private struct PassportImageWindow: View {
-    let asset: String
-    let canvas: CGSize
-    let window: CGRect
-
-    var body: some View {
-        GeometryReader { geometry in
-            let sx = geometry.size.width / window.width
-            let sy = geometry.size.height / window.height
-            Image(asset).renderingMode(.original).resizable()
-                .frame(width: canvas.width * sx, height: canvas.height * sy)
-                .offset(x: -window.minX * sx, y: -window.minY * sy)
-                .frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)
-                .clipped()
-        }
-    }
-}
-
-struct PassportStampRow: View {
+struct SketchCollectionRow: View {
     let stop: HistoricalStop
     let isCollected: Bool
     let collectedCount: Int
     let totalCount: Int
     let action: () -> Void
-    @ScaledMetric(relativeTo: .title2) private var stampWidth: CGFloat = 88
+    @ScaledMetric(relativeTo: .title2) private var sketchWidth: CGFloat = 88
 
     var body: some View {
         VStack(spacing: 0) {
             Divider()
             Button(action: action) {
                 HStack(spacing: 12) {
-                    PassportStampArtwork(stopID: stop.id, isCollected: isCollected)
-                        .frame(width: min(stampWidth, 112))
+                    SketchArtwork(stopID: stop.id, isCollected: isCollected)
+                        .frame(width: min(sketchWidth, 112))
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(isCollected ? "Passport stamped" : "Stamp your passport")
+                        Text(isCollected ? "Sketch added" : "Discover this sketch")
                             .font(.system(.title2, design: .serif).weight(.semibold))
                             .fixedSize(horizontal: false, vertical: true)
                         Text(isCollected
@@ -304,19 +261,19 @@ struct PassportStampRow: View {
                 .padding(.vertical, 12).contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityValue(isCollected ? "Collected" : "Not collected")
+            .accessibilityValue(isCollected ? "Sketch added" : "Not discovered")
             .accessibilityHint(isCollected
-                ? "Opens your passport at this collected stamp"
-                : "Opens your passport at this locked stamp. Recognize the on-site plaque with AR to collect it.")
-            .accessibilityIdentifier("stop.passportStamped")
+                ? "Opens your sketchbook at this collected sketch"
+                : "Opens this sketch’s locked page. Recognize the on-site plaque with AR to unlock it.")
+            .accessibilityIdentifier("stop.sketchAdded")
             Divider()
         }
     }
 }
 
-/// Native single-leaf book turning. Controllers are refreshed when a stamp animates,
+/// Native single-leaf book turning. Controllers are refreshed when a sketch appears,
 /// without resetting the page the user is viewing. Arrow taps and swipes share one index.
-private struct PassportPageCurl: UIViewControllerRepresentable {
+private struct SketchbookPageCurl: UIViewControllerRepresentable {
     let pages: [AnyView]
     @Binding var index: Int
     let enabled: Bool
@@ -338,11 +295,11 @@ private struct PassportPageCurl: UIViewControllerRepresentable {
 
     @MainActor
     final class Coordinator: NSObject, UIPageViewControllerDataSource, UIPageViewControllerDelegate {
-        var parent: PassportPageCurl
+        var parent: SketchbookPageCurl
         var controllers: [UIHostingController<AnyView>] = []
         var displayedIndex = 0
         var transitioning = false
-        init(_ parent: PassportPageCurl) { self.parent = parent }
+        init(_ parent: SketchbookPageCurl) { self.parent = parent }
 
         func configure(_ controller: UIPageViewController) {
             if controllers.count != parent.pages.count {

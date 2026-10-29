@@ -7,6 +7,19 @@ import TourCore
 
 @MainActor
 final class MapViewModelTests: XCTestCase {
+    func testEveryPlaqueStopHasItsSketchAndSketchbookPaperInTheAppBundle() throws {
+        let stops = HistoricalStop.previewStops.filter(\.hasPlaqueReference)
+        XCTAssertFalse(stops.isEmpty)
+        for stop in stops {
+            let name = try XCTUnwrap(SketchArtwork.assetName(for: stop.id), stop.name)
+            let image = try XCTUnwrap(UIImage(named: name), "Missing sketch for \(stop.name)")
+            let cgImage = try XCTUnwrap(image.cgImage)
+            XCTAssertFalse([CGImageAlphaInfo.none, .noneSkipFirst, .noneSkipLast].contains(cgImage.alphaInfo),
+                           "Watercolor edges must retain transparency")
+        }
+        XCTAssertNotNil(UIImage(named: "sketchbook-paper"))
+    }
+
     func testLandmarkTextureStaysStableDuringSubpixelCameraUpdates() {
         let icon = StopMapIconView()
         let image = UIGraphicsImageRenderer(size: CGSize(width: 100, height: 80)).image { context in

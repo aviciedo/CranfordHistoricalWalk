@@ -195,12 +195,12 @@ final class DeveloperModeController {
 
     func clearVisitsAndResetTour() {
         (tour.locationService as? SimulatedLocationService)?.stopWalking()
-        tour.clearRecordedActivitiesAndRestart(includingStoriesAndStamps: false)
+        tour.clearRecordedActivitiesAndRestart(includingStoriesAndSketches: false)
     }
 
     func clearAllActivitiesAndResetTour() {
         (tour.locationService as? SimulatedLocationService)?.stopWalking()
-        tour.clearRecordedActivitiesAndRestart(includingStoriesAndStamps: true)
+        tour.clearRecordedActivitiesAndRestart(includingStoriesAndSketches: true)
     }
 
     // MARK: Diagnostics

@@ -140,15 +140,15 @@ final class TourViewModel {
     var activeVisitEvidence: StopVisitEvidence?
     let visitStore: any StopVisitStore
     let activityStore: any StopActivityStore
-    /// One foreground celebration, emitted only after a new real plaque stamp is saved.
+    /// One foreground celebration, emitted only after a new real plaque sketch is saved.
     /// Collection itself is derived from the existing ledger, so old discoveries need no migration.
-    var pendingPassportStampStopID: String?
-    var passportStops: [HistoricalStop] { stops.filter(\.hasPlaqueReference) }
-    var passportCollectedCount: Int { passportStops.filter { activities[$0.id].plaqueUnlockedAt != nil }.count }
-    func takePassportStamp() -> String? {
-        defer { pendingPassportStampStopID = nil }
-        guard let id = pendingPassportStampStopID,
-              passportStops.contains(where: { $0.id == id }), activities[id].plaqueUnlockedAt != nil else { return nil }
+    var pendingSketchStopID: String?
+    var sketchbookStops: [HistoricalStop] { stops.filter(\.hasPlaqueReference) }
+    var sketchbookCollectedCount: Int { sketchbookStops.filter { activities[$0.id].plaqueUnlockedAt != nil }.count }
+    func takeUnlockedSketch() -> String? {
+        defer { pendingSketchStopID = nil }
+        guard let id = pendingSketchStopID,
+              sketchbookStops.contains(where: { $0.id == id }), activities[id].plaqueUnlockedAt != nil else { return nil }
         return id
     }
     var activities: StopActivityLedger
@@ -246,7 +246,7 @@ final class TourViewModel {
         stops.first.map { "Start walk: \($0.name)" } ?? "Start walk"
     }
 
-    /// Only this walk's arrival matters; saved story/stamp progress never changes its wording.
+    /// Only this walk's arrival matters; saved story/sketch progress never changes its wording.
     var isHeadingToFirstStop: Bool {
         phase == .inProgress && currentStop?.id == stops.first?.id
             && heldDepartureStopID != currentStop?.id
@@ -402,11 +402,11 @@ final class TourViewModel {
 
     #if DEVELOPER_MENU
     /// Visit-only and full testing resets are explicit, separate operations.
-    func clearRecordedActivitiesAndRestart(includingStoriesAndStamps: Bool) {
+    func clearRecordedActivitiesAndRestart(includingStoriesAndSketches: Bool) {
         visitStore.removeAll()
         visitRecords = visitStore.records()
-        pendingPassportStampStopID = nil
-        if includingStoriesAndStamps { activities = StopActivityLedger() }
+        pendingSketchStopID = nil
+        if includingStoriesAndSketches { activities = StopActivityLedger() }
         else { activities.clearVisits() }
         activityStore.save(activities)
         resetTour(startImmediately: false)

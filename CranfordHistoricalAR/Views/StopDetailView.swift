@@ -13,7 +13,7 @@ struct StopDetailView: View {
     // A scanner can identify another supported plaque. Return to that site's actual story.
     @State private var discoveredStop: HistoricalStop?
     private var stop: HistoricalStop { discoveredStop ?? initialStop }
-    @State private var passportPresentation: PassportPresentation?
+    @State private var sketchbookPresentation: SketchbookPresentation?
     @State private var isShowingScanner = false
     @State private var scannerHasPresented = false
     @State private var isStopDetailsExpanded = true
@@ -24,7 +24,7 @@ struct StopDetailView: View {
     private var hasStoryScript: Bool { !script.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     private func openPlaqueActivity() {
         if tour.activities[stop.id].plaqueUnlockedAt != nil {
-            passportPresentation = PassportPresentation(stopID: stop.id, animated: false)
+            sketchbookPresentation = SketchbookPresentation(stopID: stop.id, animated: false)
             return
         }
         guard tour.preparePlaqueScanner(stopID: stop.id) else { return }
@@ -46,17 +46,17 @@ struct StopDetailView: View {
             .background(AppTheme.ivory.ignoresSafeArea()).foregroundStyle(AppTheme.forest)
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(isPresented: $isShowingStory) { StopStoryReader(stop: stop) }
-            .fullScreenCover(isPresented: $isShowingScanner, onDismiss: { scannerHasPresented = false; revealNewStamp() }) { PlaqueScannerView(stopID: stop.id) }
-            .fullScreenCover(item: $passportPresentation) { presentation in
-                PassportView(initialStopID: presentation.stopID, animatedStampStopID: presentation.animated ? presentation.stopID : nil)
+            .fullScreenCover(isPresented: $isShowingScanner, onDismiss: { scannerHasPresented = false; revealNewSketch() }) { PlaqueScannerView(stopID: stop.id) }
+            .fullScreenCover(item: $sketchbookPresentation) { presentation in
+                SketchbookView(initialStopID: presentation.stopID, animatedSketchStopID: presentation.animated ? presentation.stopID : nil)
             }
-            .onAppear { tour.openStory(for: stop.id); if !scannerHasPresented { revealNewStamp() } }
+            .onAppear { tour.openStory(for: stop.id); if !scannerHasPresented { revealNewSketch() } }
         }
         .onChange(of: navigation.homeReturnID) { _, _ in
-            tour.pendingPassportStampStopID = nil
+            tour.pendingSketchStopID = nil
             isShowingScanner = false
             isShowingStory = false
-            passportPresentation = nil
+            sketchbookPresentation = nil
         }
         .onChange(of: stop.id) { _, _ in
             isStopDetailsExpanded = true
@@ -67,11 +67,11 @@ struct StopDetailView: View {
         .environment(\.colorScheme, .light)
     }
 
-    private func revealNewStamp() {
-        guard !isShowingScanner, passportPresentation == nil,
-              let id = tour.takePassportStamp(), let found = tour.stop(withID: id) else { return }
+    private func revealNewSketch() {
+        guard !isShowingScanner, sketchbookPresentation == nil,
+              let id = tour.takeUnlockedSketch(), let found = tour.stop(withID: id) else { return }
         discoveredStop = found
-        passportPresentation = PassportPresentation(stopID: id, animated: true)
+        sketchbookPresentation = SketchbookPresentation(stopID: id, animated: true)
     }
 
     private var returnControl: some View {
@@ -84,7 +84,7 @@ struct StopDetailView: View {
             VStack(alignment: .leading, spacing: 24) {
                 VStack(alignment: .leading, spacing: 16) {
                     StopPhotoGallery(stop: stop, height: galleryHeight,
-                                     isObscured: isShowingScanner || passportPresentation != nil)
+                                     isObscured: isShowingScanner || sketchbookPresentation != nil)
                     VStack(alignment: .leading, spacing: 8) {
                         Text(stop.name)
                             .font(.system(.largeTitle, design: .serif).weight(.semibold))
@@ -117,7 +117,7 @@ struct StopDetailView: View {
                                         HStack(spacing: 12) {
                                             Image(systemName: "camera")
                                                 .font(.title2)
-                                            Text(tour.activities[stop.id].plaqueUnlockedAt == nil ? "Find on-site plaque with AR" : "View passport stamp")
+                                            Text(tour.activities[stop.id].plaqueUnlockedAt == nil ? "Find on-site plaque with AR" : "View sketch")
                                                 .font(.headline)
                                                 .fixedSize(horizontal: false, vertical: true)
                                         }
@@ -168,11 +168,11 @@ struct StopDetailView: View {
                     }
                 }
                 if stop.hasPlaqueReference {
-                    PassportStampRow(stop: stop,
+                    SketchCollectionRow(stop: stop,
                                      isCollected: tour.activities[stop.id].plaqueUnlockedAt != nil,
-                                     collectedCount: tour.passportCollectedCount,
-                                     totalCount: tour.passportStops.count) {
-                        passportPresentation = PassportPresentation(stopID: stop.id, animated: false)
+                                     collectedCount: tour.sketchbookCollectedCount,
+                                     totalCount: tour.sketchbookStops.count) {
+                        sketchbookPresentation = SketchbookPresentation(stopID: stop.id, animated: false)
                     }
                 }
             }

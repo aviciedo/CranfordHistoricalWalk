@@ -6,7 +6,7 @@ struct HomeView: View {
     @Environment(TourViewModel.self) private var tour
     @Environment(AppNavigation.self) private var navigation
     @State private var isShowingDeveloperControls = false
-    @State private var isShowingPassport = false
+    @State private var isShowingSketchbook = false
     @ScaledMetric(relativeTo: .largeTitle) private var titleSize: CGFloat = 48
 
     var body: some View {
@@ -23,8 +23,8 @@ struct HomeView: View {
             .scrollBounceBehavior(.basedOnSize, axes: .vertical)
         }
         .background(AppTheme.ivory.ignoresSafeArea()).foregroundStyle(AppTheme.forest)
-        .fullScreenCover(isPresented: $isShowingPassport) { PassportView(initialStopID: tour.passportStops.first?.id ?? "") }
-        .onChange(of: navigation.homeReturnID) { _, _ in isShowingPassport = false }
+        .fullScreenCover(isPresented: $isShowingSketchbook) { SketchbookView(initialStopID: tour.sketchbookStops.first?.id ?? "") }
+        .onChange(of: navigation.homeReturnID) { _, _ in isShowingSketchbook = false }
         .task {
             if tour.isWalkingActive && tour.locationAuthorization == .authorized { tour.startLocationIfPossible() }
         }
@@ -110,11 +110,11 @@ struct HomeView: View {
                 .accessibilityHint("Listen, read and view photographs without starting a walk or enabling location")
                 .accessibilityIdentifier("home.exploreStops")
                 Divider()
-                if !tour.passportStops.isEmpty {
-                    Button { isShowingPassport = true } label: {
-                        AppMenuRowLabel(title: "Your passport", symbol: "book.closed")
+                if !tour.sketchbookStops.isEmpty {
+                    Button { isShowingSketchbook = true } label: {
+                        AppMenuRowLabel(title: "Your sketchbook", symbol: "book.closed")
                     }
-                    .buttonStyle(.plain).accessibilityIdentifier("home.passport")
+                    .buttonStyle(.plain).accessibilityIdentifier("home.sketchbook")
                     Divider()
                 }
             }
