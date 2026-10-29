@@ -9,15 +9,48 @@ public enum ARChevronGeometry {
         public var indices: [UInt32]
     }
 
-    public static let bodyDepth: Float = 0.42
+    public static let bodyDepth: Float = 0.25
     public static let groupSpacing: Float = 1.36
 
-    public static let outline: [SIMD2<Float>] = [
-        [-0.58, 0.82], [-0.16, 1.02], [0.66, 0],
-        [-0.16, -1.02], [-0.58, -0.82], [-0.06, 0]
-    ]
-    // Positive-Z front winding, including the concave inner corner.
-    public static let frontIndices: [UInt32] = [5, 1, 0, 5, 2, 1, 5, 3, 2, 5, 4, 3]
+    /// Small corner chamfers give original geometry a substantial, softened silhouette.
+    public static let outline: [SIMD2<Float>] = {
+        let corners: [SIMD2<Float>] = [
+            [-0.58, 0.82], [-0.16, 1.02], [0.70, 0],
+            [-0.16, -1.02], [-0.58, -0.82], [-0.06, 0]
+        ]
+        return corners.indices.flatMap { i -> [SIMD2<Float>] in
+            let p = corners[i], before = corners[(i + corners.count - 1) % corners.count], after = corners[(i + 1) % corners.count]
+            func clipped(_ other: SIMD2<Float>) -> SIMD2<Float> {
+                let d = other - p, length = sqrt(d.x * d.x + d.y * d.y)
+                return p + d * min(0.09, 0.045 / length)
+            }
+            return [clipped(before), clipped(after)]
+        }
+    }()
+    public static let frontIndices: [UInt32] = {
+        var polygon = Array(outline.indices.reversed()), triangles: [UInt32] = []
+        func cross(_ a: SIMD2<Float>, _ b: SIMD2<Float>, _ c: SIMD2<Float>) -> Float {
+            (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
+        }
+        while polygon.count > 3 {
+            var found = false
+            for i in polygon.indices {
+                let a = polygon[(i + polygon.count - 1) % polygon.count], b = polygon[i], c = polygon[(i + 1) % polygon.count]
+                guard cross(outline[a], outline[b], outline[c]) > 0.000001 else { continue }
+                let contains = polygon.contains { p in
+                    p != a && p != b && p != c
+                        && cross(outline[a], outline[b], outline[p]) >= -0.000001
+                        && cross(outline[b], outline[c], outline[p]) >= -0.000001
+                        && cross(outline[c], outline[a], outline[p]) >= -0.000001
+                }
+                if contains { continue }
+                triangles += [UInt32(a), UInt32(b), UInt32(c)]
+                polygon.remove(at: i); found = true; break
+            }
+            guard found else { return [] }
+        }
+        return triangles + polygon.map(UInt32.init)
+    }()
 
     public static func front() -> Mesh {
         Mesh(positions: outline.map { [$0.x, $0.y, 0] },
@@ -30,7 +63,7 @@ public enum ARChevronGeometry {
         mesh.positions += outline.map { [$0.x, $0.y, -depth] }
         mesh.normals += Array(repeating: [0, 0, -1], count: outline.count)
         for i in stride(from: 0, to: frontIndices.count, by: 3) {
-            mesh.indices += [frontIndices[i] + 6, frontIndices[i + 2] + 6, frontIndices[i + 1] + 6]
+            mesh.indices += [frontIndices[i] + UInt32(outline.count), frontIndices[i + 2] + UInt32(outline.count), frontIndices[i + 1] + UInt32(outline.count)]
         }
         for i in outline.indices {
             let a = outline[i], b = outline[(i + 1) % outline.count]

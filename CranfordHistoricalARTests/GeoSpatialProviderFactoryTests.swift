@@ -52,31 +52,34 @@ final class GeoSpatialProviderFactoryTests: XCTestCase {
         XCTAssertNil(tour.pendingSketchStopID, "Opening the scanner does not award a stamp")
     }
 
-    func testNormalTrackingPlacesChunkySignWithoutGroundOrGeographicLocalization() throws {
+    func testNormalTrackingWithoutGeographicAlignmentDoesNotInventStreetArrows() {
         let manager = GeoAnchorManager(provider: CoreLocationGeoSpatialProvider(hasCompass: false))
         manager.setNavigationTarget(.init(destination: .init(latitude: 40.65, longitude: -74.30),
             bearingToWaypoint: 90, anchorCoordinate: nil, turnCue: nil))
-        manager.updateNavigationPose(cameraTransform: matrix_identity_float4x4, trackingState: .normal, timestamp: 1)
-        XCTAssertFalse(manager.hasDetectedGround)
-        XCTAssertFalse(manager.localizationState.isUsable)
-        XCTAssertTrue(manager.hasPlacedNavigation)
-        let position = try XCTUnwrap(manager.anchors.arrows.guidancePosition)
-        XCTAssertEqual(position.z, -8, accuracy: 0.01)
-        let bounds = manager.anchors.arrows.visualBounds(relativeTo: nil)
-        XCTAssertGreaterThan(bounds.extents.x, 1)
-        XCTAssertGreaterThan(bounds.extents.y, 1)
-        XCTAssertGreaterThan(bounds.extents.z, 0.1)
-
-        let turned = simd_float4x4(simd_quatf(angle: .pi / 2, axis: [0, 1, 0]))
-        manager.updateNavigationPose(cameraTransform: turned, trackingState: .normal, timestamp: 2)
-        XCTAssertEqual(manager.anchors.arrows.guidancePosition, position, "Turning the phone must not move the sign")
-        manager.updateNavigationPose(cameraTransform: turned, trackingState: .limited(.insufficientFeatures), timestamp: 3)
+        for time in stride(from: 0.0, through: 3.0, by: 0.1) {
+            manager.updateNavigationPose(cameraTransform: matrix_identity_float4x4, trackingState: .normal, timestamp: time)
+        }
+        XCTAssertFalse(manager.hasPlacedNavigation)
         XCTAssertNil(manager.anchors.arrows.guidancePosition)
-        manager.updateNavigationPose(cameraTransform: turned, trackingState: .normal, timestamp: 4)
-        XCTAssertEqual(manager.anchors.arrows.guidancePosition, position, "Recovery restores the fixed world anchor")
+        XCTAssertNotNil(manager.navigationNotice)
+    }
 
-        manager.hasActivatedStop = true
-        manager.updateNavigationPose(cameraTransform: turned, trackingState: .normal, timestamp: 5)
+    func testAlignedRoutePoseDoesNotFollowPhoneRotationAndHidesOnTrackingLoss() throws {
+        let provider = SpatialNavigationTestProvider()
+        let manager = GeoAnchorManager(provider: provider)
+        manager.setNavigationTarget(.init(destination: provider.pose!.coordinate,
+            bearingToWaypoint: 0, anchorCoordinate: provider.pose!.coordinate, turnCue: nil,
+            horizontalAccuracy: 3, routeOffset: 0))
+        for time in stride(from: 0.0, through: 2.1, by: 0.1) {
+            manager.updateNavigationPose(cameraTransform: matrix_identity_float4x4, trackingState: .normal, timestamp: time)
+        }
+        let position = try XCTUnwrap(manager.anchors.arrows.guidancePosition)
+        XCTAssertTrue(manager.hasPlacedNavigation)
+        XCTAssertEqual(position.z, -7, accuracy: 0.01)
+        let turned = simd_float4x4(simd_quatf(angle: .pi, axis: [0, 1, 0]))
+        manager.updateNavigationPose(cameraTransform: turned, trackingState: .normal, timestamp: 2.2)
+        XCTAssertEqual(manager.anchors.arrows.guidancePosition, position)
+        manager.trackingStateDidChange(.limited(.insufficientFeatures))
         XCTAssertNil(manager.anchors.arrows.guidancePosition)
     }
 
@@ -96,8 +99,8 @@ final class GeoSpatialProviderFactoryTests: XCTestCase {
         let arrow = ARNavigationArrowEntity()
         XCTAssertTrue(arrow.canRender, "Body and face meshes must both generate successfully")
         arrow.setVisible(true)
-        arrow.update(ground: [0, -1.4, -8], camera: .zero,
-                     instruction: .init(direction: .left, streetName: "Alden St"), timestamp: 1)
+        arrow.updateSpatial(ground: [0, -1.4, -8], camera: .zero, routeDirection: [0, 0, -1],
+                     instruction: .init(direction: .left, streetName: "Alden St"), segment: 0, timestamp: 1)
         XCTAssertNotNil(arrow.guidancePosition, "A valid first placement must enable the arrow entity")
         arrow.setVisible(false)
         XCTAssertNil(arrow.guidancePosition)
@@ -204,4 +207,23 @@ final class GeoSpatialProviderFactoryTests: XCTestCase {
         configuration.googleARCoreAPIKey = configuration.googleRoutesAPIKey
         XCTAssertTrue(configuration.hasARCoreKey)
     }
+}
+
+@MainActor
+private final class SpatialNavigationTestProvider: GeoSpatialProvider {
+    let displayName = "Deterministic route test"
+    let backend: GeoSpatialBackend = .coreLocation
+    let quality: GeoLocalizationQuality = .good
+    let preferredWorldAlignment: ARConfiguration.WorldAlignment = .gravityAndHeading
+    let fallbackReason: GeoSpatialFallbackReason? = nil
+    let vpsCoverage: VPSCoverage = .unknown
+    var pose: GeoPose? = GeoPose(coordinate: .init(latitude: 40.65, longitude: -74.30),
+        horizontalAccuracy: 3, heading: 0, headingAccuracy: 5, altitude: nil, timestamp: Date())
+    func attach(session: ARSession) {}
+    func detach() {}
+    func update(cameraTransform: simd_float4x4, trackingState: ARCamera.TrackingState, timestamp: TimeInterval) {}
+    func update(frame: ARFrame) {}
+    func update(location: LocationSample?, heading: HeadingSample?) {}
+    func worldPosition(for coordinate: GeoCoordinate, altitude: Double?, heightBelowCamera: Float) -> SIMD3<Float>? { [0, -1.4, -7] }
+    func worldDirection(forBearing bearing: Double) -> SIMD3<Float>? { [0, 0, -1] }
 }

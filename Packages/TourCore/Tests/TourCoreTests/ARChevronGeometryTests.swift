@@ -76,8 +76,9 @@ final class ARChevronGeometryTests: XCTestCase {
         XCTAssertGreaterThan(width, 1.2)
         XCTAssertGreaterThan(ARChevronGeometry.groupSpacing, width,
                              "Adjacent broad faces need a visible gap")
-        XCTAssertGreaterThan(ARChevronGeometry.bodyDepth / width, 0.3,
-                             "The sides should read as a thick block rather than an outline")
+        XCTAssertGreaterThanOrEqual(ARChevronGeometry.bodyDepth / width, 0.15)
+        XCTAssertLessThanOrEqual(ARChevronGeometry.bodyDepth / width, 0.25)
+        XCTAssertEqual(ARChevronGeometry.frontIndices.count, (ARChevronGeometry.outline.count - 2) * 3)
     }
 
     func testDirectionMappingMatchesCameraRelativeRoute() {

@@ -8,6 +8,7 @@ struct ARNavigationArrowView: View {
     var isApproximate: Bool
     var needsGroundScan = false
     var needsOrientation = false
+    var groundIsEstimated = false
     var nextStopName: String? = nil
     var onContinue: (() -> Void)? = nil
 
@@ -38,8 +39,11 @@ struct ARNavigationArrowView: View {
             } else if needsOrientation {
                 Text("Point your phone along the route")
                     .font(.caption).foregroundStyle(.white.opacity(0.85))
+            } else if groundIsEstimated {
+                Text("Ground height is approximate · Follow the mapped path")
+                    .font(.caption).foregroundStyle(.white.opacity(0.85))
             } else if isApproximate {
-                Text("GPS alignment is approximate").font(.caption)
+                Text("Approximate alignment · Follow the mapped path").font(.caption)
                     .foregroundStyle(.white.opacity(0.85))
             }
             if let onContinue {

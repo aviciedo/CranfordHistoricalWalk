@@ -1,3 +1,11 @@
+## Build 101 — route-relative blue-and-white AR navigation
+
+Targeted AR refactor replaces camera-forward/camera-facing walking placement with a stable WGS84/ENU frame, actual polyline previews, pinned route-oriented 3D meshes and confidence-controlled Map fallback. Broad white fronts, blue extruded sides and chamfered corners preserve the requested Live View visual direction; hunter-green controls remain. Tour progression, plaque scanning, permissions and phone-horizontal exit retain their existing owners.
+
+[Engineering handoff](docs/engineering/ar-navigation-101.md) · [Audit/decision](docs/engineering/ar-navigation-audit.md) · [Physical iPhone checklist](docs/engineering/ar-navigation-field-test.md).
+
+Validation: 256 core + 118 model-flow tests passed, plus Debug/Release syntax checks. Native Apple compilation, native integration tests, Instruments and outdoor spatial alignment remain unverified on this Linux host. Not published.
+
 ## Build 100 — three-minute visit timing and early progression
 
 Automatic GPS visits require 180 seconds of reliable time near a stop. Quick arrival detection remains separate; it no longer marks the stop Visited. Only consecutive accurate near-stop intervals count: away time, weak/stale fixes, pauses and signal gaps are excluded. Passive visits to other sites use the same dwell instead of a single GPS fix. Dwell is session-local and is not inferred across an app restart.

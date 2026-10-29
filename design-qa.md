@@ -1,3 +1,11 @@
+## Build 101 — AR engineering verification
+
+Implemented route-relative world placement, stable WGS84/ENU conversion, sensor timestamp matching, confidence hysteresis, conservative corner handling, shared route projection and blue/white chamfered meshes. No generated image is used as a substitute for 3D arrows.
+
+256 TourCore + 118 actual-model portable tests passed. Full native Debug/Release Swift syntax parsing and diff whitespace checks passed. Native tests added for unlocalized fail-closed behavior, mesh rendering and phone-rotation stability.
+
+Final result: blocked — native compilation/rendering, device motion/sensors, outdoor alignment, target screenshot comparison and frame-rate measurement require Xcode/iPhone, unavailable on this host. The complete engineering handoff and field acceptance procedure are in docs/engineering/ar-navigation-101.md and ar-navigation-field-test.md.
+
 ## Build 100 — visit progression behavior
 
 No visual redesign. Added a three-minute accumulated on-site GPS dwell before automatic Visited, with plaque recognition, active narration completion from anywhere, and departure toward the next stop as early-completion triggers. Physical visit history is recorded only with physical evidence; narration alone changes session progress. Existing presentation holds prevent destination changes beneath plaque/sketchbook/story screens.

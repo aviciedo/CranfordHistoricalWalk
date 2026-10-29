@@ -95,7 +95,7 @@ extension TourViewModel {
             return
         }
         if let route = currentRoute {
-            routeProgress = RouteProgressCalculator.progress(along: route, userLocation: sample.coordinate)
+            routeProgress = RouteProgressCalculator.progress(along: route, userLocation: sample.coordinate, previous: routeProgress)
         }
         evaluateRouteRefresh(userLocation: sample.coordinate, destination: destination)
     }

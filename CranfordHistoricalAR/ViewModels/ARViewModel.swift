@@ -65,6 +65,7 @@ final class ARViewModel {
     var localizationState: ARLocalizationState { geoAnchors.localizationState }
     var statusMessage: String? {
         if !isPlaqueScanner, let notice = geoAnchors.navigationNotice { return notice }
+        if !isPlaqueScanner, geoAnchors.spatialMode == .spatial { return nil }
         if placementMode == .plaqueAnchored, geoAnchors.isTrackingReady { return nil }
         if localizationState.isUsable, geoAnchors.provider.backend == .coreLocation {
             return nil // The compact walking footer carries the accuracy notice.
@@ -87,7 +88,7 @@ final class ARViewModel {
         geoAnchors.navigationBearing
     }
 
-    var isGuidanceApproximate: Bool { geoAnchors.provider.backend == .coreLocation || tour.isRouteAnEstimate }
+    var isGuidanceApproximate: Bool { geoAnchors.provider.backend == .coreLocation || tour.isRouteAnEstimate || !geoAnchors.isNavigationGroundVerified }
 
     var walkingCue: ARWalkingGuidance.RouteCue? {
         guard let route = tour.currentRoute, let progress = tour.routeProgress else { return nil }
@@ -252,7 +253,7 @@ final class ARViewModel {
         } else if let signStop = tour.presentedSignStop, imageLoader.cachedImage(for: signStop) == nil, signStop.hasAnyImage {
             loadSignImage(for: signStop)
         }
-        guard !isPlaqueScanner, tour.arStop?.id == tour.currentStop?.id,
+        guard !isPlaqueScanner, tour.isWalkingActive, tour.arStop?.id == tour.currentStop?.id,
               !tour.shouldSuppressWalkingAR, !tour.isRouteAnEstimate,
               tour.currentRoute != nil, let stop = tour.arStop, let user = tour.userLocation,
               StopActivationPolicy.isFresh(user.timestamp), user.horizontalAccuracy.isFinite,
@@ -266,12 +267,20 @@ final class ARViewModel {
             geoAnchors.setNavigationTarget(nil)
             return
         }
+        guard GeoMath.distance(from: route.destination, to: stop.coordinate) < 1 else {
+            geoAnchors.setNavigationTarget(nil); return
+        }
+        let preview = ARRoutePlacementEngine.preview(route: route, progress: progress, speed: user.speed)
         geoAnchors.setNavigationTarget(GeoAnchorManager.NavigationTarget(
             destination: stop.coordinate,
-            bearingToWaypoint: bearing,
-            anchorCoordinate: ARStreetGuidance.routePoint(route: route, progress: progress),
+            bearingToWaypoint: preview?.bearing ?? bearing,
+            anchorCoordinate: preview?.coordinate,
             turnCue: walkingCue,
-            locationTimestamp: user.timestamp
+            locationTimestamp: user.timestamp,
+            horizontalAccuracy: user.isSimulated ? .infinity : user.horizontalAccuracy,
+            routeOffset: progress.distanceFromRoute,
+            segmentIndex: preview?.segmentIndex ?? progress.segmentIndex,
+            routeComputedAt: route.computedAt
         ))
     }
 
@@ -459,6 +468,20 @@ final class ARViewModel {
         }
     }
 
+    /// Foreground recovery preserves the existing world origin; it is not a fresh AR session.
+    func setApplicationActive(_ active: Bool) {
+        guard let arView else { return }
+        if !active {
+            arView.session.pause()
+            isSessionRunning = false
+            geoAnchors.sessionWasInterrupted()
+        } else if !isSessionRunning, availability == .ready {
+            arView.session.run(makeSessionConfiguration())
+            isSessionRunning = true
+            geoAnchors.sessionInterruptionEnded()
+        }
+    }
+
     func trackingStateDidChange(_ state: ARCamera.TrackingState) {
         geoAnchors.trackingStateDidChange(state)
     }
@@ -469,8 +492,11 @@ final class ARViewModel {
 
     func sessionInterruptionEnded() {
         geoAnchors.sessionInterruptionEnded()
-        // Relocalization after an interruption is unreliable outdoors; restart cleanly.
-        if let arView { isSessionRunning = false; runSession(on: arView) }
+        // Preserve ARKit's world origin. Confidence must reacquire before arrows reappear.
+        if !isSessionRunning, availability == .ready, let arView {
+            arView.session.run(makeSessionConfiguration())
+            isSessionRunning = true
+        }
     }
 
     func sessionDidFail(message: String, code: ARError.Code?) {

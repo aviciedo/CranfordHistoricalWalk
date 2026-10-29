@@ -25,7 +25,7 @@ public struct RouteProgress: Hashable, Sendable {
 public enum RouteProgressCalculator {
     /// Projects `userLocation` onto the route. `remainingMeters` is never computed as a straight
     /// line to the destination; it follows the route geometry (spec §5).
-    public static func progress(along route: WalkingRoute, userLocation: GeoCoordinate) -> RouteProgress {
+    public static func progress(along route: WalkingRoute, userLocation: GeoCoordinate, previous: RouteProgress? = nil) -> RouteProgress {
         let points = route.routeCoordinates
         guard points.count >= 2 else {
             let d = GeoMath.distance(from: userLocation, to: route.destination)
@@ -52,10 +52,20 @@ public enum RouteProgressCalculator {
         var best = (segment: 0, point: points[0], fraction: 0.0, distance: Double.greatestFiniteMagnitude)
         for i in 0..<(points.count - 1) {
             let projection = GeoMath.project(userLocation, ontoSegment: points[i], points[i + 1])
-            // Prefer later segments on ties so users do not "snap back" at self-intersections.
-            if projection.distance < best.distance - 0.01 || (abs(projection.distance - best.distance) <= 0.01 && i > best.segment) {
-                best = (i, projection.point, projection.fraction, projection.distance)
+            let choose: Bool
+            if let previous, previous.fractionComplete.isFinite,
+               abs(projection.distance - best.distance) <= 2 {
+                // At a crossing, prefer continuity over a much later equally close segment.
+                let prior = min(1, max(0, previous.fractionComplete)) * total
+                let candidateMeters = cumulative[i] + (cumulative[i + 1] - cumulative[i]) * projection.fraction
+                let bestMeters = cumulative[best.segment] + (cumulative[best.segment + 1] - cumulative[best.segment]) * best.fraction
+                choose = abs(candidateMeters - prior) < abs(bestMeters - prior) - 0.01
+                    || (abs(abs(candidateMeters - prior) - abs(bestMeters - prior)) <= 0.01 && i > best.segment)
+            } else {
+                choose = projection.distance < best.distance - 0.01
+                    || (abs(projection.distance - best.distance) <= 0.01 && i > best.segment)
             }
+            if choose { best = (i, projection.point, projection.fraction, projection.distance) }
         }
 
         let segmentLength = cumulative[best.segment + 1] - cumulative[best.segment]

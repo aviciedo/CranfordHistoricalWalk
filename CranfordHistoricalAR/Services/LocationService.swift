@@ -167,6 +167,7 @@ final class CoreLocationService: NSObject, LocationService {
     private let broadcaster = EventBroadcaster<LocationEvent>()
     private var isRunning = false
     private var isRequestingFreshLocation = false
+    private var lastHeadingPublication: Date?
 
     override init() {
         super.init()
@@ -176,7 +177,8 @@ final class CoreLocationService: NSObject, LocationService {
         manager.distanceFilter = kCLDistanceFilterNone
         manager.activityType = .fitness
         manager.pausesLocationUpdatesAutomatically = false
-        manager.headingFilter = 2
+        // Keep confidence fresh even while standing still; publication is capped at 5 Hz.
+        manager.headingFilter = kCLHeadingFilterNone
     }
 
     var authorization: LocationAuthorization { LocationAuthorization(manager.authorizationStatus) }
@@ -223,11 +225,19 @@ final class CoreLocationService: NSObject, LocationService {
     }
 
     func stop() {
+        lastHeadingPublication = nil
         isRequestingFreshLocation = false
         guard isRunning else { return }
         isRunning = false
         manager.stopUpdatingLocation()
         manager.stopUpdatingHeading()
+    }
+
+    private func publishHeading(_ sample: HeadingSample) {
+        if sample.isReliable, let lastHeadingPublication,
+           sample.timestamp.timeIntervalSince(lastHeadingPublication) < 0.2 { return }
+        lastHeadingPublication = sample.timestamp
+        publish(.heading(sample))
     }
 
     private func publish(_ event: LocationEvent) {
@@ -257,7 +267,7 @@ extension CoreLocationService: CLLocationManagerDelegate {
 
     nonisolated func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
         let sample = HeadingSample(heading: newHeading)
-        Task { @MainActor in self.publish(.heading(sample)) }
+        Task { @MainActor in self.publishHeading(sample) }
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {

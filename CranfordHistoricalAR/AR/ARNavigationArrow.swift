@@ -5,10 +5,10 @@ import SwiftUI
 import TourCore
 import UIKit
 
-/// Shared three-dimensional chevron artwork: opaque white faces, hunter-green frame/sides.
+/// Shared three-dimensional chevron artwork: opaque white faces, blue extruded sides.
 @MainActor
 private enum ARChevronArt {
-    static let bodyMesh = makeMesh(ARChevronGeometry.body(depth: ARChevronGeometry.bodyDepth), name: "hunter-chevron-body")
+    static let bodyMesh = makeMesh(ARChevronGeometry.body(depth: ARChevronGeometry.bodyDepth), name: "blue-chevron-body")
     static let faceMesh = makeMesh(ARChevronGeometry.front(), name: "white-chevron-face")
 
     static func makeMesh(_ data: ARChevronGeometry.Mesh, name: String) -> MeshResource? {
@@ -22,21 +22,19 @@ private enum ARChevronArt {
     static func makeGroup() -> Entity {
         let group = Entity()
         guard let bodyMesh, let faceMesh else { return group }
-        let green = SimpleMaterial(color: UIColor(AppTheme.forest),
+        let blue = SimpleMaterial(color: UIColor(red: 23 / 255, green: 101 / 255, blue: 193 / 255, alpha: 1),
                                    roughness: 0.7, isMetallic: false)
         let white = UnlitMaterial(color: .white)
         for index in 0..<3 {
-            let body = ModelEntity(mesh: bodyMesh, materials: [green])
+            let body = ModelEntity(mesh: bodyMesh, materials: [blue])
             body.position.x = Float(index - 1) * ARChevronGeometry.groupSpacing
             let face = ModelEntity(mesh: faceMesh, materials: [white])
-            face.scale = SIMD3<Float>(0.95, 0.97, 1)
-            face.position.z = 0.006 // Clear the green front face without z-fighting.
+            face.scale = SIMD3<Float>(0.985, 0.985, 1)
+            face.position.z = 0.006 // Clear the blue front face without z-fighting.
             body.addChild(face)
-            // Reveal the deep green sides even when the sign is directly ahead.
-            body.orientation = simd_quatf(angle: 16 * .pi / 180, axis: [0, 1, 0])
             group.addChild(body)
         }
-        group.scale = SIMD3<Float>(repeating: Float(ARStreetGuidance.chevronScale))
+        group.scale = SIMD3<Float>(repeating: 1.0)
         return group
     }
 }
@@ -50,11 +48,13 @@ final class ARNavigationArrowEntity: Entity {
     private let holder = Entity()
     private let heading = Entity()
     private var anchorState = ARStreetGuidance.AnchorState()
+    private var spatialState = ARWorldPlacementState()
+    private var renderedSpatialPose: ARWorldPlacementState.Pose?
     private var renderedPlacement: ARStreetGuidance.Placement?
     private(set) var isShowing = false
     var canRender: Bool { ARChevronArt.bodyMesh != nil && ARChevronArt.faceMesh != nil }
     var guidancePosition: SIMD3<Float>? {
-        holder.isEnabled && renderedPlacement != nil ? holder.position(relativeTo: nil) : nil
+        holder.isEnabled && (renderedSpatialPose != nil || renderedPlacement != nil) ? holder.position(relativeTo: nil) : nil
     }
 
     required init() {
@@ -65,6 +65,7 @@ final class ARNavigationArrowEntity: Entity {
         addChild(holder)
     }
 
+    @available(*, deprecated, message: "Legacy local sign only. Walking uses updateSpatial with a route-oriented pose.")
     func update(ground: SIMD3<Float>, camera: SIMD3<Float>,
                 instruction: ARStreetGuidance.Instruction, timestamp: TimeInterval, arView: ARView? = nil) {
         guard isShowing else { return }
@@ -116,15 +117,43 @@ final class ARNavigationArrowEntity: Entity {
         renderedPlacement = pinned
     }
 
+    /// Route orientation is supplied in world space; camera heading never rotates this object.
+    func updateSpatial(ground: SIMD3<Float>, camera: SIMD3<Float>, routeDirection: SIMD3<Float>,
+                       instruction: ARStreetGuidance.Instruction, segment: Int, timestamp: TimeInterval) {
+        guard isShowing else { return }
+        // Local +Z is the sign normal. Face back along the walking segment, not toward the camera.
+        let yaw = atan2(-Double(routeDirection.x), -Double(routeDirection.z))
+        guard let pose = spatialState.update(position: SIMD3(Double(ground.x), Double(ground.y), Double(ground.z)),
+            routeYaw: yaw, direction: instruction.direction, segment: segment,
+            camera: SIMD3(Double(camera.x), Double(camera.y), Double(camera.z)), timestamp: timestamp) else { return }
+        holder.isEnabled = true
+        guard pose != renderedSpatialPose else { return }
+        let degrees = ARChevronGeometry.rotationDegrees(direction: pose.direction)
+        heading.transform = Transform(scale: .one,
+            rotation: simd_quatf(angle: Float(degrees * .pi / 180), axis: [0, 0, 1]), translation: .zero)
+        let bounds = heading.visualBounds(relativeTo: holder)
+        let lift = Float(ARStreetGuidance.minimumClearanceMeters) - bounds.min.y
+        let transform = Transform(scale: .one, rotation: simd_quatf(angle: Float(pose.yaw), axis: [0, 1, 0]),
+            translation: SIMD3(Float(pose.position.x), Float(pose.position.y) + lift, Float(pose.position.z)))
+        if let previous = renderedSpatialPose,
+           simd_length(transform.translation - holder.position) < 2,
+           abs(GeoMath.relativeBearing(heading: previous.yaw * 180 / .pi, bearing: pose.yaw * 180 / .pi)) < 20 {
+            holder.move(to: transform, relativeTo: holder.parent, duration: 0.25, timingFunction: .easeInOut)
+        } else { holder.stopAllAnimations(recursive: true); holder.transform = transform }
+        renderedSpatialPose = pose
+    }
+
     /// Transient lost ground/tracking hides the sign without throwing away its world pose.
     func setVisible(_ visible: Bool) {
         isShowing = visible
-        holder.isEnabled = visible && renderedPlacement != nil
+        holder.isEnabled = visible && (renderedSpatialPose != nil || renderedPlacement != nil)
     }
 
     /// Session resets, provider changes and a genuinely new destination need a new world pose.
     func resetAnchor() {
         anchorState.reset()
+        spatialState.reset()
+        renderedSpatialPose = nil
         renderedPlacement = nil
         holder.stopAllAnimations(recursive: true)
         holder.isEnabled = false

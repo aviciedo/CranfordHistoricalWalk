@@ -53,6 +53,7 @@ struct ARTourView: View {
         .holdsWalkingContext()
         .onChange(of: scenePhase) { _, phase in
             phoneDown.reset()
+            model?.setApplicationActive(phase == .active)
             if phase != .active { motionManager.stopDeviceMotionUpdates() }
             else if model != nil && !isLeavingAR { beginPhoneOrientationMonitoring() }
         }
@@ -200,7 +201,8 @@ struct ARHUDView: View {
         VStack(spacing: 10) {
                 topBar
                 if let message = model.statusMessage { notice(message, symbol: "viewfinder") }
-                if model.availability == .ready && !model.geoAnchors.hasDetectedGround && !model.geoAnchors.hasPlacedNavigation {
+                if model.availability == .ready && model.geoAnchors.spatialMode == .aligning
+                    && model.geoAnchors.isTrackingReady && !model.geoAnchors.hasDetectedGround && !model.geoAnchors.hasPlacedNavigation {
                     ARScanIntroduction()
                 }
                 Spacer(minLength: 8)
@@ -279,6 +281,7 @@ struct ARHUDView: View {
                                      isApproximate: model.isGuidanceApproximate,
                                      needsGroundScan: needsGround,
                                      needsOrientation: needsOrientation,
+                                     groundIsEstimated: model.geoAnchors.spatialMode == .spatial && !model.geoAnchors.isNavigationGroundVerified,
                                      nextStopName: model.tour.nextStop?.name,
                                      onContinue: nextLegAction)
     }

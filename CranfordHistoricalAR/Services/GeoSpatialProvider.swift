@@ -56,7 +56,7 @@ extension GeoSpatialProvider {
 // MARK: - Core Location + ARKit implementation
 
 /// Uses ARKit's `.gravityAndHeading` alignment (−Z = true north, +X = east) so that a compass bearing
-/// maps directly onto world axes, then offsets from the most recent (GPS fix, camera position) pair.
+/// maps directly onto world axes. A fixed ENU origin receives bounded corrections from timestamp-matched GPS/AR pairs.
 @MainActor
 final class CoreLocationGeoSpatialProvider: GeoSpatialProvider {
     let displayName = "GPS + compass (Core Location)"
@@ -67,21 +67,13 @@ final class CoreLocationGeoSpatialProvider: GeoSpatialProvider {
     private(set) var fallbackReason: GeoSpatialFallbackReason?
     let vpsCoverage: VPSCoverage = .unknown
 
-    private struct ReferencePair {
-        var coordinate: GeoCoordinate
-        var cameraPosition: SIMD3<Float>
-        var accuracy: Double
-        var date: Date
-    }
-
     private var session: ARSession?
     private var cameraTransform: simd_float4x4?
     private var trackingState: ARCamera.TrackingState = .notAvailable
-    private var reference: ReferencePair?
+    private var alignment = ARGeographicAlignment()
+    private var cameraHistory = ARCameraPositionHistory()
     private var pendingLocation: LocationSample?
     private var latestHeading: HeadingSample?
-    /// Only used with `.gravity` alignment: rotation (radians) from ARKit −Z to true north.
-    private var yawToNorth: Float?
 
     init(hasCompass: Bool = CLLocationManager.headingAvailable(), fallbackReason: GeoSpatialFallbackReason? = nil) {
         preferredWorldAlignment = hasCompass ? .gravityAndHeading : .gravity
@@ -90,10 +82,10 @@ final class CoreLocationGeoSpatialProvider: GeoSpatialProvider {
 
     func attach(session: ARSession) {
         self.session = session
-        reference = nil
+        alignment.reset()
+        cameraHistory = ARCameraPositionHistory()
         cameraTransform = nil
         trackingState = .notAvailable
-        yawToNorth = nil
         pose = nil
         pendingLocation = nil
         recomputeQuality()
@@ -102,10 +94,10 @@ final class CoreLocationGeoSpatialProvider: GeoSpatialProvider {
     func detach() {
         session = nil
         cameraTransform = nil
-        reference = nil
+        alignment.reset()
+        cameraHistory = ARCameraPositionHistory()
         pose = nil
         pendingLocation = nil
-        yawToNorth = nil
         quality = .unavailable
     }
 
@@ -114,17 +106,13 @@ final class CoreLocationGeoSpatialProvider: GeoSpatialProvider {
     func update(cameraTransform: simd_float4x4, trackingState: ARCamera.TrackingState, timestamp: TimeInterval) {
         self.cameraTransform = cameraTransform
         self.trackingState = trackingState
+        let position = cameraTransform.translation
+        if case .normal = trackingState {
+            cameraHistory.append(SIMD3(Double(position.x), Double(position.y), Double(position.z)), at: Date())
+        }
         if case .normal = trackingState, let location = pendingLocation {
             pendingLocation = nil
-            bind(location: location, cameraPosition: cameraTransform.translation)
-        }
-        if preferredWorldAlignment == .gravity, let heading = latestHeading, heading.isReliable {
-            let forward = -SIMD3<Float>(cameraTransform.columns.2.x, 0, cameraTransform.columns.2.z)
-            if simd_length(forward) > 0.2 {
-                let cameraYaw = atan2(forward.x, -forward.z)
-                let trueYaw = Float(heading.bestHeading * .pi / 180)
-                yawToNorth = trueYaw - cameraYaw
-            }
+            bind(location: location)
         }
         recomputeQuality()
     }
@@ -135,16 +123,16 @@ final class CoreLocationGeoSpatialProvider: GeoSpatialProvider {
         // Heading and tour-state updates can replay the same GPS sample. Rebinding
         // that old coordinate to a new camera position makes world content drift.
         if pose?.timestamp != location.timestamp || pose?.coordinate != location.coordinate {
-            if let cameraTransform, case .normal = trackingState {
-                bind(location: location, cameraPosition: cameraTransform.translation)
+            if cameraTransform != nil, case .normal = trackingState {
+                bind(location: location)
             } else {
                 pendingLocation = location
             }
         }
         pose = GeoPose(
             coordinate: location.coordinate,
-            horizontalAccuracy: location.horizontalAccuracy,
-            heading: heading?.bestHeading,
+            horizontalAccuracy: max(location.horizontalAccuracy, alignment.residualError),
+            heading: heading?.trueHeading,
             headingAccuracy: heading?.accuracy,
             altitude: location.altitude,
             timestamp: location.timestamp
@@ -152,53 +140,40 @@ final class CoreLocationGeoSpatialProvider: GeoSpatialProvider {
         recomputeQuality()
     }
 
-    private func bind(location: LocationSample, cameraPosition: SIMD3<Float>) {
-        if let reference, location.horizontalAccuracy > reference.accuracy * 1.5,
-           Date().timeIntervalSince(reference.date) < 20 {
-            return
+    private func bind(location: LocationSample) {
+        guard preferredWorldAlignment == .gravityAndHeading, StopActivationPolicy.isFresh(location.timestamp),
+              let matched = cameraHistory.position(at: location.timestamp) else { return }
+        alignment.update(coordinate: location.coordinate, camera: matched, accuracy: location.horizontalAccuracy,
+                         timestamp: location.timestamp, course: location.course, speed: location.speed)
+        if var pose, pose.timestamp == location.timestamp {
+            pose.horizontalAccuracy = max(location.horizontalAccuracy, alignment.residualError)
+            self.pose = pose
         }
-        reference = ReferencePair(coordinate: location.coordinate, cameraPosition: cameraPosition, accuracy: location.horizontalAccuracy, date: Date())
     }
 
     func worldDirection(forBearing bearing: Double) -> SIMD3<Float>? {
-        let θ = Float(bearing * .pi / 180)
-        var direction = SIMD3<Float>(sin(θ), 0, -cos(θ))
-        if preferredWorldAlignment == .gravity {
-            guard let yawToNorth else { return nil }
-            direction = rotateY(direction, by: -yawToNorth)
-        }
-        return direction
+        guard alignment.isConsistent, preferredWorldAlignment == .gravityAndHeading, bearing.isFinite else { return nil }
+        let theta = Float(bearing * .pi / 180)
+        return [sin(theta), 0, -cos(theta)]
     }
 
     func worldPosition(for coordinate: GeoCoordinate, altitude: Double?, heightBelowCamera: Float) -> SIMD3<Float>? {
-        guard let reference, let cameraTransform else { return nil }
-        let offset = GeoMath.localOffset(of: coordinate, from: reference.coordinate)
-        var delta = SIMD3<Float>(Float(offset.east), 0, Float(-offset.north))
-        if preferredWorldAlignment == .gravity {
-            guard let yawToNorth else { return nil }
-            delta = rotateY(delta, by: -yawToNorth)
-        }
-        var position = reference.cameraPosition + delta
-        position.y = cameraTransform.translation.y - heightBelowCamera
-        return position
-    }
-
-    private func rotateY(_ v: SIMD3<Float>, by angle: Float) -> SIMD3<Float> {
-        let c = cos(angle), s = sin(angle)
-        return SIMD3<Float>(v.x * c + v.z * s, v.y, -v.x * s + v.z * c)
+        guard preferredWorldAlignment == .gravityAndHeading, let cameraTransform,
+              let point = alignment.position(for: coordinate) else { return nil }
+        // Route height is managed separately by detected/estimated ground, not GPS altitude.
+        return [Float(point.x), cameraTransform.translation.y - heightBelowCamera, Float(point.z)]
     }
 
     private func recomputeQuality() {
-        guard session != nil, let pose else { quality = .unavailable; return }
+        guard session != nil, let pose, let heading = latestHeading else { quality = .unavailable; return }
         guard StopActivationPolicy.isFresh(pose.timestamp), pose.coordinate.isValid,
-              pose.horizontalAccuracy.isFinite, latestHeading?.isReliable == true else {
-            quality = .unavailable
-            return
-        }
-        guard case .normal = trackingState, reference != nil else { quality = .unavailable; return }
-        if preferredWorldAlignment == .gravity && yawToNorth == nil { quality = .unavailable; return }
-        quality = GeoSpatialSelector.quality(horizontalAccuracy: pose.horizontalAccuracy, yawAccuracy: pose.headingAccuracy ?? -1)
+              pose.horizontalAccuracy.isFinite, heading.isReliable,
+              heading.trueHeading != nil, StopActivationPolicy.isFresh(heading.timestamp),
+              preferredWorldAlignment == .gravityAndHeading, alignment.isConsistent,
+              case .normal = trackingState else { quality = .unavailable; return }
+        quality = GeoSpatialSelector.quality(horizontalAccuracy: pose.horizontalAccuracy, yawAccuracy: heading.accuracy)
     }
+
 }
 
 // MARK: - ARCore Geospatial
@@ -345,14 +320,13 @@ final class ARCoreGeoSpatialProvider: GeoSpatialProvider {
     }
 
     func worldDirection(forBearing bearing: Double) -> SIMD3<Float>? {
-        guard let lastHeading, let arSession, let frame = arSession.currentFrame else { return nil }
-        let cam = frame.camera.transform
-        let forward = -SIMD3<Float>(cam.columns.2.x, 0, cam.columns.2.z)
-        guard simd_length(forward) > 0.1 else { return nil }
-        let cameraYaw = atan2(forward.x, -forward.z)
-        let yawToNorth = Float(lastHeading * .pi / 180) - cameraYaw
-        let θ = Float(bearing * .pi / 180) - yawToNorth
-        return SIMD3<Float>(sin(θ), 0, -cos(θ))
+        guard let pose, bearing.isFinite,
+              let start = worldPosition(for: pose.coordinate, altitude: pose.altitude, heightBelowCamera: 0),
+              let end = worldPosition(for: GeoMath.destination(from: pose.coordinate, bearing: bearing, distance: 10),
+                                      altitude: pose.altitude, heightBelowCamera: 0) else { return nil }
+        let direction = SIMD3<Float>(end.x - start.x, 0, end.z - start.z)
+        guard simd_length(direction) > 0.1 else { return nil }
+        return simd_normalize(direction)
     }
 
     /// Yaw analogous to compass heading: identity EUS looks north (camera −Z = −south).
@@ -373,8 +347,9 @@ final class ARCoreGeoSpatialProvider: GeoSpatialProvider {
         _ = garSession.checkVPSAvailability(
             coordinate: CLLocationCoordinate2D(latitude: coordinate.latitude, longitude: coordinate.longitude)
         ) { [weak self] availability in
-            MainActor.assumeIsolated {
-                self?.vpsCoverage = GeoSpatialSelector.coverage(fromVPSAvailabilityCode: Int(availability.rawValue))
+            let code = Int(availability.rawValue)
+            Task { @MainActor [weak self] in
+                self?.vpsCoverage = GeoSpatialSelector.coverage(fromVPSAvailabilityCode: code)
             }
         }
     }
