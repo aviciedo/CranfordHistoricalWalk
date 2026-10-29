@@ -110,6 +110,7 @@ final class TourViewModel {
     // MARK: Proximity / AR sign (mutated by TourViewModel+Proximity.swift)
     var proximityMachine: StopProximityStateMachine?
     var walkingProgression = WalkingProgressionPolicy()
+    var passiveVisitPolicies: [String: WalkingProgressionPolicy] = [:]
     var heldDepartureStopID: String? {
         didSet { checkpointWalk() }
     }
@@ -349,8 +350,13 @@ final class TourViewModel {
         routingError = nil
         lastRouteRequest = nil
         lastTrailSample = nil
-        walkingProgression.interrupt()
+        interruptVisitDwell()
         checkpointWalk()
+    }
+
+    func interruptVisitDwell() {
+        walkingProgression.interrupt()
+        for id in Array(passiveVisitPolicies.keys) { passiveVisitPolicies[id]?.interrupt() }
     }
 
     /// Map entry resumes the walk; an explicit detail entry targets that selected site.
@@ -393,6 +399,7 @@ final class TourViewModel {
     /// Explicit replay can start immediately; developer resets return to the welcome state.
     func resetTour(startImmediately: Bool = true) {
         walkedTrailSegments = []
+        passiveVisitPolicies = [:]
         lastTrailSample = nil
         walkSessionID = UUID()
         automaticTransitionFromStopID = nil
@@ -475,6 +482,7 @@ final class TourViewModel {
     }
 
     func stopLocation() {
+        interruptVisitDwell()
         lastTrailSample = nil
         lastMapLocationRefreshAt = nil
         locationTask?.cancel()

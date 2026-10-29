@@ -1,3 +1,11 @@
+## Build 100 — three-minute visit timing and early progression
+
+Automatic GPS visits require 180 seconds of reliable time near a stop. Quick arrival detection remains separate; it no longer marks the stop Visited. Only consecutive accurate near-stop intervals count: away time, weak/stale fixes, pauses and signal gaps are excluded. Passive visits to other sites use the same dwell instead of a single GPS fix. Dwell is session-local and is not inferred across an app restart.
+
+Early completion: recognizing the plaque sketch, finishing the active stop’s narration (including off-site), or leaving toward the next stop can bypass the wait. Departure requires previous reliable arrival, the GPS uncertainty circle outside the departure boundary, measurable progress toward the next stop, and five seconds of sustained evidence; reported driving speeds cannot trigger it. Narration from elsewhere advances itinerary progress without inventing a saved physical visit. Listening to another stop, repeated callbacks, practice scans and Stop walk preserve their existing safeguards. Map advancement still waits for exploration/AR/sketchbook presentation to release its hold; Home previews the next completed leg. Previous/Undo holds and the final Finish walk action remain available.
+
+Validation: 239 TourCore + 118 actual-model portable tests passed; full native Swift sources passed Debug/Release syntax parsing. Apple typechecking and outdoor GPS verification remain pending.
+
 ## Build 99 — larger, wider AR chevrons
 
 AR directions use broader opaque white chevrons with deeper hunter-green sides and a slight 3D angle, matching the approved street mockup. The larger group fits within 76% of camera width and 29% of height at placement time, retaining stable world anchoring instead of resizing every camera frame. Both local maneuver signs and geographically aligned signs share the mesh.

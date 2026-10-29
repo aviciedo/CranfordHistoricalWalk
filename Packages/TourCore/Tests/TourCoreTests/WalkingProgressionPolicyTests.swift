@@ -20,6 +20,54 @@ final class WalkingProgressionPolicyTests: XCTestCase {
         XCTAssertTrue(policy.hasArrived)
     }
 
+    func testVisitNeedsThreeMinutesOfAccurateOnSiteTime() {
+        var policy = WalkingProgressionPolicy()
+        for seconds in 0..<180 {
+            let event = fix(&policy, Double(seconds))
+            XCTAssertNotEqual(event, .visitReady)
+        }
+        XCTAssertEqual(fix(&policy, 180), .visitReady)
+        XCTAssertNil(fix(&policy, 181))
+    }
+
+    func testAwayWeakGPSAndGapsDoNotAddVisitTime() {
+        var policy = WalkingProgressionPolicy()
+        for seconds in 0...60 { _ = fix(&policy, Double(seconds)) }
+        for seconds in 61...120 { _ = fix(&policy, Double(seconds), distance: 100, allowed: false) }
+        for seconds in 121...150 { _ = fix(&policy, Double(seconds), accuracy: 50) }
+        XCTAssertEqual(policy.accumulatedVisitSeconds, 60)
+        _ = fix(&policy, 200)
+        XCTAssertEqual(policy.accumulatedVisitSeconds, 60, "A signal gap must not count as presence")
+        for seconds in 201..<320 { XCTAssertNotEqual(fix(&policy, Double(seconds)), .visitReady) }
+        XCTAssertEqual(fix(&policy, 320), .visitReady)
+    }
+
+    func testPausedTimeDoesNotCountEvenWhenResumeIsWithinGPSGapLimit() {
+        var policy = WalkingProgressionPolicy()
+        for seconds in 0...60 { _ = fix(&policy, Double(seconds)) }
+        policy.interrupt()
+        XCTAssertNil(fix(&policy, 65))
+        XCTAssertEqual(policy.accumulatedVisitSeconds, 60)
+        for seconds in 66..<185 { XCTAssertNotEqual(fix(&policy, Double(seconds)), .visitReady) }
+        XCTAssertEqual(fix(&policy, 185), .visitReady)
+    }
+
+    func testLeavingTowardNextStopBypassesDwellButWrongWayDoesNot() {
+        var policy = WalkingProgressionPolicy()
+        func update(_ time: Double, _ distance: Double, _ remaining: Double) -> WalkingProgressionPolicy.Event? {
+            let date = start.addingTimeInterval(time)
+            return policy.update(distance: distance, accuracy: 3, timestamp: date, now: date,
+                arrivalRadius: 35, departureRadius: 50, allowsDeparture: true, nextStopDistance: remaining)
+        }
+        XCTAssertNil(update(0, 0, 200))
+        XCTAssertEqual(update(3, 0, 200), .arrived)
+        XCTAssertNil(update(4, 60, 230))
+        XCTAssertNil(update(9, 65, 235))
+        XCTAssertNil(update(10, 60, 180))
+        XCTAssertEqual(update(15, 65, 170), .departed)
+        XCTAssertLessThan(policy.accumulatedVisitSeconds, 180)
+    }
+
     func testDepartureRequiresEntireErrorCircleOutsideBoundaryAndFiveSeconds() {
         var policy = WalkingProgressionPolicy(); policy.confirmArrival()
         XCTAssertNil(fix(&policy, 0, distance: 55)) // Boundary touches the circle.

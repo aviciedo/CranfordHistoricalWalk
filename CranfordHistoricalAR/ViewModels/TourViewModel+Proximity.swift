@@ -45,6 +45,19 @@ extension TourViewModel {
         activities.listened(to: stopID)
         activityStore.save(activities)
         restoreDiscovery(for: stopID)
+        // Listening can finish from anywhere, but only completes the active destination.
+        if isWalkingActive, currentStop?.id == stopID {
+            progress.markCurrentStopVisited()
+            if let sample = userLocation,
+               case .allow(let evidence) = StopActivationPolicy.decide(trackingReady: true, plaqueIsTracked: false,
+                    isSimulated: sample.isSimulated || locationService is SimulatedLocationService,
+                    distanceMeters: GeoMath.distance(from: sample.coordinate, to: stop.coordinate),
+                    horizontalAccuracy: sample.horizontalAccuracy, locationTimestamp: sample.timestamp,
+                    arrivalRadius: stop.arrivalRadius) {
+                savePhysicalActivity(for: stopID, evidence: evidence, now: Date())
+            }
+            advanceAfterLoggedVisitIfAllowed()
+        }
     }
 
     /// An explicit reading acknowledgement; merely opening Read never claims completion.
@@ -78,18 +91,20 @@ extension TourViewModel {
     }
 
     /// Physical visits do not finish stories, collect sketches or change playback.
-    func handleLocationForProximity(_ sample: LocationSample) {
-        guard sample.coordinate.isValid, StopActivationPolicy.isFresh(sample.timestamp),
+    func handleLocationForProximity(_ sample: LocationSample, now: Date = Date()) {
+        guard sample.coordinate.isValid, StopActivationPolicy.isFresh(sample.timestamp, now: now),
               sample.horizontalAccuracy >= 0, sample.horizontalAccuracy <= 100 else { return }
         let practice = sample.isSimulated || locationService is SimulatedLocationService
-        for stop in stops where stop.id != currentStop?.id {
-            let distance = GeoMath.distance(from: sample.coordinate, to: stop.coordinate)
-            if case .allow = StopActivationPolicy.decide(trackingReady: true, plaqueIsTracked: false,
-                isSimulated: practice, distanceMeters: distance, horizontalAccuracy: sample.horizontalAccuracy,
-                locationTimestamp: sample.timestamp, arrivalRadius: stop.arrivalRadius) {
-                if stop.id == currentStop?.id { progress.markCurrentStopVisited() }
-                if !practice && activities[stop.id].visitedAt == nil {
-                    savePhysicalActivity(for: stop.id, evidence: .onSiteARMarker, now: Date())
+        if isWalkingActive || phase == .notStarted {
+            for stop in stops where stop.id != currentStop?.id && activities[stop.id].visitedAt == nil {
+                var policy = passiveVisitPolicies[stop.id] ?? WalkingProgressionPolicy()
+                let event = policy.update(distance: GeoMath.distance(from: sample.coordinate, to: stop.coordinate),
+                    accuracy: sample.horizontalAccuracy, timestamp: sample.timestamp, now: now,
+                    arrivalRadius: stop.arrivalRadius, departureRadius: max(50, stop.effectiveDepartureRadius),
+                    allowsDeparture: false)
+                passiveVisitPolicies[stop.id] = policy
+                if event == .visitReady && !practice {
+                    savePhysicalActivity(for: stop.id, evidence: .onSiteARMarker, now: now)
                 }
             }
         }
@@ -149,12 +164,13 @@ extension TourViewModel {
         guard case .allow(let evidence) = decision else { return decision }
         if stop.id == currentStop?.id { progress.markCurrentStopVisited() }
         // Plaque recognition proves a visit, not a reliable GPS departure boundary.
-        // Stable GPS arrival is still required before automatic departure can be armed.
+        // The next leg can start once the scanner/reveal releases its exploration hold.
         activeVisitEvidence = evidence
         if stop.hasPlaqueReference {
             discovery.recognizePlaque(isMatching: true, trackingReady: trackingReady, isSimulated: evidence == .simulation)
         }
         savePhysicalActivity(for: stop.id, evidence: evidence, now: now)
+        advanceAfterLoggedVisitIfAllowed()
         return decision
     }
 
@@ -186,8 +202,13 @@ extension TourViewModel {
         if !discovery.hasVerifiedPlaque { _ = beginPlaqueDiscovery() }
         confirmPlaqueArrival(for: stop.id)
         // Saves the sketch before queuing the shared scanner celebration and sketchbook reveal.
-        return activateCurrentStop(stopID: stop.id, trackingReady: trackingReady,
-                                   plaqueIsTracked: isTracked, now: now)
+        let decision = activateCurrentStop(stopID: stop.id, trackingReady: trackingReady,
+                                           plaqueIsTracked: isTracked, now: now)
+        if decision == .alreadyActivated, isWalkingActive, currentStop?.id == stop.id {
+            progress.markCurrentStopVisited()
+            advanceAfterLoggedVisitIfAllowed()
+        }
+        return decision
     }
 
     /// Recognition selects an AR subject, never the guided walking destination.
@@ -270,14 +291,15 @@ extension TourViewModel {
             distance: GeoMath.distance(from: sample.coordinate, to: stop.coordinate),
             accuracy: sample.horizontalAccuracy, timestamp: sample.timestamp, now: now,
             arrivalRadius: stop.arrivalRadius, departureRadius: max(50, stop.effectiveDepartureRadius),
-            allowsDeparture: false)
+            allowsDeparture: nextStop != nil && (sample.speed.map { $0.isFinite && $0 >= 0 && $0 <= 4 } ?? true),
+            nextStopDistance: nextStop.map { GeoMath.distance(from: sample.coordinate, to: $0.coordinate) })
         switch event {
-        case .arrived:
+        case .visitReady, .departed:
             progress.markCurrentStopVisited()
             if !sample.isSimulated && !(locationService is SimulatedLocationService), activities[stop.id].visitedAt == nil {
                 savePhysicalActivity(for: stop.id, evidence: .onSiteARMarker, now: now)
             }
-        case .departed, nil:
+        case .arrived, nil:
             break
         }
         advanceAfterLoggedVisitIfAllowed()

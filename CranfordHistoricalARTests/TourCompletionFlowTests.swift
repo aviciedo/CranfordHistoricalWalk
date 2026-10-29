@@ -237,6 +237,89 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertTrue(tour.activities[stops[0].id].learningCompleted)
     }
 
+    func testAutomaticVisitWaitsThreeMinutesBeforeAdvancing() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.startTour(); tour.isAutomaticNavigationVisible = true
+        let start = Date().addingTimeInterval(-180)
+        for seconds in 0...180 {
+            let date = start.addingTimeInterval(Double(seconds))
+            tour.evaluateAutomaticProgression(LocationSample(coordinate: stops[0].coordinate,
+                horizontalAccuracy: 3, timestamp: date), now: date)
+            if seconds < 180 {
+                XCTAssertEqual(tour.currentStop?.id, stops[0].id)
+                XCTAssertFalse(tour.isCurrentVisitConfirmed)
+                XCTAssertNil(tour.activities[stops[0].id].visitedAt)
+                XCTAssertEqual(tour.homeFeaturedStop?.id, stops[0].id)
+            }
+        }
+        XCTAssertEqual(tour.currentStop?.id, stops[1].id)
+        XCTAssertNotNil(tour.activities[stops[0].id].visitedAt)
+    }
+
+    func testNarrationCompletionBypassesDwellFromAnywhereWithoutInventingPhysicalVisit() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.startTour(); tour.isAutomaticNavigationVisible = true
+        XCTAssertNil(tour.userLocation)
+        tour.finishListening(for: stops[0].id)
+        XCTAssertEqual(tour.currentStop?.id, stops[1].id)
+        XCTAssertNotNil(tour.activities[stops[0].id].listenedAt)
+        XCTAssertNil(tour.activities[stops[0].id].visitedAt)
+        tour.finishListening(for: stops[0].id)
+        XCTAssertEqual(tour.currentStop?.id, stops[1].id, "A repeated callback cannot skip another destination")
+        tour.stopWalk()
+        tour.finishListening(for: stops[1].id)
+        XCTAssertTrue(tour.isWalkPaused)
+        XCTAssertEqual(tour.currentStop?.id, stops[1].id)
+    }
+
+    func testOnSiteNarrationCompletionAlsoRecordsThePhysicalVisit() async throws {
+        let source = ActivityTestLocationService(status: .authorized)
+        let tour = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),
+            locationService: source, directionsService: PreviewDirectionsService())
+        await tour.loadStopsIfNeeded(); defer { cleanUp(tour) }
+        tour.startTour(); tour.isAutomaticNavigationVisible = true
+        let sample = LocationSample(coordinate: stops[0].coordinate, horizontalAccuracy: 3)
+        source.emit(sample)
+        for _ in 0..<100 where tour.userLocation == nil { try await Task.sleep(for: .milliseconds(2)) }
+        XCTAssertNotNil(tour.userLocation)
+        XCTAssertNil(tour.activities[stops[0].id].visitedAt)
+        tour.finishListening(for: stops[0].id)
+        XCTAssertEqual(tour.currentStop?.id, stops[1].id)
+        XCTAssertNotNil(tour.activities[stops[0].id].visitedAt)
+        XCTAssertNil(tour.activities[stops[0].id].plaqueUnlockedAt)
+    }
+
+    func testRealPlaqueBypassesDwellAndRetainsSketchRevealAfterAdvancement() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.startTour(); tour.isAutomaticNavigationVisible = true
+        XCTAssertTrue(tour.preparePlaqueScanner(stopID: stops[0].id))
+        XCTAssertEqual(tour.recognizeSketchPlaque(imageName: stops[0].plaque?.referenceImageName,
+            isTracked: true, trackingReady: true), .allow(.recognizedPlaque))
+        XCTAssertEqual(tour.currentStop?.id, stops[1].id)
+        XCTAssertNotNil(tour.activities[stops[0].id].visitedAt)
+        XCTAssertEqual(tour.pendingSketchStopID, stops[0].id)
+    }
+
+    func testEarlyDepartureRequiresMovementTowardNextStop() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.startTour(); tour.isAutomaticNavigationVisible = true
+        let start = Date().addingTimeInterval(-30)
+        let bearing = GeoMath.bearing(from: stops[0].coordinate, to: stops[1].coordinate)
+        let wrongWay = GeoMath.destination(from: stops[0].coordinate, bearing: bearing + 180, distance: 75)
+        let towardNext = GeoMath.destination(from: stops[0].coordinate, bearing: bearing, distance: 75)
+        for (time, point) in [(0.0, stops[0].coordinate), (3.0, stops[0].coordinate),
+                              (4.0, wrongWay), (9.0, wrongWay), (10.0, towardNext), (14.0, towardNext)] {
+            let date = start.addingTimeInterval(time)
+            tour.evaluateAutomaticProgression(LocationSample(coordinate: point, horizontalAccuracy: 3, timestamp: date), now: date)
+            XCTAssertEqual(tour.currentStop?.id, stops[0].id)
+            XCTAssertNil(tour.activities[stops[0].id].visitedAt)
+        }
+        let date = start.addingTimeInterval(15)
+        tour.evaluateAutomaticProgression(LocationSample(coordinate: towardNext, horizontalAccuracy: 3, timestamp: date), now: date)
+        XCTAssertEqual(tour.currentStop?.id, stops[1].id)
+        XCTAssertNotNil(tour.activities[stops[0].id].visitedAt)
+    }
+
     func testHomePreviewsGreystoneAfterMillVisitWithoutChangingDestinationUntilTap() async {
         let tour = await makeTour(); defer { cleanUp(tour) }
         tour.performHomeWalkAction()
@@ -929,8 +1012,8 @@ final class TourCompletionFlowTests: XCTestCase {
 
     func testLoggedVisitAutomaticallySelectsNextLegAndPreservesIndependentActivity() async {
         let tour = await makeTour(); defer { cleanUp(tour) }
-        tour.startTour(); tour.isAutomaticNavigationVisible = true
         tour.finishListening(for: stops[0].id)
+        tour.startTour(); tour.isAutomaticNavigationVisible = true
         tour.activities.collectSketch(at: stops[0].id)
         confirmArrival(tour)
         XCTAssertFalse(tour.isCurrentVisitConfirmed)
@@ -1119,6 +1202,7 @@ final class TourCompletionFlowTests: XCTestCase {
     func testRecognizedPlaqueAdvancesOnceFromLoggedVisitWithoutRequiringGeocodeDeparture() async {
         let tour = await makeTour(); defer { cleanUp(tour) }
         tour.startTour(); tour.isAutomaticNavigationVisible = true
+        tour.isARSessionActive = true
         XCTAssertTrue(tour.preparePlaqueScanner(stopID: stops[0].id))
         tour.confirmPlaqueArrival(for: stops[0].id)
         XCTAssertEqual(tour.activateCurrentStop(stopID: stops[0].id, trackingReady: true, plaqueIsTracked: true), .allow(.recognizedPlaque))
@@ -1461,13 +1545,14 @@ final class TourCompletionFlowTests: XCTestCase {
         await model.loadStopsIfNeeded()
         return model
     }
-    /// Two distinct fixes, with deterministic time, exercise the actual dwell policy.
+    /// Reliable on-site fixes exercise the full three-minute visit dwell.
     private func confirmArrival(_ tour: TourViewModel) {
         guard let stop = tour.currentStop else { return }
         let now = Date()
-        for age in [-4.0, 0] {
+        for seconds in stride(from: -180.0, through: 0.0, by: 3.0) {
+            let date = now.addingTimeInterval(seconds)
             tour.evaluateAutomaticProgression(LocationSample(coordinate: stop.coordinate,
-                horizontalAccuracy: 3, timestamp: now.addingTimeInterval(age)), now: now)
+                horizontalAccuracy: 3, timestamp: date), now: date)
         }
     }
 
@@ -1755,7 +1840,12 @@ final class TourCompletionFlowTests: XCTestCase {
     }
     func testGPSCanRecordPhysicalSiteWithoutStartingAnItinerary() async {
         let tour = await makeTour(); defer { cleanUp(tour) }
-        tour.handleLocationForProximity(LocationSample(coordinate: stops[3].coordinate))
+        let start = Date().addingTimeInterval(-180)
+        for seconds in 0...180 {
+            let date = start.addingTimeInterval(Double(seconds))
+            tour.handleLocationForProximity(LocationSample(coordinate: stops[3].coordinate, timestamp: date), now: date)
+            if seconds < 180 { XCTAssertNil(tour.activities[stops[3].id].visitedAt) }
+        }
         XCTAssertNotNil(tour.activities[stops[3].id].visitedAt)
         XCTAssertEqual(tour.phase, .notStarted)
     }

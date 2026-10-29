@@ -1,3 +1,11 @@
+## Build 100 — visit progression behavior
+
+No visual redesign. Added a three-minute accumulated on-site GPS dwell before automatic Visited, with plaque recognition, active narration completion from anywhere, and departure toward the next stop as early-completion triggers. Physical visit history is recorded only with physical evidence; narration alone changes session progress. Existing presentation holds prevent destination changes beneath plaque/sketchbook/story screens.
+
+Validation: 239 core tests + 118 model tests passed. Coverage includes 179/180-second boundary, excluded away/weak/gap/paused intervals, passive physical visits, all early triggers, wrong-way movement, off-site narration, repeated callbacks, Stop walk, Previous/Undo and all-stop Home progression. Full native Swift Debug/Release syntax checks passed.
+
+Native field verification remains pending: real-device GPS accuracy and departure thresholds require an outdoor walk. This Linux host cannot run Xcode or the iOS app.
+
 ## Build 99 — broad 3D AR chevrons
 
 Source: docs/design/ar-wide-chevrons-approved.png. The shared native mesh has wider arms, larger scale, thicker extrusion, broad white front faces, hunter-green sides and a 16-degree depth-revealing angle. Projected bounds cap each freshly placed group at 76% viewport width / 29% height. Every direction retains the same rotation mapping, fixed anchor behavior, ground clearance and fallback notices; plaque scanning and UI cards are unchanged.
