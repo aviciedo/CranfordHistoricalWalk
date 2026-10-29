@@ -427,13 +427,18 @@ struct PlaqueScannerView: View {
         }
         .onDisappear { tour.endARDiscoverySession() }
         .task(id: revealContext) {
-            guard scenePhase == .active, let id = tour.pendingPassportStampStopID,
-                  tour.activities[id].plaqueUnlockedAt != nil else { return }
+            let pendingID = tour.pendingPassportStampStopID
+            guard let id = PassportCelebrationPolicy.scheduledStopID(sceneIsActive: scenePhase == .active,
+                pendingStopID: pendingID,
+                stampIsSaved: pendingID.map { tour.activities[$0].plaqueUnlockedAt != nil } ?? false) else { return }
             // Keep the durable award event for the stop host to consume after dismissal.
             // Restart the readable celebration if the app returns from an interruption.
-            do { try await Task.sleep(for: .milliseconds(UIAccessibility.isVoiceOverRunning ? 4500 : 2400)) }
-            catch { return }
-            guard scenePhase == .active, tour.pendingPassportStampStopID == id else { return }
+            do {
+                try await Task.sleep(for: .milliseconds(
+                    PassportCelebrationPolicy.autoDismissMilliseconds(voiceOverRunning: UIAccessibility.isVoiceOverRunning)))
+            } catch { return }
+            guard PassportCelebrationPolicy.shouldFinishAutoDismiss(sceneIsActive: scenePhase == .active,
+                pendingStopID: tour.pendingPassportStampStopID, scheduledStopID: id) else { return }
             dismiss()
         }
         .onChange(of: navigation.homeReturnID) { _, _ in
