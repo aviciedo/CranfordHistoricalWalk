@@ -30,6 +30,7 @@ struct GoogleMapView: UIViewRepresentable {
     var onMapTap: () -> Void = {}
     /// Camera came to rest at this zoom level.
     var onCameraIdle: (Float) -> Void = { _ in }
+    var trailSegments: [[CLLocationCoordinate2D]] = []
 
     static let cranfordFallbackCamera = GMSCameraPosition(latitude: 40.6584, longitude: -74.3035, zoom: 15.2)
 
@@ -68,6 +69,7 @@ struct GoogleMapView: UIViewRepresentable {
         context.coordinator.render(markers: markers, style: markerStyle, selectedID: selectedStopID)
         context.coordinator.updateMarkerSizes()
         context.coordinator.render(userPuck: userPuck)
+        context.coordinator.render(trail: trailSegments)
         context.coordinator.render(route: routeCoordinates)
         context.coordinator.apply(cameraRequest: cameraRequest)
     }
@@ -99,6 +101,8 @@ struct GoogleMapView: UIViewRepresentable {
         private var polyline: GMSPolyline?
         private var polylineCasing: GMSPolyline?
         private var lastRoute: [CLLocationCoordinate2D] = []
+        private var trailLines: [GMSPolyline] = []
+        private var lastTrail: [[GeoCoordinate]] = []
 
         private var lastCameraRequestID: Int = -1
         /// Maps SDK can deliver `didTapAt` for the same gesture as a marker tap; ignore those.
@@ -362,6 +366,24 @@ struct GoogleMapView: UIViewRepresentable {
             }
             userMarker?.icon = iconCache[key]
             userMarker?.rotation = puck.heading ?? 0
+        }
+
+        func render(trail segments: [[CLLocationCoordinate2D]]) {
+            guard let mapView else { return }
+            let coordinates = segments.map { $0.map(\.geoCoordinate) }
+            guard coordinates != lastTrail else { return }
+            lastTrail = coordinates
+            trailLines.forEach { $0.map = nil }
+            trailLines = segments.filter { $0.count >= 2 }.map { segment in
+                let path = GMSMutablePath()
+                segment.forEach(path.add)
+                let line = GMSPolyline(path: path)
+                line.strokeWidth = 4
+                line.strokeColor = UIColor(AppTheme.forest)
+                line.zIndex = 0
+                line.map = mapView
+                return line
+            }
         }
 
         // MARK: Route

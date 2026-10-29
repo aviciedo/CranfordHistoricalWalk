@@ -16,8 +16,8 @@ struct NextStopCard: View {
                     Text("Walk paused").font(.caption).foregroundStyle(AppTheme.secondaryInk)
                 } else if tour.walkingProgression.isConfirmingArrival {
                     Text("Arriving at").font(.caption).foregroundStyle(AppTheme.secondaryInk)
-                } else if tour.automaticTransitionFromStopID != nil && !tour.progress.isCurrentStopVisited {
-                    Text("Now guiding you to").font(.caption).foregroundStyle(AppTheme.secondaryInk)
+                } else if !tour.isCurrentVisitConfirmed {
+                    Text("Next stop").font(.caption).foregroundStyle(AppTheme.secondaryInk)
                 }
                 HStack(alignment: .top, spacing: 8) {
                     VStack(alignment: .leading, spacing: 6) {
@@ -61,12 +61,6 @@ struct NextStopCard: View {
                         Label("Resume walk", systemImage: "figure.walk").frame(minHeight: 44)
                     }
                     .buttonStyle(.plain).font(.headline)
-                }
-                // Undo stays discoverable immediately after an automatic transition.
-                if tour.automaticTransitionFromStopID != nil {
-                    Button("Undo · Stay at previous stop") { tour.undoAutomaticTransition() }
-                        .buttonStyle(.plain).font(.subheadline).frame(minHeight: 44)
-                        .accessibilityIdentifier("map.undoAdvance")
                 }
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 12) { explorationActions }
@@ -112,6 +106,10 @@ struct NextStopCard: View {
     }
 
     @ViewBuilder private var moreActions: some View {
+        if tour.automaticTransitionFromStopID != nil {
+            Button("Undo · Return to previous stop") { tour.undoAutomaticTransition() }
+                .accessibilityIdentifier("map.undoAdvance")
+        }
         if let previous = tour.previousStop {
             Button { tour.goToPreviousStop() } label: {
                 Label("Previous stop: \(previous.name)", systemImage: "arrow.left")

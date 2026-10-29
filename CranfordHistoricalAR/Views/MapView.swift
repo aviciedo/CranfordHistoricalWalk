@@ -27,7 +27,8 @@ struct TourMapView: View {
                         reservesNavigationControls: false,
                         showsCompass: false,
                         fitInsets: UIEdgeInsets(top: 28, left: 30, bottom: 30, right: 74),
-                        onMapTap: { mapModel.clearViewedStop() }
+                        onMapTap: { mapModel.clearViewedStop() },
+                        trailSegments: mapModel.walkedTrailCoordinates(for: tour).map { $0.map(\.clLocationCoordinate) }
                     )
                 } else {
                     AppleTourMapView(markers: mapModel.markers(for: tour, emphasizesDestinationOnly: true),
@@ -36,7 +37,8 @@ struct TourMapView: View {
                         cameraRequest: mapModel.cameraRequest,
                         onUserGesture: { mapModel.userDidMoveCamera() },
                         onMarkerTap: { mapModel.select(stopID: $0) },
-                        onMapError: { appleMapError = $0 }, reservesNavigationControls: false)
+                        onMapError: { appleMapError = $0 }, reservesNavigationControls: false,
+                        trailSegments: mapModel.walkedTrailCoordinates(for: tour).map { $0.map(\.clLocationCoordinate) })
                 }
 
                 if let appleMapError, !GoogleMapsBootstrap.isConfigured {
@@ -161,6 +163,7 @@ struct AppleTourMapView: UIViewRepresentable {
     var reservesNavigationControls = false
     var reservesZoomControls = false
     var onCameraIdle: (Float) -> Void = { _ in }
+    var trailSegments: [[CLLocationCoordinate2D]] = []
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
@@ -204,6 +207,8 @@ struct AppleTourMapView: UIViewRepresentable {
         private var route: MKPolyline?
         private var accuracy: MKCircle?
         private var geometry: [GeoCoordinate] = []
+        private var trails: [MKPolyline] = []
+        private var trailGeometry: [[GeoCoordinate]] = []
         private var cameraID: Int?
         private var hasFitInitialMap = false
         private var layoutRetry: Task<Void, Never>?
@@ -216,6 +221,13 @@ struct AppleTourMapView: UIViewRepresentable {
         init(_ parent: AppleTourMapView) { self.parent = parent }
 
         func render(on map: MKMapView) {
+            let trace = parent.trailSegments.map { $0.map(\.geoCoordinate) }
+            if trace != trailGeometry {
+                map.removeOverlays(trails)
+                trailGeometry = trace
+                trails = parent.trailSegments.filter { $0.count >= 2 }.map { MKPolyline(coordinates: $0, count: $0.count) }
+                map.addOverlays(trails, level: .aboveRoads)
+            }
             let ids = Set(parent.markers.map(\.id))
             for id in Array(sites.keys) where !ids.contains(id) {
                 if let site = sites.removeValue(forKey: id) { map.removeAnnotation(site) }
@@ -435,8 +447,9 @@ struct AppleTourMapView: UIViewRepresentable {
                 return renderer
             }
             let renderer = MKPolylineRenderer(overlay: overlay)
+            let isTrail = (overlay as? MKPolyline).map { line in trails.contains { $0 === line } } ?? false
             renderer.strokeColor = UIColor(AppTheme.forest)
-            renderer.lineWidth = 5; renderer.lineCap = .round; renderer.lineJoin = .round
+            renderer.lineWidth = isTrail ? 4 : 5; renderer.lineCap = .round; renderer.lineJoin = .round
             return renderer
         }
     }

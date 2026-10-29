@@ -238,8 +238,9 @@ extension TourViewModel {
 
     /// The visible arrival CTA also resumes a restored walk before selecting its next leg.
     func startNextLegAfterConfirmedVisit() {
-        guard isCurrentVisitConfirmed else { return }
+        guard isCurrentVisitConfirmed, let confirmedID = currentStop?.id else { return }
         if isWalkPaused { startTour() }
+        guard currentStop?.id == confirmedID else { return } // Resume may already apply automatic advancement.
         completeCurrentStopAndAdvance()
     }
 
@@ -259,8 +260,21 @@ extension TourViewModel {
                 savePhysicalActivity(for: stop.id, evidence: .onSiteARMarker, now: now)
             }
         case .departed, nil:
-            break // Arrival is automatic; destination changes require an explicit tap.
+            break
         }
+        advanceAfterLoggedVisitIfAllowed()
+    }
+
+    /// Advance once after a logged visit, when navigation is visible and exploration is closed.
+    /// The final stop retains its explicit Finish walk action; Previous/Undo keeps its hold.
+    func advanceAfterLoggedVisitIfAllowed() {
+        guard isAutomaticNavigationAllowed, isCurrentVisitConfirmed, nextStop != nil,
+              !walkingProgression.isHeld, heldDepartureStopID != currentStop?.id,
+              let stop = currentStop else { return }
+        let snapshot = progress
+        completeCurrentStopAndAdvance()
+        automaticTransitionFromStopID = stop.id
+        automaticTransitionProgress = snapshot
     }
 
     /// Undo changes only the destination. Real visits, stories, stamps and audio survive.

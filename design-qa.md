@@ -1,3 +1,24 @@
+# Build 85 — next-stop illustration, route and walked trail
+
+final result: blocked
+
+Target: after a logged visit, previous site becomes a number and next site becomes
+the single illustrated destination. Bottom panel names that next stop with distance
+and walking time. Retain a hunter-green walked trail plus a shortening remaining
+route. Both Google/Apple implementations consume the same trace and route model.
+Trail uses a 4-point forest line; remaining route is 5 points (Google retains white
+route casing). Puck remains real GPS and above route overlays. Camera framing keeps
+user/departure/destination rather than zooming out to the entire walked trace.
+Undo moves into More, preserving a simple destination card. Final completion and
+paused/restored behavior retain explicit Finish/Resume where appropriate.
+
+109 portable model tests and Debug/Release syntax checks passed. No native rendered
+screens can be captured here. Verify marker reversion, line layering, live updates,
+correct next-leg metrics, empty route/loading and GPS-gap handling on iPhone with
+both providers before marking visual acceptance passed.
+
+---
+
 # Build 84 — uncluttered scanner and stamp celebration
 
 final result: blocked

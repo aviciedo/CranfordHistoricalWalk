@@ -1,3 +1,39 @@
+## Automatic next-stop Map with retained walked trail — build 85
+
+Per the owner’s new selection, this supersedes build 78’s tap-to-start-next-leg rule.
+A logged current-walk visit now selects the next itinerary entry automatically when
+foreground Map navigation is available. The next stop gets the only illustration;
+the visited stop becomes its numbered marker. Browsing another stop no longer moves
+the illustration away from the walking destination. The bottom panel says Next stop,
+shows the actual destination name, and derives distance/time from that destination’s
+route/progress. Old routes are cleared during retargeting and real directions are
+requested from the current GPS location. Undo remains under More walking controls.
+
+AR, passport/story exploration and background state defer automatic selection until
+returning to Map, protecting plaque recognition and stamp presentation. A paused
+restored walk advances after explicit resume; a guard prevents resume plus next-leg
+handling from skipping two stops. Previous/Undo keeps its deliberate hold. The final
+stop retains Finish walk rather than inventing another destination.
+
+Both Google and Apple maps now draw a retained dark hunter-green GPS trail and a
+separate hunter-green remaining walking route. Remaining route geometry starts at
+the calculated route projection and shortens with progress. The blue dot always
+uses actual GPS; no artificial cross-street connector or straight-line route is drawn.
+Trail samples are real, fresh, authorized walking fixes with accuracy up to 25 m;
+noise under 2 m is not appended. Signal gaps, paused recording and implausible jumps
+split the trace rather than connecting missing data. Practice fixes are excluded.
+The trace stays across stop changes/completion, is bounded to 6,000 recent points,
+and clears on reset/new walk. It is session-local memory, not restored after force-
+quit and not added to saved itinerary history or developer GPS captures.
+
+Validation: 109 portable app-model tests passed. Coverage includes automatic GPS/
+recognized-plaque progression exactly once, illustration/number state, service route
+target and remaining metrics, route trimming, trail continuity across legs, signal
+loss/jump splitting, reset and duplicate-resume protection. Existing tests were
+updated to the newly selected automatic behavior. Debug/Release Swift syntax passed.
+Native rendering of both map providers, layering and outdoor acceptance remain
+pending. No publication performed.
+
 ## Clear plaque scanner with stamp-unlock celebration — build 84
 
 Searching now shows the existing top Frame this plaque/reference-photo header and

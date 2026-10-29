@@ -115,10 +115,16 @@ final class TourViewModel {
     }
     /// Only foreground Map can change the itinerary automatically. Browsing and AR hold it.
     var isAutomaticNavigationVisible = false {
-        didSet { if !isAutomaticNavigationVisible { walkingProgression.interrupt() } }
+        didSet {
+            if !isAutomaticNavigationVisible { walkingProgression.interrupt() }
+            else { advanceAfterLoggedVisitIfAllowed() }
+        }
     }
     var explorationHolds: Set<UUID> = [] {
-        didSet { if !explorationHolds.isEmpty { walkingProgression.interrupt() } }
+        didSet {
+            if !explorationHolds.isEmpty { walkingProgression.interrupt() }
+            else { advanceAfterLoggedVisitIfAllowed() }
+        }
     }
     var automaticTransitionFromStopID: String?
     var automaticTransitionProgress: TourProgress?
@@ -156,8 +162,14 @@ final class TourViewModel {
     /// Hold a selected site's story/discovery through GPS fixes and AR presentation.
     var arDiscoveryStopID: String?
     var isARSessionActive = false {
-        didSet { if isARSessionActive { walkingProgression.interrupt() } }
+        didSet {
+            if isARSessionActive { walkingProgression.interrupt() }
+            else { advanceAfterLoggedVisitIfAllowed() }
+        }
     }
+    /// Session-local GPS trace, separate from provider directions and saved test captures.
+    private(set) var walkedTrailSegments: [[GeoCoordinate]] = []
+    @ObservationIgnored private var lastTrailSample: LocationSample?
     var continuedARStopIDs: Set<String> = []
     var arrivalStoryStopID: String?
     #if DEVELOPER_MENU
@@ -319,6 +331,7 @@ final class TourViewModel {
         }
         isWalkPaused = false
         isShowingTour = true
+        advanceAfterLoggedVisitIfAllowed()
         checkpointWalk()
         startLocationIfPossible()
         loadTourSummaryLegsIfNeeded()
@@ -365,6 +378,8 @@ final class TourViewModel {
 
     /// Explicit replay can start immediately; developer resets return to the welcome state.
     func resetTour(startImmediately: Bool = true) {
+        walkedTrailSegments = []
+        lastTrailSample = nil
         walkSessionID = UUID()
         automaticTransitionFromStopID = nil
         automaticTransitionProgress = nil
@@ -446,6 +461,7 @@ final class TourViewModel {
     }
 
     func stopLocation() {
+        lastTrailSample = nil
         lastMapLocationRefreshAt = nil
         locationTask?.cancel()
         locationTask = nil
@@ -502,9 +518,42 @@ final class TourViewModel {
 
     /// Fan-out for location-dependent subsystems. Kept separate so `handle` stays readable.
     func didUpdateLocation(_ sample: LocationSample) {
+        recordWalkedTrail(sample)
         handleLocationForRouting(sample)
         handleLocationForProximity(sample)
         evaluateAutomaticProgression(sample)
+    }
+
+    /// Retain real walking fixes; split at pauses, signal loss and GPS jumps.
+    func recordWalkedTrail(_ sample: LocationSample, now: Date = Date()) {
+        guard isWalkingActive, locationAuthorization == .authorized,
+              !sample.isSimulated, !(locationService is SimulatedLocationService),
+              sample.coordinate.isValid, StopActivationPolicy.isFresh(sample.timestamp, now: now),
+              sample.horizontalAccuracy.isFinite, (0...25).contains(sample.horizontalAccuracy),
+              sample.speed.map({ $0.isFinite && $0 <= 4 }) ?? true else {
+            lastTrailSample = nil
+            return
+        }
+        let previous = lastTrailSample
+        if let previous, sample.timestamp <= previous.timestamp { return }
+        lastTrailSample = sample
+        let continues: Bool
+        if let previous {
+            let elapsed = sample.timestamp.timeIntervalSince(previous.timestamp)
+            continues = elapsed <= 10 && GeoMath.distance(from: previous.coordinate, to: sample.coordinate) / elapsed <= 4
+        } else { continues = false }
+        if continues, let last = walkedTrailSegments.last?.last {
+            if GeoMath.distance(from: last, to: sample.coordinate) >= 2 {
+                walkedTrailSegments[walkedTrailSegments.count - 1].append(sample.coordinate)
+            }
+        } else if walkedTrailSegments.last?.count == 1 {
+            walkedTrailSegments[walkedTrailSegments.count - 1] = [sample.coordinate]
+        } else { walkedTrailSegments.append([sample.coordinate]) }
+        // Bound long-session rendering cost without connecting separate GPS segments.
+        while walkedTrailSegments.reduce(0, { $0 + $1.count }) > 6000 {
+            if walkedTrailSegments[0].count > 2 { walkedTrailSegments[0].removeFirst() }
+            else { walkedTrailSegments.removeFirst() }
+        }
     }
 
     func refreshLocationIssue() {

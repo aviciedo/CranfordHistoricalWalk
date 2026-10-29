@@ -142,7 +142,7 @@ final class TourCompletionFlowTests: XCTestCase {
         tour.startTour()
         let map = MapViewModel()
         map.show(stop: stops[3])
-        XCTAssertEqual(map.markers(for: tour, emphasizesDestinationOnly: true).filter(\.isIllustrated).map(\.id), [stops[3].id])
+        XCTAssertEqual(map.markers(for: tour, emphasizesDestinationOnly: true).filter(\.isIllustrated).map(\.id), [stops[0].id], "Browsing a stop must not replace the walking destination illustration")
         XCTAssertEqual(tour.currentStop?.id, stops[0].id)
         map.clearViewedStop()
         XCTAssertEqual(map.markers(for: tour, emphasizesDestinationOnly: true).filter(\.isIllustrated).map(\.id), [stops[0].id])
@@ -325,6 +325,83 @@ final class TourCompletionFlowTests: XCTestCase {
         route.routeCoordinates = [origin, GeoCoordinate(latitude: .nan, longitude: 0)]
         tour.currentRoute = route
         XCTAssertTrue(map.walkingRouteCoordinates(for: tour).isEmpty)
+    }
+
+    func testWalkingLineShortensAlongProviderRouteAsProgressMovesForward() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.startTour()
+        let end = stops[0].coordinate
+        let origin = GeoCoordinate(latitude: end.latitude - 0.002, longitude: end.longitude)
+        let middle = GeoCoordinate(latitude: end.latitude - 0.001, longitude: end.longitude)
+        var route = WalkingRoute.straightLineEstimate(from: origin, to: end)
+        route.source = .googleRoutesAPI
+        route.routeCoordinates = [origin, middle, end]
+        tour.currentRoute = route
+        let map = MapViewModel()
+        let firstGPS = GeoCoordinate(latitude: end.latitude - 0.0015, longitude: end.longitude + 0.00002)
+        tour.routeProgress = RouteProgressCalculator.progress(along: route, userLocation: firstGPS)
+        let first = map.walkingRouteCoordinates(for: tour)
+        XCTAssertEqual(first.count, 3)
+        XCTAssertEqual(first.first?.longitude, end.longitude, "Line stays on the route; no fake GPS connector")
+        XCTAssertEqual(first.last, end)
+        let laterGPS = GeoCoordinate(latitude: end.latitude - 0.0005, longitude: end.longitude)
+        tour.routeProgress = RouteProgressCalculator.progress(along: route, userLocation: laterGPS)
+        let later = map.walkingRouteCoordinates(for: tour)
+        XCTAssertEqual(later.count, 2)
+        XCTAssertEqual(later.first?.latitude ?? 0, laterGPS.latitude, accuracy: 0.000001)
+        XCTAssertEqual(later.last, end)
+        XCTAssertEqual(tour.currentRoute?.routeCoordinates, [origin, middle, end], "Trimming never mutates the provider route")
+        tour.routeProgress = RouteProgressCalculator.progress(along: route, userLocation: end)
+        XCTAssertTrue(map.walkingRouteCoordinates(for: tour).isEmpty)
+    }
+
+    func testWalkedTrailRemainsAcrossLegChangesAndClearsOnlyForNewWalk() async {
+        let source = ActivityTestLocationService(status: .authorized)
+        let tour = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),
+            locationService: source, directionsService: PreviewDirectionsService())
+        await tour.loadStopsIfNeeded(); defer { cleanUp(tour) }
+        tour.startTour()
+        let now = Date()
+        func fix(_ latitude: Double, _ seconds: Double) {
+            tour.recordWalkedTrail(LocationSample(coordinate: GeoCoordinate(latitude: latitude, longitude: -74.32),
+                horizontalAccuracy: 3, timestamp: now.addingTimeInterval(seconds)), now: now.addingTimeInterval(seconds))
+        }
+        fix(40.67, 0); fix(40.67003, 2); fix(40.67006, 4)
+        let map = MapViewModel()
+        XCTAssertEqual(map.walkedTrailCoordinates(for: tour).first?.count, 3)
+        let firstLeg = tour.walkedTrailSegments
+        tour.completeCurrentStopAndAdvance()
+        XCTAssertEqual(tour.walkedTrailSegments, firstLeg)
+        fix(40.67009, 6)
+        XCTAssertEqual(map.walkedTrailCoordinates(for: tour).first?.count, 4)
+        tour.resetTour(startImmediately: false)
+        XCTAssertTrue(tour.walkedTrailSegments.isEmpty)
+    }
+
+    func testWalkedTrailBreaksAtSignalLossAndJumpsAndIgnoresPractice() async {
+        let source = ActivityTestLocationService(status: .authorized)
+        let tour = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),
+            locationService: source, directionsService: PreviewDirectionsService())
+        await tour.loadStopsIfNeeded(); defer { cleanUp(tour) }
+        tour.startTour()
+        let now = Date()
+        func fix(_ latitude: Double, _ seconds: Double, accuracy: Double = 3, simulated: Bool = false) {
+            tour.recordWalkedTrail(LocationSample(coordinate: GeoCoordinate(latitude: latitude, longitude: -74.32),
+                horizontalAccuracy: accuracy, timestamp: now.addingTimeInterval(seconds), isSimulated: simulated),
+                now: now.addingTimeInterval(seconds))
+        }
+        fix(40.67, 0); fix(40.67003, 2)
+        fix(40.67006, 3, accuracy: 100)
+        fix(40.67009, 4); fix(40.67012, 6)
+        fix(40.68, 7); fix(40.68003, 9)
+        XCTAssertEqual(tour.walkedTrailSegments.map(\.count), [2, 2, 2], "No invented connectors across lost signal or a GPS jump")
+        let saved = tour.walkedTrailSegments
+        fix(40.68006, 11, simulated: true)
+        XCTAssertEqual(tour.walkedTrailSegments, saved)
+        tour.stopLocation()
+        tour.recordWalkedTrail(LocationSample(coordinate: .init(latitude: 40.68009, longitude: -74.32),
+            timestamp: now.addingTimeInterval(-60)), now: now)
+        XCTAssertEqual(tour.walkedTrailSegments, saved)
     }
 
     func testGPSDotMovesOffRouteWithoutSnappingAndCameraIgnoresSmallJitter() async throws {
@@ -742,28 +819,34 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertTrue(restored.isWalkPaused)
         XCTAssertTrue(restored.isCurrentVisitConfirmed)
         XCTAssertEqual(restored.nextStop?.name, "Greystone")
+        restored.isAutomaticNavigationVisible = true
         restored.startNextLegAfterConfirmedVisit()
         XCTAssertFalse(restored.isWalkPaused)
         XCTAssertEqual(restored.currentStop?.id, stops[1].id)
         XCTAssertEqual(walks.load()?.progress.currentStopID, stops[1].id)
     }
 
-    func testConfirmedVisitWaitsForExplicitNextLegAndPreservesIndependentActivity() async {
+    func testLoggedVisitAutomaticallySelectsNextLegAndPreservesIndependentActivity() async {
         let tour = await makeTour(); defer { cleanUp(tour) }
         tour.startTour(); tour.isAutomaticNavigationVisible = true
         tour.finishListening(for: stops[0].id)
         tour.activities.collectStamp(at: stops[0].id)
         confirmArrival(tour)
-        XCTAssertTrue(tour.isCurrentVisitConfirmed)
-        XCTAssertEqual(tour.nextStop?.name, "Greystone")
+        XCTAssertFalse(tour.isCurrentVisitConfirmed)
+        XCTAssertEqual(tour.currentStop?.name, "Greystone")
+        let map = MapViewModel()
+        let markers = map.markers(for: tour, emphasizesDestinationOnly: true)
+        XCTAssertEqual(markers.filter(\.isIllustrated).map(\.id), [stops[1].id])
+        XCTAssertFalse(markers.first { $0.id == stops[0].id }?.isIllustrated ?? true)
+        XCTAssertEqual(markers.first { $0.id == stops[0].id }?.state, .visited)
         let now = Date()
         let away = GeoCoordinate(latitude: stops[0].latitude + 0.002, longitude: stops[0].longitude)
         for age in [0.0, 5, 10] {
             let fix = LocationSample(coordinate: away, horizontalAccuracy: 3, timestamp: now.addingTimeInterval(age))
             tour.evaluateAutomaticProgression(fix, now: fix.timestamp)
         }
-        XCTAssertEqual(tour.currentStop?.id, stops[0].id, "Leaving cannot silently replace the named next-leg button")
-        XCTAssertNil(tour.automaticTransitionFromStopID)
+        XCTAssertEqual(tour.currentStop?.id, stops[1].id, "Repeated fixes must not advance an unvisited next stop")
+        XCTAssertEqual(tour.automaticTransitionFromStopID, stops[0].id)
         tour.startNextLegAfterConfirmedVisit()
         XCTAssertEqual(tour.currentStop?.id, stops[1].id)
         XCTAssertFalse(tour.isCurrentVisitConfirmed)
@@ -775,12 +858,12 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertEqual(tour.currentStop?.id, stops[1].id, "A repeated tap cannot skip an unvisited stop")
     }
 
-    func testReturningFromExplorationARAndBackgroundStillRequiresNextLegTap() async {
+    func testLoggedVisitAdvancesOnlyAfterReturningFromExplorationARAndBackground() async {
         let tour = await makeTour(); defer { cleanUp(tour) }
         tour.startTour(); tour.isAutomaticNavigationVisible = true
-        confirmArrival(tour)
         let first = UUID(), nested = UUID()
         tour.explorationHolds = [first, nested]
+        confirmArrival(tour)
         let now = Date()
         let away = GeoCoordinate(latitude: stops[0].latitude + 0.002, longitude: stops[0].longitude)
         func fix(_ age: Double) {
@@ -791,17 +874,17 @@ final class TourCompletionFlowTests: XCTestCase {
         tour.explorationHolds.remove(nested)
         fix(10)
         XCTAssertEqual(tour.currentStop?.id, stops[0].id)
-        tour.explorationHolds.remove(first)
         tour.isARSessionActive = true
+        tour.explorationHolds.remove(first)
         fix(15); fix(20)
-        tour.isARSessionActive = false
         tour.isAutomaticNavigationVisible = false
+        tour.isARSessionActive = false
         fix(25); fix(30)
         tour.isAutomaticNavigationVisible = true
         fix(35)
-        XCTAssertEqual(tour.currentStop?.id, stops[0].id, "Returning to Map still waits for the explicit next-leg tap")
+        XCTAssertEqual(tour.currentStop?.id, stops[1].id, "Returning to Map applies the already-logged visit without another fix")
         fix(40)
-        XCTAssertEqual(tour.currentStop?.id, stops[0].id)
+        XCTAssertEqual(tour.currentStop?.id, stops[1].id)
         tour.startNextLegAfterConfirmedVisit()
         XCTAssertEqual(tour.currentStop?.id, stops[1].id)
     }
@@ -898,10 +981,10 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertEqual(resumed.phase, .complete)
     }
 
-    func testLocationPipelineConfirmsMillAndOffersGreystoneUntilNextLegTap() async throws {
+    func testLocationPipelineLogsMillAndAutomaticallyRoutesToGreystone() async throws {
         let source = ActivityTestLocationService(status: .authorized)
         let tour = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),
-            locationService: source, directionsService: PreviewDirectionsService())
+            locationService: source, directionsService: WalkingProviderStub(source: .googleRoutesAPI))
         await tour.loadStopsIfNeeded(); defer { cleanUp(tour) }
         tour.startTour(); tour.isAutomaticNavigationVisible = true
         let now = Date()
@@ -915,17 +998,24 @@ final class TourCompletionFlowTests: XCTestCase {
             }
             XCTAssertEqual(tour.userLocation?.timestamp, sample.timestamp)
         }
-        XCTAssertEqual(tour.currentStop?.id, stops[0].id)
-        XCTAssertTrue(tour.isCurrentVisitConfirmed)
-        XCTAssertEqual(tour.nextStop?.name, "Greystone")
+        XCTAssertEqual(tour.currentStop?.id, stops[1].id)
+        XCTAssertFalse(tour.isCurrentVisitConfirmed)
+        XCTAssertEqual(tour.homeFeaturedStop?.name, "Greystone")
         tour.startNextLegAfterConfirmedVisit()
         XCTAssertEqual(tour.currentStop?.id, stops[1].id)
         XCTAssertTrue(tour.progress.isCompleted(stops[0].id))
         XCTAssertFalse(tour.progress.isCompleted(stops[1].id))
-        XCTAssertNil(tour.automaticTransitionFromStopID)
+        XCTAssertEqual(tour.automaticTransitionFromStopID, stops[0].id)
+        for _ in 0..<100 where tour.currentRoute?.destination != stops[1].coordinate {
+            try await Task.sleep(for: .milliseconds(2))
+        }
+        XCTAssertEqual(tour.currentRoute?.destination, stops[1].coordinate)
+        XCTAssertGreaterThan(tour.remainingDistanceMeters ?? 0, 0)
+        XCTAssertGreaterThan(tour.remainingSeconds ?? 0, 0)
+        XCTAssertEqual(MapViewModel().walkingRouteCoordinates(for: tour).last, stops[1].coordinate)
     }
 
-    func testRecognizedPlaqueWithWrongGeocodeCannotArmFalseAutomaticDeparture() async {
+    func testRecognizedPlaqueAdvancesOnceFromLoggedVisitWithoutRequiringGeocodeDeparture() async {
         let tour = await makeTour(); defer { cleanUp(tour) }
         tour.startTour(); tour.isAutomaticNavigationVisible = true
         XCTAssertTrue(tour.preparePlaqueScanner(stopID: stops[0].id))
@@ -939,10 +1029,10 @@ final class TourCompletionFlowTests: XCTestCase {
             let sample = LocationSample(coordinate: actualPlaquePoint, timestamp: now.addingTimeInterval(age))
             tour.evaluateAutomaticProgression(sample, now: sample.timestamp)
         }
-        XCTAssertEqual(tour.currentStop?.id, stops[0].id, "A wrong geocode must not look like leaving the physical plaque")
+        XCTAssertEqual(tour.currentStop?.id, stops[1].id, "Physical recognition logs the visit; geocode departure is not required")
         XCTAssertFalse(tour.walkingProgression.hasArrived)
-        tour.completeCurrentStopAndAdvance()
-        XCTAssertEqual(tour.currentStop?.id, stops[1].id)
+        tour.advanceAfterLoggedVisitIfAllowed()
+        XCTAssertEqual(tour.currentStop?.id, stops[1].id, "No second advancement without another logged visit")
     }
 
     func testPreviousStopUsesTourOrderAndPreservesAllRecordedProgress() async {
