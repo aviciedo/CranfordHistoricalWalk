@@ -70,7 +70,18 @@ struct NextStopCard: View {
                     HStack(spacing: 12) { explorationActions }
                     VStack(spacing: 8) { explorationActions }
                 }
-                if tour.isRouteAnEstimate || tour.routingError != nil {
+                if tour.isWalkingActive {
+                    Button { tour.stopWalk() } label: {
+                        Label("Stop walk", systemImage: "stop.circle")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Stops directions and removes the route. Your progress is saved so you can resume later.")
+                    .accessibilityIdentifier("map.stopWalk")
+                }
+                if !tour.isWalkPaused && (tour.isRouteAnEstimate || tour.routingError != nil) {
                     Button("Retry directions") { tour.retryWalkingRoute() }
                         .frame(minHeight: 44).disabled(tour.isRoutingInFlight || tour.isWalkPaused)
                     Text(tour.isRouteAnEstimate ? "Walking route unavailable · Distance is an estimate" : "Couldn't update directions. Showing the last route.")

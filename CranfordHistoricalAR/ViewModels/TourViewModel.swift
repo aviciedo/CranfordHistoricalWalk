@@ -339,6 +339,20 @@ final class TourViewModel {
         if proximityMachine == nil { resetProximityForCurrentStop() }
     }
 
+    /// Stop guidance without discarding the itinerary, visits, sketches or recorded trail.
+    func stopWalk() {
+        guard isWalkingActive else { return }
+        isWalkPaused = true
+        cancelRouting()
+        currentRoute = nil
+        routeProgress = nil
+        routingError = nil
+        lastRouteRequest = nil
+        lastTrailSample = nil
+        walkingProgression.interrupt()
+        checkpointWalk()
+    }
+
     /// Map entry resumes the walk; an explicit detail entry targets that selected site.
     /// Browsing details alone still never changes the destination.
     @discardableResult

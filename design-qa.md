@@ -1,3 +1,9 @@
+## Build 97 — Stop walk
+
+Added a visible 44-point Stop walk action beneath the Map exploration buttons. Stops active guidance, cancels route tasks, clears destination geometry and instructions, and preserves itinerary/activity/trail state. Resume uses the existing startTour flow.
+
+Validation: 112 portable model-flow tests passed, including stop/clear/resume/progress preservation and rejection of late route geometry while paused; Swift syntax parse passed. Native iOS typechecking and visual layout verification require Xcode and remain pending. No unrelated Home mockup changes implemented.
+
 # Build 95 — approved vintage river Home
 
 final result: blocked

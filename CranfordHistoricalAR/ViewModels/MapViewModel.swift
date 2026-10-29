@@ -232,7 +232,7 @@ final class MapViewModel {
 
     /// Never render a straight-line estimate or an old destination's route as a walking path.
     func walkingRouteCoordinates(for tour: TourViewModel) -> [GeoCoordinate] {
-        guard tour.phase == .inProgress, let route = tour.currentRoute,
+        guard tour.isWalkingActive, let route = tour.currentRoute,
               route.source != .straightLineEstimate, let destination = tour.currentStop,
               GeoMath.distance(from: route.destination, to: destination.coordinate) < 1,
               route.routeCoordinates.count >= 2,
