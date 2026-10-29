@@ -453,9 +453,12 @@ final class TourViewModel {
     /// Called while the foreground Map is visible, independently of itinerary pause state.
     func refreshMapLocationIfNeeded(now: Date = Date()) {
         refreshLocationIssue()
-        guard locationTask != nil, locationAuthorization == .authorized else { return }
-        if let sample = userLocation, now.timeIntervalSince(sample.timestamp) < 10 { return }
-        if let last = lastMapLocationRefreshAt, now.timeIntervalSince(last) < 15 { return }
+        guard MapLocationRecovery.shouldRequestFreshFix(
+            isSubscribed: locationTask != nil,
+            isAuthorized: locationAuthorization == .authorized,
+            latestFix: userLocation?.timestamp,
+            lastRequest: lastMapLocationRefreshAt,
+            now: now) else { return }
         lastMapLocationRefreshAt = now
         locationService.requestFreshLocation()
     }
@@ -526,34 +529,14 @@ final class TourViewModel {
 
     /// Retain real walking fixes; split at pauses, signal loss and GPS jumps.
     func recordWalkedTrail(_ sample: LocationSample, now: Date = Date()) {
-        guard isWalkingActive, locationAuthorization == .authorized,
-              !sample.isSimulated, !(locationService is SimulatedLocationService),
-              sample.coordinate.isValid, StopActivationPolicy.isFresh(sample.timestamp, now: now),
-              sample.horizontalAccuracy.isFinite, (0...25).contains(sample.horizontalAccuracy),
-              sample.speed.map({ $0.isFinite && $0 <= 4 }) ?? true else {
-            lastTrailSample = nil
-            return
-        }
-        let previous = lastTrailSample
-        if let previous, sample.timestamp <= previous.timestamp { return }
-        lastTrailSample = sample
-        let continues: Bool
-        if let previous {
-            let elapsed = sample.timestamp.timeIntervalSince(previous.timestamp)
-            continues = elapsed <= 10 && GeoMath.distance(from: previous.coordinate, to: sample.coordinate) / elapsed <= 4
-        } else { continues = false }
-        if continues, let last = walkedTrailSegments.last?.last {
-            if GeoMath.distance(from: last, to: sample.coordinate) >= 2 {
-                walkedTrailSegments[walkedTrailSegments.count - 1].append(sample.coordinate)
-            }
-        } else if walkedTrailSegments.last?.count == 1 {
-            walkedTrailSegments[walkedTrailSegments.count - 1] = [sample.coordinate]
-        } else { walkedTrailSegments.append([sample.coordinate]) }
-        // Bound long-session rendering cost without connecting separate GPS segments.
-        while walkedTrailSegments.reduce(0, { $0 + $1.count }) > 6000 {
-            if walkedTrailSegments[0].count > 2 { walkedTrailSegments[0].removeFirst() }
-            else { walkedTrailSegments.removeFirst() }
-        }
+        var state = WalkedTrailState(segments: walkedTrailSegments, lastFix: lastTrailSample.map(WalkedTrailFix.init(sample:)))
+        let previousFix = state.lastFix
+        WalkedTrailPolicy.record(WalkedTrailFix(sample: sample), into: &state,
+            isWalking: isWalkingActive, isAuthorized: locationAuthorization == .authorized,
+            isPracticeSource: locationService is SimulatedLocationService, now: now)
+        walkedTrailSegments = state.segments
+        if state.lastFix == nil { lastTrailSample = nil }
+        else if state.lastFix != previousFix { lastTrailSample = sample }
     }
 
     func refreshLocationIssue() {
@@ -593,6 +576,14 @@ extension TourViewModel.LoadState {
     var isFailure: Bool {
         if case .failed = self { return true }
         return false
+    }
+}
+
+extension WalkedTrailFix {
+    init(sample: LocationSample) {
+        self.init(coordinate: sample.coordinate, timestamp: sample.timestamp,
+                  horizontalAccuracy: sample.horizontalAccuracy, speed: sample.speed,
+                  isSimulated: sample.isSimulated)
     }
 }
 

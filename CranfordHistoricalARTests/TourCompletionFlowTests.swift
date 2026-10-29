@@ -448,6 +448,41 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertEqual(tour.walkedTrailSegments, saved)
     }
 
+    func testPausedWalkDoesNotDrawATrailAndStillRecoversStalledGPS() async {
+        let storage = InMemoryWalkResumeStore()
+        let first = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),
+            locationService: ActivityTestLocationService(status: .authorized), directionsService: PreviewDirectionsService(),
+            walkResumeStore: storage)
+        await first.loadStopsIfNeeded()
+        first.startTour()
+        cleanUp(first)
+
+        let source = ActivityTestLocationService(status: .authorized)
+        let tour = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),
+            locationService: source, directionsService: PreviewDirectionsService(), walkResumeStore: storage)
+        await tour.loadStopsIfNeeded()
+        defer { cleanUp(tour) }
+        XCTAssertTrue(tour.isWalkPaused)
+        XCTAssertFalse(tour.isWalkingActive)
+        let now = Date()
+        tour.recordWalkedTrail(LocationSample(coordinate: GeoCoordinate(latitude: 40.67, longitude: -74.32),
+            horizontalAccuracy: 3, timestamp: now), now: now)
+        tour.recordWalkedTrail(LocationSample(coordinate: GeoCoordinate(latitude: 40.67003, longitude: -74.32),
+            horizontalAccuracy: 3, timestamp: now.addingTimeInterval(2)), now: now.addingTimeInterval(2))
+        XCTAssertTrue(tour.walkedTrailSegments.isEmpty)
+        XCTAssertTrue(MapViewModel().walkedTrailCoordinates(for: tour).isEmpty)
+        tour.startLocationIfPossible()
+        tour.refreshMapLocationIfNeeded(now: Date().addingTimeInterval(30))
+        XCTAssertEqual(source.refreshRequests, 1, "A paused itinerary still recovers a stalled map fix")
+        XCTAssertTrue(tour.isWalkPaused)
+        tour.startTour()
+        tour.recordWalkedTrail(LocationSample(coordinate: GeoCoordinate(latitude: 40.67, longitude: -74.32),
+            horizontalAccuracy: 3, timestamp: now.addingTimeInterval(10)), now: now.addingTimeInterval(10))
+        tour.recordWalkedTrail(LocationSample(coordinate: GeoCoordinate(latitude: 40.67003, longitude: -74.32),
+            horizontalAccuracy: 3, timestamp: now.addingTimeInterval(12)), now: now.addingTimeInterval(12))
+        XCTAssertEqual(MapViewModel().walkedTrailCoordinates(for: tour).first?.count, 2)
+    }
+
     func testGPSDotMovesOffRouteWithoutSnappingAndCameraIgnoresSmallJitter() async throws {
         let source = ActivityTestLocationService(status: .authorized)
         let tour = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),

@@ -237,25 +237,19 @@ final class MapViewModel {
               GeoMath.distance(from: route.destination, to: destination.coordinate) < 1,
               route.routeCoordinates.count >= 2,
               route.routeCoordinates.allSatisfy({ $0.isValid }) else { return [] }
-        guard let progress = tour.routeProgress,
-              progress.snappedCoordinate.isValid, progress.distanceFromRoute.isFinite,
-              (0...35).contains(progress.distanceFromRoute),
-              route.routeCoordinates.indices.contains(progress.segmentIndex),
-              route.routeCoordinates.indices.contains(progress.segmentIndex + 1) else {
-            return route.routeCoordinates
-        }
         // Trim only provider geometry behind the route projection. Keep the blue dot at
         // actual GPS; never draw a made-up connector across a street or building.
-        var remaining = [progress.snappedCoordinate]
-        for coordinate in route.routeCoordinates.dropFirst(progress.segmentIndex + 1) {
-            if let last = remaining.last, GeoMath.distance(from: last, to: coordinate) < 0.1 { continue }
-            remaining.append(coordinate)
+        if let progress = tour.routeProgress,
+           let trimmed = RemainingWalkingRoute.trimmed(coordinates: route.routeCoordinates,
+               snapped: progress.snappedCoordinate, lateralMeters: progress.distanceFromRoute,
+               segmentIndex: progress.segmentIndex) {
+            return trimmed
         }
-        return remaining.count >= 2 ? remaining : []
+        return route.routeCoordinates
     }
 
     func walkedTrailCoordinates(for tour: TourViewModel) -> [[GeoCoordinate]] {
-        tour.walkedTrailSegments.filter { $0.count >= 2 && $0.allSatisfy(\.isValid) }
+        WalkedTrailPolicy.drawableSegments(tour.walkedTrailSegments)
     }
 
     /// The user dragged/zoomed; stop fighting them.

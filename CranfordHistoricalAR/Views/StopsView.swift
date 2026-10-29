@@ -64,9 +64,9 @@ struct StopsContent: View {
 
     /// The list shows visit status only; passport collection stays on the stop page/passport.
     private func statusLabels(for stop: HistoricalStop) -> [String] {
-        var labels: [String] = []
-        if tour.activities[stop.id].visitedAt != nil || tour.isCompleted(stop) { labels.append("Visited") }
-        return labels
+        let activity = tour.activities[stop.id]
+        return StopListStatus.labels(visitedAt: activity.visitedAt, plaqueUnlockedAt: activity.plaqueUnlockedAt,
+            listenedAt: activity.listenedAt, readAt: activity.readAt, isItineraryComplete: tour.isCompleted(stop))
     }
 
     private func restoreStopReturn() {
