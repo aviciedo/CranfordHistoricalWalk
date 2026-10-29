@@ -40,7 +40,9 @@ struct NextStopCard: View {
                         .accessibilityLabel("More walking controls")
                         .accessibilityIdentifier("map.more")
                     }
-                    if !tour.isWalkPaused || tour.isCurrentVisitConfirmed { MapDestinationStatus() }
+                    if !tour.isWalkPaused || tour.isCurrentVisitConfirmed {
+                        MapDestinationStatus().padding(.top, 2)
+                    }
                 }
                 if tour.isCurrentVisitConfirmed {
                     if let next = tour.nextStop {
@@ -165,10 +167,7 @@ struct MapDestinationStatus: View {
                         Label("Visited on this walk", systemImage: "checkmark.circle")
                             .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
                     }
-                    Text("\(tour.remainingDistanceText) · \(tour.remainingTimeText)")
-                        .font(.title3).monospacedDigit()
-                        .foregroundStyle(AppTheme.secondaryInk)
-                        .fixedSize(horizontal: false, vertical: true)
+                    MapRouteSummary(distance: tour.remainingDistanceText, walkingTime: tour.remainingTimeText)
                     if tour.isRoutingInFlight && tour.currentRoute == nil {
                         ProgressView("Finding a walking route")
                             .font(.subheadline)
@@ -193,5 +192,30 @@ struct MapDestinationStatus: View {
         .fixedSize(horizontal: false, vertical: true)
         .layoutPriority(1)
         .accessibilityIdentifier("map.destinationStatus")
+    }
+}
+
+/// The active-leg summary sits below the shared destination heading. Keep each value
+/// intact; narrow or accessibility-size layouts stack instead of stranding a separator.
+struct MapRouteSummary: View {
+    let distance: String
+    let walkingTime: String
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            Text("\(distance) · \(walkingTime)")
+                .fixedSize(horizontal: true, vertical: true)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(distance).fixedSize(horizontal: false, vertical: true)
+                Text(walkingTime).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .font(.title3.weight(.medium)).monospacedDigit()
+        .foregroundStyle(AppTheme.secondaryInk)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .fixedSize(horizontal: false, vertical: true)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Remaining distance: \(distance). Walking time: \(walkingTime).")
+        .accessibilityIdentifier("map.routeSummary")
     }
 }

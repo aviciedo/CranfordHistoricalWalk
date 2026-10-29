@@ -1,3 +1,28 @@
+# Build 94 — active walking panel consistency
+
+final result: blocked
+
+Source: user-provided active walking screenshot and the previously approved paused-panel
+mockup at /workspace/generated_images/exec-fe43b471-73bc-4c96-8f23-76678d0be5a4.png,
+with the already-requested removal of Walk paused. Target is the red-marked bottom section.
+Implementation screenshot: unavailable (Linux, no Xcode/Simulator); no native density
+normalization or full/focused visual comparison is claimed.
+
+Shared destination/header/menu/button implementation from build 93 covers both active
+and paused states. Build 94 refines the active route summary: native title3 medium-weight
+20-point metrics in secondary ink, 8 points below the title, retained monospaced digits,
+left alignment, one-line summary or two intact stacked values when width is insufficient.
+VoiceOver now names remaining distance and walking time. Shared 24-point side margins,
+14-point action gaps and 44-point circular menu target remain. Destination stays the
+largest serif heading. Imagery, top turn card, route geometry, map/GPS and navigation
+logic remain unchanged. Active directions never show Resume walk.
+
+Typography, spacing and color are source-reviewed only. Debug/Release syntax and diff
+checks passed. Existing native status-height/layout tests remain; they require Xcode
+and were not run here. Native acceptance must compare active and paused panels and check
+standard/narrow/large-text widths, route loading/error states, menu/title alignment,
+metrics wrapping, secondary-action adaptation and remaining map height.
+
 # Build 93 — Map walking section
 
 final result: blocked

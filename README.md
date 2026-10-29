@@ -1,3 +1,16 @@
+## Active walking panel matched to paused design — build 94
+
+Active directions use the same Next stop label, prominent serif destination, circular
+ellipsis menu, 24-point alignment and secondary controls as the approved paused panel.
+Distance and walking time now use medium-weight 20-point native type beneath the title,
+with 8-point separation. Their summary stays on one line when it fits, and stacks two
+left-aligned values for narrow or large-text layouts instead of leaving a separator
+alone on a line. VoiceOver identifies remaining distance and walking time explicitly.
+No Resume button is shown during active directions; route/turn/GPS logic is unchanged.
+
+Debug/Release Swift syntax and diff checks passed. Native visual and adaptive-layout
+verification remain pending on this Linux host. Not published.
+
 ## Map walking panel hierarchy — build 93
 
 Implements the approved walking-panel mockup with the requested removal of “Walk paused.”
