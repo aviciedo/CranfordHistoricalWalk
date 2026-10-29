@@ -258,14 +258,29 @@ struct ARHUDView: View {
             .foregroundStyle(AppTheme.forest).padding(18)
             .background(AppTheme.ivory, in: RoundedRectangle(cornerRadius: 20))
         } else {
-            ARNavigationArrowView(detail: model.guidanceDetail,
-                                  cue: model.walkingCue,
-                                  isApproximate: model.isGuidanceApproximate,
-                                  needsGroundScan: model.geoAnchors.isTrackingReady && !model.geoAnchors.hasDetectedGround && !model.geoAnchors.hasPlacedNavigation,
-                                  needsOrientation: model.isShowingWalkingOrientation && abs(model.relativeBearingToWaypoint ?? 0) > 50,
-                                  nextStopName: model.tour.nextStop?.name,
-                                  onContinue: model.tour.isCurrentVisitConfirmed ? model.continueToNextStop : nil)
+            walkingDirectionsPanel
         }
+    }
+
+    // Give the optional action a concrete closure type outside the ViewBuilder. Passing
+    // an isolated method reference through a ternary here crashes the Apple type checker.
+    private var nextLegAction: (() -> Void)? {
+        guard model.tour.isCurrentVisitConfirmed else { return nil }
+        return { model.continueToNextStop() }
+    }
+
+    private var walkingDirectionsPanel: some View {
+        let needsGround = model.geoAnchors.isTrackingReady
+            && !model.geoAnchors.hasDetectedGround && !model.geoAnchors.hasPlacedNavigation
+        let needsOrientation = model.isShowingWalkingOrientation
+            && abs(model.relativeBearingToWaypoint ?? 0) > 50
+        return ARNavigationArrowView(detail: model.guidanceDetail,
+                                     cue: model.walkingCue,
+                                     isApproximate: model.isGuidanceApproximate,
+                                     needsGroundScan: needsGround,
+                                     needsOrientation: needsOrientation,
+                                     nextStopName: model.tour.nextStop?.name,
+                                     onContinue: nextLegAction)
     }
 
     private func primaryButton(_ title: String, symbol: String, action: @escaping () -> Void) -> some View {

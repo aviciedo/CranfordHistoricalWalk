@@ -1,3 +1,10 @@
+## Apple compiler repair — build 87
+
+Build 86 passed all 233 Apple TourCore tests but Xcode’s type checker failed while
+inferring the AR directions card’s optional next-leg action. Build 87 supplies a
+concrete closure type outside the ViewBuilder and extracts the walking card expression.
+The interaction and layout remain the same. Native Apple verification is rerun on publish.
+
 ## Consistent plaque-to-passport experience — build 86
 
 All plaque-enabled stops use one catalog-driven recognition and award path, including
