@@ -1,3 +1,17 @@
+## Vintage scalloped passport frame — build 90
+
+Implements selected proposal 1: warm ivory scalloped paper with a fine hunter-green
+inset rule, using one transparent reusable frame asset. PassportStampArtwork shares it
+across passport pages, tour-stop rows, locked states and the AR unlock celebration.
+Existing Mill/Greystone PNGs remain byte-for-byte unchanged. Display windows exclude
+their former postage borders and retain each complete engraved scene at its original
+aspect ratio. The shared outer stamp ratio is 1.5; labels and unlock behavior are unchanged.
+
+Debug/Release Swift syntax parsing, asset dimensions/transparency and original-asset
+checksums passed. Native visual comparison and Apple compilation are pending because
+this Linux workspace has no Xcode/Simulator. A supplementary Chromium composition
+capture also failed to complete; it is not native verification. Not yet published.
+
 ## Stable map landmark rendering — build 89
 
 Google Maps previously enabled live icon-view snapshots and restarted the snapshot

@@ -200,30 +200,75 @@ private struct PassportLeaf: View {
     }
 }
 
+/// One frame for the passport, tour-stop row and recognition celebration. The existing
+/// engraved PNGs stay untouched; a source window excludes only their old postage borders.
 struct PassportStampArtwork: View {
     let stopID: String
     var isCollected = true
-    private var assetName: String? {
+
+    private var source: (name: String, window: CGRect)? {
         switch stopID {
-        case "hpab-001": return "passport-stamp-mill"
-        case "hpab-002": return "passport-stamp-greystone"
+        case "hpab-001":
+            return ("passport-stamp-mill", CGRect(x: 88, y: 131, width: 1308, height: 811))
+        case "hpab-002":
+            return ("passport-stamp-greystone", CGRect(x: 96, y: 129, width: 1293, height: 800))
         default: return nil
         }
     }
+
     var body: some View {
-        Group {
-            if let assetName {
-                Image(assetName).renderingMode(.original).resizable().scaledToFit()
-            } else {
-                // New plaque-enabled stops get pages immediately; custom stamp art can follow.
-                Image(systemName: "seal").resizable().scaledToFit()
-                    .foregroundStyle(AppTheme.forest).padding(24)
+        GeometryReader { geometry in
+            let size = geometry.size
+            // Opening measured from the reusable frame asset, relative to its paper bounds.
+            let opening = CGRect(x: size.width * 77 / 1466, y: size.height * 70 / 855,
+                                 width: size.width * 1308 / 1466, height: size.height * 704 / 855)
+            ZStack(alignment: .topLeading) {
+                Image("passport-paper").resizable()
+                    .frame(width: opening.width, height: opening.height)
+                    .position(x: opening.midX, y: opening.midY)
+                if let source {
+                    PassportImageWindow(asset: source.name, canvas: CGSize(width: 1484, height: 1060),
+                                        window: source.window)
+                        // Preserve the complete original illustration and its proportions.
+                        .aspectRatio(source.window.width / source.window.height, contentMode: .fit)
+                        .frame(width: opening.width, height: opening.height)
+                        .position(x: opening.midX, y: opening.midY)
+                } else {
+                    // Future plaque stops share the same paper frame before custom art arrives.
+                    Image(systemName: "seal").resizable().scaledToFit()
+                        .foregroundStyle(AppTheme.forest)
+                        .frame(width: opening.height * 0.5, height: opening.height * 0.5)
+                        .position(x: opening.midX, y: opening.midY)
+                }
+                PassportImageWindow(asset: "passport-vintage-frame", canvas: CGSize(width: 1561, height: 1008),
+                                    window: CGRect(x: 49, y: 82, width: 1466, height: 855))
+                    .frame(width: size.width, height: size.height)
             }
         }
-        .aspectRatio(1.4, contentMode: .fit)
+        .aspectRatio(1.5, contentMode: .fit)
         .saturation(isCollected ? 1 : 0)
         .opacity(isCollected ? 1 : 0.35)
         .accessibilityHidden(true)
+    }
+}
+
+/// Displays a source-image rectangle without rewriting, regenerating or stretching the art.
+/// The decorative paper frame can size to its container; illustration callers fix their ratio.
+private struct PassportImageWindow: View {
+    let asset: String
+    let canvas: CGSize
+    let window: CGRect
+
+    var body: some View {
+        GeometryReader { geometry in
+            let sx = geometry.size.width / window.width
+            let sy = geometry.size.height / window.height
+            Image(asset).renderingMode(.original).resizable()
+                .frame(width: canvas.width * sx, height: canvas.height * sy)
+                .offset(x: -window.minX * sx, y: -window.minY * sy)
+                .frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)
+                .clipped()
+        }
     }
 }
 

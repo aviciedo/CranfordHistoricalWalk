@@ -1,3 +1,33 @@
+# Build 90 — selected scalloped stamp design
+
+final result: blocked
+
+Source visual truth: /workspace/generated_images/exec-6af2e7e3-f3c9-4782-8d06-a633089b883a.png
+(first displayed option, selected by the user). Source board: 1484×1060 pixels.
+Implementation target: native PassportStampArtwork on passport pages, tour-stop rows
+and scanner celebration, including locked grayscale/35% opacity state.
+Implementation screenshot: unavailable. Native viewport/density normalization and
+full-view/focused comparisons are pending; no visual fidelity pass is claimed.
+
+Implementation uses the generated transparent ivory scalloped frame with hunter-green
+inset rule. Original Mill and Greystone art assets match HEAD checksums exactly. The
+runtime windows omit only old postage borders, and each illustration keeps its aspect
+ratio. All surfaces share the same frame rather than separate stamp images. Typography
+and app copy remain unchanged. Shared overall aspect ratio changes from 1.4 to 1.5.
+
+Checks completed: Debug/Release syntax parsing, diff whitespace, 1561×1008 RGBA frame
+with transparent center, exact original-illustration checksum preservation, source
+window dimensions within each 1484×1060 asset. UI tests are not warranted for this
+reversible decorative change; visual acceptance still requires native rendering.
+
+Blocker: this Linux workspace has no Xcode/Simulator for native screen captures. A
+supplementary HTML asset-composition check in headless Chromium also failed to complete;
+there is no substitute screenshot and no pass inferred from source or asset inspection.
+
+Implementation checklist for native review: inspect full passport at phone width,
+88-point tour-stop thumbnail, locked states, page curl and animated unlock. Check fine
+edge detail, transparency seams, inset rule, scene preservation and clipping at all sizes.
+
 # Build 89 — map illustration flicker repair
 
 Native visual result: pending iPhone validation.
