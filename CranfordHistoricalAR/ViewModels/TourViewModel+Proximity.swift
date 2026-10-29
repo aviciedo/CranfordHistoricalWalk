@@ -147,7 +147,7 @@ extension TourViewModel {
             horizontalAccuracy: sample?.horizontalAccuracy, locationTimestamp: sample?.timestamp,
             arrivalRadius: stop.arrivalRadius, now: now)
         guard case .allow(let evidence) = decision else { return decision }
-        if stop.id == currentStop?.id { progress.markCurrentStopVisited() }
+        if stop.id == currentStop?.id { noteFreshVisitForAutomaticAdvance() }
         // Plaque recognition proves a visit, not a reliable GPS departure boundary.
         // Stable GPS arrival is still required before automatic departure can be armed.
         activeVisitEvidence = evidence
@@ -233,6 +233,7 @@ extension TourViewModel {
         guard let previous = previousStop else { return false }
         automaticTransitionFromStopID = nil
         automaticTransitionProgress = nil
+        pendingAutomaticAdvanceStopID = nil
         arDiscoveryStopID = nil
         continuedARStopIDs.remove(previous.id)
         guard progress.selectStop(withID: previous.id) else { return false }
@@ -247,6 +248,7 @@ extension TourViewModel {
         guard canContinueCurrentStop, let stop = currentStop else { return }
         automaticTransitionFromStopID = nil
         automaticTransitionProgress = nil
+        pendingAutomaticAdvanceStopID = nil
         heldDepartureStopID = nil
         if isARSessionActive { continuedARStopIDs.insert(stop.id) }
         arDiscoveryStopID = nil
@@ -273,7 +275,7 @@ extension TourViewModel {
             allowsDeparture: false)
         switch event {
         case .arrived:
-            progress.markCurrentStopVisited()
+            noteFreshVisitForAutomaticAdvance()
             if !sample.isSimulated && !(locationService is SimulatedLocationService), activities[stop.id].visitedAt == nil {
                 savePhysicalActivity(for: stop.id, evidence: .onSiteARMarker, now: now)
             }
@@ -283,13 +285,20 @@ extension TourViewModel {
         advanceAfterLoggedVisitIfAllowed()
     }
 
-    /// Advance once after a logged visit, when navigation is visible and exploration is closed.
+    /// Remember a visit only on the transition into visited. Repeating an old completion is not a new arrival.
+    private func noteFreshVisitForAutomaticAdvance() {
+        guard let id = currentStop?.id, progress.markCurrentStopVisited() else { return }
+        pendingAutomaticAdvanceStopID = id
+    }
+
+    /// Advance once after a newly logged visit, when navigation is visible and exploration is closed.
     /// The final stop retains its explicit Finish walk action; Previous/Undo keeps its hold.
     func advanceAfterLoggedVisitIfAllowed() {
         guard isAutomaticNavigationAllowed, isCurrentVisitConfirmed, nextStop != nil,
               !walkingProgression.isHeld, heldDepartureStopID != currentStop?.id,
-              let stop = currentStop else { return }
+              let stop = currentStop, pendingAutomaticAdvanceStopID == stop.id else { return }
         let snapshot = progress
+        pendingAutomaticAdvanceStopID = nil
         completeCurrentStopAndAdvance()
         automaticTransitionFromStopID = stop.id
         automaticTransitionProgress = snapshot
@@ -300,6 +309,7 @@ extension TourViewModel {
         guard let snapshot = automaticTransitionProgress, let previousID = snapshot.currentStopID else { return }
         automaticTransitionFromStopID = nil
         automaticTransitionProgress = nil
+        pendingAutomaticAdvanceStopID = nil
         // Retarget without rolling back visits or distance accumulated since departure.
         guard progress.selectStop(withID: previousID) else { return }
         heldDepartureStopID = previousID

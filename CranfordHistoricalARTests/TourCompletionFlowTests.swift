@@ -933,6 +933,36 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertEqual(tour.currentStop?.id, stops[1].id)
     }
 
+    func testReturningToAnAlreadyVisitedStopDoesNotSkipItOnTheNextGPSFix() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.startTour(); tour.isAutomaticNavigationVisible = true
+        confirmArrival(tour)
+        confirmArrival(tour)
+        XCTAssertEqual(tour.currentStop?.id, stops[2].id)
+        XCTAssertTrue(tour.progress.isCompleted(stops[0].id))
+        XCTAssertTrue(tour.progress.isCompleted(stops[1].id))
+        XCTAssertFalse(tour.progress.isCompleted(stops[2].id))
+        XCTAssertTrue(tour.goToPreviousStop())
+        XCTAssertTrue(tour.goToPreviousStop())
+        XCTAssertEqual(tour.currentStop?.id, stops[0].id)
+        tour.startNextLegAfterConfirmedVisit()
+        XCTAssertEqual(tour.currentStop?.id, stops[1].id, "The explicit next-leg action selects Greystone once")
+        let now = Date()
+        for age in [0.0, 5.0, 10.0] {
+            let sample = LocationSample(coordinate: stops[1].coordinate, horizontalAccuracy: 3,
+                                        timestamp: now.addingTimeInterval(age))
+            tour.evaluateAutomaticProgression(sample, now: sample.timestamp)
+            tour.advanceAfterLoggedVisitIfAllowed()
+        }
+        XCTAssertEqual(tour.currentStop?.id, stops[1].id, "An earlier visit must not skip this stop on the next GPS fixes")
+        tour.isAutomaticNavigationVisible = false
+        tour.isAutomaticNavigationVisible = true
+        XCTAssertEqual(tour.currentStop?.id, stops[1].id, "Showing the map again must not consume the old visit")
+        tour.startNextLegAfterConfirmedVisit()
+        XCTAssertEqual(tour.currentStop?.id, stops[2].id)
+        XCTAssertFalse(tour.progress.isCompleted(stops[2].id))
+    }
+
     func testStableFinalArrivalOffersExplicitFinishWithoutInventingSkippedVisits() async {
         let tour = await makeTour(); defer { cleanUp(tour) }
         tour.startTour()

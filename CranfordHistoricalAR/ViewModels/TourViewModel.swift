@@ -128,6 +128,9 @@ final class TourViewModel {
     }
     var automaticTransitionFromStopID: String?
     var automaticTransitionProgress: TourProgress?
+    /// Armed only when the current stop is newly marked visited. One automatic advance consumes it.
+    /// A stop visited earlier in this walk must not be skipped again when the visitor returns to it.
+    @ObservationIgnored var pendingAutomaticAdvanceStopID: String?
     var isAutomaticNavigationAllowed: Bool {
         isWalkingActive && isAutomaticNavigationVisible && explorationHolds.isEmpty && !isARSessionActive
     }
@@ -383,6 +386,7 @@ final class TourViewModel {
         walkSessionID = UUID()
         automaticTransitionFromStopID = nil
         automaticTransitionProgress = nil
+        pendingAutomaticAdvanceStopID = nil
         heldDepartureStopID = nil
         walkingProgression = WalkingProgressionPolicy()
         isWalkPaused = false
