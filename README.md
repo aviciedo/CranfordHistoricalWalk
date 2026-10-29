@@ -1,3 +1,9 @@
+## Plaque copy simplified — build 92
+
+Removed “with AR” from the shared tour-stop plaque button and sketch collection row,
+plus the matching locked-page instruction and accessibility hint. Camera recognition
+and unlock behavior are unchanged. Copy-only change verified by diff review; not published.
+
 ## Sunday Fieldbook sketch collection — build 91
 
 Implements selected sketchbook option 1. Home now opens **Your sketchbook**. A real

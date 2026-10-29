@@ -117,7 +117,7 @@ struct StopDetailView: View {
                                         HStack(spacing: 12) {
                                             Image(systemName: "camera")
                                                 .font(.title2)
-                                            Text(tour.activities[stop.id].plaqueUnlockedAt == nil ? "Find on-site plaque with AR" : "View sketch")
+                                            Text(tour.activities[stop.id].plaqueUnlockedAt == nil ? "Find on-site plaque" : "View sketch")
                                                 .font(.headline)
                                                 .fixedSize(horizontal: false, vertical: true)
                                         }

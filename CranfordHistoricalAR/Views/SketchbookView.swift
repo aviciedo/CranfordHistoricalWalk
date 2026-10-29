@@ -171,7 +171,7 @@ private struct SketchbookLeaf: View {
                 } else {
                     VStack(spacing: 8) {
                         Label("Not discovered", systemImage: "lock")
-                        Text("Find the on-site plaque with AR to unlock this sketch.")
+                        Text("Find the on-site plaque to unlock this sketch.")
                             .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
                     }
                     .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
@@ -250,7 +250,7 @@ struct SketchCollectionRow: View {
                             .fixedSize(horizontal: false, vertical: true)
                         Text(isCollected
                              ? "\(stop.name) · \(collectedCount) of \(totalCount) discoveries"
-                             : "Find the on-site plaque with AR")
+                             : "Find the on-site plaque")
                             .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -264,7 +264,7 @@ struct SketchCollectionRow: View {
             .accessibilityValue(isCollected ? "Sketch added" : "Not discovered")
             .accessibilityHint(isCollected
                 ? "Opens your sketchbook at this collected sketch"
-                : "Opens this sketch’s locked page. Recognize the on-site plaque with AR to unlock it.")
+                : "Opens this sketch’s locked page. Recognize the on-site plaque to unlock it.")
             .accessibilityIdentifier("stop.sketchAdded")
             Divider()
         }
