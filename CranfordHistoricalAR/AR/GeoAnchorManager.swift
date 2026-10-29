@@ -435,7 +435,7 @@ final class GeoAnchorManager {
             streetName: cue?.streetName == nil ? nil : cue?.streetLabel)
         anchors.arrows.setVisible(true)
         anchors.arrows.update(ground: ground, camera: camera,
-                              instruction: instruction, timestamp: now)
+                              instruction: instruction, timestamp: now, arView: anchors.arView)
         if anchors.arrows.guidancePosition != nil { hasPlacedNavigation = true }
         if let position = anchors.arrows.guidancePosition, let arView = anchors.arView {
             let forward = -SIMD3<Float>(cameraTransform.columns.2.x, cameraTransform.columns.2.y, cameraTransform.columns.2.z)

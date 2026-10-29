@@ -9,9 +9,12 @@ public enum ARChevronGeometry {
         public var indices: [UInt32]
     }
 
+    public static let bodyDepth: Float = 0.42
+    public static let groupSpacing: Float = 1.36
+
     public static let outline: [SIMD2<Float>] = [
-        [-0.45, 0.75], [-0.12, 0.95], [0.55, 0],
-        [-0.12, -0.95], [-0.45, -0.75], [0.10, 0]
+        [-0.58, 0.82], [-0.16, 1.02], [0.66, 0],
+        [-0.16, -1.02], [-0.58, -0.82], [-0.06, 0]
     ]
     // Positive-Z front winding, including the concave inner corner.
     public static let frontIndices: [UInt32] = [5, 1, 0, 5, 2, 1, 5, 3, 2, 5, 4, 3]
@@ -40,6 +43,15 @@ public enum ARChevronGeometry {
             mesh.indices += [start, start + 1, start + 2, start, start + 2, start + 3]
         }
         return mesh
+    }
+
+    /// Uniformly fit the projected group without distorting chevrons or filling the camera view.
+    /// The conservative fallback keeps invalid projections from creating nonfinite transforms.
+    public static func displayFitScale(projectedWidth: Double, projectedHeight: Double,
+                                       viewportWidth: Double, viewportHeight: Double) -> Double {
+        guard [projectedWidth, projectedHeight, viewportWidth, viewportHeight].allSatisfy({ $0.isFinite && $0 > 0 }) else { return 1 }
+        return min(1, min(viewportWidth * 0.76 / projectedWidth,
+                          viewportHeight * 0.29 / projectedHeight))
     }
 
     /// Screen bearing: ahead points up, right points right, behind points down.

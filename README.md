@@ -1,3 +1,9 @@
+## Build 99 — larger, wider AR chevrons
+
+AR directions use broader opaque white chevrons with deeper hunter-green sides and a slight 3D angle, matching the approved street mockup. The larger group fits within 76% of camera width and 29% of height at placement time, retaining stable world anchoring instead of resizing every camera frame. Both local maneuver signs and geographically aligned signs share the mesh.
+
+Validation: 235 TourCore tests and 113 model-flow tests passed; Debug and Release Swift syntax checks passed. Native RealityKit rendering and outdoor scale/visibility checks remain pending on iPhone.
+
 ## Build 98 — pencil-and-ink Home artwork
 
 Home uses unpainted pencil-and-ink circular artwork for the next tour stop, matching the approved Mill mockup. Confirmed visits immediately preview the next illustration through the existing homeFeaturedStop state. Sketchbook watercolor artwork remains unchanged. The Hotel retains its existing simplified silhouette, interpreted as linework.

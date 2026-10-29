@@ -1,3 +1,11 @@
+## Build 99 — broad 3D AR chevrons
+
+Source: docs/design/ar-wide-chevrons-approved.png. The shared native mesh has wider arms, larger scale, thicker extrusion, broad white front faces, hunter-green sides and a 16-degree depth-revealing angle. Projected bounds cap each freshly placed group at 76% viewport width / 29% height. Every direction retains the same rotation mapping, fixed anchor behavior, ground clearance and fallback notices; plaque scanning and UI cards are unchanged.
+
+235 TourCore + 113 model tests passed, including closed mesh/winding/normals, fit limits across device orientations and invalid inputs, route placement and navigation flows. Debug/Release native files passed syntax parsing.
+
+Final result: blocked — native RealityKit screenshots, Apple typechecking and outdoor camera validation require Xcode/iPhone, unavailable on this Linux host. The approved mockup is not evidence of on-device rendering.
+
 ## Build 98 — approved pencil-and-ink Home circles
 
 Source: docs/design/home-pencil-ink-approved.png. Replace only Home circle artwork, keeping existing native layout, colors, river edges and actions. Individual unpainted circular pencil-and-ink assets cover all five stops; Mill and Greystone derive from their sketchbook illustrations, River/Church from existing landmark art, Hotel preserves its simplified existing fallback silhouette. Sketchbook watercolor resources and other map/stops illustrations are unchanged.

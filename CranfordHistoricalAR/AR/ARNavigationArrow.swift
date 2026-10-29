@@ -8,7 +8,7 @@ import UIKit
 /// Shared three-dimensional chevron artwork: opaque white faces, hunter-green frame/sides.
 @MainActor
 private enum ARChevronArt {
-    static let bodyMesh = makeMesh(ARChevronGeometry.body(depth: 0.32), name: "hunter-chevron-body")
+    static let bodyMesh = makeMesh(ARChevronGeometry.body(depth: ARChevronGeometry.bodyDepth), name: "hunter-chevron-body")
     static let faceMesh = makeMesh(ARChevronGeometry.front(), name: "white-chevron-face")
 
     static func makeMesh(_ data: ARChevronGeometry.Mesh, name: String) -> MeshResource? {
@@ -27,11 +27,13 @@ private enum ARChevronArt {
         let white = UnlitMaterial(color: .white)
         for index in 0..<3 {
             let body = ModelEntity(mesh: bodyMesh, materials: [green])
-            body.position.x = Float(index - 1) * 1.08
+            body.position.x = Float(index - 1) * ARChevronGeometry.groupSpacing
             let face = ModelEntity(mesh: faceMesh, materials: [white])
-            face.scale = SIMD3<Float>(0.91, 0.94, 1)
+            face.scale = SIMD3<Float>(0.95, 0.97, 1)
             face.position.z = 0.006 // Clear the green front face without z-fighting.
             body.addChild(face)
+            // Reveal the deep green sides even when the sign is directly ahead.
+            body.orientation = simd_quatf(angle: 16 * .pi / 180, axis: [0, 1, 0])
             group.addChild(body)
         }
         group.scale = SIMD3<Float>(repeating: Float(ARStreetGuidance.chevronScale))
@@ -64,7 +66,7 @@ final class ARNavigationArrowEntity: Entity {
     }
 
     func update(ground: SIMD3<Float>, camera: SIMD3<Float>,
-                instruction: ARStreetGuidance.Instruction, timestamp: TimeInterval) {
+                instruction: ARStreetGuidance.Instruction, timestamp: TimeInterval, arView: ARView? = nil) {
         guard isShowing else { return }
         let candidate = SIMD3<Double>(Double(ground.x), Double(ground.y), Double(ground.z))
         let cameraPoint = SIMD3<Double>(Double(camera.x), Double(camera.y), Double(camera.z))
@@ -87,6 +89,30 @@ final class ARNavigationArrowEntity: Entity {
         let lift = Float(ARStreetGuidance.minimumClearanceMeters) - arrowBounds.min.y
         let position = SIMD3<Float>(Float(pinned.position.x), Float(pinned.position.y) + lift, Float(pinned.position.z))
         holder.transform = Transform(scale: .one, rotation: facing, translation: position)
+        if let arView {
+            // Fit at placement time only: never resize or restart animations on camera frames.
+            let bounds = heading.visualBounds(relativeTo: nil)
+            var projected: [CGPoint] = []
+            for x in [bounds.min.x, bounds.max.x] {
+                for y in [bounds.min.y, bounds.max.y] {
+                    for z in [bounds.min.z, bounds.max.z] {
+                        if let point = arView.project([x, y, z]), point.x.isFinite, point.y.isFinite {
+                            projected.append(point)
+                        }
+                    }
+                }
+            }
+            if projected.count == 8 {
+                let width = (projected.map(\.x).max() ?? 0) - (projected.map(\.x).min() ?? 0)
+                let height = (projected.map(\.y).max() ?? 0) - (projected.map(\.y).min() ?? 0)
+                let fit = Float(ARChevronGeometry.displayFitScale(projectedWidth: Double(width),
+                    projectedHeight: Double(height), viewportWidth: Double(arView.bounds.width),
+                    viewportHeight: Double(arView.bounds.height)))
+                heading.scale = SIMD3<Float>(repeating: fit)
+                let fitted = heading.visualBounds(relativeTo: holder)
+                holder.position.y = Float(pinned.position.y) + Float(ARStreetGuidance.minimumClearanceMeters) - fitted.min.y
+            }
+        }
         renderedPlacement = pinned
     }
 
