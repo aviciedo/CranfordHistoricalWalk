@@ -26,9 +26,8 @@ struct StopsContent: View {
                         ForEach(tour.stops) { stop in
                             Button { detailStop = stop } label: {
                                 HStack(spacing: 10) {
-                                    StopListIllustration(stopID: stop.id)
-                                        .aspectRatio(stop.id == "hpab-004" ? 1 : stop.id == "hpab-005" ? 100.0 / 90.0 : 4.0 / 3.0,
-                                                     contentMode: .fit)
+                                    StopCollectionIllustration(stopID: stop.id,
+                                        isSketchUnlocked: tour.activities[stop.id].plaqueUnlockedAt != nil)
                                         .frame(width: 104, height: stop.id == "hpab-004" ? 104 : 88, alignment: .trailing)
                                         .accessibilityHidden(true)
                                     VStack(alignment: .leading, spacing: 6) {
@@ -62,7 +61,7 @@ struct StopsContent: View {
         .onChange(of: navigation.homeReturnID) { _, _ in detailStop = nil }
     }
 
-    /// The list shows visit status only; sketchbook collection stays on the stop page/sketchbook.
+    /// Visit is the only text status; artwork reflects the independent sketch unlock.
     private func statusLabels(for stop: HistoricalStop) -> [String] {
         var labels: [String] = []
         if tour.activities[stop.id].visitedAt != nil || tour.isCompleted(stop) { labels.append("Visited") }
@@ -78,6 +77,35 @@ struct StopsContent: View {
         // This viewport already excludes the actual header, player and navigation. Text may grow beyond
         // this minimum; the list stays scrollable at larger accessibility sizes.
         return max(100, (availableHeight - 8 - CGFloat(count)) / CGFloat(count))
+    }
+}
+
+/// Stops-list-only artwork. Physical visits alone never paint an undiscovered sketch.
+struct StopCollectionIllustration: View {
+    let stopID: String
+    let isSketchUnlocked: Bool
+
+    static func assetName(for stopID: String, isSketchUnlocked: Bool) -> String? {
+        if isSketchUnlocked, let watercolor = SketchArtwork.assetName(for: stopID) { return watercolor }
+        switch stopID {
+        case "hpab-001": return "stop-ink-mill"
+        case "hpab-002": return "stop-ink-greystone"
+        case "hpab-003": return "stop-ink-river"
+        case "hpab-004": return "stop-ink-church"
+        case "hpab-005": return "stop-ink-hotel"
+        default: return nil
+        }
+    }
+
+    var body: some View {
+        Group {
+            if let asset = Self.assetName(for: stopID, isSketchUnlocked: isSketchUnlocked) {
+                Image(asset).renderingMode(.original).resizable().scaledToFit()
+            } else {
+                StopListIllustration(stopID: stopID).saturation(0)
+            }
+        }
+        .allowsHitTesting(false)
     }
 }
 

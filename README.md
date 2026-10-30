@@ -1,3 +1,9 @@
+## Build 106 — Stops artwork reveals watercolor sketches
+
+All five Stops rows now use unframed pen-and-ink cutouts. Mill and Greystone switch to their existing watercolor sketch artwork when their saved plaque sketch is unlocked; a visit, reading or narration alone does not paint the illustration. River, Church and Hotel remain in ink until their own sketch-unlock features/artwork are added. Existing unlock history applies immediately. This uses a Stops-only component, preserving Home, Map and sketchbook artwork and existing visit labels.
+
+Validation: 120 portable model-flow tests passed; new PNGs and transparency/asset manifests were inspected; Debug/Release Swift parsing passed. A native bundle/state artwork test was added but requires Xcode to execute. Native visual verification remains pending. Not published.
+
 ## Build 105 — sketch-unlocked presentation
 
 The approved celebration gives the stop name the same prominent serif hierarchy used for tour stops, with a smaller Sketch unlocked confirmation and no exclamation point. The larger parchment-framed artwork sits above a 56-point hunter-green Open sketchbook button with white text. VoiceOver announces that the sketch has been added; the button retains the existing navigation action.

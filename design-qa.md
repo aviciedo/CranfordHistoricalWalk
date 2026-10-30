@@ -1,3 +1,11 @@
+## Build 106 — unframed Stops collection artwork
+
+User confirmed unframed illustrations and watercolor only after plaque sketch unlock. Five transparent ink assets derive from the existing approved Home/book illustrations, removing circles and paper frames. StopCollectionIllustration reads the saved plaqueUnlockedAt state and selects the existing Mill/Greystone watercolor resources only after collection. The remaining stops retain ink. Row hit areas, typography, visit labels and navigation remain unchanged. Original StopListIllustration stays available to Map and other existing surfaces.
+
+120 actual-model flow tests passed, including independent physical visits and sketch persistence. All five artwork sources were visually inspected; PNG RGBA transparency and manifest filenames were checked. Debug/Release Swift syntax checks passed. Native bundle tests cover both art states for every configured stop; these tests could not run here.
+
+Final result: blocked — native list rendering, thumbnail readability and immediate on-device unlock transitions require Xcode/iPhone. Confirm a visited but uncollected Mill/Greystone remains ink, a saved plaque unlock reveals watercolor after returning to Stops, a full reset restores ink, and the other three stops remain ink.
+
 ## Build 105 — approved sketch-unlocked layout
 
 Reference: docs/design/sketch-unlocked-approved.png. The stop name is now the primary large serif heading; Sketch unlocked is a smaller sans confirmation without the exclamation point. Existing watercolor/gray overlay are retained, artwork is sized to the available width, and Open sketchbook is a full-width hunter-green rounded button with white text. VoiceOver confirmation describes the saved sketch rather than implying that navigation has already happened. Unlock persistence, page targeting and the button action are unchanged.

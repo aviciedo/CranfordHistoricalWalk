@@ -39,6 +39,21 @@ final class MapViewModelTests: XCTestCase {
         XCTAssertEqual(selected, 0, "A cancelled curl must not change the logical page")
     }
 
+    func testStopsListHasInkForEveryStopAndWatercolorOnlyForUnlockableSketches() throws {
+        for stop in HistoricalStop.previewStops {
+            let ink = try XCTUnwrap(StopCollectionIllustration.assetName(for: stop.id, isSketchUnlocked: false))
+            XCTAssertNotNil(UIImage(named: ink), "Missing unframed ink illustration for \(stop.name)")
+            let unlocked = try XCTUnwrap(StopCollectionIllustration.assetName(for: stop.id, isSketchUnlocked: true))
+            XCTAssertNotNil(UIImage(named: unlocked), "Missing collected illustration for \(stop.name)")
+            if stop.hasPlaqueReference {
+                XCTAssertNotEqual(ink, unlocked, "A plaque unlock should reveal its watercolor sketch")
+                XCTAssertEqual(unlocked, SketchArtwork.assetName(for: stop.id))
+            } else {
+                XCTAssertEqual(ink, unlocked, "Stops without sketch unlocks must remain in pen and ink")
+            }
+        }
+    }
+
     func testRiverHomeAssetsAndSignpostAreAvailableInTheAppBundle() throws {
         var sketchStops = 0
         for stop in HistoricalStop.previewStops {
