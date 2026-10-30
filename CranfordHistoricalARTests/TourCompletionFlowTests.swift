@@ -300,6 +300,140 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertEqual(tour.pendingSketchStopID, stops[0].id)
     }
 
+    func testDrivingSpeedCannotSkipAVisitButWalkingSpeedCan() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.startTour(); tour.isAutomaticNavigationVisible = true
+        let start = Date(timeIntervalSince1970: 50_000)
+        let bearing = GeoMath.bearing(from: stops[0].coordinate, to: stops[1].coordinate)
+        let towardNext = GeoMath.destination(from: stops[0].coordinate, bearing: bearing, distance: 75)
+        func step(_ time: Double, _ point: GeoCoordinate, _ speed: Double?) {
+            let date = start.addingTimeInterval(time)
+            tour.evaluateAutomaticProgression(LocationSample(coordinate: point, horizontalAccuracy: 3,
+                speed: speed, timestamp: date), now: date)
+            XCTAssertEqual(tour.currentStop?.id, stops[0].id)
+            XCTAssertNil(tour.activities[stops[0].id].visitedAt)
+        }
+        step(0, stops[0].coordinate, 4.1)
+        step(3, stops[0].coordinate, 4.1)
+        for time in [4.0, 9.0, 20.0, 40.0] { step(time, towardNext, 4.1) }
+        step(41, towardNext, -1)
+        step(46, towardNext, -1)
+        step(47, towardNext, .nan)
+        step(52, towardNext, .infinity)
+        step(53, towardNext, 4)
+        let departure = start.addingTimeInterval(58)
+        tour.evaluateAutomaticProgression(LocationSample(coordinate: towardNext, horizontalAccuracy: 3,
+            speed: 4, timestamp: departure), now: departure)
+        XCTAssertEqual(tour.currentStop?.id, stops[1].id)
+        XCTAssertNotNil(tour.activities[stops[0].id].visitedAt)
+
+        let paused = await makeTour(); defer { cleanUp(paused) }
+        paused.startTour(); paused.isAutomaticNavigationVisible = true
+        let later = Date(timeIntervalSince1970: 60_000)
+        func unknownSpeed(_ time: Double, _ point: GeoCoordinate) {
+            let date = later.addingTimeInterval(time)
+            paused.evaluateAutomaticProgression(LocationSample(coordinate: point, horizontalAccuracy: 3,
+                timestamp: date), now: date)
+        }
+        unknownSpeed(0, stops[0].coordinate)
+        unknownSpeed(3, stops[0].coordinate)
+        unknownSpeed(4, towardNext)
+        XCTAssertEqual(paused.currentStop?.id, stops[0].id)
+        let finished = later.addingTimeInterval(9)
+        paused.evaluateAutomaticProgression(LocationSample(coordinate: towardNext, horizontalAccuracy: 3,
+            timestamp: finished), now: finished)
+        XCTAssertEqual(paused.currentStop?.id, stops[1].id)
+    }
+
+    func testAnotherStopNeedsThreeMinutesAndAPauseDoesNotCount() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.startTour()
+        let church = stops[3]
+        let start = Date(timeIntervalSince1970: 70_000)
+        func presence(_ time: Double, _ simulated: Bool = false) {
+            let date = start.addingTimeInterval(time)
+            tour.handleLocationForProximity(LocationSample(coordinate: church.coordinate, horizontalAccuracy: 3,
+                timestamp: date, isSimulated: simulated), now: date)
+        }
+        for time in 0...10 { presence(Double(time)) }
+        XCTAssertNil(tour.activities[church.id].visitedAt)
+        XCTAssertEqual(tour.currentStop?.id, stops[0].id)
+        for time in 11...60 { presence(Double(time)) }
+        XCTAssertNil(tour.activities[church.id].visitedAt)
+        tour.stopWalk()
+        for time in 61...241 {
+            presence(Double(time))
+            XCTAssertNil(tour.activities[church.id].visitedAt, "A stopped walk must not bank visit time")
+        }
+        tour.startTour()
+        presence(242)
+        XCTAssertNil(tour.activities[church.id].visitedAt)
+        XCTAssertEqual(tour.currentStop?.id, stops[0].id)
+        for time in 243...361 { presence(Double(time)) }
+        XCTAssertNil(tour.activities[church.id].visitedAt)
+        presence(362)
+        XCTAssertNotNil(tour.activities[church.id].visitedAt)
+        XCTAssertNil(tour.activities[church.id].plaqueUnlockedAt)
+        XCTAssertFalse(tour.activities[church.id].learningCompleted)
+        XCTAssertEqual(tour.currentStop?.id, stops[0].id)
+        XCTAssertTrue(tour.isWalkingActive)
+
+        let practice = await makeTour(); defer { cleanUp(practice) }
+        practice.startTour()
+        for time in 0...180 {
+            let date = start.addingTimeInterval(Double(time))
+            practice.handleLocationForProximity(LocationSample(coordinate: church.coordinate, horizontalAccuracy: 3,
+                timestamp: date, isSimulated: true), now: date)
+        }
+        XCTAssertNil(practice.activities[church.id].visitedAt)
+        XCTAssertTrue(practice.visitRecords.isEmpty)
+        XCTAssertEqual(practice.currentStop?.id, stops[0].id)
+    }
+
+    func testReportedSpeedAboveAWalkBreaksTheTrailWithoutDroppingSlowerFixes() async {
+        let source = ActivityTestLocationService(status: .authorized)
+        let tour = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),
+            locationService: source, directionsService: PreviewDirectionsService())
+        await tour.loadStopsIfNeeded(); defer { cleanUp(tour) }
+        tour.startTour()
+        let now = Date(timeIntervalSince1970: 80_000)
+        func fix(_ latitude: Double, _ seconds: Double, _ speed: Double?) {
+            tour.recordWalkedTrail(LocationSample(coordinate: GeoCoordinate(latitude: latitude, longitude: -74.32),
+                horizontalAccuracy: 3, speed: speed, timestamp: now.addingTimeInterval(seconds)),
+                now: now.addingTimeInterval(seconds))
+        }
+        fix(40.67, 0, nil)
+        fix(40.67003, 2, -1)
+        fix(40.67006, 4, 4)
+        XCTAssertEqual(tour.walkedTrailSegments.map(\.count), [3])
+        let drawn = tour.walkedTrailSegments
+        fix(40.67009, 6, 4.0001)
+        fix(40.67012, 8, .nan)
+        fix(40.67015, 10, .infinity)
+        XCTAssertEqual(tour.walkedTrailSegments, drawn, "Driving or a non-finite speed must not extend or bridge the trail")
+        fix(40.67018, 12, 1.2)
+        fix(40.67021, 14, 1.2)
+        XCTAssertEqual(tour.walkedTrailSegments.map(\.count), [3, 2])
+        XCTAssertEqual(MapViewModel().walkedTrailCoordinates(for: tour).map(\.count), [3, 2])
+    }
+
+    func testSimulatedOnSiteNarrationAdvancesWithoutRecordingAVisit() async throws {
+        let source = ActivityTestLocationService(status: .authorized)
+        let tour = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),
+            locationService: source, directionsService: PreviewDirectionsService())
+        await tour.loadStopsIfNeeded(); defer { cleanUp(tour) }
+        tour.startTour(); tour.isAutomaticNavigationVisible = true
+        let sample = LocationSample(coordinate: stops[0].coordinate, horizontalAccuracy: 3, isSimulated: true)
+        source.emit(sample)
+        for _ in 0..<100 where tour.userLocation == nil { try await Task.sleep(for: .milliseconds(2)) }
+        XCTAssertEqual(tour.userLocation?.isSimulated, true)
+        tour.finishListening(for: stops[0].id)
+        XCTAssertEqual(tour.currentStop?.id, stops[1].id)
+        XCTAssertNotNil(tour.activities[stops[0].id].listenedAt)
+        XCTAssertNil(tour.activities[stops[0].id].visitedAt)
+        XCTAssertTrue(tour.visitRecords.isEmpty)
+    }
+
     func testEarlyDepartureRequiresMovementTowardNextStop() async {
         let tour = await makeTour(); defer { cleanUp(tour) }
         tour.startTour(); tour.isAutomaticNavigationVisible = true

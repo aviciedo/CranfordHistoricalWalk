@@ -167,7 +167,7 @@ final class CoreLocationService: NSObject, LocationService {
     private let broadcaster = EventBroadcaster<LocationEvent>()
     private var isRunning = false
     private var isRequestingFreshLocation = false
-    private var lastHeadingPublication: Date?
+    private var headingPublication = HeadingPublicationGate()
 
     override init() {
         super.init()
@@ -225,7 +225,7 @@ final class CoreLocationService: NSObject, LocationService {
     }
 
     func stop() {
-        lastHeadingPublication = nil
+        headingPublication.reset()
         isRequestingFreshLocation = false
         guard isRunning else { return }
         isRunning = false
@@ -234,9 +234,7 @@ final class CoreLocationService: NSObject, LocationService {
     }
 
     private func publishHeading(_ sample: HeadingSample) {
-        if sample.isReliable, let lastHeadingPublication,
-           sample.timestamp.timeIntervalSince(lastHeadingPublication) < 0.2 { return }
-        lastHeadingPublication = sample.timestamp
+        guard headingPublication.shouldPublish(isReliable: sample.isReliable, timestamp: sample.timestamp) else { return }
         publish(.heading(sample))
     }
 
