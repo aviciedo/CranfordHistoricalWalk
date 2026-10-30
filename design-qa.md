@@ -1,3 +1,11 @@
+## Build 102 — approved Map primary-action journey
+
+Reference: docs/design/map-walk-actions-approved.png, with the user’s explicit removal of the Begin your five-stop walk and Your progress is saved helper sentences. Shared NextStopCard now renders the first destination before starting and the current guided destination during walking. One 56-point hunter-green action appears above secondary View stop / AR directions pills: Start walk, Continue walk, or Stop walk. The old duplicate text Stop walk action and competing next-leg green action are consolidated; explicit next-leg/Finish remain available in More. Destination typography, safe-area navigation, existing turn card, GPS/route state and visited progression are preserved.
+
+120 actual-model portable tests passed. Debug/Release Swift parsing passed. No UI snapshot or native build was run.
+
+Final result: blocked — rendered iPhone comparison and accessibility-size visual checks require Xcode/Simulator, unavailable on this Linux host. The approved mockup is a design source, not a capture of the implementation.
+
 ## Build 101 — AR engineering verification
 
 Implemented route-relative world placement, stable WGS84/ENU conversion, sensor timestamp matching, confidence hysteresis, conservative corner handling, shared route projection and blue/white chamfered meshes. No generated image is used as a substitute for 3D arrows.

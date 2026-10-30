@@ -179,33 +179,10 @@ struct TourView: View {
             .padding(.horizontal, 24).padding(.vertical, 8)
             .accessibilityIdentifier("map.automaticTransition")
         }
-        if tour.phase == .inProgress {
-            NextStopCard(onDetails: { detailStop = tour.currentStop }, onEnterAR: enterWalkingAR,
+        if tour.phase == .inProgress || (tour.phase == .notStarted && mapModel.viewedStopID == nil) {
+            NextStopCard(onDetails: { detailStop = tour.currentStop ?? tour.stops.first }, onEnterAR: enterWalkingAR,
                          onShowRoute: { mapModel.showUserAndDestination(tour: tour) },
                          onFollow: { mapModel.requestFollow(tour: tour) })
-        } else if tour.phase == .notStarted && mapModel.viewedStopID == nil {
-            Button {
-                tour.startTour()
-                navigation.selectedTab = .map
-            } label: {
-                Label(tour.startWalkTitle, systemImage: "figure.walk")
-                    .fixedSize(horizontal: false, vertical: true)
-                    .font(.headline).frame(maxWidth: .infinity, minHeight: 54)
-            }
-            .buttonStyle(.plain).foregroundStyle(AppTheme.ivory)
-            .background(AppTheme.forest, in: RoundedRectangle(cornerRadius: 14))
-            .disabled(tour.loadState != .loaded)
-            .padding(.horizontal, 24).padding(.vertical, 12)
-        }
-        if tour.phase == .notStarted {
-            Button(action: enterWalkingAR) {
-                Label("AR directions", systemImage: "camera.viewfinder")
-                    .font(.subheadline.weight(.semibold)).frame(minHeight: 44)
-            }
-            .buttonStyle(.plain).padding(.horizontal, 24)
-            .disabled(tour.loadState != .loaded)
-            .accessibilityHint("Starts your walk and opens optional camera walking guidance")
-            .accessibilityIdentifier("map.enterAR")
         }
     }
 

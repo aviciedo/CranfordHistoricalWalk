@@ -10,7 +10,7 @@ struct NextStopCard: View {
     var onFollow: (() -> Void)? = nil
 
     var body: some View {
-        if let current = tour.currentStop {
+        if let current = tour.phase == .notStarted ? tour.stops.first : tour.currentStop {
             VStack(alignment: .leading, spacing: 14) {
                 VStack(alignment: .leading, spacing: 6) {
                     if tour.walkingProgression.isConfirmingArrival && !tour.isWalkPaused {
@@ -40,46 +40,22 @@ struct NextStopCard: View {
                         .accessibilityLabel("More walking controls")
                         .accessibilityIdentifier("map.more")
                     }
-                    if !tour.isWalkPaused || tour.isCurrentVisitConfirmed {
+                    if tour.phase == .inProgress && (tour.isWalkingActive || tour.isCurrentVisitConfirmed) {
                         MapDestinationStatus().padding(.top, 2)
                     }
                 }
-                if tour.isCurrentVisitConfirmed {
-                    if let next = tour.nextStop {
-                        Text("Next Stop: \(next.name)")
-                            .font(.title3.weight(.semibold))
-                            .fixedSize(horizontal: false, vertical: true)
-                            .accessibilityIdentifier("map.nextStopName")
-                    }
-                    Button { tour.startNextLegAfterConfirmedVisit() } label: {
-                        primaryActionLabel(tour.nextStop.map { "Walk to \($0.name)" } ?? "Finish walk",
-                                           symbol: tour.nextStop == nil ? "checkmark" : "figure.walk")
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityHint("Starts directions to the next stop, or finishes the walk at the final stop")
-                    .accessibilityIdentifier("map.startNextLeg")
+                Button { tour.performMapWalkAction() } label: {
+                    primaryActionLabel(primaryTitle, symbol: primarySymbol)
                 }
-                if tour.isWalkPaused && !tour.isCurrentVisitConfirmed {
-                    Button { tour.startTour() } label: {
-                        primaryActionLabel("Resume walk", symbol: "figure.walk")
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("map.resumeWalk")
-                }
+                .buttonStyle(.plain)
+                .disabled(tour.loadState != .loaded && !tour.isWalkingActive)
+                .accessibilityHint(tour.isWalkingActive
+                    ? "Stops directions and removes the route. You can continue later."
+                    : "Starts or continues walking directions to the next stop")
+                .accessibilityIdentifier(primaryIdentifier)
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 12) { explorationActions }
                     VStack(spacing: 8) { explorationActions }
-                }
-                if tour.isWalkingActive {
-                    Button { tour.stopWalk() } label: {
-                        Label("Stop walk", systemImage: "stop.circle")
-                            .font(.subheadline.weight(.semibold))
-                            .frame(maxWidth: .infinity, minHeight: 44)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityHint("Stops directions and removes the route. Your progress is saved so you can resume later.")
-                    .accessibilityIdentifier("map.stopWalk")
                 }
                 if !tour.isWalkPaused && (tour.isRouteAnEstimate || tour.routingError != nil) {
                     Button("Retry directions") { tour.retryWalkingRoute() }
@@ -94,6 +70,18 @@ struct NextStopCard: View {
             .padding(.horizontal, 24).padding(.bottom, 8)
             .background(AppTheme.ivory)
         }
+    }
+
+    private var primaryTitle: String {
+        if tour.phase == .notStarted { return "Start walk" }
+        return tour.isWalkPaused ? "Continue walk" : "Stop walk"
+    }
+
+    private var primarySymbol: String { tour.isWalkingActive ? "stop.circle" : "figure.walk" }
+
+    private var primaryIdentifier: String {
+        if tour.phase == .notStarted { return "map.startWalk" }
+        return tour.isWalkPaused ? "map.resumeWalk" : "map.stopWalk"
     }
 
     @ViewBuilder private var explorationActions: some View {
@@ -141,12 +129,19 @@ struct NextStopCard: View {
             }
             .accessibilityIdentifier("map.previousStop")
         }
+        if tour.isCurrentVisitConfirmed {
+            Button { tour.startNextLegAfterConfirmedVisit() } label: {
+                Label(tour.nextStop.map { "Walk to \($0.name)" } ?? "Finish walk",
+                      systemImage: tour.nextStop == nil ? "checkmark" : "figure.walk")
+            }
+            .accessibilityIdentifier("map.startNextLeg")
+        }
         if tour.canContinueCurrentStop && !tour.isCurrentVisitConfirmed {
             Button { tour.completeCurrentStopAndAdvance() } label: {
                 Label(tour.nextStop == nil ? "Finish walk" : "Continue now", systemImage: "arrow.right")
             }
         }
-        if let onShowRoute { Button("Show walking route", systemImage: "scope", action: onShowRoute) }
+        if let onShowRoute { Button(tour.isWalkingActive ? "Show walking route" : "Show destination", systemImage: "scope", action: onShowRoute) }
         if let onFollow { Button("Center on my location", systemImage: "location.fill", action: onFollow).disabled(tour.userLocation == nil) }
     }
 }

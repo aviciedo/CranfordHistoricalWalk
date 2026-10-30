@@ -452,6 +452,46 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertNotEqual(map.cameraRequest, manuallyPositioned)
     }
 
+    func testMapPrimaryActionStartsStopsAndContinuesTheSameWalk() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        XCTAssertEqual(tour.phase, .notStarted)
+        tour.performMapWalkAction()
+        XCTAssertTrue(tour.isWalkingActive)
+        tour.completeCurrentStopAndAdvance()
+        tour.finishStory(for: stops[0].id)
+        let destination = tour.currentStop?.id
+        let session = tour.walkSessionID
+        let progress = tour.progress
+        let activities = tour.activities
+        for _ in 0..<2 {
+            tour.performMapWalkAction()
+            XCTAssertTrue(tour.isWalkPaused)
+            XCTAssertNil(tour.currentRoute)
+            XCTAssertTrue(MapViewModel().walkingRouteCoordinates(for: tour).isEmpty)
+            tour.performMapWalkAction()
+            XCTAssertTrue(tour.isWalkingActive)
+            XCTAssertEqual(tour.currentStop?.id, destination)
+            XCTAssertEqual(tour.walkSessionID, session)
+            XCTAssertEqual(tour.progress, progress)
+            XCTAssertEqual(tour.activities, activities)
+        }
+    }
+
+    func testMapContinueAfterConfirmedPausedVisitStartsExactlyOneNextLeg() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.performMapWalkAction()
+        confirmArrival(tour)
+        XCTAssertTrue(tour.isCurrentVisitConfirmed)
+        tour.performMapWalkAction()
+        XCTAssertTrue(tour.isWalkPaused)
+        tour.isAutomaticNavigationVisible = true
+        tour.performMapWalkAction()
+        XCTAssertTrue(tour.isWalkingActive)
+        XCTAssertEqual(tour.currentStop?.id, stops[1].id)
+        XCTAssertFalse(tour.isCurrentVisitConfirmed)
+        XCTAssertNotNil(tour.activities[stops[0].id].visitedAt)
+    }
+
     func testStopWalkClearsGuidanceAndResumesWithoutLosingProgress() async {
         let tour = await makeTour(); defer { cleanUp(tour) }
         tour.startTour()

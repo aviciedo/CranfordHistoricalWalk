@@ -359,6 +359,19 @@ final class TourViewModel {
         for id in Array(passiveVisitPolicies.keys) { passiveVisitPolicies[id]?.interrupt() }
     }
 
+    /// One consistent Map action: start, continue, or stop without resetting the itinerary.
+    func performMapWalkAction() {
+        switch phase {
+        case .notStarted: startTour()
+        case .inProgress:
+            if isWalkPaused {
+                if isCurrentVisitConfirmed { startNextLegAfterConfirmedVisit() }
+                else { startTour() }
+            } else { stopWalk() }
+        case .complete: break
+        }
+    }
+
     /// Map entry resumes the walk; an explicit detail entry targets that selected site.
     /// Browsing details alone still never changes the destination.
     @discardableResult

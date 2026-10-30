@@ -1,3 +1,9 @@
+## Build 102 — consistent Map walking action
+
+Map uses one full-width hunter-green primary button in the same action position: Start walk, Continue walk, or Stop walk. The prominent serif destination and quiet ellipsis menu are shared before starting and during a walk. View stop and AR directions remain equal secondary actions below. The approved mockup’s introductory and saved-progress helper sentences are omitted. Distance/time remain visible during active guidance; stopped destination routes remain hidden, with progress and walked trail preserved. Final Finish walk and explicit next-leg controls remain in the existing More menu alongside Previous/Undo.
+
+Validation: 120 portable model-flow tests passed, including start/stop/continue preservation and confirmed-visit resume without skipping a stop. Full native Debug/Release syntax checks passed. Native visual QA requires Xcode and remains pending. Not published.
+
 ## Build 101 — route-relative blue-and-white AR navigation
 
 Targeted AR refactor replaces camera-forward/camera-facing walking placement with a stable WGS84/ENU frame, actual polyline previews, pinned route-oriented 3D meshes and confidence-controlled Map fallback. Broad white fronts, blue extruded sides and chamfered corners preserve the requested Live View visual direction; hunter-green controls remain. Tour progression, plaque scanning, permissions and phone-horizontal exit retain their existing owners.
