@@ -1,3 +1,13 @@
+## Build 108 — fix the sketchbook-opening crash
+
+Root cause confirmed by Apple CI run 40993120071: `testSketchbookCurlUsesPaperBacksWithoutAddingLogicalPages` raised `NSInvalidArgumentException`: “The number of provided view controllers (2) doesn't match the number required (1) for the requested spine location (UIPageViewControllerSpineLocationMin)”. This same production path runs when opening any sketchbook. Build 103 incorrectly supplied front and back together to a minimum-spine page curl.
+
+The minimum-spine controller now receives one visible front on initial opening and programmatic page changes. Double-sided mode and alternating parchment backs remain available through the data source during turns. Existing stop-ID selection, unlock history and the build 107 label changes are retained. Native regression checks now use the valid UIKit contract and cover every starting page in one-, two- and six-stop books, repeated refreshes, forward/reverse turns and cancelled turns. No tests were disabled.
+
+The failing workflow's annotations confirm the iPhone Release build succeeded, 256 core tests passed, and 179 native tests ran with this one exception. This was a runtime test failure under a workflow named “Apple compiler checks”, not a compiler failure. Prior run 40982419792 succeeded; older runner-capacity errors are separate infrastructure failures.
+
+Validation of this fix: Debug/Release Swift parsing and whitespace checks passed. Xcode, UIKit execution and physical-device verification are unavailable locally; GitHub CLI authentication is invalid, so a new authenticated native run could not be dispatched here. Corrected native test execution remains pending. Not published.
+
 ## Build 107 — open the unlocked sketch for its stop
 
 The stop-detail collection row now says “Sketch unlocked” and retains only the stop name beneath it; the discovery count is removed. Each sketchbook presentation has a fresh identity and resolves its initial page by stable stop ID, avoiding stale page state between openings. The shared implementation supports every current and future plaque stop without a per-stop navigation switch. Locked-page and saved-unlock behavior are unchanged.

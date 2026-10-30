@@ -339,14 +339,14 @@ struct SketchbookPageCurl: UIViewControllerRepresentable {
                 controller.dataSource = self
                 controller.delegate = self
                 displayedIndex = min(parent.index, max(0, parent.pages.count - 1))
-                if !controllers.isEmpty { controller.setViewControllers(faces(for: displayedIndex), direction: .forward, animated: false) }
+                if !controllers.isEmpty { controller.setViewControllers(visibleFront(for: displayedIndex), direction: .forward, animated: false) }
             } else {
                 for (index, page) in parent.pages.enumerated() { controllers[index * 2].rootView = page }
             }
             guard !transitioning, parent.index != displayedIndex, parent.pages.indices.contains(parent.index) else { return }
             let target = parent.index
             transitioning = true
-            controller.setViewControllers(faces(for: target), direction: target > displayedIndex ? .forward : .reverse,
+            controller.setViewControllers(visibleFront(for: target), direction: target > displayedIndex ? .forward : .reverse,
                                           animated: true) { [weak self, weak controller] completed in
                 guard let self else { return }
                 self.displayedIndex = target
@@ -355,9 +355,11 @@ struct SketchbookPageCurl: UIViewControllerRepresentable {
                 if let controller { self.configure(controller) }
             }
         }
-        private func faces(for page: Int) -> [UIViewController] {
-            // A double-sided curl needs both faces. The logical sketch count stays unchanged.
-            [controllers[page * 2], controllers[page * 2 + 1]]
+        private func visibleFront(for page: Int) -> [UIViewController] {
+            // A .min spine displays ONE front even with isDoubleSided enabled.
+            // UIKit requests the parchment reverse from the data source during the curl.
+            // Supplying [front, back] here throws NSInvalidArgumentException on iPhone.
+            [controllers[page * 2]]
         }
 
         func pageViewController(_ pageViewController: UIPageViewController, viewControllerBefore viewController: UIViewController) -> UIViewController? {
