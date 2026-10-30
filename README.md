@@ -1,3 +1,9 @@
+## Build 105 — sketch-unlocked presentation
+
+The approved celebration gives the stop name the same prominent serif hierarchy used for tour stops, with a smaller Sketch unlocked confirmation and no exclamation point. The larger parchment-framed artwork sits above a 56-point hunter-green Open sketchbook button with white text. VoiceOver announces that the sketch has been added; the button retains the existing navigation action.
+
+Debug/Release Swift syntax checks passed. Native visual and accessibility-size verification remain pending on Xcode/iPhone. Not published.
+
 ## Build 104 — river-blue destination and walked trail
 
 Current/next-stop number badges now use the same river-blue token as Home. Google Maps and the Apple fallback render only the recorded hunter-green walking trail, which grows from accepted real GPS movement; the upcoming route line is hidden. Routing geometry still drives instructions, AR, distances, rerouting and camera framing. Existing trail retention across stop changes and signal-gap/jump protection are preserved.

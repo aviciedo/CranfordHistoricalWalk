@@ -513,32 +513,38 @@ private struct SketchUnlockCelebration: View {
         ZStack {
             Color(white: 0.18).opacity(0.90).ignoresSafeArea()
             GeometryReader { viewport in
-                let sketchSize = min(240.0, max(144.0, viewport.size.height * 0.32))
+                let sketchWidth = max(0, min(360, viewport.size.width - 48))
                 ScrollView {
                     VStack(spacing: 24) {
                         SketchArtwork(stopID: stop.id)
                             .padding(20)
-                            .frame(maxWidth: sketchSize + 40)
+                            .frame(maxWidth: sketchWidth)
                             .background { SketchbookPaper() }
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                             .scaleEffect(reduceMotion ? 1 : (hasRevealedSketch ? 1 : 0.94))
                             .rotationEffect(.degrees(reduceMotion || hasRevealedSketch ? 0 : -3))
                             .opacity(hasRevealedSketch ? 1 : 0)
                         VStack(spacing: 10) {
-                            Label("Sketch unlocked!", systemImage: "checkmark.circle.fill")
-                                .font(.system(.title, design: .serif).weight(.semibold))
+                            Label("Sketch unlocked", systemImage: "checkmark.circle.fill")
+                                .font(.headline)
+                                .imageScale(.large)
+                            Text(stop.name)
+                                .font(.system(.largeTitle, design: .serif).weight(.semibold))
                                 .accessibilityAddTraits(.isHeader)
-                            Text(stop.name).font(.title3)
                             Text("Added to your sketchbook.").font(.body)
                         }
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
-                        Button("Open sketchbook", action: onOpenSketchbook)
-                            .font(.headline).frame(minHeight: 48)
-                            .padding(.horizontal, 24)
-                            .foregroundStyle(AppTheme.forest)
-                            .background(AppTheme.ivory, in: Capsule())
-                            .buttonStyle(.plain)
+                        Button(action: onOpenSketchbook) {
+                            Text("Open sketchbook")
+                                .font(.headline)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .padding(.horizontal, 24).padding(.vertical, 12)
+                                .frame(maxWidth: sketchWidth, minHeight: 56)
+                        }
+                        .foregroundStyle(.white)
+                        .background(AppTheme.forest, in: RoundedRectangle(cornerRadius: 14))
+                        .buttonStyle(.plain)
                     }
                     .frame(maxWidth: .infinity, minHeight: max(0, viewport.size.height - 64))
                     .padding(.horizontal, 24).padding(.vertical, 32)
@@ -558,7 +564,7 @@ private struct SketchUnlockCelebration: View {
             }
             UINotificationFeedbackGenerator().notificationOccurred(.success)
             UIAccessibility.post(notification: .announcement,
-                                 argument: "Sketch unlocked. \(stop.name). Opening your sketchbook.")
+                                 argument: "Sketch unlocked. \(stop.name). Added to your sketchbook.")
         }
     }
 }

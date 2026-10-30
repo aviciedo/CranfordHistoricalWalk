@@ -1,3 +1,11 @@
+## Build 105 — approved sketch-unlocked layout
+
+Reference: docs/design/sketch-unlocked-approved.png. The stop name is now the primary large serif heading; Sketch unlocked is a smaller sans confirmation without the exclamation point. Existing watercolor/gray overlay are retained, artwork is sized to the available width, and Open sketchbook is a full-width hunter-green rounded button with white text. VoiceOver confirmation describes the saved sketch rather than implying that navigation has already happened. Unlock persistence, page targeting and the button action are unchanged.
+
+Debug/Release Swift parsing and diff whitespace checks passed. No new model tests are needed for this presentation-only change.
+
+Final result: blocked — native screenshot comparison, large text and VoiceOver checks require Xcode/iPhone, unavailable on this host.
+
 ## Build 104 — destination badge and trail-only Map
 
 User selected only the trail already walked, with no line ahead. Next-stop/current marker fills now use AppTheme.riverBlue in shared illustration/compact artwork and marker variants. Both map adapters receive an empty future-route display path while continuing to receive recorded GPS trail segments in hunter green. The underlying walking route and camera/navigation data remain intact.
