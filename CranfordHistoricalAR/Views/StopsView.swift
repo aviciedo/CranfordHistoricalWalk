@@ -28,7 +28,8 @@ struct StopsContent: View {
                                 HStack(spacing: 10) {
                                     StopCollectionIllustration(stopID: stop.id,
                                         isSketchUnlocked: tour.activities[stop.id].plaqueUnlockedAt != nil)
-                                        .frame(width: 104, height: stop.id == "hpab-004" ? 104 : 88, alignment: .trailing)
+                                        // Center every silhouette in the same column, including portrait artwork.
+                                        .frame(width: 104, height: stop.id == "hpab-004" ? 104 : 88, alignment: .center)
                                         .accessibilityHidden(true)
                                     VStack(alignment: .leading, spacing: 6) {
                                         Text(stop.name).font(.system(.title3, design: .serif).weight(.semibold))

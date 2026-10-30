@@ -1,3 +1,7 @@
+## Build 109 — center Stops illustrations
+
+Stops artwork now centers in its shared 104-point column instead of aligning to the trailing edge. This corrects the narrow portrait church silhouette while preserving its taller size, intrinsic aspect ratio, row spacing, title alignment and watercolor unlock behavior. Source and PNG alpha-bound inspection confirmed the portrait/landscape alignment difference. Debug/Release Swift syntax and whitespace checks passed; native visual verification remains pending because Xcode/Simulator are unavailable. Not published.
+
 ## Build 108 — fix the sketchbook-opening crash
 
 Root cause confirmed by Apple CI run 40993120071: `testSketchbookCurlUsesPaperBacksWithoutAddingLogicalPages` raised `NSInvalidArgumentException`: “The number of provided view controllers (2) doesn't match the number required (1) for the requested spine location (UIPageViewControllerSpineLocationMin)”. This same production path runs when opening any sketchbook. Build 103 incorrectly supplied front and back together to a minimum-spine page curl.
