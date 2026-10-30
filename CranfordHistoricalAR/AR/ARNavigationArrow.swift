@@ -22,7 +22,7 @@ private enum ARChevronArt {
     static func makeGroup() -> Entity {
         let group = Entity()
         guard let bodyMesh, let faceMesh else { return group }
-        let blue = SimpleMaterial(color: UIColor(red: 23 / 255, green: 101 / 255, blue: 193 / 255, alpha: 1),
+        let blue = SimpleMaterial(color: UIColor(AppTheme.forest),
                                    roughness: 0.7, isMetallic: false)
         let white = UnlitMaterial(color: .white)
         for index in 0..<3 {
