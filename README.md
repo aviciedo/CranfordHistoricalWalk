@@ -1,3 +1,9 @@
+## Build 103 — parchment on sketchbook page backs
+
+The native page curl now supplies an explicit reverse face using the same worn parchment texture as the front. The reverse omits artwork and crops away the cloth binding. Front/back faces share one logical sketch page, so pagination, swipes, arrow navigation and discovery counts retain their existing meaning. Reduced Motion uses the original flat-page path.
+
+Debug/Release Swift syntax checks passed. A native UIKit regression test covers paired faces, forward/reverse turns, logical page numbering and cancelled turns; execution and visual curl verification require Xcode and remain pending. Not published.
+
 ## Build 102 — consistent Map walking action
 
 Map uses one full-width hunter-green primary button in the same action position: Start walk, Continue walk, or Stop walk. The prominent serif destination and quiet ellipsis menu are shared before starting and during a walk. View stop and AR directions remain equal secondary actions below. The approved mockup’s introductory and saved-progress helper sentences are omitted. Distance/time remain visible during active guidance; stopped destination routes remain hidden, with progress and walked trail preserved. Final Finish walk and explicit next-leg controls remain in the existing More menu alongside Previous/Undo.

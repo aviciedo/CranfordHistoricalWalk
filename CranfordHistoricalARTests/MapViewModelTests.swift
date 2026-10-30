@@ -7,6 +7,38 @@ import TourCore
 
 @MainActor
 final class MapViewModelTests: XCTestCase {
+    func testSketchbookCurlUsesPaperBacksWithoutAddingLogicalPages() throws {
+        var selected = 0
+        let curl = SketchbookPageCurl(pages: [AnyView(Text("Mill")), AnyView(Text("Greystone"))],
+            index: Binding(get: { selected }, set: { selected = $0 }), enabled: true)
+        let coordinator = curl.makeCoordinator()
+        let controller = SketchbookPageCurl.makePageController()
+        coordinator.configure(controller)
+        XCTAssertTrue(controller.isDoubleSided)
+        let first = try XCTUnwrap(controller.viewControllers)
+        XCTAssertEqual(first.count, 2, "A curl needs a front and an explicit paper back")
+        XCTAssertTrue(first[1].view.accessibilityElementsHidden)
+        XCTAssertNil(coordinator.pageViewController(controller, viewControllerBefore: first[0]))
+        let nextFront = try XCTUnwrap(coordinator.pageViewController(controller, viewControllerAfter: first[1]))
+        let nextBack = try XCTUnwrap(coordinator.pageViewController(controller, viewControllerAfter: nextFront))
+        XCTAssertNil(coordinator.pageViewController(controller, viewControllerAfter: nextBack))
+        controller.setViewControllers([nextFront, nextBack], direction: .forward, animated: false)
+        coordinator.pageViewController(controller, didFinishAnimating: true,
+                                       previousViewControllers: first, transitionCompleted: true)
+        XCTAssertEqual(selected, 1, "The paper back must not become another sketchbook page")
+        let previousBack = try XCTUnwrap(coordinator.pageViewController(controller, viewControllerBefore: nextFront))
+        let previousFront = try XCTUnwrap(coordinator.pageViewController(controller, viewControllerBefore: previousBack))
+        XCTAssertTrue(previousBack === first[1])
+        XCTAssertTrue(previousFront === first[0])
+        controller.setViewControllers(first, direction: .reverse, animated: false)
+        coordinator.pageViewController(controller, didFinishAnimating: true,
+                                       previousViewControllers: [nextFront, nextBack], transitionCompleted: true)
+        XCTAssertEqual(selected, 0)
+        coordinator.pageViewController(controller, didFinishAnimating: false,
+                                       previousViewControllers: first, transitionCompleted: false)
+        XCTAssertEqual(selected, 0, "A cancelled curl must not change the logical page")
+    }
+
     func testRiverHomeAssetsAndSignpostAreAvailableInTheAppBundle() throws {
         var sketchStops = 0
         for stop in HistoricalStop.previewStops {

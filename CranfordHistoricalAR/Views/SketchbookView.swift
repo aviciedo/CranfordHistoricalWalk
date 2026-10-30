@@ -200,6 +200,24 @@ struct SketchbookPaper: View {
     }
 }
 
+/// The reverse uses the same worn parchment, without the front’s cloth binding or artwork.
+struct SketchbookPageBack: View {
+    var body: some View {
+        GeometryReader { viewport in
+            SketchbookPaper()
+                .frame(width: viewport.size.width / 0.95, height: viewport.size.height)
+                .offset(x: -viewport.size.width * 0.05 / 0.95)
+                .frame(width: viewport.size.width, height: viewport.size.height, alignment: .topLeading)
+                .clipped()
+                .scaleEffect(x: -1, y: 1)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.vertical, 4)
+        .background(AppTheme.ivory)
+        .accessibilityHidden(true)
+    }
+}
+
 /// Original transparent watercolor files, without stamp outlines, frame or image cropping.
 /// A future plaque stop can use its existing tour illustration until its sketch is supplied.
 struct SketchArtwork: View {
@@ -273,17 +291,21 @@ struct SketchCollectionRow: View {
 
 /// Native single-leaf book turning. Controllers are refreshed when a sketch appears,
 /// without resetting the page the user is viewing. Arrow taps and swipes share one index.
-private struct SketchbookPageCurl: UIViewControllerRepresentable {
+struct SketchbookPageCurl: UIViewControllerRepresentable {
     let pages: [AnyView]
     @Binding var index: Int
     let enabled: Bool
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
-    func makeUIViewController(context: Context) -> UIPageViewController {
+    static func makePageController() -> UIPageViewController {
         let controller = UIPageViewController(transitionStyle: .pageCurl, navigationOrientation: .horizontal,
                                             options: [.spineLocation: UIPageViewController.SpineLocation.min.rawValue])
-        controller.isDoubleSided = false
+        controller.isDoubleSided = true
         controller.view.backgroundColor = UIColor(AppTheme.ivory)
+        return controller
+    }
+    func makeUIViewController(context: Context) -> UIPageViewController {
+        let controller = Self.makePageController()
         context.coordinator.configure(controller)
         return controller
     }
@@ -302,23 +324,26 @@ private struct SketchbookPageCurl: UIViewControllerRepresentable {
         init(_ parent: SketchbookPageCurl) { self.parent = parent }
 
         func configure(_ controller: UIPageViewController) {
-            if controllers.count != parent.pages.count {
-                controllers = parent.pages.map {
-                    let host = UIHostingController(rootView: $0)
-                    host.view.backgroundColor = UIColor(AppTheme.ivory)
-                    return host
+            if controllers.count != parent.pages.count * 2 {
+                controllers = parent.pages.flatMap { page -> [UIHostingController<AnyView>] in
+                    let front = UIHostingController(rootView: page)
+                    front.view.backgroundColor = UIColor(AppTheme.ivory)
+                    let back = UIHostingController(rootView: AnyView(SketchbookPageBack()))
+                    back.view.backgroundColor = UIColor(AppTheme.ivory)
+                    back.view.accessibilityElementsHidden = true
+                    return [front, back]
                 }
                 controller.dataSource = self
                 controller.delegate = self
-                displayedIndex = min(parent.index, max(0, controllers.count - 1))
-                if !controllers.isEmpty { controller.setViewControllers([controllers[displayedIndex]], direction: .forward, animated: false) }
+                displayedIndex = min(parent.index, max(0, parent.pages.count - 1))
+                if !controllers.isEmpty { controller.setViewControllers(faces(for: displayedIndex), direction: .forward, animated: false) }
             } else {
-                for (host, page) in zip(controllers, parent.pages) { host.rootView = page }
+                for (index, page) in parent.pages.enumerated() { controllers[index * 2].rootView = page }
             }
-            guard !transitioning, parent.index != displayedIndex, controllers.indices.contains(parent.index) else { return }
+            guard !transitioning, parent.index != displayedIndex, parent.pages.indices.contains(parent.index) else { return }
             let target = parent.index
             transitioning = true
-            controller.setViewControllers([controllers[target]], direction: target > displayedIndex ? .forward : .reverse,
+            controller.setViewControllers(faces(for: target), direction: target > displayedIndex ? .forward : .reverse,
                                           animated: true) { [weak self, weak controller] completed in
                 guard let self else { return }
                 self.displayedIndex = target
@@ -327,6 +352,11 @@ private struct SketchbookPageCurl: UIViewControllerRepresentable {
                 if let controller { self.configure(controller) }
             }
         }
+        private func faces(for page: Int) -> [UIViewController] {
+            // A double-sided curl needs both faces. The logical sketch count stays unchanged.
+            [controllers[page * 2], controllers[page * 2 + 1]]
+        }
+
         func pageViewController(_ pageViewController: UIPageViewController, viewControllerBefore viewController: UIViewController) -> UIViewController? {
             guard let i = controllers.firstIndex(where: { $0 === viewController }), i > 0 else { return nil }
             return controllers[i - 1]
@@ -342,8 +372,8 @@ private struct SketchbookPageCurl: UIViewControllerRepresentable {
                                 previousViewControllers: [UIViewController], transitionCompleted completed: Bool) {
             if completed, let visible = pageViewController.viewControllers?.first,
                let i = controllers.firstIndex(where: { $0 === visible }) {
-                displayedIndex = i
-                parent.index = i
+                displayedIndex = i / 2
+                parent.index = displayedIndex
             }
             transitioning = false
         }
