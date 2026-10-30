@@ -452,6 +452,44 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertNotEqual(map.cameraRequest, manuallyPositioned)
     }
 
+    func testMapResizeRefitsActiveDestinationWithoutChangingTourOrArtwork() async throws {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        let map = MapViewModel()
+        tour.startTour()
+        map.showUserAndDestination(tour: tour)
+        let initial = try XCTUnwrap(map.cameraRequest)
+        let destinationID = tour.currentStop?.id
+        let markers = map.markers(for: tour, emphasizesDestinationOnly: true)
+        XCTAssertEqual(markers.filter(\.isIllustrated).map(\.id), [try XCTUnwrap(destinationID)])
+        // Starting/stopping guidance changes available map height with no GPS movement.
+        for _ in 0..<3 {
+            let previous = try XCTUnwrap(map.cameraRequest)
+            map.mapViewportDidChange()
+            let resized = try XCTUnwrap(map.cameraRequest)
+            XCTAssertGreaterThan(resized.id, previous.id)
+            XCTAssertEqual(resized.kind, initial.kind)
+            XCTAssertFalse(resized.animated, "Apply the fit to the new bounds without another camera animation")
+            XCTAssertEqual(tour.currentStop?.id, destinationID)
+            XCTAssertEqual(map.markers(for: tour, emphasizesDestinationOnly: true), markers)
+        }
+        map.userDidMoveCamera()
+        let manualCamera = map.cameraRequest
+        map.mapViewportDidChange()
+        XCTAssertEqual(map.cameraRequest, manualCamera, "Resizing must respect a manual pan/zoom")
+    }
+
+    func testMapResizeRefitsOverviewAndIgnoresUninitializedCamera() async {
+        let map = MapViewModel()
+        map.mapViewportDidChange()
+        XCTAssertNil(map.cameraRequest)
+        map.requestOverview()
+        let previous = map.cameraRequest
+        map.mapViewportDidChange()
+        XCTAssertNotEqual(map.cameraRequest?.id, previous?.id)
+        XCTAssertEqual(map.cameraRequest?.kind, .fitAll)
+        XCTAssertEqual(map.cameraRequest?.animated, false)
+    }
+
     func testMapPrimaryActionStartsStopsAndContinuesTheSameWalk() async {
         let tour = await makeTour(); defer { cleanUp(tour) }
         XCTAssertEqual(tour.phase, .notStarted)

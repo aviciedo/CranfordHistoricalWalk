@@ -220,6 +220,20 @@ final class MapViewModel {
         push(.fitWalkingLeg(coordinates), animated: true)
     }
 
+    /// Bounds fits are tied to the viewport. Walking instructions and distance text can
+    /// shrink the map without changing GPS or route, so issue a new fit for the new bounds.
+    /// A user-controlled camera must remain untouched.
+    func mapViewportDidChange() {
+        guard cameraMode == .navigation || cameraMode == .overview,
+              let request = cameraRequest else { return }
+        switch request.kind {
+        case .fitAll, .fitUserAndDestination, .fitWalkingLeg:
+            push(request.kind, animated: false)
+        case .follow, .zoomTo:
+            break
+        }
+    }
+
     /// Keep the dot independent from the camera. Reframe only after meaningful walking;
     /// manual pan/zoom suspends camera tracking until the route/recenter control is tapped.
     func updateWalkingFrame(tour: TourViewModel, routeChanged: Bool = false) {

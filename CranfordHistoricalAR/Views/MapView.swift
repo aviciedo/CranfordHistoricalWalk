@@ -26,7 +26,7 @@ struct TourMapView: View {
                         selectedStopID: mapModel.viewedStopID,
                         reservesNavigationControls: false,
                         showsCompass: false,
-                        fitInsets: UIEdgeInsets(top: 28, left: 30, bottom: 30, right: 74),
+                        fitInsets: UIEdgeInsets(top: 40, left: 40, bottom: 56, right: 96),
                         onMapTap: { mapModel.clearViewedStop() },
                         trailSegments: mapModel.walkedTrailCoordinates(for: tour).map { $0.map(\.clLocationCoordinate) }
                     )
@@ -67,6 +67,10 @@ struct TourMapView: View {
                 .accessibilityHint("Shows your location, departure stop and destination")
                 .accessibilityIdentifier("map.recenter")
                     .padding(.trailing, 16).padding(.bottom, 20)
+            }
+            .onChange(of: viewport.size) { _, size in
+                guard size.width > 0, size.height > 0 else { return }
+                mapModel.mapViewportDidChange()
             }
         }
         .onChange(of: tour.userLocation) { _, _ in mapModel.updateWalkingFrame(tour: tour) }
@@ -317,7 +321,7 @@ struct AppleTourMapView: UIViewRepresentable {
             let minimum = 250 / MKMetersPerMapPointAtLatitude(coordinates[0].latitude)
             if bounds.width < minimum { bounds = bounds.insetBy(dx: -(minimum - bounds.width) / 2, dy: 0) }
             if bounds.height < minimum { bounds = bounds.insetBy(dx: 0, dy: -(minimum - bounds.height) / 2) }
-            map.setVisibleMapRect(bounds, edgePadding: UIEdgeInsets(top: min(28, map.bounds.height * 0.15), left: 30, bottom: min(30, map.bounds.height * 0.15), right: 74), animated: animated)
+            map.setVisibleMapRect(bounds, edgePadding: UIEdgeInsets(top: min(40, map.bounds.height * 0.2), left: 40, bottom: min(56, map.bounds.height * 0.3), right: 96), animated: animated)
         }
 
         func mapView(_ mapView: MKMapView, regionWillChangeAnimated animated: Bool) {

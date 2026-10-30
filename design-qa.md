@@ -1,3 +1,9 @@
+## Build 110 — retain the destination illustration when starting a walk
+
+The supplied six-second recording shows the Mill before guidance, absent in the shorter active-walk map around three seconds, and visible again after stopping. Walking instructions/distance text shrink the map while the existing camera request remains consumed, leaving the destination outside the marker layout’s visible viewport. The map now observes its actual viewport size and reissues automatic bounds fits without animation. Manual pan/zoom and follow cameras are preserved. Google and Apple walking-map fits also allow more edge clearance: the former 30-point bottom fit margin was smaller than the marker viewport’s 32-point exclusion.
+
+Validation: two portable model regression tests passed, covering repeated viewport changes without GPS updates, unchanged destination/artwork, manual camera preservation, overview and uninitialized state. Changed sources passed Debug/Release Swift syntax and whitespace checks. The video was inspected at 0.5, 3, 5 and 6 seconds. Live Google Maps/MapKit rendering and device verification remain pending; no Xcode/Simulator is available here. No arrival, route, trail, artwork or tour progression logic changed. Not published.
+
 ## Build 109 — center Stops illustrations
 
 Stops artwork now centers in its shared 104-point column instead of aligning to the trailing edge. This corrects the narrow portrait church silhouette while preserving its taller size, intrinsic aspect ratio, row spacing, title alignment and watercolor unlock behavior. Source and PNG alpha-bound inspection confirmed the portrait/landscape alignment difference. Debug/Release Swift syntax and whitespace checks passed; native visual verification remains pending because Xcode/Simulator are unavailable. Not published.
