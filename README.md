@@ -1,3 +1,9 @@
+## Build 104 — river-blue destination and walked trail
+
+Current/next-stop number badges now use the same river-blue token as Home. Google Maps and the Apple fallback render only the recorded hunter-green walking trail, which grows from accepted real GPS movement; the upcoming route line is hidden. Routing geometry still drives instructions, AR, distances, rerouting and camera framing. Existing trail retention across stop changes and signal-gap/jump protection are preserved.
+
+Validation: both existing portable GPS-trail tests passed; updated Map sources passed Debug/Release Swift parsing and whitespace checks. Native visual verification remains pending. Not published.
+
 ## Build 103 — parchment on sketchbook page backs
 
 The native page curl now supplies an explicit reverse face using the same worn parchment texture as the front. The reverse omits artwork and crops away the cloth binding. Front/back faces share one logical sketch page, so pagination, swipes, arrow navigation and discovery counts retain their existing meaning. Reduced Motion uses the original flat-page path.

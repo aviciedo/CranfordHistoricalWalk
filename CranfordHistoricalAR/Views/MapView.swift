@@ -17,7 +17,7 @@ struct TourMapView: View {
                     GoogleMapView(
                         markers: mapModel.markers(for: tour, emphasizesDestinationOnly: true),
                         userPuck: mapModel.userPuck(for: tour),
-                        routeCoordinates: mapModel.walkingRouteCoordinates(for: tour).map(\.clLocationCoordinate),
+                        routeCoordinates: [], // Only recorded walking trail is drawn; route remains available for guidance.
                         cameraRequest: mapModel.cameraRequest,
                         bottomInset: bottomInset,
                         onUserGesture: { mapModel.userDidMoveCamera() },
@@ -33,7 +33,7 @@ struct TourMapView: View {
                 } else {
                     AppleTourMapView(markers: mapModel.markers(for: tour, emphasizesDestinationOnly: true),
                         userPuck: mapModel.userPuck(for: tour),
-                        routeCoordinates: mapModel.walkingRouteCoordinates(for: tour).map(\.clLocationCoordinate),
+                        routeCoordinates: [], // Only recorded walking trail is drawn; route remains available for guidance.
                         cameraRequest: mapModel.cameraRequest,
                         onUserGesture: { mapModel.userDidMoveCamera() },
                         onMarkerTap: { mapModel.select(stopID: $0) },

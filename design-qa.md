@@ -1,3 +1,11 @@
+## Build 104 — destination badge and trail-only Map
+
+User selected only the trail already walked, with no line ahead. Next-stop/current marker fills now use AppTheme.riverBlue in shared illustration/compact artwork and marker variants. Both map adapters receive an empty future-route display path while continuing to receive recorded GPS trail segments in hunter green. The underlying walking route and camera/navigation data remain intact.
+
+Both portable trail regression tests passed: accepted movement accumulates across legs, and lost signal, jumps and practice samples do not create false connectors. Debug/Release Map source syntax and diff checks passed.
+
+Final result: blocked — iOS map rendering and outdoor GPS appearance require Xcode/iPhone, unavailable on this host. Verify the blue marker, no line ahead on entry, and a growing line behind the GPS dot after walking.
+
 ## Build 103 — sketchbook parchment reverse
 
 The supplied screenshot shows UIKit’s blank white curl underside. Explicit double-sided page controllers now render a blank worn-parchment reverse from the existing sketchbook-paper asset. No sketch, title, lock state or collection artwork appears on the reverse. The cloth edge is cropped from the back, with paper grain and aged edges retained. Front/back controllers remain paired under one logical page index.

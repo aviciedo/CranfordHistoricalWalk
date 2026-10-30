@@ -562,7 +562,7 @@ enum StopMapArtwork {
                 .font(.system(size: 14, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
                 .frame(width: 28, height: 28)
-                .background(AppTheme.forest, in: Circle())
+                .background(marker.state == .current ? AppTheme.riverBlue : AppTheme.forest, in: Circle())
                 .overlay(Circle().strokeBorder(.white, lineWidth: 2))
                 .frame(width: 44, height: 44)
                 .environment(\.isEnabled, true))
@@ -581,7 +581,7 @@ enum StopMapArtwork {
                     .font(.system(size: 15, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
                     .frame(width: 28, height: 28)
-                    .background(marker.state == .current ? AppTheme.terracotta : AppTheme.forest, in: Circle())
+                    .background(marker.state == .current ? AppTheme.riverBlue : AppTheme.forest, in: Circle())
                     .overlay(Circle().strokeBorder(isSelected ? AppTheme.brass : .white, lineWidth: 2))
             }
             .frame(width: CGFloat(MapMarkerSizing.width), height: CGFloat(MapMarkerSizing.height))
@@ -770,7 +770,7 @@ struct StopDotMarker: View {
 
     private var fill: Color {
         switch model.state {
-        case .current: return AppTheme.heritageGreen
+        case .current: return AppTheme.riverBlue
         case .upcoming: return AppTheme.heritageGreen
         case .visited: return AppTheme.visited
         }
@@ -814,7 +814,7 @@ struct StopMarkerLabel: View {
 
     private var fill: Color {
         switch model.state {
-        case .current: return AppTheme.heritageGreen
+        case .current: return AppTheme.riverBlue
         case .upcoming: return AppTheme.brass
         case .visited: return AppTheme.visited
         }
