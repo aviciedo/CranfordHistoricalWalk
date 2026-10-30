@@ -1,3 +1,9 @@
+## Build 107 — open the unlocked sketch for its stop
+
+The stop-detail collection row now says “Sketch unlocked” and retains only the stop name beneath it; the discovery count is removed. Each sketchbook presentation has a fresh identity and resolves its initial page by stable stop ID, avoiding stale page state between openings. The shared implementation supports every current and future plaque stop without a per-stop navigation switch. Locked-page and saved-unlock behavior are unchanged.
+
+Validation: changed views and native regression tests passed Debug/Release Swift syntax parsing and whitespace checks. Regression tests cover reordered/future stop IDs and the page-curl controller’s initial logical page. Executing UIKit/SwiftUI tests and verifying taps visually requires Xcode/iPhone and remains pending. Not published.
+
 ## Build 106 — unframed Stops collection artwork
 
 User confirmed unframed illustrations and watercolor only after plaque sketch unlock. Five transparent ink assets derive from the existing approved Home/book illustrations, removing circles and paper frames. StopCollectionIllustration reads the saved plaqueUnlockedAt state and selects the existing Mill/Greystone watercolor resources only after collection. The remaining stops retain ink. Row hit areas, typography, visit labels and navigation remain unchanged. Original StopListIllustration stays available to Map and other existing surfaces.

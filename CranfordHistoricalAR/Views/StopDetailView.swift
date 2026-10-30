@@ -49,6 +49,8 @@ struct StopDetailView: View {
             .fullScreenCover(isPresented: $isShowingScanner, onDismiss: { scannerHasPresented = false; revealNewSketch() }) { PlaqueScannerView(stopID: stop.id) }
             .fullScreenCover(item: $sketchbookPresentation) { presentation in
                 SketchbookView(initialStopID: presentation.stopID, animatedSketchStopID: presentation.animated ? presentation.stopID : nil)
+                    // Each opening starts at the requested stop, not a previously browsed page.
+                    .id(presentation.id)
             }
             .onAppear { tour.openStory(for: stop.id); if !scannerHasPresented { revealNewSketch() } }
         }
@@ -169,9 +171,7 @@ struct StopDetailView: View {
                 }
                 if stop.hasPlaqueReference {
                     SketchCollectionRow(stop: stop,
-                                     isCollected: tour.activities[stop.id].plaqueUnlockedAt != nil,
-                                     collectedCount: tour.sketchbookCollectedCount,
-                                     totalCount: tour.sketchbookStops.count) {
+                                     isCollected: tour.activities[stop.id].plaqueUnlockedAt != nil) {
                         sketchbookPresentation = SketchbookPresentation(stopID: stop.id, animated: false)
                     }
                 }

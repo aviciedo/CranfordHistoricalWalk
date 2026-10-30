@@ -23,7 +23,7 @@ struct SketchbookView: View {
 
     private var stops: [HistoricalStop] { tour.sketchbookStops }
     private var currentPageIndex: Int {
-        hasSelectedInitialPage ? min(pageIndex, max(0, stops.count - 1)) : (stops.firstIndex { $0.id == initialStopID } ?? 0)
+        hasSelectedInitialPage ? min(pageIndex, max(0, stops.count - 1)) : Self.initialPageIndex(stopID: initialStopID, pageStopIDs: stops.map(\.id))
     }
     private var pageSelection: Binding<Int> {
         Binding(get: { currentPageIndex }, set: { pageIndex = $0; hasSelectedInitialPage = true })
@@ -105,9 +105,14 @@ struct SketchbookView: View {
         .accessibilityIdentifier("sketchbook.screen")
     }
 
+    /// Resolve by stable stop identity, never by unlock order or a hard-coded tour index.
+    static func initialPageIndex(stopID: String, pageStopIDs: [String]) -> Int {
+        pageStopIDs.firstIndex(of: stopID) ?? 0
+    }
+
     private func selectInitialPage() {
         guard !hasSelectedInitialPage, !stops.isEmpty else { return }
-        pageIndex = stops.firstIndex { $0.id == initialStopID } ?? 0
+        pageIndex = Self.initialPageIndex(stopID: initialStopID, pageStopIDs: stops.map(\.id))
         hasSelectedInitialPage = true
     }
 
@@ -250,8 +255,6 @@ struct SketchArtwork: View {
 struct SketchCollectionRow: View {
     let stop: HistoricalStop
     let isCollected: Bool
-    let collectedCount: Int
-    let totalCount: Int
     let action: () -> Void
     @ScaledMetric(relativeTo: .title2) private var sketchWidth: CGFloat = 88
 
@@ -263,11 +266,11 @@ struct SketchCollectionRow: View {
                     SketchArtwork(stopID: stop.id, isCollected: isCollected)
                         .frame(width: min(sketchWidth, 112))
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(isCollected ? "Sketch added" : "Discover this sketch")
+                        Text(isCollected ? "Sketch unlocked" : "Discover this sketch")
                             .font(.system(.title2, design: .serif).weight(.semibold))
                             .fixedSize(horizontal: false, vertical: true)
                         Text(isCollected
-                             ? "\(stop.name) · \(collectedCount) of \(totalCount) discoveries"
+                             ? stop.name
                              : "Find the on-site plaque")
                             .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
                             .fixedSize(horizontal: false, vertical: true)
@@ -279,7 +282,7 @@ struct SketchCollectionRow: View {
                 .padding(.vertical, 12).contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityValue(isCollected ? "Sketch added" : "Not discovered")
+            .accessibilityValue(isCollected ? "Sketch unlocked" : "Not discovered")
             .accessibilityHint(isCollected
                 ? "Opens your sketchbook at this collected sketch"
                 : "Opens this sketch’s locked page. Recognize the on-site plaque to unlock it.")

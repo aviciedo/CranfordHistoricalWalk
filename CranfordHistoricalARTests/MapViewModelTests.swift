@@ -7,6 +7,26 @@ import TourCore
 
 @MainActor
 final class MapViewModelTests: XCTestCase {
+    func testSketchbookOpensRequestedStopRegardlessOfPageOrderOrFutureStops() {
+        let ids = ["future-stop", "hpab-002", "hpab-001"]
+        for (expected, id) in ids.enumerated() {
+            XCTAssertEqual(SketchbookView.initialPageIndex(stopID: id, pageStopIDs: ids), expected)
+        }
+        XCTAssertEqual(SketchbookView.initialPageIndex(stopID: "missing", pageStopIDs: ids), 0)
+        XCTAssertEqual(SketchbookView.initialPageIndex(stopID: "hpab-001", pageStopIDs: []), 0)
+    }
+
+    func testSketchbookCurlInitiallyShowsRequestedLogicalPage() {
+        let selected = SketchbookView.initialPageIndex(stopID: "hpab-002", pageStopIDs: ["hpab-001", "hpab-002"])
+        let curl = SketchbookPageCurl(pages: [AnyView(Text("Mill")), AnyView(Text("Greystone"))],
+            index: .constant(selected), enabled: true)
+        let coordinator = curl.makeCoordinator()
+        let controller = SketchbookPageCurl.makePageController()
+        coordinator.configure(controller)
+        XCTAssertEqual(coordinator.displayedIndex, 1)
+        XCTAssertTrue(controller.viewControllers?.first === coordinator.controllers[2])
+    }
+
     func testSketchbookCurlUsesPaperBacksWithoutAddingLogicalPages() throws {
         var selected = 0
         let curl = SketchbookPageCurl(pages: [AnyView(Text("Mill")), AnyView(Text("Greystone"))],
