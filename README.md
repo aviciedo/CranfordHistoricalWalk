@@ -1,3 +1,9 @@
+## Build 111 — full-bleed parchment during page curls
+
+The supplied screenshot shows pale edges behind/around a turning sheet. The reverse previously reused the front asset's decorative border/folded corner and left clipped/padded margins over ivory UIKit backing. The reverse now samples the existing paper texture's interior and fills its entire face without rounded clipping or padding. Front hosting roots receive the same full-bleed paper behind their existing rounded page artwork; the page controller and both face hosts use opaque matching warm paper (RGB 248/242/230). The curl container clips overflow to the book bounds. Original artwork, unlock state and pagination remain unchanged, including the one-visible-controller minimum-spine crash fix.
+
+Validation: Debug/Release Swift syntax and whitespace checks passed. Native regression coverage checks opaque parchment on the container and every face, overflow clipping and preservation of one visible front. UIKit execution and mid-curl iPhone visual verification remain pending. Build 110's Apple workflow failed before acquiring a runner (internal server/capacity error), so that run supplies no native validation of these later changes. No UX-audit proposals were implemented. Not published.
+
 ## Build 110 — retain the destination illustration when starting a walk
 
 The supplied six-second recording shows the Mill before guidance, absent in the shorter active-walk map around three seconds, and visible again after stopping. Walking instructions/distance text shrink the map while the existing camera request remains consumed, leaving the destination outside the marker layout’s visible viewport. The map now observes its actual viewport size and reissues automatic bounds fits without animation. Manual pan/zoom and follow cameras are preserved. Google and Apple walking-map fits also allow more edge clearance: the former 30-point bottom fit margin was smaller than the marker viewport’s 32-point exclusion.

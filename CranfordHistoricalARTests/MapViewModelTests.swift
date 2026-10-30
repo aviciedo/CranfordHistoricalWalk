@@ -47,6 +47,30 @@ final class MapViewModelTests: XCTestCase {
         }
     }
 
+    func testSketchbookCurlUsesOpaqueParchmentForContainerAndBothFaces() throws {
+        let curl = SketchbookPageCurl(pages: [AnyView(Text("Mill")), AnyView(Text("Greystone"))],
+            index: .constant(0), enabled: true)
+        let coordinator = curl.makeCoordinator()
+        let controller = SketchbookPageCurl.makePageController()
+        coordinator.configure(controller)
+        XCTAssertTrue(controller.view.clipsToBounds, "A turning sheet must not expose backing above the book")
+        for surface in [controller.view!] + coordinator.controllers.map({ $0.view! }) {
+            XCTAssertTrue(surface.isOpaque)
+            let color = try XCTUnwrap(surface.backgroundColor)
+            var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
+            XCTAssertTrue(color.getRed(&red, green: &green, blue: &blue, alpha: &alpha))
+            XCTAssertEqual(red, 248 / 255.0, accuracy: 0.005)
+            XCTAssertEqual(green, 242 / 255.0, accuracy: 0.005)
+            XCTAssertEqual(blue, 230 / 255.0, accuracy: 0.005)
+            XCTAssertEqual(alpha, 1)
+        }
+        // Keep the minimum-spine crash fix while covering both front/back paper materials.
+        XCTAssertEqual(controller.viewControllers?.count, 1)
+        XCTAssertEqual(coordinator.controllers.count, 4)
+        coordinator.configure(controller)
+        XCTAssertEqual(controller.viewControllers?.count, 1)
+    }
+
     func testSketchbookCurlUsesPaperBacksWithoutAddingLogicalPages() throws {
         var selected = 0
         let curl = SketchbookPageCurl(pages: [AnyView(Text("Mill")), AnyView(Text("Greystone"))],

@@ -188,6 +188,7 @@ private struct SketchbookLeaf: View {
             .animation(.easeOut(duration: reduceMotion ? 0.2 : 0.9), value: revealSketch)
         }
         .scrollBounceBehavior(.basedOnSize)
+        .scrollContentBackground(.hidden)
         .foregroundStyle(AppTheme.forest)
         .environment(\.colorScheme, .light)
         .background { SketchbookPaper() }
@@ -205,20 +206,21 @@ struct SketchbookPaper: View {
     }
 }
 
-/// The reverse uses the same worn parchment, without the front’s cloth binding or artwork.
+/// Full-bleed interior paper: no front-cover binding, printed edge or baked-in folded corner.
+/// UIKit bends this surface itself; an image of a second page edge would expose a pale rim.
 struct SketchbookPageBack: View {
     var body: some View {
         GeometryReader { viewport in
+            // Use the existing texture's interior, excluding every decorative outer edge.
             SketchbookPaper()
-                .frame(width: viewport.size.width / 0.95, height: viewport.size.height)
-                .offset(x: -viewport.size.width * 0.05 / 0.95)
+                .frame(width: viewport.size.width / 0.78, height: viewport.size.height / 0.72)
+                .offset(x: -viewport.size.width * 0.12 / 0.78,
+                        y: -viewport.size.height * 0.10 / 0.72)
                 .frame(width: viewport.size.width, height: viewport.size.height, alignment: .topLeading)
                 .clipped()
                 .scaleEffect(x: -1, y: 1)
         }
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .padding(.vertical, 4)
-        .background(AppTheme.ivory)
+        .background(AppTheme.sketchbookPaper)
         .accessibilityHidden(true)
     }
 }
@@ -304,7 +306,9 @@ struct SketchbookPageCurl: UIViewControllerRepresentable {
         let controller = UIPageViewController(transitionStyle: .pageCurl, navigationOrientation: .horizontal,
                                             options: [.spineLocation: UIPageViewController.SpineLocation.min.rawValue])
         controller.isDoubleSided = true
-        controller.view.backgroundColor = UIColor(AppTheme.ivory)
+        controller.view.backgroundColor = UIColor(AppTheme.sketchbookPaper)
+        controller.view.isOpaque = true
+        controller.view.clipsToBounds = true
         return controller
     }
     func makeUIViewController(context: Context) -> UIPageViewController {
@@ -329,10 +333,12 @@ struct SketchbookPageCurl: UIViewControllerRepresentable {
         func configure(_ controller: UIPageViewController) {
             if controllers.count != parent.pages.count * 2 {
                 controllers = parent.pages.flatMap { page -> [UIHostingController<AnyView>] in
-                    let front = UIHostingController(rootView: page)
-                    front.view.backgroundColor = UIColor(AppTheme.ivory)
+                    let front = UIHostingController(rootView: Self.paperBacked(page))
+                    front.view.backgroundColor = UIColor(AppTheme.sketchbookPaper)
+                    front.view.isOpaque = true
                     let back = UIHostingController(rootView: AnyView(SketchbookPageBack()))
-                    back.view.backgroundColor = UIColor(AppTheme.ivory)
+                    back.view.backgroundColor = UIColor(AppTheme.sketchbookPaper)
+                    back.view.isOpaque = true
                     back.view.accessibilityElementsHidden = true
                     return [front, back]
                 }
@@ -341,7 +347,7 @@ struct SketchbookPageCurl: UIViewControllerRepresentable {
                 displayedIndex = min(parent.index, max(0, parent.pages.count - 1))
                 if !controllers.isEmpty { controller.setViewControllers(visibleFront(for: displayedIndex), direction: .forward, animated: false) }
             } else {
-                for (index, page) in parent.pages.enumerated() { controllers[index * 2].rootView = page }
+                for (index, page) in parent.pages.enumerated() { controllers[index * 2].rootView = Self.paperBacked(page) }
             }
             guard !transitioning, parent.index != displayedIndex, parent.pages.indices.contains(parent.index) else { return }
             let target = parent.index
@@ -355,6 +361,11 @@ struct SketchbookPageCurl: UIViewControllerRepresentable {
                 if let controller { self.configure(controller) }
             }
         }
+        private static func paperBacked(_ page: AnyView) -> AnyView {
+            // Rounded front corners, padding and shadows must reveal paper, not host ivory.
+            AnyView(page.background { SketchbookPageBack() })
+        }
+
         private func visibleFront(for page: Int) -> [UIViewController] {
             // A .min spine displays ONE front even with isDoubleSided enabled.
             // UIKit requests the parchment reverse from the data source during the curl.

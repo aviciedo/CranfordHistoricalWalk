@@ -10,6 +10,8 @@ enum AppTheme {
     static let sand = Color(red: 217 / 255, green: 201 / 255, blue: 178 / 255)
     static let terracotta = Color(red: 201 / 255, green: 111 / 255, blue: 79 / 255)
     static let ink = Color(light: forest, dark: ivory)
+    /// Interior of the sketchbook-paper asset, including UIKit curl backing and margins.
+    static let sketchbookPaper = Color(red: 248 / 255, green: 242 / 255, blue: 230 / 255)
     static let parchment = ivory
     static let surface = ivory
     static let playerSurface = ivory
