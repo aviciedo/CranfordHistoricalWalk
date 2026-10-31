@@ -32,12 +32,18 @@ permissions:
 
 concurrency:
   group: apple-build-${{ github.ref }}
-  cancel-in-progress: true
+  # Let an active verification finish rather than sending cancellation notices on each push.
+  # GitHub can still replace an older pending run with the newest pending run.
+  cancel-in-progress: false
 
 jobs:
   apple-toolchain:
-    runs-on: macos-latest
+    # macos-latest currently selects arm64; build 110 never obtained that runner.
+    # Use GitHub's documented standard Intel pool and an explicitly installed Xcode.
+    runs-on: macos-15-intel
     timeout-minutes: 35
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
     steps:
       - uses: actions/checkout@v5
       - name: Report native toolchain

@@ -1,3 +1,13 @@
+## Apple CI reliability — 2026-10-31
+
+The supplied email reports a cancelled workflow, not a Swift compiler diagnostic; it does not include enough run identity to match that exact cancellation. The current workflow cancelled active checks whenever a newer run arrived on the same ref. Active checks now finish (`cancel-in-progress: false`); GitHub may still replace superseded pending runs, and manual/platform cancellations remain possible.
+
+Build 110 run [41124413646](https://github.com/aviciedo/CranfordHistoricalWalk/actions/runs/41124413646) failed before compiling: GitHub reported an internal server error and could not acquire an arm64 runner. The workflow now uses the documented `macos-15-intel` pool with explicitly installed Xcode 26.3. The runner documentation and Google Maps 11.1.0/ARCore Base 1.56.0 archive manifests were checked for Xcode availability and x86_64 Simulator support. Device builds continue targeting iPhone arm64.
+
+Older PR runs #21/#22 also included the previously fixed page-curl exception; PR #23 run [41191620303](https://github.com/aviciedo/CranfordHistoricalWalk/actions/runs/41191620303) subsequently passed 186 native and 268 core tests and the iPhone Release build. That PR's result is not verification of this local commit or a reason to merge unrelated PR changes. No compiler/test steps have been disabled or errors suppressed.
+
+Validation: workflow YAML structure, every shell step's Bash syntax and whitespace checks passed. Native execution of this revised workflow remains pending publication; local host has no Xcode. Hosted-runner availability cannot be guaranteed. This is a CI-only change; app build remains 111 and no UX-audit suggestions are included. Not published.
+
 ## Build 111 — full-bleed parchment during page curls
 
 The supplied screenshot shows pale edges behind/around a turning sheet. The reverse previously reused the front asset's decorative border/folded corner and left clipped/padded margins over ivory UIKit backing. The reverse now samples the existing paper texture's interior and fills its entire face without rounded clipping or padding. Front hosting roots receive the same full-bleed paper behind their existing rounded page artwork; the page controller and both face hosts use opaque matching warm paper (RGB 248/242/230). The curl container clips overflow to the book bounds. Original artwork, unlock state and pagination remain unchanged, including the one-visible-controller minimum-spine crash fix.
