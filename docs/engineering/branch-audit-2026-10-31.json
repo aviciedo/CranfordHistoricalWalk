@@ -1,0 +1,474 @@
+[
+  {
+    "branch": "cursor/bc-85ed9c65-c5a4-43ac-bb73-dd7e3fe12b6e-c846",
+    "sha": "fa5766cfaeb82a7e47c9b158882f278dd487c511",
+    "date": "2026-10-29 11:10:15 +0000",
+    "behind": 23,
+    "ahead": 1,
+    "subject": "Stop an earlier visit from skipping a stop the walker returned to.",
+    "files": [
+      "CranfordHistoricalAR/ViewModels/TourViewModel+Proximity.swift",
+      "CranfordHistoricalAR/ViewModels/TourViewModel.swift",
+      "CranfordHistoricalARTests/TourCompletionFlowTests.swift"
+    ],
+    "commits": [
+      "fa5766c Stop an earlier visit from skipping a stop the walker returned to."
+    ]
+  },
+  {
+    "branch": "cursor/critical-bug-management-369f",
+    "sha": "b5ee799e82614916c9836724a6696236ef5f9e70",
+    "date": "2026-10-16 11:11:06 +0000",
+    "behind": 161,
+    "ahead": 1,
+    "subject": "Keep a plaque-opened sign from skipping the stop on the next GPS fix.",
+    "files": [
+      "CranfordHistoricalARTests/TourCompletionFlowTests.swift",
+      "Packages/TourCore/Sources/TourCore/StopProximityStateMachine.swift",
+      "Packages/TourCore/Tests/TourCoreTests/StopProximityStateMachineTests.swift"
+    ],
+    "commits": [
+      "b5ee799 Keep a plaque-opened sign from skipping the stop on the next GPS fix."
+    ]
+  },
+  {
+    "branch": "cursor/critical-bug-management-7540",
+    "sha": "e04806ce193ecec3c23aaf522fa4b67d22034f5d",
+    "date": "2026-10-17 11:13:05 +0000",
+    "behind": 161,
+    "ahead": 1,
+    "subject": "Ignore uncertain GPS fixes so they cannot skip a stop.",
+    "files": [
+      "CranfordHistoricalAR/ViewModels/TourViewModel+Proximity.swift",
+      "CranfordHistoricalAR/ViewModels/TourViewModel.swift",
+      "CranfordHistoricalARTests/TourCompletionFlowTests.swift",
+      "Packages/TourCore/Sources/TourCore/ProximityFixFilter.swift",
+      "Packages/TourCore/Tests/TourCoreTests/ProximityFixFilterTests.swift"
+    ],
+    "commits": [
+      "e04806c Ignore uncertain GPS fixes so they cannot skip a stop."
+    ]
+  },
+  {
+    "branch": "cursor/critical-bug-management-9ca7",
+    "sha": "ac344db16641184ba23f71793ce0903cb7ebea2d",
+    "date": "2026-10-22 11:12:23 +0000",
+    "behind": 102,
+    "ahead": 1,
+    "subject": "Hold every AR stop against GPS auto-advance",
+    "files": [
+      "CranfordHistoricalAR/ViewModels/TourViewModel+Proximity.swift",
+      "CranfordHistoricalAR/ViewModels/TourViewModel.swift",
+      "CranfordHistoricalARTests/TourCompletionFlowTests.swift"
+    ],
+    "commits": [
+      "ac344db Hold every AR stop against GPS auto-advance"
+    ]
+  },
+  {
+    "branch": "cursor/critical-bug-management-f477",
+    "sha": "db16e346790d5216c951f9d68c1ece82b51ebb50",
+    "date": "2026-10-18 11:14:34 +0000",
+    "behind": 155,
+    "ahead": 1,
+    "subject": "Keep the plaque-card close target on the corner glyph",
+    "files": [
+      "CranfordHistoricalAR/AR/ARHistoricalSign.swift",
+      "CranfordHistoricalAR/AR/SignCloseControlLayout.swift",
+      "CranfordHistoricalARTests/SignCloseControlLayoutTests.swift"
+    ],
+    "commits": [
+      "db16e34 Keep the plaque-card close target on the corner glyph"
+    ]
+  },
+  {
+    "branch": "cursor/critical-bug-remediation-9e68",
+    "sha": "5f5adc11d5c5cc4aa616e4dc4a2fe446350adfe6",
+    "date": "2026-10-30 11:13:32 +0000",
+    "behind": 4,
+    "ahead": 1,
+    "subject": "Keep route progress moving forward on a close return path",
+    "files": [
+      "Packages/TourCore/Sources/TourCore/RouteProgress.swift",
+      "Packages/TourCore/Tests/TourCoreTests/ARSpatialNavigationTests.swift"
+    ],
+    "commits": [
+      "5f5adc1 Keep route progress moving forward on a close return path"
+    ]
+  },
+  {
+    "branch": "cursor/missing-test-coverage-1aee",
+    "sha": "98de7c02527c14714a01ebcf9a2598c2fddef0d8",
+    "date": "2026-10-19 10:07:44 +0000",
+    "behind": 125,
+    "ahead": 1,
+    "subject": "Cover fresh GPS fix acceptance and one-shot location resume",
+    "files": [
+      "CranfordHistoricalAR/Developer/DeveloperModeController.swift",
+      "CranfordHistoricalAR/Services/LocationService.swift",
+      "Packages/TourCore/Sources/TourCore/GPSRefreshPolicy.swift",
+      "Packages/TourCore/Sources/TourCore/OneShotLocationRefresh.swift",
+      "Packages/TourCore/Tests/TourCoreTests/GPSRefreshPolicyTests.swift"
+    ],
+    "commits": [
+      "98de7c0 Cover fresh GPS fix acceptance and one-shot location resume"
+    ]
+  },
+  {
+    "branch": "cursor/missing-test-coverage-3d91",
+    "sha": "6450d098c352a56f39054c0c24ce8b1a445a7b2a",
+    "date": "2026-10-28 10:12:21 +0000",
+    "behind": 46,
+    "ahead": 1,
+    "subject": "Cover map turn-card wording and maneuver direction edges",
+    "files": [
+      "CranfordHistoricalAR/Views/TourView.swift",
+      "CranfordHistoricalARTests/TourCompletionFlowTests.swift",
+      "Packages/TourCore/Sources/TourCore/ARWalkingGuidance.swift",
+      "Packages/TourCore/Tests/TourCoreTests/ARWalkingGuidanceTests.swift"
+    ],
+    "commits": [
+      "6450d09 Cover map turn-card wording and maneuver direction edges"
+    ]
+  },
+  {
+    "branch": "cursor/missing-test-coverage-49c1",
+    "sha": "a6e3050099931d3357b2930fbb77ab9e5dfb056d",
+    "date": "2026-10-18 10:09:12 +0000",
+    "behind": 155,
+    "ahead": 1,
+    "subject": "Cover plaque arrival gates and full route-path comparison.",
+    "files": [
+      "CranfordHistoricalAR/ViewModels/TourViewModel+Proximity.swift",
+      "CranfordHistoricalAR/Views/GoogleMapView.swift",
+      "Packages/TourCore/Sources/TourCore/PlaqueArrivalPolicy.swift",
+      "Packages/TourCore/Sources/TourCore/RouteGeometry.swift",
+      "Packages/TourCore/Tests/TourCoreTests/HistoricalStopTests.swift",
+      "Packages/TourCore/Tests/TourCoreTests/PlaqueArrivalPolicyTests.swift",
+      "Packages/TourCore/Tests/TourCoreTests/RouteGeometryTests.swift"
+    ],
+    "commits": [
+      "a6e3050 Cover plaque arrival gates and full route-path comparison."
+    ]
+  },
+  {
+    "branch": "cursor/missing-test-coverage-6fce",
+    "sha": "3d4dcce6b131f3b5ef247423722ee92265426cbd",
+    "date": "2026-10-22 10:09:30 +0000",
+    "behind": 102,
+    "ahead": 1,
+    "subject": "Cover GPS cascade, discovery memory, phone-down return, and chevron placement",
+    "files": [
+      "CranfordHistoricalAR/AR/ARNavigationArrow.swift",
+      "CranfordHistoricalAR/ViewModels/TourViewModel+Proximity.swift",
+      "CranfordHistoricalAR/ViewModels/TourViewModel.swift",
+      "CranfordHistoricalAR/Views/ARView.swift",
+      "Packages/TourCore/Sources/TourCore/ARChevronGeometry.swift",
+      "Packages/TourCore/Sources/TourCore/PhoneDownReturnPolicy.swift",
+      "Packages/TourCore/Sources/TourCore/StopDiscovery.swift",
+      "Packages/TourCore/Sources/TourCore/StopVisit.swift",
+      "Packages/TourCore/Tests/TourCoreTests/ARChevronGeometryTests.swift",
+      "Packages/TourCore/Tests/TourCoreTests/AutomaticVisitPolicyTests.swift",
+      "Packages/TourCore/Tests/TourCoreTests/PhoneDownReturnPolicyTests.swift",
+      "Packages/TourCore/Tests/TourCoreTests/StopDiscoveryTests.swift"
+    ],
+    "commits": [
+      "3d4dcce Cover GPS cascade, discovery memory, phone-down return, and chevron placement"
+    ]
+  },
+  {
+    "branch": "cursor/missing-test-coverage-7c70",
+    "sha": "045196e39f99a5440d08dc72dc9da918c6d86e10",
+    "date": "2026-10-24 10:09:57 +0000",
+    "behind": 69,
+    "ahead": 1,
+    "subject": "Cover route recovery, catalog persistence, and phone-down restarts",
+    "files": [
+      "CranfordHistoricalAR/ViewModels/TourViewModel+Routing.swift",
+      "Packages/TourCore/Sources/TourCore/RouteRecoveryPolicy.swift",
+      "Packages/TourCore/Tests/TourCoreTests/Fixtures/historical_stops.json",
+      "Packages/TourCore/Tests/TourCoreTests/PhoneDownReturnPolicyTests.swift",
+      "Packages/TourCore/Tests/TourCoreTests/RouteRecoveryPolicyTests.swift",
+      "Packages/TourCore/Tests/TourCoreTests/TourCatalogTests.swift"
+    ],
+    "commits": [
+      "045196e Cover route recovery, catalog persistence, and phone-down restarts"
+    ]
+  },
+  {
+    "branch": "cursor/missing-test-coverage-8c6b",
+    "sha": "aef5300082637910e1805dcebc49da89c8b16c75",
+    "date": "2026-10-16 10:08:38 +0000",
+    "behind": 161,
+    "ahead": 1,
+    "subject": "Add regression tests for routing, stops, and directions parsing",
+    "files": [
+      "Packages/TourCore/Tests/TourCoreTests/GeoSpatialSelectionTests.swift",
+      "Packages/TourCore/Tests/TourCoreTests/GoogleRoutesAPITests.swift",
+      "Packages/TourCore/Tests/TourCoreTests/HistoricalStopTests.swift",
+      "Packages/TourCore/Tests/TourCoreTests/PolylineTests.swift",
+      "Packages/TourCore/Tests/TourCoreTests/RouteProgressTests.swift",
+      "Packages/TourCore/Tests/TourCoreTests/RouteRefreshPolicyTests.swift",
+      "Packages/TourCore/Tests/TourCoreTests/SignPlacementPolicyTests.swift"
+    ],
+    "commits": [
+      "aef5300 Add regression tests for routing, stops, and directions parsing"
+    ]
+  },
+  {
+    "branch": "cursor/missing-test-coverage-8f8b",
+    "sha": "d1358d81e1539834bbf7e349992843f400dd408d",
+    "date": "2026-10-23 10:10:07 +0000",
+    "behind": 94,
+    "ahead": 1,
+    "subject": "Cover resume validation, route labels, and map visit pins",
+    "files": [
+      "CranfordHistoricalAR/Views/StopPhotoGallery.swift",
+      "CranfordHistoricalARTests/TourCompletionFlowTests.swift",
+      "Packages/TourCore/Sources/TourCore/PhotoGalleryIndex.swift",
+      "Packages/TourCore/Tests/TourCoreTests/PhotoGalleryIndexTests.swift",
+      "Packages/TourCore/Tests/TourCoreTests/StopActivityTests.swift",
+      "Packages/TourCore/Tests/TourCoreTests/TourSummaryAndFormattingTests.swift",
+      "Packages/TourCore/Tests/TourCoreTests/WalkResumeRecordTests.swift"
+    ],
+    "commits": [
+      "d1358d8 Cover resume validation, route labels, and map visit pins"
+    ]
+  },
+  {
+    "branch": "cursor/missing-test-coverage-ab8c",
+    "sha": "33c09fca090006298c0a9e3030057e322f1c2a38",
+    "date": "2026-10-29 10:12:23 +0000",
+    "behind": 23,
+    "ahead": 1,
+    "subject": "Lock GPS trail, map recovery, and passport celebration edges",
+    "files": [
+      "CranfordHistoricalAR/ViewModels/MapViewModel.swift",
+      "CranfordHistoricalAR/ViewModels/TourViewModel.swift",
+      "CranfordHistoricalAR/Views/ARView.swift",
+      "CranfordHistoricalAR/Views/StopsView.swift",
+      "CranfordHistoricalARTests/TourCompletionFlowTests.swift",
+      "Packages/TourCore/Sources/TourCore/MapLocationRecovery.swift",
+      "Packages/TourCore/Sources/TourCore/PassportCelebrationPolicy.swift",
+      "Packages/TourCore/Sources/TourCore/RemainingWalkingRoute.swift",
+      "Packages/TourCore/Sources/TourCore/StopListStatus.swift",
+      "Packages/TourCore/Sources/TourCore/WalkedTrailPolicy.swift",
+      "Packages/TourCore/Tests/TourCoreTests/MapAndPassportCoverageTests.swift",
+      "Packages/TourCore/Tests/TourCoreTests/WalkedTrailPolicyTests.swift"
+    ],
+    "commits": [
+      "33c09fc Lock GPS trail, map recovery, and passport celebration edges"
+    ]
+  },
+  {
+    "branch": "cursor/missing-test-coverage-bed6",
+    "sha": "f0f8c217bf2194bdbfe983b01a72eb7416cc5a9d",
+    "date": "2026-10-26 10:10:55 +0000",
+    "behind": 46,
+    "ahead": 1,
+    "subject": "Cover AR arrow coaching, stop-list status, and walking-frame edges",
+    "files": [
+      "CranfordHistoricalAR/AR/ARNavigationArrow.swift",
+      "CranfordHistoricalAR/AR/GeoAnchorManager.swift",
+      "CranfordHistoricalAR/Views/StopsView.swift",
+      "CranfordHistoricalARTests/TourCompletionFlowTests.swift",
+      "Packages/TourCore/Sources/TourCore/ARArrowCoach.swift",
+      "Packages/TourCore/Sources/TourCore/StopListStatus.swift",
+      "Packages/TourCore/Tests/TourCoreTests/ARArrowCoachTests.swift",
+      "Packages/TourCore/Tests/TourCoreTests/ARStreetGuidanceTests.swift",
+      "Packages/TourCore/Tests/TourCoreTests/GPSCaptureTests.swift",
+      "Packages/TourCore/Tests/TourCoreTests/StopListStatusTests.swift"
+    ],
+    "commits": [
+      "f0f8c21 Cover AR arrow coaching, stop-list status, and walking-frame edges"
+    ]
+  },
+  {
+    "branch": "cursor/missing-test-coverage-c127",
+    "sha": "9367d86f906eeeb88a091f7c7a0edae47d59556b",
+    "date": "2026-10-25 10:08:43 +0000",
+    "behind": 68,
+    "ahead": 1,
+    "subject": "Cover scanner guidance, resume holds, and walking dwell restarts.",
+    "files": [
+      "CranfordHistoricalAR/ViewModels/ARViewModel.swift",
+      "Packages/TourCore/Sources/TourCore/PlaqueScannerGuidance.swift",
+      "Packages/TourCore/Tests/TourCoreTests/PlaqueScannerGuidanceTests.swift",
+      "Packages/TourCore/Tests/TourCoreTests/WalkResumeRecordTests.swift",
+      "Packages/TourCore/Tests/TourCoreTests/WalkingProgressionPolicyTests.swift"
+    ],
+    "commits": [
+      "9367d86 Cover scanner guidance, resume holds, and walking dwell restarts."
+    ]
+  },
+  {
+    "branch": "cursor/missing-test-coverage-c6b8",
+    "sha": "5a736123b9d7e2d90dbb1bfec62297352d55c803",
+    "date": "2026-10-17 10:12:10 +0000",
+    "behind": 161,
+    "ahead": 1,
+    "subject": "Cover directions cache, GPS gates, and completion distance",
+    "files": [
+      "CranfordHistoricalAR/Developer/DeveloperModeController.swift",
+      "CranfordHistoricalAR/Services/DirectionsService.swift",
+      "CranfordHistoricalAR/Services/NarrationPlayer.swift",
+      "CranfordHistoricalAR/ViewModels/TourViewModel+Proximity.swift",
+      "CranfordHistoricalAR/ViewModels/TourViewModel+Routing.swift",
+      "CranfordHistoricalAR/ViewModels/TourViewModel.swift",
+      "Packages/TourCore/Sources/TourCore/DirectionsRouteCache.swift",
+      "Packages/TourCore/Sources/TourCore/LocationFixPolicy.swift",
+      "Packages/TourCore/Sources/TourCore/NarrationSeek.swift",
+      "Packages/TourCore/Sources/TourCore/TourSummary.swift",
+      "Packages/TourCore/Sources/TourCore/WalkSimulator.swift",
+      "Packages/TourCore/Tests/TourCoreTests/DirectionsRouteCacheTests.swift",
+      "Packages/TourCore/Tests/TourCoreTests/LocationFixPolicyTests.swift"
+    ],
+    "commits": [
+      "5a73612 Cover directions cache, GPS gates, and completion distance"
+    ]
+  },
+  {
+    "branch": "cursor/missing-test-coverage-d6f0",
+    "sha": "456655afa8bc6faf5dc1bc0825ca27957291c0c6",
+    "date": "2026-10-21 10:12:00 +0000",
+    "behind": 120,
+    "ahead": 1,
+    "subject": "Cover location banners, narration interruptions, and stop-list status",
+    "files": [
+      "CranfordHistoricalAR/Services/ImageLoader.swift",
+      "CranfordHistoricalAR/Services/LocationService.swift",
+      "CranfordHistoricalAR/Services/NarrationPlayer.swift",
+      "CranfordHistoricalAR/ViewModels/TourViewModel.swift",
+      "CranfordHistoricalAR/Views/StopDetailView.swift",
+      "CranfordHistoricalAR/Views/StopsView.swift",
+      "CranfordHistoricalARTests/NarrationPlayerTests.swift",
+      "Packages/TourCore/Sources/TourCore/ArtworkClassification.swift",
+      "Packages/TourCore/Sources/TourCore/HeadingDisplay.swift",
+      "Packages/TourCore/Sources/TourCore/HistoricalStop.swift",
+      "Packages/TourCore/Sources/TourCore/LocationGuidance.swift",
+      "Packages/TourCore/Sources/TourCore/NarrationPlaybackPolicy.swift",
+      "Packages/TourCore/Sources/TourCore/StopListArtwork.swift",
+      "Packages/TourCore/Sources/TourCore/StopListStatus.swift",
+      "Packages/TourCore/Tests/TourCoreTests/ArtworkClassificationTests.swift",
+      "Packages/TourCore/Tests/TourCoreTests/LocationGuidanceTests.swift",
+      "Packages/TourCore/Tests/TourCoreTests/NarrationPlaybackPolicyTests.swift",
+      "Packages/TourCore/Tests/TourCoreTests/StopListStatusTests.swift"
+    ],
+    "commits": [
+      "456655a Cover location banners, narration interruptions, and stop-list status"
+    ]
+  },
+  {
+    "branch": "cursor/missing-test-coverage-f39f",
+    "sha": "da5b88d1585dd9aa9cd2299e6f56b26ceca62bab",
+    "date": "2026-10-20 10:07:40 +0000",
+    "behind": 121,
+    "ahead": 1,
+    "subject": "Cover home map framing and narration player collapse",
+    "files": [
+      "CranfordHistoricalAR/Views/GoogleMapView.swift",
+      "CranfordHistoricalAR/Views/HomeView.swift",
+      "CranfordHistoricalAR/Views/SharedNarrationBar.swift",
+      "Packages/TourCore/Sources/TourCore/HomeMapFraming.swift",
+      "Packages/TourCore/Sources/TourCore/NarrationMinimizePolicy.swift",
+      "Packages/TourCore/Tests/TourCoreTests/HomeMapFramingTests.swift",
+      "Packages/TourCore/Tests/TourCoreTests/NarrationMinimizePolicyTests.swift"
+    ],
+    "commits": [
+      "da5b88d Cover home map framing and narration player collapse"
+    ]
+  },
+  {
+    "branch": "cursor/missing-test-coverage-ff81",
+    "sha": "30b9c5f350b15b7ed2971ad441ca4084e3681ab4",
+    "date": "2026-10-27 10:10:24 +0000",
+    "behind": 46,
+    "ahead": 1,
+    "subject": "Cover passport leaf selection and stamp presentation edges.",
+    "files": [
+      "CranfordHistoricalAR/App/CranfordHistoricalARApp.swift",
+      "CranfordHistoricalAR/ViewModels/TourViewModel.swift",
+      "CranfordHistoricalAR/Views/PassportView.swift",
+      "CranfordHistoricalAR/Views/StopDetailView.swift",
+      "CranfordHistoricalARTests/TourCompletionFlowTests.swift",
+      "Packages/TourCore/Sources/TourCore/PassportPageSelection.swift",
+      "Packages/TourCore/Tests/TourCoreTests/PassportPageSelectionTests.swift"
+    ],
+    "commits": [
+      "30b9c5f Cover passport leaf selection and stamp presentation edges."
+    ]
+  },
+  {
+    "branch": "cursor/regression-test-coverage-0bb9",
+    "sha": "268888e9f153c3679c8ef8d7b30a4e82ca7063c8",
+    "date": "2026-10-31 10:09:39 +0000",
+    "behind": 0,
+    "ahead": 1,
+    "subject": "Cover walking-map fit, viewport refit, and sketchbook paging.",
+    "files": [
+      "CranfordHistoricalAR/ViewModels/MapViewModel.swift",
+      "CranfordHistoricalAR/Views/HomeMapView.swift",
+      "CranfordHistoricalAR/Views/MapView.swift",
+      "CranfordHistoricalAR/Views/SketchbookView.swift",
+      "CranfordHistoricalARTests/TourCompletionFlowTests.swift",
+      "Packages/TourCore/Sources/TourCore/MapViewportRefit.swift",
+      "Packages/TourCore/Sources/TourCore/SketchbookPaging.swift",
+      "Packages/TourCore/Sources/TourCore/WalkingMapFitPadding.swift",
+      "Packages/TourCore/Tests/TourCoreTests/MapViewportRefitTests.swift",
+      "Packages/TourCore/Tests/TourCoreTests/SketchbookPagingTests.swift",
+      "Packages/TourCore/Tests/TourCoreTests/WalkingMapFitPaddingTests.swift"
+    ],
+    "commits": [
+      "268888e Cover walking-map fit, viewport refit, and sketchbook paging."
+    ]
+  },
+  {
+    "branch": "cursor/regression-test-coverage-64c9",
+    "sha": "ce833537fdc991a879f38357c6d455ad8da630c5",
+    "date": "2026-10-30 10:10:57 +0000",
+    "behind": 4,
+    "ahead": 1,
+    "subject": "Lock GPS visit, trail, and compass thresholds against silent drift",
+    "files": [
+      "CranfordHistoricalAR/Services/LocationService.swift",
+      "CranfordHistoricalARTests/TourCompletionFlowTests.swift",
+      "Packages/TourCore/Sources/TourCore/HeadingPublicationGate.swift",
+      "Packages/TourCore/Tests/TourCoreTests/ARSpatialNavigationTests.swift",
+      "Packages/TourCore/Tests/TourCoreTests/HeadingPublicationGateTests.swift",
+      "Packages/TourCore/Tests/TourCoreTests/WalkingProgressionPolicyTests.swift"
+    ],
+    "commits": [
+      "ce83353 Lock GPS visit, trail, and compass thresholds against silent drift"
+    ]
+  },
+  {
+    "branch": "main",
+    "sha": "41053f10e661130b53ded2e5de32a444b1381f83",
+    "date": "2026-10-30 20:16:10 +0000",
+    "behind": 0,
+    "ahead": 0,
+    "subject": "Refit walking map after viewport changes to retain destination artwork",
+    "files": [],
+    "commits": []
+  },
+  {
+    "branch": "stabilization/audit-phase-1-3",
+    "sha": "41053f10e661130b53ded2e5de32a444b1381f83",
+    "date": "2026-10-30 20:16:10 +0000",
+    "behind": 0,
+    "ahead": 0,
+    "subject": "Refit walking map after viewport changes to retain destination artwork",
+    "files": [],
+    "commits": []
+  },
+  {
+    "branch": "xcode-download",
+    "sha": "41053f10e661130b53ded2e5de32a444b1381f83",
+    "date": "2026-10-30 20:16:10 +0000",
+    "behind": 0,
+    "ahead": 0,
+    "subject": "Refit walking map after viewport changes to retain destination artwork",
+    "files": [],
+    "commits": []
+  }
+]

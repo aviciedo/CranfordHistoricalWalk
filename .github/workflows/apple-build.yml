@@ -3,7 +3,7 @@ name: Apple compiler checks
 on:
   push:
     # Published branches share one commit. Test main once; PRs and manual runs remain enabled.
-    branches: [main]
+    branches: [main, 'validation/**']
     paths:
       - 'CranfordHistoricalAR/**'
       - 'CranfordHistoricalARTests/**'
@@ -14,6 +14,7 @@ on:
       - 'project.yml'
       - '.github/workflows/apple-build.yml'
       - 'scripts/summarize-apple-checks.py'
+      - 'scripts/prepare-activity-model-tests.py'
   pull_request:
     paths:
       - 'CranfordHistoricalAR/**'
@@ -25,6 +26,7 @@ on:
       - 'project.yml'
       - '.github/workflows/apple-build.yml'
       - 'scripts/summarize-apple-checks.py'
+      - 'scripts/prepare-activity-model-tests.py'
   workflow_dispatch:
 
 permissions:
@@ -56,6 +58,13 @@ jobs:
           set -o pipefail
           mkdir -p .build/apple-verification
           swift test --package-path Packages/TourCore 2>&1 | tee .build/apple-verification/core.log
+      - name: Test actual tour model flows
+        shell: bash
+        run: |
+          set -o pipefail
+          python3 scripts/prepare-activity-model-tests.py
+          swift test --package-path .build/activity-model-harness \
+            --scratch-path .build/apple-verification/model 2>&1 | tee .build/apple-verification/model.log
       - name: Compile the shipped Xcode project and tests for Simulator
         id: simulator-build
         shell: bash
