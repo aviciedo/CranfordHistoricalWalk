@@ -17,6 +17,7 @@ import PackageDescription
 let package = Package(name: "ActivityModelHarness", platforms: [.macOS(.v14)],
  dependencies: [.package(path: "../../Packages/TourCore")],
  targets: [.target(name: "ActivityModelHarness", dependencies: [.product(name: "TourCore", package: "TourCore")],
+ resources: [.copy("Resources/historical_stops.json")],
  swiftSettings: [.define("DEVELOPER_MENU")]),
  .testTarget(name: "ActivityModelHarnessTests", dependencies: ["ActivityModelHarness", .product(name: "TourCore", package: "TourCore")],
  swiftSettings: [.define("DEVELOPER_MENU")])])
@@ -41,6 +42,10 @@ for signature in ['    init(location: CLLocation)', '    init(heading: CLHeading
     location = location[:a] + location[b:]
 (src / 'LocationService.swift').write_text(location)
 preview = (root / 'CranfordHistoricalAR/Models/HistoricalStop+App.swift').read_text()
+artwork = preview[preview.index('enum BundledStopArtwork {'):preview.index('extension GeoCoordinate {')]
+(src / 'BundledStopArtwork.swift').write_text('import Foundation\nimport TourCore\n' + artwork.replace('Bundle.main', 'Bundle.module'))
+(src / 'Resources').mkdir(exist_ok=True)
+(src / 'Resources/historical_stops.json').write_bytes((root / 'CranfordHistoricalAR/Resources/historical_stops.json').read_bytes())
 preview = preview[preview.index('    static let previewStops:'):]
 (src / 'PreviewStops.swift').write_text('import Foundation\nimport TourCore\nextension HistoricalStop {\n' + preview)
 (src / 'ServiceBridges.swift').write_text('''import Foundation

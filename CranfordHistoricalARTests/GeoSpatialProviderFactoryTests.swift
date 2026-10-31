@@ -65,11 +65,15 @@ final class GeoSpatialProviderFactoryTests: XCTestCase {
     }
 
     func testAlignedRoutePoseDoesNotFollowPhoneRotationAndHidesOnTrackingLoss() throws {
+        let date = Date(timeIntervalSince1970: 1_800_000_000)
         let provider = SpatialNavigationTestProvider()
-        let manager = GeoAnchorManager(provider: provider)
+        provider.pose?.timestamp = date
+        // Cold RealityKit initialization can exceed the location freshness limit.
+        // Simulated sensors and freshness must share a clock, independent of rendering cost.
+        let manager = GeoAnchorManager(provider: provider, currentDate: { date })
         manager.setNavigationTarget(.init(destination: provider.pose!.coordinate,
             bearingToWaypoint: 0, anchorCoordinate: provider.pose!.coordinate, turnCue: nil,
-            horizontalAccuracy: 3, routeOffset: 0))
+            locationTimestamp: date, horizontalAccuracy: 3, routeOffset: 0))
         for time in stride(from: 0.0, through: 2.1, by: 0.1) {
             manager.updateNavigationPose(cameraTransform: matrix_identity_float4x4, trackingState: .normal, timestamp: time)
         }
@@ -81,6 +85,23 @@ final class GeoSpatialProviderFactoryTests: XCTestCase {
         XCTAssertEqual(manager.anchors.arrows.guidancePosition, position)
         manager.trackingStateDidChange(.limited(.insufficientFeatures))
         XCTAssertNil(manager.anchors.arrows.guidancePosition)
+    }
+
+    func testSpatialPoseExpiryHidesArrowsEvenWhenRouteLocationIsFresh() {
+        let date = Date(timeIntervalSince1970: 1_800_000_000)
+        let provider = SpatialNavigationTestProvider()
+        provider.pose?.timestamp = date.addingTimeInterval(-6)
+        let manager = GeoAnchorManager(provider: provider, currentDate: { date })
+        manager.setNavigationTarget(.init(destination: provider.pose!.coordinate,
+            bearingToWaypoint: 0, anchorCoordinate: provider.pose!.coordinate, turnCue: nil,
+            locationTimestamp: date, horizontalAccuracy: 3, routeOffset: 0))
+        for time in stride(from: 0.0, through: 2.1, by: 0.1) {
+            manager.updateNavigationPose(cameraTransform: matrix_identity_float4x4,
+                trackingState: .normal, timestamp: time)
+        }
+        XCTAssertFalse(manager.hasPlacedNavigation)
+        XCTAssertNil(manager.anchors.arrows.guidancePosition)
+        XCTAssertEqual(manager.spatialMode, .degraded(.location))
     }
 
     func testNoRouteAndStaleLocationDoNotCreateInventedARInstructions() {

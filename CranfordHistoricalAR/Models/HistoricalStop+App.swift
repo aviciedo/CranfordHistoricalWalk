@@ -208,7 +208,11 @@ extension HistoricalStop {
             longDescription: "",
             order: 5, isSample: false, coordinatesUnverified: true, narrationPending: true
         )
-    ]
+    ].map { preview in
+        var stop = preview
+        stop.artwork = BundledStopArtwork.resolve(stopID: stop.id)
+        return stop
+    }
 }
 
 extension WalkingRoute {

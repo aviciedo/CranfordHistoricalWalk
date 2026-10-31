@@ -97,6 +97,7 @@ final class GeoAnchorManager {
     @ObservationIgnored private var isInterrupted = false
     @ObservationIgnored private var groundHeight: Float?
     @ObservationIgnored private var lastGuidanceTime: TimeInterval?
+    @ObservationIgnored private let currentDate: () -> Date
 
     /// Called when Geospatial cannot be used and Core Location should take over.
     var onNeedsFallback: ((GeoSpatialFallbackReason) -> Void)?
@@ -106,8 +107,10 @@ final class GeoAnchorManager {
     /// Frames are processed at most this often (seconds). ARKit delivers 60 Hz; 10 Hz is plenty.
     static let frameInterval: TimeInterval = 0.1
 
-    init(provider: any GeoSpatialProvider, anchors: ARAnchorManager? = nil) {
+    init(provider: any GeoSpatialProvider, anchors: ARAnchorManager? = nil,
+         currentDate: @escaping () -> Date = { Date() }) {
         self.provider = provider
+        self.currentDate = currentDate
         self.anchors = anchors ?? ARAnchorManager()
     }
 
@@ -401,9 +404,10 @@ final class GeoAnchorManager {
     }
 
     private func placeContent(now: TimeInterval) {
+        let date = currentDate()
         guard !hasActivatedStop else { anchors.hideNavigation(); navigationNotice = nil; return }
         guard let cameraTransform, let base = cameraGroundPosition else { anchors.hideNavigation(); return }
-        guard let target, StopActivationPolicy.isFresh(target.locationTimestamp) else {
+        guard let target, StopActivationPolicy.isFresh(target.locationTimestamp, now: date) else {
             resetSpatialNavigation()
             anchors.hideNavigation()
             spatialMode = .degraded(.route)
@@ -427,7 +431,7 @@ final class GeoAnchorManager {
         let rangeIsSafe = range.map { (Float(3)...Float(16)).contains($0) } ?? false
         let alignmentIsUsable = localizationState.isUsable && rangeIsSafe && direction != nil
         let mode = spatialConfidence.update(tracking: isTrackingReady,
-            locationAge: max(Date().timeIntervalSince(target.locationTimestamp), pose.map { Date().timeIntervalSince($0.timestamp) } ?? .infinity),
+            locationAge: max(date.timeIntervalSince(target.locationTimestamp), pose.map { date.timeIntervalSince($0.timestamp) } ?? .infinity),
             accuracy: max(target.horizontalAccuracy, pose?.horizontalAccuracy ?? .infinity),
             yawAccuracy: pose?.heading == nil ? .infinity : (pose?.headingAccuracy ?? .infinity),
             routeOffset: target.routeOffset, hasPreview: target.anchorCoordinate != nil,
