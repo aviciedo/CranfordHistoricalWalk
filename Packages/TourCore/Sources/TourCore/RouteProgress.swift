@@ -52,15 +52,28 @@ public enum RouteProgressCalculator {
         var best = (segment: 0, point: points[0], fraction: 0.0, distance: Double.greatestFiniteMagnitude)
         for i in 0..<(points.count - 1) {
             let projection = GeoMath.project(userLocation, ontoSegment: points[i], points[i + 1])
+            let candidateMeters = cumulative[i] + (cumulative[i + 1] - cumulative[i]) * projection.fraction
+            let bestMeters = cumulative[best.segment] + (cumulative[best.segment + 1] - cumulative[best.segment]) * best.fraction
             let choose: Bool
-            if let previous, previous.fractionComplete.isFinite,
-               abs(projection.distance - best.distance) <= 2 {
-                // At a crossing, prefer continuity over a much later equally close segment.
+            if let previous, previous.fractionComplete.isFinite, best.distance.isFinite {
                 let prior = min(1, max(0, previous.fractionComplete)) * total
-                let candidateMeters = cumulative[i] + (cumulative[i + 1] - cumulative[i]) * projection.fraction
-                let bestMeters = cumulative[best.segment] + (cumulative[best.segment + 1] - cumulative[best.segment]) * best.fraction
-                choose = abs(candidateMeters - prior) < abs(bestMeters - prior) - 0.01
-                    || (abs(abs(candidateMeters - prior) - abs(bestMeters - prior)) <= 0.01 && i > best.segment)
+                // A nearer segment a short walk ahead is the path the user is on. Continuity
+                // still rejects a crossing that would skip a much later loop, but it must not
+                // rewind along a return that stays within 2 m of an earlier leg.
+                let nearerAndNearby = projection.distance < best.distance - 0.01
+                    && candidateMeters > bestMeters
+                    && candidateMeters >= prior - 8
+                    && candidateMeters <= prior + 25
+                if nearerAndNearby {
+                    choose = true
+                } else if abs(projection.distance - best.distance) <= 2 {
+                    // At a crossing, prefer continuity over a much later equally close segment.
+                    choose = abs(candidateMeters - prior) < abs(bestMeters - prior) - 0.01
+                        || (abs(abs(candidateMeters - prior) - abs(bestMeters - prior)) <= 0.01 && i > best.segment)
+                } else {
+                    choose = projection.distance < best.distance - 0.01
+                        || (abs(projection.distance - best.distance) <= 0.01 && i > best.segment)
+                }
             } else {
                 choose = projection.distance < best.distance - 0.01
                     || (abs(projection.distance - best.distance) <= 0.01 && i > best.segment)

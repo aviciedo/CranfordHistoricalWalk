@@ -151,6 +151,38 @@ final class ARSpatialNavigationTests: XCTestCase {
         XCTAssertGreaterThan(after.traveledMeters, crossing.traveledMeters)
     }
 
+    func testReturnWithinTwoMetersDoesNotRewindProgress() {
+        let end = point(0, 80)
+        let jog = GeoMath.destination(from: end, bearing: 90, distance: 1.5)
+        let back = GeoMath.destination(from: jog, bearing: 180, distance: 80)
+        let walked = route([origin, end, jog, back])
+        var progress: RouteProgress?
+        for meters in stride(from: 0.0, through: 80, by: 10) {
+            progress = RouteProgressCalculator.progress(along: walked,
+                userLocation: GeoMath.destination(from: origin, bearing: 0, distance: meters),
+                previous: progress)
+        }
+        let outbound = progress
+        XCTAssertEqual(outbound?.segmentIndex, 1)
+        for meters in stride(from: 0.0, through: 80, by: 1) {
+            progress = RouteProgressCalculator.progress(along: walked,
+                userLocation: GeoMath.destination(from: jog, bearing: 180, distance: meters),
+                previous: progress)
+            XCTAssertGreaterThanOrEqual(progress?.traveledMeters ?? -1, (outbound?.traveledMeters ?? 0) - 0.5,
+                "Walking back within 2 m of the outbound leg must not rewind the route")
+        }
+        XCTAssertEqual(progress?.segmentIndex, 2)
+        XCTAssertEqual(progress?.remainingMeters ?? -1, 0, accuracy: 0.5)
+    }
+
+    func testRealBacktrackingCanReduceRouteProgress() {
+        let walked = route([origin, point(0, 100)])
+        let forward = RouteProgressCalculator.progress(along: walked, userLocation: point(0, 80))
+        let back = RouteProgressCalculator.progress(along: walked, userLocation: point(0, 40), previous: forward)
+        XCTAssertLessThan(back.traveledMeters, forward.traveledMeters)
+        XCTAssertGreaterThan(back.remainingMeters, forward.remainingMeters)
+    }
+
     func testConfidenceAcquiresSlowlyDropsImmediatelyAndUsesHysteresis() {
         var confidence = ARSpatialConfidence()
         func update(_ time: Double, accuracy: Double = 3, tracking: Bool = true) -> ARSpatialConfidence.Mode {

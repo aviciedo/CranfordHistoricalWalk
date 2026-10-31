@@ -546,6 +546,25 @@ final class TourCompletionFlowTests: XCTestCase {
         }
     }
 
+    func testOdometerRejectsImpossibleOneSecondGPSJump() async throws {
+        let source = ActivityTestLocationService(status: .authorized)
+        let tour = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),
+            locationService: source, directionsService: PreviewDirectionsService())
+        await tour.loadStopsIfNeeded(); defer { cleanUp(tour) }
+        tour.startTour()
+        let origin = stops[0].coordinate
+        let stamp = Date().addingTimeInterval(-2)
+        for (i, latitude) in [origin.latitude, origin.latitude + 0.002].enumerated() {
+            let sample = LocationSample(coordinate: .init(latitude: latitude, longitude: origin.longitude),
+                horizontalAccuracy: 3, timestamp: stamp.addingTimeInterval(Double(i)))
+            source.emit(sample)
+            for _ in 0..<100 where tour.userLocation?.timestamp != sample.timestamp {
+                try await Task.sleep(for: .milliseconds(2))
+            }
+        }
+        XCTAssertLessThan(tour.progress.walkedMeters, 5, "A roughly 222 m / 1 s jump must not count as walking")
+    }
+
     func testMapNumberHighlightFollowsOnlyTheActiveWalkingDestination() async throws {
         let tour = await makeTour(); defer { cleanUp(tour) }
         let map = MapViewModel()

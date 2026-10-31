@@ -178,7 +178,7 @@ final class TourViewModel {
     }
     /// Session-local GPS trace, separate from provider directions and saved test captures.
     private(set) var walkedTrailSegments: [[GeoCoordinate]] = []
-    @ObservationIgnored private var lastTrailSample: LocationSample?
+    @ObservationIgnored private var walkingMovement = WalkingMovementPolicy()
     var continuedARStopIDs: Set<String> = []
     var arrivalStoryStopID: String?
     #if DEVELOPER_MENU
@@ -357,7 +357,7 @@ final class TourViewModel {
         routeProgress = nil
         routingError = nil
         lastRouteRequest = nil
-        lastTrailSample = nil
+        walkingMovement.reset()
         interruptVisitDwell()
         checkpointWalk()
     }
@@ -421,7 +421,7 @@ final class TourViewModel {
     func resetTour(startImmediately: Bool = true) {
         walkedTrailSegments = []
         passiveVisitPolicies = [:]
-        lastTrailSample = nil
+        walkingMovement.reset()
         walkSessionID = UUID()
         automaticTransitionFromStopID = nil
         automaticTransitionProgress = nil
@@ -504,7 +504,7 @@ final class TourViewModel {
 
     func stopLocation() {
         interruptVisitDwell()
-        lastTrailSample = nil
+        walkingMovement.reset()
         lastMapLocationRefreshAt = nil
         locationTask?.cancel()
         locationTask = nil
@@ -538,13 +538,6 @@ final class TourViewModel {
         case .location(let sample):
             guard sample.coordinate.isValid, StopActivationPolicy.isFresh(sample.timestamp),
                   userLocation.map({ sample.timestamp >= $0.timestamp }) ?? true else { return }
-            if let previous = userLocation, isWalkingActive,
-               sample.horizontalAccuracy >= 0, sample.horizontalAccuracy <= TourViewModel.poorAccuracyThreshold,
-               previous.horizontalAccuracy >= 0, previous.horizontalAccuracy <= TourViewModel.poorAccuracyThreshold {
-                let moved = GeoMath.distance(from: previous.coordinate, to: sample.coordinate)
-                // Ignore GPS jitter when accumulating walked distance.
-                if moved > max(2, sample.horizontalAccuracy * 0.5) { progress.recordWalked(meters: moved) }
-            }
             userLocation = sample
             lastLocationFailure = nil
             refreshLocationIssue()
@@ -569,29 +562,22 @@ final class TourViewModel {
 
     /// Retain real walking fixes; split at pauses, signal loss and GPS jumps.
     func recordWalkedTrail(_ sample: LocationSample, now: Date = Date()) {
-        guard isWalkingActive, locationAuthorization == .authorized,
-              !sample.isSimulated, !(locationService is SimulatedLocationService),
-              sample.coordinate.isValid, StopActivationPolicy.isFresh(sample.timestamp, now: now),
-              sample.horizontalAccuracy.isFinite, (0...25).contains(sample.horizontalAccuracy),
-              sample.speed.map({ $0.isFinite && $0 <= 4 }) ?? true else {
-            lastTrailSample = nil
+        let movement = walkingMovement.update(coordinate: sample.coordinate,
+            accuracy: sample.horizontalAccuracy, timestamp: sample.timestamp, speed: sample.speed,
+            recordingAllowed: isWalkingActive && locationAuthorization == .authorized
+                && !sample.isSimulated && !(locationService is SimulatedLocationService), now: now)
+        switch movement {
+        case .ignored, .interrupted:
             return
+        case .started:
+            if walkedTrailSegments.last?.count == 1 {
+                walkedTrailSegments[walkedTrailSegments.count - 1] = [sample.coordinate]
+            } else { walkedTrailSegments.append([sample.coordinate]) }
+        case .advanced(let meters):
+            // Both consumers accept exactly the same displacement, once.
+            progress.recordWalked(meters: meters)
+            walkedTrailSegments[walkedTrailSegments.count - 1].append(sample.coordinate)
         }
-        let previous = lastTrailSample
-        if let previous, sample.timestamp <= previous.timestamp { return }
-        lastTrailSample = sample
-        let continues: Bool
-        if let previous {
-            let elapsed = sample.timestamp.timeIntervalSince(previous.timestamp)
-            continues = elapsed <= 10 && GeoMath.distance(from: previous.coordinate, to: sample.coordinate) / elapsed <= 4
-        } else { continues = false }
-        if continues, let last = walkedTrailSegments.last?.last {
-            if GeoMath.distance(from: last, to: sample.coordinate) >= 2 {
-                walkedTrailSegments[walkedTrailSegments.count - 1].append(sample.coordinate)
-            }
-        } else if walkedTrailSegments.last?.count == 1 {
-            walkedTrailSegments[walkedTrailSegments.count - 1] = [sample.coordinate]
-        } else { walkedTrailSegments.append([sample.coordinate]) }
         // Bound long-session rendering cost without connecting separate GPS segments.
         while walkedTrailSegments.reduce(0, { $0 + $1.count }) > 6000 {
             if walkedTrailSegments[0].count > 2 { walkedTrailSegments[0].removeFirst() }
