@@ -212,4 +212,156 @@ final class ARSpatialNavigationTests: XCTestCase {
         XCTAssertNotEqual(state.update(position: [5, 0, -7], routeYaw: .pi / 2, direction: .right,
             segment: 1, camera: .zero, timestamp: 1.5), first)
     }
+
+    func testSpatialConfidenceUsesClosedAcquireAndRetainBounds() {
+        func fresh(_ age: Double, _ accuracy: Double, _ yaw: Double, _ offset: Double) -> ARSpatialConfidence.Mode {
+            var confidence = ARSpatialConfidence()
+            return confidence.update(tracking: true, locationAge: age, accuracy: accuracy, yawAccuracy: yaw,
+                                     routeOffset: offset, hasPreview: true, alignment: true, timestamp: 0)
+        }
+        XCTAssertEqual(fresh(-1, 5, 10, 3), .aligning)
+        XCTAssertEqual(fresh(5, 0, 0, 0), .aligning)
+        for bad in [fresh(-1.0001, 5, 10, 3), fresh(5.0001, 5, 10, 3), fresh(0, 5.0001, 10, 3),
+                    fresh(0, -0.0001, 10, 3), fresh(0, .nan, 10, 3), fresh(.nan, 5, 10, 3)] {
+            XCTAssertEqual(bad, .degraded(.location))
+        }
+        XCTAssertEqual(fresh(0, 5, 10.0001, 3), .degraded(.heading))
+        XCTAssertEqual(fresh(0, 5, .infinity, 3), .degraded(.heading))
+        XCTAssertEqual(fresh(0, 5, 10, 3.0001), .degraded(.offRoute))
+        XCTAssertEqual(fresh(0, 5, 10, .nan), .degraded(.offRoute))
+
+        func acquire(age: Double = 0, accuracy: Double = 3, yaw: Double = 5, offset: Double = 0) -> ARSpatialConfidence {
+            var confidence = ARSpatialConfidence()
+            for time in stride(from: 0.0, through: 2.0, by: 0.5) {
+                _ = confidence.update(tracking: true, locationAge: age, accuracy: accuracy, yawAccuracy: yaw,
+                                      routeOffset: offset, hasPreview: true, alignment: true, timestamp: time)
+            }
+            return confidence
+        }
+        var confidence = acquire(age: 5, accuracy: 5, yaw: 10, offset: 3)
+        XCTAssertEqual(confidence.mode, .spatial)
+        XCTAssertEqual(confidence.update(tracking: true, locationAge: 0, accuracy: 8, yawAccuracy: 15,
+            routeOffset: 5, hasPreview: true, alignment: true, timestamp: 3), .spatial)
+        XCTAssertEqual(confidence.update(tracking: true, locationAge: 0, accuracy: 8.0001, yawAccuracy: 5,
+            routeOffset: 0, hasPreview: true, alignment: true, timestamp: 3.1), .degraded(.location))
+        confidence = acquire()
+        XCTAssertEqual(confidence.update(tracking: true, locationAge: 0, accuracy: 3, yawAccuracy: 15.0001,
+            routeOffset: 0, hasPreview: true, alignment: true, timestamp: 2.2), .degraded(.heading))
+        confidence = acquire()
+        XCTAssertEqual(confidence.update(tracking: true, locationAge: 0, accuracy: 3, yawAccuracy: 5,
+            routeOffset: 0, hasPreview: true, alignment: true, timestamp: 1.9), .spatial,
+                       "An older timestamp cannot rewind confidence")
+        XCTAssertEqual(confidence.update(tracking: true, locationAge: 0, accuracy: 3, yawAccuracy: 5,
+            routeOffset: 0, hasPreview: true, alignment: true, timestamp: .nan), .spatial)
+        XCTAssertEqual(confidence.update(tracking: true, locationAge: 0, accuracy: 3, yawAccuracy: 5,
+            routeOffset: 0, hasPreview: true, alignment: true, timestamp: 3), .spatial,
+                       "A gap of exactly one second keeps spatial guidance")
+        XCTAssertEqual(confidence.update(tracking: true, locationAge: 0, accuracy: 3, yawAccuracy: 5,
+            routeOffset: 0, hasPreview: true, alignment: true, timestamp: 4.0001), .aligning)
+        confidence = acquire()
+        XCTAssertEqual(confidence.update(tracking: true, locationAge: 0, accuracy: 3, yawAccuracy: 5,
+            routeOffset: 5.0001, hasPreview: true, alignment: true, timestamp: 2.2), .degraded(.offRoute))
+    }
+
+    func testWorldPoseRangeMovementAndSettleUseClosedBounds() throws {
+        var state = ARWorldPlacementState()
+        XCTAssertNil(state.update(position: [0, 0, -2.499], routeYaw: 0, direction: .ahead,
+                                  segment: 0, camera: .zero, timestamp: 0))
+        XCTAssertNil(state.update(position: [0, 0, -16.001], routeYaw: 0, direction: .ahead,
+                                  segment: 0, camera: .zero, timestamp: 0))
+        let near = try XCTUnwrap(state.update(position: [0, 0, -2.5], routeYaw: 0, direction: .ahead,
+                                              segment: 0, camera: .zero, timestamp: 0))
+        let far = try XCTUnwrap(state.update(position: [0, 0, -16], routeYaw: 0, direction: .ahead,
+                                             segment: 0, camera: [0, 0, -3], timestamp: 0.5))
+        XCTAssertEqual(far.position.z, -16)
+        XCTAssertNotEqual(far, near)
+
+        state = ARWorldPlacementState()
+        let pinned = try XCTUnwrap(state.update(position: [0, 0, -4], routeYaw: 0, direction: .ahead,
+                                                segment: 0, camera: .zero, timestamp: 0))
+        XCTAssertEqual(state.update(position: [0, 0, -4], routeYaw: 0, direction: .ahead,
+            segment: 0, camera: [0, 0, -1], timestamp: 0.2), pinned, "Exactly 3 m from the pose stays pinned")
+        let approached = try XCTUnwrap(state.update(position: [0, 0, -4], routeYaw: 0, direction: .ahead,
+            segment: 0, camera: [0, 0, -1.001], timestamp: 0.4))
+        XCTAssertEqual(approached.position.z, -4)
+
+        state = ARWorldPlacementState()
+        let original = state.update(position: [0, 0, -7], routeYaw: 0, direction: .ahead,
+                                    segment: 0, camera: .zero, timestamp: 0)
+        XCTAssertEqual(state.update(position: [0.5, 0, -7], routeYaw: 0, direction: .ahead,
+            segment: 0, camera: [2.999, 0, 0], timestamp: 0.2), original)
+        XCTAssertEqual(state.update(position: [0.5, 0, -7], routeYaw: 0, direction: .ahead,
+            segment: 0, camera: [3, 0, 0], timestamp: 0.4)?.position.x, 0.5)
+
+        state = ARWorldPlacementState()
+        let first = state.update(position: [0, 0, -7], routeYaw: 0, direction: .ahead, segment: 0, camera: .zero, timestamp: 0)
+        XCTAssertEqual(state.update(position: [5, 0, -7], routeYaw: .pi / 2, direction: .right,
+            segment: 1, camera: .zero, timestamp: 0.5), first)
+        XCTAssertNotEqual(state.update(position: [5, 0, -7], routeYaw: .pi / 2, direction: .right,
+            segment: 1, camera: .zero, timestamp: 1.5), first, "A one-second gap still lets the settled maneuver commit")
+        state = ARWorldPlacementState()
+        let restarted = state.update(position: [0, 0, -7], routeYaw: 0, direction: .ahead, segment: 0, camera: .zero, timestamp: 0)
+        _ = state.update(position: [5, 0, -7], routeYaw: .pi / 2, direction: .right, segment: 1, camera: .zero, timestamp: 0.5)
+        XCTAssertEqual(state.update(position: [5, 0, -7], routeYaw: .pi / 2, direction: .right,
+            segment: 1, camera: .zero, timestamp: 1.5001), restarted, "A longer gap restarts the settle clock")
+        XCTAssertEqual(state.update(position: [.nan, 0, -7], routeYaw: 0, direction: .ahead,
+            segment: 0, camera: .zero, timestamp: 1.6), restarted)
+    }
+
+    func testCameraHistoryBoundsInterpolationAndDropsTheOldestSample() throws {
+        var history = ARCameraPositionHistory()
+        let start = Date(timeIntervalSince1970: 2_000)
+        history.append([1, 0, 0], at: start)
+        history.append([1, 0, 0], at: start)
+        history.append([.nan, 0, 0], at: start.addingTimeInterval(0.1))
+        XCTAssertEqual(try XCTUnwrap(history.position(at: start.addingTimeInterval(-0.25))).x, 1)
+        XCTAssertNil(history.position(at: start.addingTimeInterval(-0.2501)))
+        history.append([3, 0, 0], at: start.addingTimeInterval(0.5))
+        XCTAssertEqual(try XCTUnwrap(history.position(at: start.addingTimeInterval(0.25))).x, 2, accuracy: 0.0001)
+        history = ARCameraPositionHistory()
+        history.append(.zero, at: start)
+        history.append([1, 0, 0], at: start.addingTimeInterval(0.5001))
+        XCTAssertNil(history.position(at: start.addingTimeInterval(0.25)))
+        history = ARCameraPositionHistory()
+        history.append([4, 0, 0], at: start)
+        XCTAssertEqual(try XCTUnwrap(history.position(at: start.addingTimeInterval(0.25))).x, 4)
+        XCTAssertNil(history.position(at: start.addingTimeInterval(0.2501)))
+        for index in 0...100 {
+            history.append([Double(index), 0, 0], at: start.addingTimeInterval(10 + Double(index)))
+        }
+        XCTAssertNil(history.position(at: start.addingTimeInterval(10)))
+        XCTAssertEqual(try XCTUnwrap(history.position(at: start.addingTimeInterval(10.75))).x, 1)
+        XCTAssertEqual(try XCTUnwrap(history.position(at: start.addingTimeInterval(110))).x, 100)
+    }
+
+    func testPreviewLookaheadCapsAtTenMetersAndOffRouteAtEight() throws {
+        let walking = route([origin, point(0, 50)])
+        let progress = RouteProgressCalculator.progress(along: walking, userLocation: origin)
+        XCTAssertEqual(try XCTUnwrap(ARRoutePlacementEngine.preview(route: walking, progress: progress, speed: nil)).distanceAhead, 7, accuracy: 0.01)
+        XCTAssertEqual(try XCTUnwrap(ARRoutePlacementEngine.preview(route: walking, progress: progress, speed: -1)).distanceAhead, 7, accuracy: 0.01)
+        XCTAssertEqual(try XCTUnwrap(ARRoutePlacementEngine.preview(route: walking, progress: progress, speed: .nan)).distanceAhead, 7, accuracy: 0.01)
+        XCTAssertEqual(try XCTUnwrap(ARRoutePlacementEngine.preview(route: walking, progress: progress, speed: 2.5)).distanceAhead, 10, accuracy: 0.01)
+        XCTAssertEqual(try XCTUnwrap(ARRoutePlacementEngine.preview(route: walking, progress: progress, speed: 100)).distanceAhead, 10, accuracy: 0.01)
+
+        func placed(_ offset: Double) -> RouteProgress {
+            var value = progress
+            value.distanceFromRoute = offset
+            return value
+        }
+        XCTAssertNotNil(ARRoutePlacementEngine.preview(route: walking, progress: placed(8)))
+        XCTAssertNil(ARRoutePlacementEngine.preview(route: walking, progress: placed(8.0001)))
+        XCTAssertNil(ARRoutePlacementEngine.preview(route: walking, progress: placed(-0.0001)))
+    }
+
+    func testAlignmentAcceptsEightMeterAccuracyAndIgnoresTheNextValue() throws {
+        var alignment = ARGeographicAlignment()
+        let start = Date(timeIntervalSince1970: 3_000)
+        alignment.update(coordinate: origin, camera: .zero, accuracy: 8, timestamp: start)
+        let placed = try XCTUnwrap(alignment.position(for: point(0, 8)))
+        alignment.update(coordinate: point(90, 40), camera: .zero, accuracy: 8.0001, timestamp: start.addingTimeInterval(1))
+        XCTAssertTrue(alignment.isConsistent)
+        XCTAssertEqual(alignment.position(for: point(0, 8)), placed)
+        alignment.update(coordinate: point(90, 40), camera: .zero, accuracy: 8, timestamp: start)
+        XCTAssertEqual(alignment.position(for: point(0, 8)), placed, "A repeated timestamp cannot move the street")
+    }
 }

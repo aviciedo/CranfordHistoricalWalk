@@ -130,6 +130,43 @@ final class WalkingProgressionPolicyTests: XCTestCase {
         XCTAssertEqual(fix(&policy, 15, distance: 100), .departed)
     }
 
+    func testVisitClockAcceptsTheAccuracyLimitAndIgnoresTheNextMillimeter() {
+        var policy = WalkingProgressionPolicy()
+        for seconds in 0...180 {
+            XCTAssertNotEqual(fix(&policy, Double(seconds), accuracy: 25.1), .visitReady)
+        }
+        XCTAssertEqual(policy.accumulatedVisitSeconds, 0)
+        for seconds in 181..<361 {
+            XCTAssertNotEqual(fix(&policy, Double(seconds), accuracy: 25), .visitReady)
+        }
+        XCTAssertEqual(fix(&policy, 361, accuracy: 25), .visitReady)
+    }
+
+    func testLeavingTowardNextRequiresEightMetersOrTheAccuracy() {
+        var policy = WalkingProgressionPolicy()
+        func update(_ time: Double, _ distance: Double, _ remaining: Double, _ accuracy: Double = 3) -> WalkingProgressionPolicy.Event? {
+            let date = start.addingTimeInterval(time)
+            return policy.update(distance: distance, accuracy: accuracy, timestamp: date, now: date,
+                arrivalRadius: 35, departureRadius: 50, allowsDeparture: true, nextStopDistance: remaining)
+        }
+        XCTAssertNil(update(0, 0, 100))
+        XCTAssertEqual(update(3, 0, 100), .arrived)
+        XCTAssertNil(update(4, 60, 92.001))
+        XCTAssertNil(update(9, 65, 92.001))
+        XCTAssertNil(update(10, 60, .nan))
+        XCTAssertNil(update(15, 65, -1))
+        XCTAssertNil(update(16, 60, 92))
+        XCTAssertEqual(update(21, 65, 92), .departed)
+
+        policy = WalkingProgressionPolicy()
+        XCTAssertNil(update(30, 0, 100, 10))
+        XCTAssertEqual(update(33, 0, 100, 10), .arrived)
+        XCTAssertNil(update(34, 70, 90.001, 10))
+        XCTAssertNil(update(39, 75, 90.001, 10))
+        XCTAssertNil(update(40, 70, 90, 10))
+        XCTAssertEqual(update(45, 75, 90, 10), .departed)
+    }
+
     func testArrivalUncertaintyMustFitEntirelyInsideStop() {
         var policy = WalkingProgressionPolicy()
         XCTAssertNil(fix(&policy, 0, distance: 31))
