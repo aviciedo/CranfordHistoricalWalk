@@ -4,6 +4,19 @@ import TourCore
 
 // TourCore owns the Codable model. These extensions bridge it to Apple frameworks.
 
+/// Compatibility lookup for legacy stop-ID-only view/test entry points. Actual tour views
+/// pass selected-stop metadata, so another catalog requires no new Swift mappings.
+enum BundledStopArtwork {
+    static let document: HistoricalTourDocument? = {
+        guard let url = Bundle.main.url(forResource: "historical_stops", withExtension: "json"),
+              let data = try? Data(contentsOf: url) else { return nil }
+        return try? HistoricalStopDecoder.decode(data)
+    }()
+    static func resolve(stopID: String, override: StopArtwork? = nil) -> StopArtwork? {
+        override ?? document?.stops.first(where: { $0.id == stopID })?.artwork
+    }
+}
+
 extension GeoCoordinate {
     init(_ coordinate: CLLocationCoordinate2D) {
         self.init(latitude: coordinate.latitude, longitude: coordinate.longitude)

@@ -80,7 +80,7 @@ struct SharedNarrationBar: View {
     }
 
     private func artwork(for stop: HistoricalStop) -> some View {
-        StopListIllustration(stopID: stop.id)
+        StopListIllustration(stopID: stop.id, artwork: stop.artwork)
             .frame(width: artworkSize, height: artworkSize)
             .accessibilityHidden(true)
     }

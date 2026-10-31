@@ -157,7 +157,7 @@ private struct SketchbookLeaf: View {
         ScrollView {
             VStack(spacing: 20) {
                 Spacer(minLength: 24)
-                SketchArtwork(stopID: stop.id, isCollected: collected)
+                SketchArtwork(stopID: stop.id, isCollected: collected, artwork: stop.artwork)
                     .opacity(collected && !revealSketch ? 0 : 1)
                     .mask(alignment: .leading) {
                         Rectangle().scaleEffect(x: collected && !revealSketch && !reduceMotion ? 0 : 1,
@@ -231,20 +231,17 @@ struct SketchArtwork: View {
     let stopID: String
     var isCollected = true
 
-    static func assetName(for stopID: String) -> String? {
-        switch stopID {
-        case "hpab-001": return "sketchbook-mill"
-        case "hpab-002": return "sketchbook-greystone"
-        default: return nil
-        }
+    var artwork: StopArtwork? = nil
+    static func assetName(for stopID: String, artwork: StopArtwork? = nil) -> String? {
+        BundledStopArtwork.resolve(stopID: stopID, override: artwork)?.watercolor
     }
 
     var body: some View {
         Group {
-            if let name = Self.assetName(for: stopID) {
+            if let name = Self.assetName(for: stopID, artwork: artwork) {
                 Image(name).renderingMode(.original).resizable().scaledToFit()
             } else {
-                StopListIllustration(stopID: stopID)
+                StopListIllustration(stopID: stopID, artwork: artwork)
             }
         }
         .aspectRatio(1.5, contentMode: .fit)
@@ -265,7 +262,7 @@ struct SketchCollectionRow: View {
             Divider()
             Button(action: action) {
                 HStack(spacing: 12) {
-                    SketchArtwork(stopID: stop.id, isCollected: isCollected)
+                    SketchArtwork(stopID: stop.id, isCollected: isCollected, artwork: stop.artwork)
                         .frame(width: min(sketchWidth, 112))
                     VStack(alignment: .leading, spacing: 4) {
                         Text(isCollected ? "Sketch unlocked" : "Discover this sketch")

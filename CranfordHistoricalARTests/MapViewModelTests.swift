@@ -7,6 +7,35 @@ import TourCore
 
 @MainActor
 final class MapViewModelTests: XCTestCase {
+    func testUpdatedCatalogImageDoesNotReuseAnOldStopThumbnail() async throws {
+        let loader = CompositeImageLoader()
+        var stop = HistoricalStop.previewStops[0]
+        stop.imageName = "droeschers-mill"
+        let original = await loader.image(for: stop)
+        XCTAssertNotNil(original)
+        stop.imageName = "greystone"
+        XCTAssertNil(loader.cachedImage(for: stop), "Resource identity, not only stop ID, keys the cache")
+        let updated = await loader.image(for: stop)
+        XCTAssertNotNil(updated)
+        XCTAssertFalse(original?.image === updated?.image)
+    }
+
+    func testNewCatalogStopUsesSuppliedArtworkWithoutStopIDSwitches() throws {
+        let media = StopArtwork(homeInk: "home-sketch-mill", listInk: "stop-ink-mill",
+            watercolor: "sketchbook-mill", mapLandmark: "mill-map-landmark")
+        let id = "another-tour-new-stop"
+        XCTAssertEqual(HomeStopEmblem.assetName(for: id, artwork: media), media.homeInk)
+        XCTAssertEqual(SketchArtwork.assetName(for: id, artwork: media), media.watercolor)
+        XCTAssertEqual(StopCollectionIllustration.assetName(for: id, isSketchUnlocked: false, artwork: media), media.listInk)
+        XCTAssertEqual(StopCollectionIllustration.assetName(for: id, isSketchUnlocked: true, artwork: media), media.watercolor)
+        for name in media.assetNames { XCTAssertNotNil(UIImage(named: name)) }
+        for stop in try XCTUnwrap(BundledStopArtwork.document).stops {
+            for name in stop.artwork?.assetNames ?? [] {
+                XCTAssertNotNil(UIImage(named: name), "Catalog references missing resource \(name)")
+            }
+        }
+    }
+
     func testSketchbookOpensRequestedStopRegardlessOfPageOrderOrFutureStops() {
         let ids = ["future-stop", "hpab-002", "hpab-001"]
         for (expected, id) in ids.enumerated() {

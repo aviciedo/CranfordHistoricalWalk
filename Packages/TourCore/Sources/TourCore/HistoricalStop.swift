@@ -22,6 +22,7 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
     public var historicalDate: String?
     /// Name of an image in the app's asset catalog.
     public var imageName: String?
+    public var artwork: StopArtwork?
     /// Ordered local photographs for the detail-screen slideshow; the first is the cover.
     public var photos: [HistoricalStopPhoto]
     /// Remote historical photograph.
@@ -78,7 +79,8 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
         isSample: Bool = false,
         coordinatesUnverified: Bool = false,
         plaque: StopPlaque? = nil,
-        narrationPending: Bool = false
+        narrationPending: Bool = false,
+        artwork: StopArtwork? = nil
     ) {
         self.id = id
         self.name = name
@@ -90,6 +92,7 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
         self.longDescription = longDescription
         self.historicalDate = historicalDate
         self.imageName = imageName
+        self.artwork = artwork
         self.photos = photos
         self.imageURL = imageURL
         self.illustrationURL = illustrationURL
@@ -187,7 +190,7 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case id, name, latitude, longitude, altitude, address, shortDescription, longDescription
-        case historicalDate, imageName, photos, imageURL, illustrationURL, audioURL
+        case historicalDate, imageName, artwork, photos, imageURL, illustrationURL, audioURL
         case narrationText, narrationVoicePreference
         case arrivalRadius, departureRadius, order, estimatedVisitDuration, isSample
         case coordinatesUnverified, plaque, narrationPending
@@ -205,6 +208,7 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
         longDescription = try c.decodeIfPresent(String.self, forKey: .longDescription) ?? ""
         historicalDate = try c.decodeIfPresent(String.self, forKey: .historicalDate)
         imageName = try c.decodeIfPresent(String.self, forKey: .imageName)
+        artwork = try c.decodeIfPresent(StopArtwork.self, forKey: .artwork)
         photos = try c.decodeIfPresent([HistoricalStopPhoto].self, forKey: .photos) ?? []
         imageURL = try c.decodeIfPresent(URL.self, forKey: .imageURL)
         illustrationURL = try c.decodeIfPresent(URL.self, forKey: .illustrationURL)
@@ -319,6 +323,7 @@ public enum HistoricalStopDecoder {
         var seen = Set<String>()
         var duplicates: [String] = []
         for stop in document.stops {
+            guard stop.artwork?.isValid ?? true else { throw HistoricalStopDecodingError.invalidCatalog }
             if !seen.insert(stop.id).inserted { duplicates.append(stop.id) }
             guard stop.coordinate.isValid else {
                 throw HistoricalStopDecodingError.invalidCoordinate(stopID: stop.id)

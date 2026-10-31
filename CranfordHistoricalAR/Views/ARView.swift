@@ -516,7 +516,7 @@ private struct SketchUnlockCelebration: View {
                 let sketchWidth = max(0, min(360, viewport.size.width - 48))
                 ScrollView {
                     VStack(spacing: 24) {
-                        SketchArtwork(stopID: stop.id)
+                        SketchArtwork(stopID: stop.id, artwork: stop.artwork)
                             .padding(20)
                             .frame(maxWidth: sketchWidth)
                             .background { SketchbookPaper() }

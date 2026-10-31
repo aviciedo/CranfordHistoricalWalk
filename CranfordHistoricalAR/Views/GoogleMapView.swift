@@ -259,7 +259,7 @@ struct GoogleMapView: UIViewRepresentable {
         }
 
         private func icon(for model: StopMarkerModel, isSelected: Bool) -> UIImage? {
-            let key = "\(model.isWalkingDestination)|\(model.isIllustrated)|\(markerStyle)|\(isSelected)|\(model.order)|\(model.state)|\(model.name)|\(colorScheme == .dark)"
+            let key = "\(model.artwork?.cacheKey ?? "")|\(model.isWalkingDestination)|\(model.isIllustrated)|\(markerStyle)|\(isSelected)|\(model.order)|\(model.state)|\(model.name)|\(colorScheme == .dark)"
             if let cached = iconCache[key] { return cached }
             let scheme = colorScheme ?? .light
             let renderer: ImageRenderer<AnyView>
@@ -590,7 +590,7 @@ enum StopMapArtwork {
     static func image(for marker: StopMarkerModel, isSelected: Bool = false, scheme: ColorScheme = .light) -> UIImage {
         let renderer = ImageRenderer(content:
             ZStack(alignment: .bottomLeading) {
-                StopListIllustration(stopID: marker.id)
+                StopListIllustration(stopID: marker.id, artwork: marker.artwork)
                     .frame(width: 96, height: 70)
                     .frame(width: 100, height: 80, alignment: .top)
                 StopNumberBadge(order: marker.order, isActive: marker.isWalkingDestination)

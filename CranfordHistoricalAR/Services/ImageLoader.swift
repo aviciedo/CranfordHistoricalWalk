@@ -64,14 +64,19 @@ final class CompositeImageLoader: ImageLoader {
         return URLSession(configuration: configuration)
     }
 
+    private func cacheKey(for stop: HistoricalStop) -> String {
+        [stop.catalogID ?? "", stop.id, stop.imageName ?? "", stop.imageURL?.absoluteString ?? "",
+         stop.illustrationURL?.absoluteString ?? "", String(stop.isSample)].joined(separator: "\u{1f}")
+    }
+
     func cachedImage(for stop: HistoricalStop) -> LoadedImage? {
-        cache.object(forKey: stop.id as NSString)?.value
+        cache.object(forKey: cacheKey(for: stop) as NSString)?.value
     }
 
     func image(for stop: HistoricalStop) async -> LoadedImage? {
         if let cached = cachedImage(for: stop) { return cached }
         guard stop.hasAnyImage else { return nil }
-        return await load(key: stop.id) { [weak self] in await self?.resolve(stop) }
+        return await load(key: cacheKey(for: stop)) { [weak self] in await self?.resolve(stop) }
     }
 
     func image(for photo: HistoricalStopPhoto, at stop: HistoricalStop) async -> LoadedImage? {

@@ -565,6 +565,44 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertLessThan(tour.progress.walkedMeters, 5, "A roughly 222 m / 1 s jump must not count as walking")
     }
 
+    func testSwitchingCatalogsPreservesLegacySketchAndWalkData() async {
+        let visits = InMemoryStopVisitStore()
+        let activities = InMemoryStopActivityStore()
+        let resumes = InMemoryWalkResumeStore()
+        func model(_ document: HistoricalTourDocument) -> TourViewModel {
+            TourViewModel(stopService: FixtureCatalogStopService(document: document),
+                locationService: ActivityTestLocationService(), directionsService: PreviewDirectionsService(),
+                visitStore: visits, activityStore: activities, walkResumeStore: resumes)
+        }
+        let original = HistoricalTourDocument(tourName: "Cranford", stops: stops)
+        let first = model(original)
+        await first.loadStopsIfNeeded()
+        first.startTour()
+        XCTAssertTrue(first.preparePlaqueScanner(stopID: stops[0].id))
+        XCTAssertEqual(first.recognizeSketchPlaque(imageName: stops[0].plaque?.referenceImageName,
+            isTracked: true, trackingReady: true), .allow(.recognizedPlaque))
+        first.endARDiscoverySession()
+        first.stopWalk()
+        cleanUp(first)
+        var secondStop = stops[0]
+        secondStop.id = "other-tour-site"
+        secondStop.artwork = StopArtwork(homeInk: "other-home", listInk: "other-ink")
+        var otherDocument = HistoricalTourDocument(tourName: "Another tour", stops: [secondStop])
+        otherDocument.tourID = "another-tour"
+        let other = model(otherDocument)
+        await other.loadStopsIfNeeded()
+        XCTAssertEqual(other.phase, .notStarted)
+        XCTAssertNil(other.activities[secondStop.id].plaqueUnlockedAt)
+        XCTAssertEqual(other.stops.first?.artwork?.homeInk, "other-home")
+        other.startTour(); other.stopWalk(); cleanUp(other)
+        let restored = model(original)
+        await restored.loadStopsIfNeeded()
+        XCTAssertNotNil(restored.activities[stops[0].id].plaqueUnlockedAt)
+        XCTAssertEqual(restored.currentStop?.id, stops[0].id)
+        XCTAssertTrue(restored.isWalkPaused)
+        cleanUp(restored)
+    }
+
     func testMapNumberHighlightFollowsOnlyTheActiveWalkingDestination() async throws {
         let tour = await makeTour(); defer { cleanUp(tour) }
         let map = MapViewModel()
@@ -2637,5 +2675,12 @@ private actor FailOnceRecoveryDirections: DirectionsService {
             to: GeoCoordinate(latitude: destination.latitude, longitude: destination.longitude))
         route.source = .simulated
         return route
+    }
+}
+
+private struct FixtureCatalogStopService: HistoricalStopService {
+    let document: HistoricalTourDocument
+    func loadTour() async throws -> HistoricalTourDocument {
+        try HistoricalStopDecoder.decode(JSONEncoder().encode(document))
     }
 }

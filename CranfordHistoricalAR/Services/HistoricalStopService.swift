@@ -54,19 +54,14 @@ enum ProducedNarrationRelease {
     static let identifier = "cedar-2"
     typealias Recording = TourRecording
     /// Compatibility lookup for the shipped catalog and its existing narration bookmarks.
-    static let recordings: [Recording] = {
-        guard let url = Bundle.main.url(forResource: "historical_stops", withExtension: "json"),
-              let data = try? Data(contentsOf: url),
-              let document = try? HistoricalStopDecoder.decode(data) else { return [] }
-        return document.recordings ?? []
-    }()
+    static let recordings: [Recording] = BundledStopArtwork.document?.recordings ?? []
 
     static func recording(for stopID: String) -> Recording? {
         recordings.first { $0.stopID == stopID }
     }
 
     static func recording(for stop: HistoricalStop) -> Recording? {
-        guard stop.catalogID == nil || stop.catalogID == TourCatalogIdentity.legacy.tourID else { return nil }
+        guard stop.catalogID == nil || stop.catalogID == BundledStopArtwork.document?.identity.tourID else { return nil }
         return recording(for: stop.id)
     }
 

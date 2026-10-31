@@ -168,15 +168,9 @@ struct HomeLandingLayout: Layout {
 struct HomeStopEmblem: View {
     let stopID: String
 
-    static func assetName(for stopID: String) -> String? {
-        switch stopID {
-        case "hpab-001": return "home-sketch-mill"
-        case "hpab-002": return "home-sketch-greystone"
-        case "hpab-003": return "home-sketch-river"
-        case "hpab-004": return "home-sketch-church"
-        case "hpab-005": return "home-sketch-hotel"
-        default: return nil
-        }
+    var artwork: StopArtwork? = nil
+    static func assetName(for stopID: String, artwork: StopArtwork? = nil) -> String? {
+        BundledStopArtwork.resolve(stopID: stopID, override: artwork)?.homeInk
     }
 
     var body: some View {
@@ -184,11 +178,11 @@ struct HomeStopEmblem: View {
             ZStack {
                 // A fine ivory rim separates ink drawing from the blue river.
                 Circle().fill(AppTheme.ivory).padding(viewport.size.width * 0.034)
-                if let asset = Self.assetName(for: stopID) {
+                if let asset = Self.assetName(for: stopID, artwork: artwork) {
                     Image(asset).renderingMode(.original).resizable().scaledToFit()
                 } else {
                     // Unknown catalog entries retain their existing illustration fallback.
-                    StopListIllustration(stopID: stopID)
+                    StopListIllustration(stopID: stopID, artwork: artwork)
                         .saturation(0).colorMultiply(AppTheme.forest)
                         .padding(24)
                         .background(AppTheme.ivory, in: Circle())
@@ -217,7 +211,7 @@ private struct HomeRiverHero: View {
                     .frame(height: max(44, diameter * 0.3))
                     .overlay(alignment: .bottom) { AppTheme.riverBlue.frame(height: 1) }
                 if let stop {
-                    HomeStopEmblem(stopID: stop.id)
+                    HomeStopEmblem(stopID: stop.id, artwork: stop.artwork)
                         .id(stop.id)
                         .frame(width: diameter, height: diameter)
                         .accessibilityIdentifier("home.illustration.\(stop.id)")

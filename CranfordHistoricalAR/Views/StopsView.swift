@@ -27,9 +27,9 @@ struct StopsContent: View {
                             Button { detailStop = stop } label: {
                                 HStack(spacing: 10) {
                                     StopCollectionIllustration(stopID: stop.id,
-                                        isSketchUnlocked: tour.activities[stop.id].plaqueUnlockedAt != nil)
+                                        isSketchUnlocked: tour.activities[stop.id].plaqueUnlockedAt != nil, artwork: stop.artwork)
                                         // Center every silhouette in the same column, including portrait artwork.
-                                        .frame(width: 104, height: stop.id == "hpab-004" ? 104 : 88, alignment: .center)
+                                        .frame(width: 104, height: CGFloat(BundledStopArtwork.resolve(stopID: stop.id, override: stop.artwork)?.listHeight ?? 88), alignment: .center)
                                         .accessibilityHidden(true)
                                     VStack(alignment: .leading, spacing: 6) {
                                         Text(stop.name).font(.system(.title3, design: .serif).weight(.semibold))
@@ -86,24 +86,19 @@ struct StopCollectionIllustration: View {
     let stopID: String
     let isSketchUnlocked: Bool
 
-    static func assetName(for stopID: String, isSketchUnlocked: Bool) -> String? {
-        if isSketchUnlocked, let watercolor = SketchArtwork.assetName(for: stopID) { return watercolor }
-        switch stopID {
-        case "hpab-001": return "stop-ink-mill"
-        case "hpab-002": return "stop-ink-greystone"
-        case "hpab-003": return "stop-ink-river"
-        case "hpab-004": return "stop-ink-church"
-        case "hpab-005": return "stop-ink-hotel"
-        default: return nil
-        }
+    var artwork: StopArtwork? = nil
+    static func assetName(for stopID: String, isSketchUnlocked: Bool, artwork: StopArtwork? = nil) -> String? {
+        let media = BundledStopArtwork.resolve(stopID: stopID, override: artwork)
+        if isSketchUnlocked, let watercolor = media?.watercolor { return watercolor }
+        return media?.listInk
     }
 
     var body: some View {
         Group {
-            if let asset = Self.assetName(for: stopID, isSketchUnlocked: isSketchUnlocked) {
+            if let asset = Self.assetName(for: stopID, isSketchUnlocked: isSketchUnlocked, artwork: artwork) {
                 Image(asset).renderingMode(.original).resizable().scaledToFit()
             } else {
-                StopListIllustration(stopID: stopID).saturation(0)
+                StopListIllustration(stopID: stopID, artwork: artwork).saturation(0)
             }
         }
         .allowsHitTesting(false)
@@ -114,21 +109,15 @@ struct StopCollectionIllustration: View {
 struct StopListIllustration: View {
     let stopID: String
 
+    var artwork: StopArtwork? = nil
     var body: some View {
         Group {
-            switch stopID {
-            case "hpab-001":
-                Image("mill-map-landmark").renderingMode(.original).resizable().scaledToFit()
-            case "hpab-002":
-                Image("greystone-map-landmark").renderingMode(.original).resizable().scaledToFit()
-            case "hpab-003":
-                Image("rahway-river-illustration").renderingMode(.original).resizable().scaledToFit()
-            case "hpab-004":
-                Image("first-baptist-church-illustration").renderingMode(.original).resizable().scaledToFit()
-            default:
+            if let asset = BundledStopArtwork.resolve(stopID: stopID, override: artwork)?.mapLandmark {
+                Image(asset).renderingMode(.original).resizable().scaledToFit()
+            } else {
                 Canvas { context, size in
                     context.scaleBy(x: size.width / 100, y: size.height / 90)
-                    drawBuilding(in: &context, isChurch: stopID == "hpab-004")
+                    drawBuilding(in: &context, isChurch: false)
                 }
             }
         }

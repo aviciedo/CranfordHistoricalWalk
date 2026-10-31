@@ -60,7 +60,13 @@
         "physicalWidthMeters": 0.18
       },
       "narrationText": "Droescher’s Mill: A River That Built a Town\n\nImagine Cranford more than two hundred years ago. Before the railroad, before the busy downtown and modern neighborhoods we know today, the Rahway River was the heart of our community.\n\nThe river’s flowing waters provided the power that helped early settlers build homes, produce goods, and establish businesses.\n\nIn fact, early Cranford was once known as “Crane’s Mills”, a reflection of how important milling was to our town’s development.\n\nHere at Droescher’s Mill, that history survives.\n\nHistorical records confirm a mill on this site as early as 1779. The original building was destroyed by fire in 1821, and the wooden structure you see today was built afterward. Its substantial fieldstone foundation, approximately two feet thick in places, and heavy oak timbers reflect the durable construction of early industrial buildings.\n\nOver the next century, the mill changed with the needs of the community.\n\nWater-powered machinery helped transform raw materials into useful products. The site operated as a sawmill, later became associated with wool manufacturing, and eventually supported woodworking, and other industries.\n\nBy the early 1900s, businessman Severin Droescher was using the mill to manufacture sharpening stones for razors and other cutting tools. He also improved the surrounding riverfront, rebuilding the dam and adding stone walls, a footbridge, and landscaped features connected to his nearby Lincoln Park residential development.\n\nIn the twentieth century, its workshops were adapted for pipe-organ manufacturing, before eventually being converted into offices and commercial spaces we know today. The mill is now home to commercial offices with many of the tenants in the healthcare sector. The site also houses a popular local yoga studio, Alleum Yoga which serves the Cranford community as a welcoming and inclusive wellness space. \n\nToday, the building no longer operates as a water-powered mill. Yet the Rahway River still flows beside it, and the dam remains part of Cranford's river-management infrastructure.\n\nRecognized on the National Register of Historic Places in 1974 and designated a Cranford historic landmark in 2014, Droescher’s Mill stands as a tangible reminder of the community's industrial origins.\n\nOf the eleven historic mills that once lined the Rahway River, this is the last survivor.",
-      "narrationVoicePreference": "warmMaleEnglish"
+      "narrationVoicePreference": "warmMaleEnglish",
+      "artwork": {
+        "homeInk": "home-sketch-mill",
+        "listInk": "stop-ink-mill",
+        "watercolor": "sketchbook-mill",
+        "mapLandmark": "mill-map-landmark"
+      }
     },
     {
       "id": "hpab-002",
@@ -119,7 +125,13 @@
           "imageName": "greystone-william-randolph-hearst",
           "caption": "William Randolph Hearst"
         }
-      ]
+      ],
+      "artwork": {
+        "homeInk": "home-sketch-greystone",
+        "listInk": "stop-ink-greystone",
+        "watercolor": "sketchbook-greystone",
+        "mapLandmark": "greystone-map-landmark"
+      }
     },
     {
       "id": "hpab-003",
@@ -140,7 +152,12 @@
       "estimatedVisitDuration": 90,
       "isSample": false,
       "coordinatesUnverified": true,
-      "narrationPending": true
+      "narrationPending": true,
+      "artwork": {
+        "homeInk": "home-sketch-river",
+        "listInk": "stop-ink-river",
+        "mapLandmark": "rahway-river-illustration"
+      }
     },
     {
       "id": "hpab-004",
@@ -183,7 +200,13 @@
       "estimatedVisitDuration": 90,
       "isSample": false,
       "coordinatesUnverified": true,
-      "narrationPending": true
+      "narrationPending": true,
+      "artwork": {
+        "homeInk": "home-sketch-church",
+        "listInk": "stop-ink-church",
+        "mapLandmark": "first-baptist-church-illustration",
+        "listHeight": 104
+      }
     },
     {
       "id": "hpab-005",
@@ -204,7 +227,11 @@
       "estimatedVisitDuration": 90,
       "isSample": false,
       "coordinatesUnverified": true,
-      "narrationPending": true
+      "narrationPending": true,
+      "artwork": {
+        "homeInk": "home-sketch-hotel",
+        "listInk": "stop-ink-hotel"
+      }
     }
   ],
   "tourID": "cranford-historical-walk",

@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "tourID": "test-river-walk",
+  "catalogVersion": 1,
+  "tourName": "Test River Walk",
+  "dataStatus": "TEST FIXTURE — not a public tour",
+  "stops": [{
+    "id": "test-river-001", "name": "Test Site", "order": 1,
+    "latitude": 40.65, "longitude": -74.30, "address": "Test location",
+    "isSample": true, "narrationPending": true,
+    "artwork": { "homeInk": "home-sketch-mill", "listInk": "stop-ink-mill", "mapLandmark": "mill-map-landmark" }
+  }]
+}

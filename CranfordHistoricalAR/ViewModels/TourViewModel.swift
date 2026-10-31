@@ -2,8 +2,8 @@ import Foundation
 import Observation
 import TourCore
 
-/// Single source of truth for the tour (spec §17): stops, progress, the user's location and
-/// heading. Stage 2 adds the location pipeline; routing and AR state follow in later stages.
+/// App coordinator: owns the itinerary and injected services. Pure route/visit sessions and
+/// decisions live in TourCore; SwiftUI and AR observe this single navigation state.
 @MainActor
 @Observable
 final class TourViewModel {
