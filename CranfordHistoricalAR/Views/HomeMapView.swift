@@ -14,7 +14,7 @@ struct HomeMapView: View {
                 GoogleMapView(
                     markers: mapModel.markers(for: tour),
                     userPuck: mapModel.userPuck(for: tour),
-                    routeCoordinates: [],
+                    routeCoordinates: mapModel.drawnRouteCoordinates(for: tour).map(\.clLocationCoordinate),
                     cameraRequest: mapModel.cameraRequest,
                     bottomInset: 0,
                     onUserGesture: { mapModel.userDidMoveCamera() },
@@ -34,7 +34,8 @@ struct HomeMapView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 16))
             } else {
                 AppleTourMapView(markers: mapModel.markers(for: tour), userPuck: nil,
-                    routeCoordinates: [], cameraRequest: mapModel.cameraRequest,
+                    routeCoordinates: mapModel.drawnRouteCoordinates(for: tour).map(\.clLocationCoordinate),
+                    cameraRequest: mapModel.cameraRequest,
                     onUserGesture: { mapModel.userDidMoveCamera() },
                     onMarkerTap: { mapModel.select(stopID: $0) },
                     reservesZoomControls: true,

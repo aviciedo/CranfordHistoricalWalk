@@ -23,7 +23,7 @@ struct SketchbookView: View {
 
     private var stops: [HistoricalStop] { tour.sketchbookStops }
     private var currentPageIndex: Int {
-        hasSelectedInitialPage ? min(pageIndex, max(0, stops.count - 1)) : Self.initialPageIndex(stopID: initialStopID, pageStopIDs: stops.map(\.id))
+        hasSelectedInitialPage ? SketchbookPageIndex.clamped(pageIndex, pageCount: stops.count) : Self.initialPageIndex(stopID: initialStopID, pageStopIDs: stops.map(\.id))
     }
     private var pageSelection: Binding<Int> {
         Binding(get: { currentPageIndex }, set: { pageIndex = $0; hasSelectedInitialPage = true })
@@ -86,8 +86,8 @@ struct SketchbookView: View {
         .dismissOnReturnHome()
         .interactiveDismissDisabled(isAwaitingSketch)
         .onAppear { selectInitialPage() }
-        .onChange(of: stops.map(\.id)) { _, _ in
-            pageIndex = min(pageIndex, max(0, stops.count - 1))
+        .onChange(of: stops.map(\.id)) { _, ids in
+            pageIndex = SketchbookPageIndex.clamped(pageIndex, pageCount: ids.count)
         }
         .task(id: scenePhase) {
             guard scenePhase == .active, !hasRevealedSketch, let id = animatedSketchStopID,
@@ -107,7 +107,7 @@ struct SketchbookView: View {
 
     /// Resolve by stable stop identity, never by unlock order or a hard-coded tour index.
     static func initialPageIndex(stopID: String, pageStopIDs: [String]) -> Int {
-        pageStopIDs.firstIndex(of: stopID) ?? 0
+        SketchbookPageIndex.initial(stopID: stopID, pageStopIDs: pageStopIDs)
     }
 
     private func selectInitialPage() {
@@ -338,7 +338,7 @@ struct SketchbookPageCurl: UIViewControllerRepresentable {
                 }
                 controller.dataSource = self
                 controller.delegate = self
-                displayedIndex = min(parent.index, max(0, parent.pages.count - 1))
+                displayedIndex = SketchbookPageIndex.clamped(parent.index, pageCount: parent.pages.count)
                 if !controllers.isEmpty { controller.setViewControllers(visibleFront(for: displayedIndex), direction: .forward, animated: false) }
             } else {
                 for (index, page) in parent.pages.enumerated() { controllers[index * 2].rootView = page }
@@ -359,7 +359,7 @@ struct SketchbookPageCurl: UIViewControllerRepresentable {
             // A .min spine displays ONE front even with isDoubleSided enabled.
             // UIKit requests the parchment reverse from the data source during the curl.
             // Supplying [front, back] here throws NSInvalidArgumentException on iPhone.
-            [controllers[page * 2]]
+            [controllers[SketchbookCurlLayout.frontControllerIndex(logicalPage: page)]]
         }
 
         func pageViewController(_ pageViewController: UIPageViewController, viewControllerBefore viewController: UIViewController) -> UIViewController? {
@@ -377,7 +377,7 @@ struct SketchbookPageCurl: UIViewControllerRepresentable {
                                 previousViewControllers: [UIViewController], transitionCompleted completed: Bool) {
             if completed, let visible = pageViewController.viewControllers?.first,
                let i = controllers.firstIndex(where: { $0 === visible }) {
-                displayedIndex = i / 2
+                displayedIndex = SketchbookCurlLayout.logicalPage(controllerIndex: i)
                 parent.index = displayedIndex
             }
             transitioning = false

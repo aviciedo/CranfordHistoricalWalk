@@ -224,14 +224,28 @@ final class MapViewModel {
     /// shrink the map without changing GPS or route, so issue a new fit for the new bounds.
     /// A user-controlled camera must remain untouched.
     func mapViewportDidChange() {
-        guard cameraMode == .navigation || cameraMode == .overview,
-              let request = cameraRequest else { return }
-        switch request.kind {
-        case .fitAll, .fitUserAndDestination, .fitWalkingLeg:
-            push(request.kind, animated: false)
-        case .follow, .zoomTo:
-            break
+        let camera: MapViewportRefit.Camera
+        switch cameraMode {
+        case .overview: camera = .overview
+        case .navigation: camera = .navigation
+        case .follow: camera = .follow
+        case .free: camera = .free
         }
+        let fit: MapViewportRefit.Fit? = cameraRequest.map { request in
+            switch request.kind {
+            case .fitAll, .fitUserAndDestination, .fitWalkingLeg: return .bounds
+            case .follow, .zoomTo: return .positioned
+            }
+        }
+        guard MapViewportRefit.shouldReissue(camera: camera, fit: fit, hasRequest: cameraRequest != nil),
+              let request = cameraRequest else { return }
+        push(request.kind, animated: false)
+    }
+
+    /// The planned route remains available for guidance and the camera fit.
+    /// The map stroke is only the recorded trail, whatever that route contains.
+    func drawnRouteCoordinates(for _: TourViewModel) -> [GeoCoordinate] {
+        []
     }
 
     /// Keep the dot independent from the camera. Reframe only after meaningful walking;
