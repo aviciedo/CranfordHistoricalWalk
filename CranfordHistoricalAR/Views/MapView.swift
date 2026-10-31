@@ -17,7 +17,7 @@ struct TourMapView: View {
                     GoogleMapView(
                         markers: mapModel.markers(for: tour, emphasizesDestinationOnly: true),
                         userPuck: mapModel.userPuck(for: tour),
-                        routeCoordinates: [], // Only recorded walking trail is drawn; route remains available for guidance.
+                        routeCoordinates: mapModel.walkingRouteCoordinates(for: tour).map(\.clLocationCoordinate),
                         cameraRequest: mapModel.cameraRequest,
                         bottomInset: bottomInset,
                         onUserGesture: { mapModel.userDidMoveCamera() },
@@ -33,7 +33,7 @@ struct TourMapView: View {
                 } else {
                     AppleTourMapView(markers: mapModel.markers(for: tour, emphasizesDestinationOnly: true),
                         userPuck: mapModel.userPuck(for: tour),
-                        routeCoordinates: [], // Only recorded walking trail is drawn; route remains available for guidance.
+                        routeCoordinates: mapModel.walkingRouteCoordinates(for: tour).map(\.clLocationCoordinate),
                         cameraRequest: mapModel.cameraRequest,
                         onUserGesture: { mapModel.userDidMoveCamera() },
                         onMarkerTap: { mapModel.select(stopID: $0) },
@@ -266,7 +266,9 @@ struct AppleTourMapView: UIViewRepresentable {
                 if let route { map.removeOverlay(route) }; route = nil
                 if parent.routeCoordinates.count >= 2 {
                     let line = MKPolyline(coordinates: parent.routeCoordinates, count: parent.routeCoordinates.count)
-                    route = line; map.addOverlay(line, level: .aboveRoads)
+                    route = line
+                    // Future guidance stays below the solid, recorded walking trail.
+                    map.insertOverlay(line, at: 0, level: .aboveRoads)
                 }
             }
             // A bounds fit needs the hosting view's real size, not its initial zero frame.
@@ -452,8 +454,11 @@ struct AppleTourMapView: UIViewRepresentable {
             }
             let renderer = MKPolylineRenderer(overlay: overlay)
             let isTrail = (overlay as? MKPolyline).map { line in trails.contains { $0 === line } } ?? false
-            renderer.strokeColor = UIColor(AppTheme.forest)
-            renderer.lineWidth = isTrail ? 4 : 5; renderer.lineCap = .round; renderer.lineJoin = .round
+            renderer.strokeColor = UIColor(isTrail ? AppTheme.forest : AppTheme.routeAhead)
+            renderer.lineWidth = isTrail ? 4 : 6
+            renderer.lineCap = .round
+            renderer.lineJoin = .round
+            if !isTrail { renderer.lineDashPattern = [0.1, 11.9] }
             return renderer
         }
     }

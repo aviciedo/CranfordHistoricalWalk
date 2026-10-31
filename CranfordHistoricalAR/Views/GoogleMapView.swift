@@ -99,7 +99,6 @@ struct GoogleMapView: UIViewRepresentable {
         private var lastPuck: UserPuckModel?
 
         private var polyline: GMSPolyline?
-        private var polylineCasing: GMSPolyline?
         private var lastRoute: [CLLocationCoordinate2D] = []
         private var trailLines: [GMSPolyline] = []
         private var lastTrail: [[GeoCoordinate]] = []
@@ -409,38 +408,38 @@ struct GoogleMapView: UIViewRepresentable {
             }
         }
 
+        /// A screen-space repeated circle keeps dots readable at every zoom without
+        /// rebuilding the route into hundreds of separate markers or line fragments.
+        private static let dottedRouteStyle: GMSStrokeStyle = {
+            let tile = UIGraphicsImageRenderer(size: CGSize(width: 12, height: 12)).image { context in
+                UIColor(AppTheme.routeAhead).setFill()
+                context.cgContext.fillEllipse(in: CGRect(x: 3, y: 3, width: 6, height: 6))
+            }
+            let style = GMSStrokeStyle.solidColor(.clear)
+            style.stampStyle = GMSTextureStyle(image: tile)
+            return style
+        }()
+
         func render(route: [CLLocationCoordinate2D]) {
             guard let mapView else { return }
-            // Compare every point: a reroute can keep its endpoints and midpoint while
-            // changing the streets in between. Do not leave the old path on screen.
+            // Compare every point: reroutes can retain endpoints while changing streets.
             guard !Self.routesMatch(route, lastRoute) else { return }
             lastRoute = route
 
             guard route.count >= 2 else {
                 polyline?.map = nil
-                polylineCasing?.map = nil
                 polyline = nil
-                polylineCasing = nil
                 return
             }
             let path = GMSMutablePath()
             route.forEach(path.add)
-
-            if polylineCasing == nil {
-                let casing = GMSPolyline(path: path)
-                casing.strokeWidth = 9
-                casing.strokeColor = UIColor.white.withAlphaComponent(0.9)
-                casing.zIndex = 1
-                casing.map = mapView
-                polylineCasing = casing
-            } else {
-                polylineCasing?.path = path
-            }
             if polyline == nil {
                 let line = GMSPolyline(path: path)
-                line.strokeWidth = 5
-                line.strokeColor = UIColor(AppTheme.heritageGreen)
-                line.zIndex = 2
+                line.strokeWidth = 12 // Texture tile contains a 6-point dot and transparent space.
+                line.strokeColor = .clear
+                line.spans = [GMSStyleSpan(style: Self.dottedRouteStyle)]
+                line.zIndex = -1 // The existing solid GPS trail stays above future guidance.
+                line.isTappable = false
                 line.map = mapView
                 polyline = line
             } else {

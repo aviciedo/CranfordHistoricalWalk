@@ -5,6 +5,8 @@ enum AppTheme {
     static let accent = Color("AccentColor")
     static let forest = Color(red: 48 / 255, green: 70 / 255, blue: 57 / 255)
     static let riverBlue = Color(red: 82 / 255, green: 119 / 255, blue: 132 / 255)
+    /// Lighter river blue distinguishes the route ahead from the solid hunter-green GPS trail.
+    static let routeAhead = Color(red: 116 / 255, green: 161 / 255, blue: 175 / 255)
     static let ivory = Color(red: 247 / 255, green: 244 / 255, blue: 239 / 255)
     static let sage = Color(red: 107 / 255, green: 127 / 255, blue: 91 / 255)
     static let sand = Color(red: 217 / 255, green: 201 / 255, blue: 178 / 255)

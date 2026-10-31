@@ -589,6 +589,37 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertTrue(map.walkingRouteCoordinates(for: tour).isEmpty)
     }
 
+    func testFutureRouteHidesWhenStoppedWithoutErasingRecordedTrail() async {
+        let source = ActivityTestLocationService(status: .authorized)
+        let tour = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),
+            locationService: source, directionsService: PreviewDirectionsService())
+        await tour.loadStopsIfNeeded(); defer { cleanUp(tour) }
+        tour.startTour()
+        let destination = stops[0].coordinate
+        let origin = GeoCoordinate(latitude: destination.latitude - 0.001, longitude: destination.longitude)
+        let now = Date()
+        for (i, latitude) in [origin.latitude, origin.latitude + 0.00003].enumerated() {
+            let time = now.addingTimeInterval(Double(i * 2))
+            tour.recordWalkedTrail(LocationSample(coordinate: .init(latitude: latitude, longitude: origin.longitude),
+                horizontalAccuracy: 3, timestamp: time), now: time)
+        }
+        var providerRoute = WalkingRoute.straightLineEstimate(from: origin, to: destination)
+        providerRoute.source = .googleRoutesAPI
+        tour.currentRoute = providerRoute
+        let map = MapViewModel()
+        let savedTrail = map.walkedTrailCoordinates(for: tour)
+        XCTAssertFalse(savedTrail.isEmpty)
+        XCTAssertEqual(map.walkingRouteCoordinates(for: tour), providerRoute.routeCoordinates)
+        tour.stopWalk()
+        tour.currentRoute = providerRoute // Even a late provider result must not redraw paused guidance.
+        XCTAssertTrue(map.walkingRouteCoordinates(for: tour).isEmpty)
+        XCTAssertEqual(map.walkedTrailCoordinates(for: tour), savedTrail)
+        tour.startTour()
+        tour.currentRoute = providerRoute
+        XCTAssertEqual(map.walkingRouteCoordinates(for: tour), providerRoute.routeCoordinates)
+        XCTAssertEqual(map.walkedTrailCoordinates(for: tour), savedTrail)
+    }
+
     func testWalkingLineShortensAlongProviderRouteAsProgressMovesForward() async {
         let tour = await makeTour(); defer { cleanUp(tour) }
         tour.startTour()

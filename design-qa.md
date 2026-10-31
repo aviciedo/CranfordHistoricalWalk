@@ -1,3 +1,9 @@
+## Build 113 — dotted river-blue route ahead
+
+Per the user's updated preference, the active walking map now shows the remaining provider walking route in lighter river blue (#74A1AF), with the existing recorded GPS trail remaining solid hunter green. Both Google and Apple map hosts receive the existing model's trimmed route geometry; estimates, stale destinations and paused walks remain excluded. Google uses a reusable transparent circle texture on a single polyline, keeping dot spacing in screen points; Apple uses a round-capped dash pattern. Future guidance renders below the solid walked trail. Marker art, GPS trail recording/retention, camera behavior, AR and tour progression are unchanged.
+
+Validation: five portable route/trail regressions passed, covering progression, rejected estimates/stale routes, stop/resume hiding, retained trail and signal gaps. Changed sources passed Debug/Release Swift parsing and whitespace checks. Google Maps 11.1.0 public headers were inspected for texture-stamp APIs; native Apple compilation/rendering and outdoor visual confirmation remain pending. No straight line from the mockup is adopted, and no UX-audit proposals beyond this separately requested dotted route were implemented. Not published.
+
 ## Build 112 — remove the lower Home divider
 
 Removed only the divider beneath Your sketchbook, above the bottom navigation, as marked in the supplied screenshot. The separator between the two menu rows is retained. Swift syntax/whitespace checks passed; native visual verification is pending. Not published.
