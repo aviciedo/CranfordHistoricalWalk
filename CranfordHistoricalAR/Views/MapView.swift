@@ -10,6 +10,12 @@ struct TourMapView: View {
     var bottomInset: CGFloat
     @State private var appleMapError: String?
 
+    private var walkingFitInsets: UIEdgeInsets {
+        let insets = WalkingMapFitPadding.preferred
+        return UIEdgeInsets(top: CGFloat(insets.top), left: CGFloat(insets.left),
+                            bottom: CGFloat(insets.bottom), right: CGFloat(insets.right))
+    }
+
     var body: some View {
         GeometryReader { viewport in
             ZStack(alignment: .top) {
@@ -26,7 +32,7 @@ struct TourMapView: View {
                         selectedStopID: mapModel.viewedStopID,
                         reservesNavigationControls: false,
                         showsCompass: false,
-                        fitInsets: UIEdgeInsets(top: 40, left: 40, bottom: 56, right: 96),
+                        fitInsets: walkingFitInsets,
                         onMapTap: { mapModel.clearViewedStop() },
                         trailSegments: mapModel.walkedTrailCoordinates(for: tour).map { $0.map(\.clLocationCoordinate) }
                     )
@@ -69,7 +75,7 @@ struct TourMapView: View {
                     .padding(.trailing, 16).padding(.bottom, 20)
             }
             .onChange(of: viewport.size) { _, size in
-                guard size.width > 0, size.height > 0 else { return }
+                guard MapViewportRefit.acceptsSize(width: Double(size.width), height: Double(size.height)) else { return }
                 mapModel.mapViewportDidChange()
             }
         }
@@ -323,7 +329,9 @@ struct AppleTourMapView: UIViewRepresentable {
             let minimum = 250 / MKMetersPerMapPointAtLatitude(coordinates[0].latitude)
             if bounds.width < minimum { bounds = bounds.insetBy(dx: -(minimum - bounds.width) / 2, dy: 0) }
             if bounds.height < minimum { bounds = bounds.insetBy(dx: 0, dy: -(minimum - bounds.height) / 2) }
-            map.setVisibleMapRect(bounds, edgePadding: UIEdgeInsets(top: min(40, map.bounds.height * 0.2), left: 40, bottom: min(56, map.bounds.height * 0.3), right: 96), animated: animated)
+            let insets = WalkingMapFitPadding.insets(mapHeight: Double(map.bounds.height))
+            map.setVisibleMapRect(bounds, edgePadding: UIEdgeInsets(top: CGFloat(insets.top), left: CGFloat(insets.left),
+                bottom: CGFloat(insets.bottom), right: CGFloat(insets.right)), animated: animated)
         }
 
         func mapView(_ mapView: MKMapView, regionWillChangeAnimated animated: Bool) {
