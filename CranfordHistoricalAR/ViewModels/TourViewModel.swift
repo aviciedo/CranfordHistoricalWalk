@@ -91,26 +91,28 @@ final class TourViewModel {
     static let poorAccuracyThreshold: Double = StopActivationPolicy.maximumAccuracyMeters
 
     // MARK: Routing (mutated by TourViewModel+Routing.swift)
-    var currentRoute: WalkingRoute?
-    var routeProgress: RouteProgress?
-    var isRoutingInFlight = false
-    var routingError: String?
-    var lastRouteRequest: RouteRequestRecord?
-    /// Stop→stop legs used for the tour summary, keyed by `legKey(from:to:)` / `startLegKey`.
-    var legRoutes: [String: WalkingRoute] = [:]
-    var refreshPolicy = RouteRefreshPolicy.default
+    // Compatibility accessors preserve view/service APIs while the pure session owns state.
+    var routeSession = NavigationRouteSession()
+    var currentRoute: WalkingRoute? { get { routeSession.route } set { routeSession.route = newValue } }
+    var routeProgress: RouteProgress? { get { routeSession.progress } set { routeSession.progress = newValue } }
+    var isRoutingInFlight: Bool { get { routeSession.isRequestInFlight } set { routeSession.isRequestInFlight = newValue } }
+    var routingError: String? { get { routeSession.errorMessage } set { routeSession.errorMessage = newValue } }
+    var lastRouteRequest: RouteRequestRecord? { get { routeSession.lastRequest } set { routeSession.lastRequest = newValue } }
+    var legRoutes: [String: WalkingRoute] { get { routeSession.legRoutes } set { routeSession.legRoutes = newValue } }
+    var refreshPolicy: RouteRefreshPolicy { get { routeSession.refreshPolicy } set { routeSession.refreshPolicy = newValue } }
+    var routingGeneration: Int { get { routeSession.generation } set { routeSession.generation = newValue } }
+    var routeRecoveryAttempts: Int { get { routeSession.recoveryAttempts } set { routeSession.recoveryAttempts = newValue } }
+    var retryRouteOnFreshLocation: Bool { get { routeSession.retryOnFreshLocation } set { routeSession.retryOnFreshLocation = newValue } }
     @ObservationIgnored var routingTask: Task<Void, Never>?
     @ObservationIgnored var summaryLegsTask: Task<Void, Never>?
-    @ObservationIgnored var routingGeneration = 0
     @ObservationIgnored var routeRecoveryTask: Task<Void, Never>?
-    var routeRecoveryAttempts = 0
     var routeRecoveryDelay: Duration = .seconds(30)
-    var retryRouteOnFreshLocation = false
 
     // MARK: Proximity / AR sign (mutated by TourViewModel+Proximity.swift)
     var proximityMachine: StopProximityStateMachine?
-    var walkingProgression = WalkingProgressionPolicy()
-    var passiveVisitPolicies: [String: WalkingProgressionPolicy] = [:]
+    var visitSession = TourVisitSession()
+    var walkingProgression: WalkingProgressionPolicy { get { visitSession.active } set { visitSession.active = newValue } }
+    var passiveVisitPolicies: [String: WalkingProgressionPolicy] { get { visitSession.passive } set { visitSession.passive = newValue } }
     var heldDepartureStopID: String? {
         didSet { checkpointWalk() }
     }
@@ -363,8 +365,7 @@ final class TourViewModel {
     }
 
     func interruptVisitDwell() {
-        walkingProgression.interrupt()
-        for id in Array(passiveVisitPolicies.keys) { passiveVisitPolicies[id]?.interrupt() }
+        visitSession.interrupt()
     }
 
     /// One consistent Map action: start, continue, or stop without resetting the itinerary.

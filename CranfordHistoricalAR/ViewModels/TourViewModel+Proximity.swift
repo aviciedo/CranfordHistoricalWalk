@@ -77,8 +77,7 @@ extension TourViewModel {
     }
 
     func resetProximityForCurrentStop() {
-        walkingProgression = WalkingProgressionPolicy()
-        walkingProgression.isHeld = heldDepartureStopID == currentStop?.id && heldDepartureStopID != nil
+        visitSession.resetActive(held: heldDepartureStopID == currentStop?.id && heldDepartureStopID != nil)
         plaqueConfirmedStopID = nil
         activeVisitEvidence = nil
         arrivalStoryStopID = nil

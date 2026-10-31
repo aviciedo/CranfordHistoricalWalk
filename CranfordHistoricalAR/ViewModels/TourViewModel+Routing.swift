@@ -124,20 +124,21 @@ extension TourViewModel {
         routeRecoveryTask?.cancel()
         routeRecoveryTask = nil
         routingTask?.cancel()
-        routingGeneration += 1
-        let generation = routingGeneration
-        lastRouteRequest = RouteRequestRecord(origin: origin, destination: destination, date: Date(), reason: reason)
-        isRoutingInFlight = true
+        let generation = routeSession.begin(origin: origin, destination: destination, reason: reason)
         let service = directionsService
         routingTask = Task { @MainActor [weak self] in
             defer { self?.finishRoutingTask(generation: generation) }
             do {
                 let route = try await service.walkingRoute(from: origin.clLocationCoordinate, to: destination.clLocationCoordinate)
-                guard !Task.isCancelled else { return }
-                self?.applyRoute(route, for: destination)
+                guard !Task.isCancelled, let self,
+                      self.routeSession.accepts(generation: generation, destination: destination,
+                                                currentDestination: self.currentStop?.coordinate) else { return }
+                self.applyRoute(route, for: destination)
             } catch {
-                guard !Task.isCancelled else { return }
-                self?.handleRoutingFailure(error, origin: origin, destination: destination)
+                guard !Task.isCancelled, let self,
+                      self.routeSession.accepts(generation: generation, destination: destination,
+                                                currentDestination: self.currentStop?.coordinate) else { return }
+                self.handleRoutingFailure(error, origin: origin, destination: destination)
             }
         }
     }
@@ -146,7 +147,7 @@ extension TourViewModel {
     private func finishRoutingTask(generation: Int) {
         guard generation == routingGeneration else { return }
         routingTask = nil
-        isRoutingInFlight = false
+        routeSession.finish(generation: generation)
     }
 
     private func applyRoute(_ route: WalkingRoute, for destination: GeoCoordinate) {
@@ -229,10 +230,7 @@ extension TourViewModel {
         retryRouteOnFreshLocation = false
         routingTask?.cancel()
         routingTask = nil
-        isRoutingInFlight = false
-        currentRoute = nil
-        routeProgress = nil
-        routingError = nil
+        routeSession.resetDestination()
         resetProximityForCurrentStop()
         evaluateRouteRefresh()
     }
@@ -299,9 +297,4 @@ struct TourCompletionFigures: Equatable {
     var isFromWalkingRoutes: Bool
 }
 
-struct RouteRequestRecord: Equatable, Sendable {
-    var origin: GeoCoordinate
-    var destination: GeoCoordinate
-    var date: Date
-    var reason: RouteRefreshReason
-}
+typealias RouteRequestRecord = NavigationRouteSession.Request
