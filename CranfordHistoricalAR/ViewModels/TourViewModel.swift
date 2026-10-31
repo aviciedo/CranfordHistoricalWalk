@@ -129,9 +129,17 @@ final class TourViewModel {
     }
     var automaticTransitionFromStopID: String?
     var automaticTransitionProgress: TourProgress?
-    var isAutomaticNavigationAllowed: Bool {
-        isWalkingActive && isAutomaticNavigationVisible && explorationHolds.isEmpty && !isARSessionActive
+    var progressionDecision: TourProgressionDecision {
+        TourProgressionDecision(walking: isWalkingActive, mapVisible: isAutomaticNavigationVisible,
+            exploring: !explorationHolds.isEmpty, arActive: isARSessionActive,
+            visitConfirmed: isCurrentVisitConfirmed,
+            held: walkingProgression.isHeld || heldDepartureStopID == currentStop?.id && currentStop != nil,
+            hasNextStop: nextStop != nil, hasDestination: currentStop != nil)
     }
+    var isAutomaticNavigationAllowed: Bool { progressionDecision.canNavigateAutomatically }
+    #if DEVELOPER_MENU
+    var progressionDiagnostics = ProgressionDiagnostics()
+    #endif
 
     /// Visual confirmation overrides an unverified geocode until the visitor continues.
     var plaqueConfirmedStopID: String?

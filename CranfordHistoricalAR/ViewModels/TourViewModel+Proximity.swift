@@ -302,15 +302,28 @@ extension TourViewModel {
         case .arrived, nil:
             break
         }
+        recordProgressionDiagnostic(trigger: event.map { String(describing: $0) } ?? "location",
+                                    sample: sample, stop: stop, now: now)
         advanceAfterLoggedVisitIfAllowed()
+    }
+
+    func recordProgressionDiagnostic(trigger: String, sample: LocationSample? = nil,
+                                     stop: HistoricalStop? = nil, now: Date = Date()) {
+        #if DEVELOPER_MENU
+        let subject = stop ?? currentStop
+        progressionDiagnostics.record(stopID: subject?.id, trigger: trigger,
+            blockers: progressionDecision.advanceBlockers, accuracy: sample?.horizontalAccuracy,
+            distance: subject.flatMap { stop in sample.map { GeoMath.distance(from: $0.coordinate, to: stop.coordinate) } },
+            fixAge: sample.map { now.timeIntervalSince($0.timestamp) },
+            nearSeconds: walkingProgression.accumulatedVisitSeconds, now: now)
+        #endif
     }
 
     /// Advance once after a logged visit, when navigation is visible and exploration is closed.
     /// The final stop retains its explicit Finish walk action; Previous/Undo keeps its hold.
     func advanceAfterLoggedVisitIfAllowed() {
-        guard isAutomaticNavigationAllowed, isCurrentVisitConfirmed, nextStop != nil,
-              !walkingProgression.isHeld, heldDepartureStopID != currentStop?.id,
-              let stop = currentStop else { return }
+        guard progressionDecision.canAdvance, let stop = currentStop else { return }
+        recordProgressionDiagnostic(trigger: "advanced")
         let snapshot = progress
         completeCurrentStopAndAdvance()
         automaticTransitionFromStopID = stop.id

@@ -158,6 +158,14 @@ struct DeveloperControlsView: View {
                 }
             }
 
+            Section("Walking progression") {
+                row("Destination", tour.currentStop?.name ?? "None")
+                row("Near-stop seconds", String(Int(tour.walkingProgression.accumulatedVisitSeconds)))
+                row("Blocked by", tour.progressionDecision.advanceBlockers.map(\.rawValue).joined(separator: ", "))
+                ShareLink("Share local progression diagnostics", item: tour.progressionDiagnostics.exportJSON)
+                Text("In-memory diagnostic snapshots only. No coordinates, automatic uploads or saved GPS history.")
+                    .font(.footnote)
+            }
             Section("Diagnostics") {
                 row("Current stop", diagnostics.currentStop)
                 row("Proximity state", diagnostics.proximityState)

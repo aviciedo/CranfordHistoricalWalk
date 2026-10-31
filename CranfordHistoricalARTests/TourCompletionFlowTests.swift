@@ -490,6 +490,62 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertEqual(map.cameraRequest?.animated, false)
     }
 
+    func testDenseGPSAdvancesFirstStopAndScreenHoldReleases() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.startTour()
+        tour.isAutomaticNavigationVisible = true
+        let hold = UUID()
+        tour.explorationHolds.insert(hold)
+        confirmArrival(tour)
+        XCTAssertEqual(tour.currentStop?.id, stops[0].id)
+        XCTAssertTrue(tour.isCurrentVisitConfirmed)
+        tour.explorationHolds.remove(hold)
+        XCTAssertEqual(tour.currentStop?.id, stops[1].id)
+    }
+
+    func testSparseGPSCannotCompleteThreeMinuteVisit() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.startTour()
+        tour.isAutomaticNavigationVisible = true
+        let point = stops[0].coordinate
+        let originTime = Date().addingTimeInterval(-250)
+        for sec in [0, 3] + Array(stride(from: 18, through: 243, by: 15)) {
+            let time = originTime.addingTimeInterval(Double(sec))
+            tour.evaluateAutomaticProgression(.init(coordinate: point, horizontalAccuracy: 3, timestamp: time), now: time)
+        }
+        XCTAssertEqual(tour.currentStop?.id, stops[0].id)
+        XCTAssertTrue(tour.walkingProgression.hasArrived)
+        XCTAssertLessThan(tour.walkingProgression.accumulatedVisitSeconds, 10)
+    }
+
+    func testEachAutomaticProgressionHoldReleasesExactlyOnce() async {
+        for gate in ["map", "exploration", "ar", "departure"] {
+            let tour = await makeTour(); defer { cleanUp(tour) }
+            tour.startTour()
+            tour.isAutomaticNavigationVisible = gate != "map"
+            let token = UUID()
+            if gate == "exploration" { tour.explorationHolds.insert(token) }
+            if gate == "ar" { tour.isARSessionActive = true }
+            if gate == "departure" { tour.heldDepartureStopID = stops[0].id; tour.walkingProgression.isHeld = true }
+            confirmArrival(tour)
+            XCTAssertEqual(tour.currentStop?.id, stops[0].id, "Hold: \(gate)")
+            XCTAssertTrue(tour.isCurrentVisitConfirmed)
+            if gate == "map" { tour.isAutomaticNavigationVisible = true }
+            if gate == "exploration" { tour.explorationHolds.remove(token) }
+            if gate == "ar" { tour.isARSessionActive = false }
+            if gate == "departure" {
+                tour.heldDepartureStopID = nil; tour.walkingProgression.isHeld = false
+                tour.advanceAfterLoggedVisitIfAllowed()
+            }
+            XCTAssertEqual(tour.currentStop?.id, stops[1].id)
+            tour.advanceAfterLoggedVisitIfAllowed()
+            XCTAssertEqual(tour.currentStop?.id, stops[1].id, "The same visit must not cascade")
+            tour.undoAutomaticTransition()
+            tour.advanceAfterLoggedVisitIfAllowed()
+            XCTAssertEqual(tour.currentStop?.id, stops[0].id, "Undo holds against immediate re-advancement")
+        }
+    }
+
     func testMapNumberHighlightFollowsOnlyTheActiveWalkingDestination() async throws {
         let tour = await makeTour(); defer { cleanUp(tour) }
         let map = MapViewModel()
