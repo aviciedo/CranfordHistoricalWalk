@@ -1,3 +1,9 @@
+## Build 114 — serif map number badges with inset rings
+
+Confirmed treatment: ordinary badges have white fill, a thin hunter-green inner outline ring and a hunter-green serif number. While walking is active, only the walking destination has river-blue fill with a white inner ring and white serif number. Shared StopNumberBadge supplies illustrated, compact and numbered overview markers on both providers, retaining their existing hit targets. Walking highlight is explicit model data independent of selection and historical visit status; equality and Google/Apple artwork cache keys include it so stop/resume and destination changes refresh correctly. Visited numbered markers retain their stop number. No route, trail, illustration or progression changes.
+
+Validation: the portable badge-state regression passed across browse/start/stop/resume/selection/visited/advance transitions; Debug/Release Swift parsing and whitespace checks passed. Native badge rendering/font/inner-ring visual verification requires Xcode/iPhone and remains pending. Not published.
+
 ## Build 113 — dotted river-blue route ahead
 
 Per the user's updated preference, the active walking map now shows the remaining provider walking route in lighter river blue (#74A1AF), with the existing recorded GPS trail remaining solid hunter green. Both Google and Apple map hosts receive the existing model's trimmed route geometry; estimates, stale destinations and paused walks remain excluded. Google uses a reusable transparent circle texture on a single polyline, keeping dot spacing in screen points; Apple uses a round-capped dash pattern. Future guidance renders below the solid walked trail. Marker art, GPS trail recording/retention, camera behavior, AR and tour progression are unchanged.

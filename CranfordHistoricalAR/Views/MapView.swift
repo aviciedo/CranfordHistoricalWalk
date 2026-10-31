@@ -358,7 +358,7 @@ struct AppleTourMapView: UIViewRepresentable {
             if let marker = site.marker {
                 if !marker.isIllustrated {
                     view.subviews.filter { $0 is StopMapIconView }.forEach { $0.removeFromSuperview() }
-                    let key = "compact|\(marker.id)|\(marker.order)"
+                    let key = "compact|\(marker.id)|\(marker.order)|\(marker.isWalkingDestination)"
                     if markerImages[key] == nil { markerImages[key] = StopMapArtwork.compactImage(for: marker) }
                     view.image = markerImages[key]
                     view.zPriority = .defaultSelected
@@ -373,7 +373,7 @@ struct AppleTourMapView: UIViewRepresentable {
                 view.image = nil
                 let icon = (view.subviews.first { $0 is StopMapIconView } as? StopMapIconView) ?? StopMapIconView()
                 if icon.superview == nil { view.addSubview(icon) }
-                let key = "\(marker.id)|\(marker.order)|\(marker.state)"
+                let key = "\(marker.id)|\(marker.order)|\(marker.state)|\(marker.isWalkingDestination)"
                 if markerImages[key] == nil { markerImages[key] = StopMapArtwork.image(for: marker) }
                 icon.setArtwork(markerImages[key])
                 icon.resize(scale: markerScale)

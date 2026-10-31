@@ -14,9 +14,11 @@ struct StopMarkerModel: Identifiable, Equatable {
     var state: State
     var information: String? = nil
     var isIllustrated: Bool = true
+    /// Highlight is a walking state, independent of selection or a historical visit.
+    var isWalkingDestination: Bool = false
 
     static func == (lhs: StopMarkerModel, rhs: StopMarkerModel) -> Bool {
-        lhs.id == rhs.id && lhs.order == rhs.order && lhs.name == rhs.name && lhs.state == rhs.state && lhs.information == rhs.information && lhs.isIllustrated == rhs.isIllustrated
+        lhs.id == rhs.id && lhs.order == rhs.order && lhs.name == rhs.name && lhs.state == rhs.state && lhs.information == rhs.information && lhs.isIllustrated == rhs.isIllustrated && lhs.isWalkingDestination == rhs.isWalkingDestination
             && lhs.coordinate.latitude == rhs.coordinate.latitude && lhs.coordinate.longitude == rhs.coordinate.longitude
     }
 }
@@ -145,7 +147,8 @@ final class MapViewModel {
             }
             return StopMarkerModel(id: stop.id, coordinate: stop.clLocationCoordinate, order: stop.order, name: stop.name,
                                    state: state, information: stop.markerInformation,
-                                   isIllustrated: !emphasizesDestinationOnly || stop.id == illustratedID)
+                                   isIllustrated: !emphasizesDestinationOnly || stop.id == illustratedID,
+                                   isWalkingDestination: tour.isWalkingActive && stop.id == tour.currentStop?.id)
         }
     }
 

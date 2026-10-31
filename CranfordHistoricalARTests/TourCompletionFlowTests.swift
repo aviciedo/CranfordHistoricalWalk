@@ -490,6 +490,32 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertEqual(map.cameraRequest?.animated, false)
     }
 
+    func testMapNumberHighlightFollowsOnlyTheActiveWalkingDestination() async throws {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        let map = MapViewModel()
+        func highlightedIDs() -> [String] {
+            map.markers(for: tour, emphasizesDestinationOnly: true).filter(\.isWalkingDestination).map(\.id)
+        }
+        XCTAssertTrue(highlightedIDs().isEmpty, "Browsing must not highlight a walking destination")
+        tour.startTour()
+        XCTAssertEqual(highlightedIDs(), [stops[0].id])
+        let active = try XCTUnwrap(map.markers(for: tour).first)
+        tour.stopWalk()
+        XCTAssertTrue(highlightedIDs().isEmpty)
+        let paused = try XCTUnwrap(map.markers(for: tour).first)
+        XCTAssertEqual(active.state, paused.state)
+        XCTAssertNotEqual(active, paused, "Renderers must invalidate their cached artwork on stop/resume")
+        tour.startTour()
+        map.select(stopID: stops[2].id)
+        XCTAssertEqual(highlightedIDs(), [stops[0].id], "Inspecting a different stop must not move the destination color")
+        tour.progress.markCurrentStopVisited()
+        XCTAssertEqual(highlightedIDs(), [stops[0].id], "A prior visit cannot override the active destination")
+        tour.completeCurrentStopAndAdvance()
+        XCTAssertEqual(highlightedIDs(), [stops[1].id])
+        tour.stopWalk()
+        XCTAssertTrue(highlightedIDs().isEmpty)
+    }
+
     func testMapPrimaryActionStartsStopsAndContinuesTheSameWalk() async {
         let tour = await makeTour(); defer { cleanUp(tour) }
         XCTAssertEqual(tour.phase, .notStarted)

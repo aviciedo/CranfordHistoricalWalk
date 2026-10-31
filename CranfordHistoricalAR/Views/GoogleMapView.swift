@@ -259,7 +259,7 @@ struct GoogleMapView: UIViewRepresentable {
         }
 
         private func icon(for model: StopMarkerModel, isSelected: Bool) -> UIImage? {
-            let key = "\(model.isIllustrated)|\(markerStyle)|\(isSelected)|\(model.order)|\(model.state)|\(model.name)|\(colorScheme == .dark)"
+            let key = "\(model.isWalkingDestination)|\(model.isIllustrated)|\(markerStyle)|\(isSelected)|\(model.order)|\(model.state)|\(model.name)|\(colorScheme == .dark)"
             if let cached = iconCache[key] { return cached }
             let scheme = colorScheme ?? .light
             let renderer: ImageRenderer<AnyView>
@@ -552,17 +552,34 @@ struct GoogleMapView: UIViewRepresentable {
     }
 }
 
+/// One numbered badge treatment shared by both providers and every numbered map style.
+struct StopNumberBadge: View {
+    let order: Int
+    let isActive: Bool
+    var diameter: CGFloat = 28
+
+    private var ink: Color { isActive ? .white : AppTheme.forest }
+
+    var body: some View {
+        Text("\(order)")
+            .font(.system(size: diameter * 0.54, weight: .semibold, design: .serif))
+            .lineLimit(1).minimumScaleFactor(0.65)
+            .foregroundStyle(ink)
+            .frame(width: diameter, height: diameter)
+            .background(isActive ? AppTheme.riverBlue : .white, in: Circle())
+            .overlay {
+                Circle().strokeBorder(ink, lineWidth: 1.25).padding(2)
+            }
+            .shadow(color: .black.opacity(0.16), radius: 1, y: 1)
+    }
+}
+
 /// Shared Google/Apple artwork: large landmark with a consistent bottom-left number badge.
 @MainActor
 enum StopMapArtwork {
     static func compactImage(for marker: StopMarkerModel) -> UIImage {
         let renderer = ImageRenderer(content:
-            Text("\(marker.order)")
-                .font(.system(size: 14, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
-                .frame(width: 28, height: 28)
-                .background(marker.state == .current ? AppTheme.riverBlue : AppTheme.forest, in: Circle())
-                .overlay(Circle().strokeBorder(.white, lineWidth: 2))
+            StopNumberBadge(order: marker.order, isActive: marker.isWalkingDestination)
                 .frame(width: 44, height: 44)
                 .environment(\.isEnabled, true))
         renderer.scale = 3
@@ -576,12 +593,7 @@ enum StopMapArtwork {
                 StopListIllustration(stopID: marker.id)
                     .frame(width: 96, height: 70)
                     .frame(width: 100, height: 80, alignment: .top)
-                Text("\(marker.order)")
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
-                    .frame(width: 28, height: 28)
-                    .background(marker.state == .current ? AppTheme.riverBlue : AppTheme.forest, in: Circle())
-                    .overlay(Circle().strokeBorder(isSelected ? AppTheme.brass : .white, lineWidth: 2))
+                StopNumberBadge(order: marker.order, isActive: marker.isWalkingDestination)
             }
             .frame(width: CGFloat(MapMarkerSizing.width), height: CGFloat(MapMarkerSizing.height))
             .environment(\.colorScheme, scheme)
@@ -760,20 +772,11 @@ final class StopNameInfoWindow: UIView {
     required init?(coder: NSCoder) { nil }
 }
 
-/// Compact marker for overview maps with many stops: a dot, optionally numbered, that grows and
-/// gains a brass ring when selected. No text label, so dense clusters never overlap into mush.
+/// Compact overview dots retain their selection affordance; numbered states share the badges.
 struct StopDotMarker: View {
     let model: StopMarkerModel
     let isSelected: Bool
     let showsNumber: Bool
-
-    private var fill: Color {
-        switch model.state {
-        case .current: return AppTheme.riverBlue
-        case .upcoming: return AppTheme.heritageGreen
-        case .visited: return AppTheme.visited
-        }
-    }
 
     private var diameter: CGFloat {
         if isSelected { return showsNumber ? 44 : 30 }
@@ -785,20 +788,14 @@ struct StopDotMarker: View {
             if isSelected {
                 Circle().fill(AppTheme.brass.opacity(0.28)).frame(width: diameter + 12, height: diameter + 12)
             }
-            Circle()
-                .fill(fill)
-                .frame(width: diameter, height: diameter)
-                .overlay(Circle().strokeBorder(isSelected ? AppTheme.brass : .white, lineWidth: isSelected ? 3 : 2))
-                .shadow(color: .black.opacity(0.25), radius: 2, y: 1)
             if showsNumber || isSelected {
-                Group {
-                    if model.state == .visited {
-                        Image(systemName: "checkmark").font(.system(size: isSelected ? 20 : 18, weight: .bold))
-                    } else {
-                        Text("\(model.order)").font(.system(size: isSelected ? 20 : 18, weight: .bold, design: .rounded))
-                    }
-                }
-                .foregroundStyle(model.state == .visited ? Color(light: .white, dark: AppTheme.forest) : .white)
+                StopNumberBadge(order: model.order, isActive: model.isWalkingDestination, diameter: diameter)
+            } else {
+                Circle()
+                    .fill(model.isWalkingDestination ? AppTheme.riverBlue : AppTheme.forest)
+                    .frame(width: diameter, height: diameter)
+                    .overlay(Circle().strokeBorder(.white, lineWidth: 2))
+                    .shadow(color: .black.opacity(0.25), radius: 2, y: 1)
             }
         }
         .frame(width: 56, height: 56)
@@ -807,17 +804,8 @@ struct StopDotMarker: View {
 
 // MARK: - Marker artwork (rendered to images via ImageRenderer)
 
-/// Numbered pin with the stop name underneath so names are visible without tapping (spec §4).
 struct StopMarkerLabel: View {
     let model: StopMarkerModel
-
-    private var fill: Color {
-        switch model.state {
-        case .current: return AppTheme.riverBlue
-        case .upcoming: return AppTheme.brass
-        case .visited: return AppTheme.visited
-        }
-    }
 
     var body: some View {
         VStack(spacing: 3) {
@@ -828,21 +816,8 @@ struct StopMarkerLabel: View {
                 .padding(.vertical, 3)
                 .background(.thinMaterial, in: Capsule())
                 .foregroundStyle(.primary)
-            ZStack {
-                PinShape()
-                    .fill(fill)
-                    .frame(width: model.state == .current ? 34 : 28, height: model.state == .current ? 44 : 36)
-                    .shadow(color: .black.opacity(0.25), radius: 3, y: 2)
-                Group {
-                    if model.state == .visited {
-                        Image(systemName: "checkmark").font(.system(size: 12, weight: .bold))
-                    } else {
-                        Text("\(model.order)").font(.system(size: 13, weight: .bold, design: .rounded))
-                    }
-                }
-                .foregroundStyle(.white)
-                .offset(y: model.state == .current ? -7 : -6)
-            }
+            StopNumberBadge(order: model.order, isActive: model.isWalkingDestination,
+                            diameter: model.isWalkingDestination ? 34 : 28)
         }
         .padding(4)
     }
