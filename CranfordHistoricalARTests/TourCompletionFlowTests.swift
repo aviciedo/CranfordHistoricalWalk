@@ -490,6 +490,64 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertEqual(map.cameraRequest?.animated, false)
     }
 
+    func testMapResizeDoesNotRefitFollowOrZoom() async throws {
+        let source = ActivityTestLocationService(status: .authorized)
+        let tour = TourViewModel(stopService: InMemoryHistoricalStopService(stops: stops),
+            locationService: source, directionsService: PreviewDirectionsService())
+        await tour.loadStopsIfNeeded(); defer { cleanUp(tour) }
+        tour.startTour()
+        let map = MapViewModel()
+        map.requestOverview()
+        let overview = try XCTUnwrap(map.cameraRequest)
+        map.requestFollow(tour: tour)
+        XCTAssertEqual(map.cameraMode, .follow)
+        XCTAssertEqual(map.cameraRequest, overview, "Follow without a fix must not invent a camera")
+        map.mapViewportDidChange()
+        XCTAssertEqual(map.cameraRequest, overview, "A leftover bounds fit must stay put while following")
+
+        let sample = LocationSample(coordinate: GeoCoordinate(latitude: 40.67, longitude: -74.32), horizontalAccuracy: 3)
+        source.emit(sample)
+        for _ in 0..<100 where tour.userLocation?.timestamp != sample.timestamp {
+            try await Task.sleep(for: .milliseconds(2))
+        }
+        XCTAssertEqual(tour.userLocation?.timestamp, sample.timestamp)
+        map.requestFollow(tour: tour)
+        let followed = try XCTUnwrap(map.cameraRequest)
+        guard case .follow = followed.kind else { return XCTFail("Expected a follow camera") }
+        map.mapViewportDidChange()
+        XCTAssertEqual(map.cameraRequest, followed)
+        XCTAssertEqual(map.cameraMode, .follow)
+
+        map.requestZoom(by: 1)
+        let zoomed = try XCTUnwrap(map.cameraRequest)
+        guard case .zoomTo = zoomed.kind else { return XCTFail("Expected a zoom camera") }
+        XCTAssertEqual(map.cameraMode, .free)
+        map.mapViewportDidChange()
+        XCTAssertEqual(map.cameraRequest, zoomed)
+    }
+
+    func testPlannedRouteStaysInTheCameraFitAndOffTheMapStroke() async throws {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        tour.startTour()
+        let map = MapViewModel()
+        let origin = GeoCoordinate(latitude: 40.648, longitude: -74.304)
+        let corner = GeoCoordinate(latitude: 40.647, longitude: -74.30)
+        tour.currentRoute = .straightLineEstimate(from: origin, to: stops[0].coordinate)
+        XCTAssertTrue(map.walkingRouteCoordinates(for: tour).isEmpty)
+        XCTAssertTrue(map.drawnRouteCoordinates(for: tour).isEmpty)
+
+        tour.currentRoute = WalkingRoute(origin: origin, destination: stops[0].coordinate,
+            distanceMeters: 600, durationSeconds: 400, routeCoordinates: [origin, corner, stops[0].coordinate], source: .appleMaps)
+        let planned = map.walkingRouteCoordinates(for: tour)
+        XCTAssertEqual(planned, [origin, corner, stops[0].coordinate])
+        XCTAssertTrue(map.drawnRouteCoordinates(for: tour).isEmpty, "Provider geometry must not cover the walked trail")
+        XCTAssertTrue(map.walkedTrailCoordinates(for: tour).isEmpty)
+        map.showUserAndDestination(tour: tour)
+        guard case .fitWalkingLeg(let framed) = map.cameraRequest?.kind else { return XCTFail("Expected the route in the fit") }
+        XCTAssertTrue(framed.contains(corner))
+        XCTAssertTrue(map.drawnRouteCoordinates(for: tour).isEmpty)
+    }
+
     func testMapPrimaryActionStartsStopsAndContinuesTheSameWalk() async {
         let tour = await makeTour(); defer { cleanUp(tour) }
         XCTAssertEqual(tour.phase, .notStarted)

@@ -9,6 +9,10 @@ struct TourMapView: View {
     var mapModel: MapViewModel
     var bottomInset: CGFloat
     @State private var appleMapError: String?
+    private static var walkingFitInsets: UIEdgeInsets {
+        let padding = WalkingMapFitPadding.preferred
+        return UIEdgeInsets(top: padding.top, left: padding.left, bottom: padding.bottom, right: padding.right)
+    }
 
     var body: some View {
         GeometryReader { viewport in
@@ -17,7 +21,7 @@ struct TourMapView: View {
                     GoogleMapView(
                         markers: mapModel.markers(for: tour, emphasizesDestinationOnly: true),
                         userPuck: mapModel.userPuck(for: tour),
-                        routeCoordinates: [], // Only recorded walking trail is drawn; route remains available for guidance.
+                        routeCoordinates: mapModel.drawnRouteCoordinates(for: tour).map(\.clLocationCoordinate),
                         cameraRequest: mapModel.cameraRequest,
                         bottomInset: bottomInset,
                         onUserGesture: { mapModel.userDidMoveCamera() },
@@ -26,14 +30,14 @@ struct TourMapView: View {
                         selectedStopID: mapModel.viewedStopID,
                         reservesNavigationControls: false,
                         showsCompass: false,
-                        fitInsets: UIEdgeInsets(top: 40, left: 40, bottom: 56, right: 96),
+                        fitInsets: Self.walkingFitInsets,
                         onMapTap: { mapModel.clearViewedStop() },
                         trailSegments: mapModel.walkedTrailCoordinates(for: tour).map { $0.map(\.clLocationCoordinate) }
                     )
                 } else {
                     AppleTourMapView(markers: mapModel.markers(for: tour, emphasizesDestinationOnly: true),
                         userPuck: mapModel.userPuck(for: tour),
-                        routeCoordinates: [], // Only recorded walking trail is drawn; route remains available for guidance.
+                        routeCoordinates: mapModel.drawnRouteCoordinates(for: tour).map(\.clLocationCoordinate),
                         cameraRequest: mapModel.cameraRequest,
                         onUserGesture: { mapModel.userDidMoveCamera() },
                         onMarkerTap: { mapModel.select(stopID: $0) },
@@ -69,7 +73,7 @@ struct TourMapView: View {
                     .padding(.trailing, 16).padding(.bottom, 20)
             }
             .onChange(of: viewport.size) { _, size in
-                guard size.width > 0, size.height > 0 else { return }
+                guard MapViewportRefit.acceptsSize(width: size.width, height: size.height) else { return }
                 mapModel.mapViewportDidChange()
             }
         }
@@ -321,7 +325,8 @@ struct AppleTourMapView: UIViewRepresentable {
             let minimum = 250 / MKMetersPerMapPointAtLatitude(coordinates[0].latitude)
             if bounds.width < minimum { bounds = bounds.insetBy(dx: -(minimum - bounds.width) / 2, dy: 0) }
             if bounds.height < minimum { bounds = bounds.insetBy(dx: 0, dy: -(minimum - bounds.height) / 2) }
-            map.setVisibleMapRect(bounds, edgePadding: UIEdgeInsets(top: min(40, map.bounds.height * 0.2), left: 40, bottom: min(56, map.bounds.height * 0.3), right: 96), animated: animated)
+            let padding = WalkingMapFitPadding.insets(mapHeight: map.bounds.height)
+            map.setVisibleMapRect(bounds, edgePadding: UIEdgeInsets(top: padding.top, left: padding.left, bottom: padding.bottom, right: padding.right), animated: animated)
         }
 
         func mapView(_ mapView: MKMapView, regionWillChangeAnimated animated: Bool) {
