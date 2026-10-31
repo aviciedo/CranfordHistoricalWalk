@@ -52,6 +52,13 @@ final class PlaqueAnchorController {
 
     /// Parents `sign` to the image so the card rides with the physical plate.
     func bind(imageAnchor: ARImageAnchor, sign: ARHistoricalSignEntity, offset: PlaqueCardOffset) {
+        #if targetEnvironment(simulator)
+        // Image tracking is unavailable here. The Intel iOS Simulator RealityKit
+        // runtime also omits AnchorEntity.init(anchor:), so even an unreachable
+        // reference aborts the whole test host at dynamic-library load time.
+        // Compile it out rather than presenting a simulated tracked plaque.
+        return
+        #else
         guard let arView else { return }
         if trackedAnchor?.identifier != imageAnchor.identifier || imageAnchorEntity == nil {
             imageAnchorEntity?.removeFromParent()
@@ -71,6 +78,7 @@ final class PlaqueAnchorController {
         // Plane faces +Z; rotate so +Z maps to image +Y (out of the plate toward the camera).
         // After that rotation, card-up (+Y) maps to image −Z (up the wall).
         sign.orientation = simd_quatf(angle: -.pi / 2, axis: [1, 0, 0])
+        #endif
     }
 
     func matches(_ imageAnchor: ARImageAnchor, expectedName: String?) -> Bool {

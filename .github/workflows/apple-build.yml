@@ -14,6 +14,7 @@ on:
       - 'project.yml'
       - '.github/workflows/apple-build.yml'
       - 'scripts/summarize-apple-checks.py'
+      - 'scripts/report-startup-crash.py'
       - 'scripts/prepare-activity-model-tests.py'
   pull_request:
     paths:
@@ -26,12 +27,12 @@ on:
       - 'project.yml'
       - '.github/workflows/apple-build.yml'
       - 'scripts/summarize-apple-checks.py'
+      - 'scripts/report-startup-crash.py'
       - 'scripts/prepare-activity-model-tests.py'
   workflow_dispatch:
 
 permissions:
   contents: read
-  actions: read
 
 concurrency:
   group: apple-build-${{ github.ref }}
@@ -53,18 +54,6 @@ jobs:
         run: |
           xcodebuild -version
           swift --version
-      # Temporary investigation: inspect the retained result from the startup abort
-      # before spending another native test cycle. Remove after the cause is identified.
-      - name: Retrieve startup failure result
-        uses: actions/download-artifact@v6
-        with:
-          name: apple-compiler-logs
-          run-id: 41240318142
-          github-token: ${{ github.token }}
-          path: .build/startup-failure
-      - name: Explain startup failure
-        run: |
-          python3 scripts/report-startup-crash.py .build/startup-failure
       - name: Test TourCore on Apple Foundation and CoreGraphics
         shell: bash
         run: |
