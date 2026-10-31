@@ -1,3 +1,13 @@
+## Build 115 — incremental stability consolidation
+
+Completed the six-stage code sequence in reviewable commits: main release authority/exact-commit validation workflow; a pure progression decision and bounded Developer Mode trace; shared GPS movement accounting plus close-parallel-route repair; selective viewport/page-index policies from PR #23 while preserving the approved dotted route; separate route/visit session state with generation-safe callbacks; and validated catalog-driven artwork, resource-aware caches and second-tour isolation tests.
+
+The five stops, existing history keys, approved narration/transcripts/coordinates, sketch unlock eligibility, three-minute/bypass/departure rules, phone-down AR return, parchment, green/blue badge treatment and dotted/solid trail presentation are retained. No declined progression UX mockup or unrelated redesign was implemented. No branches were merged or deleted.
+
+Validation: 282 core and 129 portable model-flow tests passed. Full native source parsing passed in Debug/Developer and Release. Catalog content and recording hashes were compared against build 114; only artwork metadata was added, and every referenced resource exists. Apple SDK build/native tests are required on the exact candidate commit; physical-device alignment, curl visuals, energy and outdoor Stop 1 behavior remain subject to the field checklist. GitHub settings API access is unavailable, so recommended server-side main protection is documented, not claimed applied.
+
+See [release policy](docs/engineering/release-policy.md), [catalog extension guide](docs/engineering/adding-a-tour.md) and [physical iPhone acceptance checklist](docs/engineering/stability-field-checklist.md). Native results are tracked on the validation branch; this heading alone does not certify a release.
+
 ## Build 114 — serif map number badges with inset rings
 
 Confirmed treatment: ordinary badges have white fill, a thin hunter-green inner outline ring and a hunter-green serif number. While walking is active, only the walking destination has river-blue fill with a white inner ring and white serif number. Shared StopNumberBadge supplies illustrated, compact and numbered overview markers on both providers, retaining their existing hit targets. Walking highlight is explicit model data independent of selection and historical visit status; equality and Google/Apple artwork cache keys include it so stop/resume and destination changes refresh correctly. Visited numbered markers retain their stop number. No route, trail, illustration or progression changes.
