@@ -1,3 +1,7 @@
+## Build 112 — remove the lower Home divider
+
+Removed only the divider beneath Your sketchbook, above the bottom navigation, as marked in the supplied screenshot. The separator between the two menu rows is retained. Swift syntax/whitespace checks passed; native visual verification is pending. Not published.
+
 ## Apple CI reliability — 2026-10-31
 
 The supplied email reports a cancelled workflow, not a Swift compiler diagnostic; it does not include enough run identity to match that exact cancellation. The current workflow cancelled active checks whenever a newer run arrived on the same ref. Active checks now finish (`cancel-in-progress: false`); GitHub may still replace superseded pending runs, and manual/platform cancellations remain possible.

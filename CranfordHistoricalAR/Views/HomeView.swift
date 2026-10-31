@@ -115,7 +115,6 @@ struct HomeView: View {
                     AppMenuRowLabel(title: "Your sketchbook", symbol: "book.closed")
                 }
                 .buttonStyle(.plain).accessibilityIdentifier("home.sketchbook")
-                Divider()
             }
             if case .failed(let message) = tour.loadState {
                 VStack(alignment: .leading, spacing: 8) {

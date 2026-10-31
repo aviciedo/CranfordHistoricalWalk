@@ -1,3 +1,7 @@
+## Build 112 — remove the lower Home divider
+
+Removed only the divider beneath Your sketchbook, above the bottom navigation, as marked in the supplied screenshot. The separator between the two menu rows is retained. Swift syntax/whitespace checks passed; native visual verification is pending. Not published.
+
 ## Build 111 — full-bleed parchment during page curls
 
 The supplied screenshot shows pale edges behind/around a turning sheet. The reverse previously reused the front asset's decorative border/folded corner and left clipped/padded margins over ivory UIKit backing. The reverse now samples the existing paper texture's interior and fills its entire face without rounded clipping or padding. Front hosting roots receive the same full-bleed paper behind their existing rounded page artwork; the page controller and both face hosts use opaque matching warm paper (RGB 248/242/230). The curl container clips overflow to the book bounds. Original artwork, unlock state and pagination remain unchanged, including the one-visible-controller minimum-spine crash fix.
