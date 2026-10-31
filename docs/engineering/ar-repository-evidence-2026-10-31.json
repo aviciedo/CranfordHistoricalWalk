@@ -1,0 +1,345 @@
+{
+  "reviewed_on": "2026-10-31",
+  "method": "Public GitHub source (depth 50), source history, licenses, manifests, releases and all open issue listings. Issue reports are not reproduced defects. No stars/forks used as quality evidence.",
+  "repositories": [
+    {
+      "repository": "AndrewHartAR/ARKit-CoreLocation",
+      "head": "c74634de4313183e281b323941a5d51fcd165533",
+      "latest_commit": "2025-12-30T16:07:54Z Update author credit in README",
+      "latest_non_merge_source_commit": "2f5f29231b0500dc3ec50e17de5fc879186b01c9 2019-12-01T08:09:02-06:00 Name change: midPoint -> approxMidpoint",
+      "license": "MIT",
+      "open_issue_count": 38,
+      "open_issues": [
+        {
+          "number": 316,
+          "title": "ios27 Thread 1: EXC_BAD_ACCESS (code=2, address=0x16f297fd0)",
+          "createdAt": "2026-09-19T08:25:36Z",
+          "updatedAt": "2026-09-19T08:25:36Z",
+          "permalink": "https://github.com/AndrewHartAR/ARKit-CoreLocation/issues/316"
+        },
+        {
+          "number": 312,
+          "title": "Orientation issue of POIs due to iPad Compass Calibration Issues: Impact of Magnetic Cover",
+          "createdAt": "2025-12-19T06:26:02Z",
+          "updatedAt": "2025-12-19T06:26:53Z",
+          "permalink": "https://github.com/AndrewHartAR/ARKit-CoreLocation/issues/312"
+        },
+        {
+          "number": 308,
+          "title": "Frozen application",
+          "createdAt": "2024-11-04T07:03:39Z",
+          "updatedAt": "2024-11-04T07:03:39Z",
+          "permalink": "https://github.com/AndrewHartAR/ARKit-CoreLocation/issues/308"
+        },
+        {
+          "number": 304,
+          "title": "Dark Mode Doesn't Work Properly",
+          "createdAt": "2023-01-20T00:17:39Z",
+          "updatedAt": "2023-01-20T00:17:39Z",
+          "permalink": "https://github.com/AndrewHartAR/ARKit-CoreLocation/issues/304"
+        },
+        {
+          "number": 302,
+          "title": "Node Location with GIF file",
+          "createdAt": "2022-12-09T10:40:33Z",
+          "updatedAt": "2022-12-09T10:40:33Z",
+          "permalink": "https://github.com/AndrewHartAR/ARKit-CoreLocation/issues/302"
+        },
+        {
+          "number": 301,
+          "title": "Problem iOS 16.1 Bug",
+          "createdAt": "2022-10-29T08:51:55Z",
+          "updatedAt": "2022-10-29T08:51:55Z",
+          "permalink": "https://github.com/AndrewHartAR/ARKit-CoreLocation/issues/301"
+        },
+        {
+          "number": 298,
+          "title": "Problem with position after .pause() state",
+          "createdAt": "2022-08-27T13:22:52Z",
+          "updatedAt": "2022-08-27T19:06:29Z",
+          "permalink": "https://github.com/AndrewHartAR/ARKit-CoreLocation/issues/298"
+        },
+        {
+          "number": 293,
+          "title": "Want to implement this in Android, but the repo seems to be specific to iOS.",
+          "createdAt": "2022-03-31T12:55:18Z",
+          "updatedAt": "2023-04-17T08:31:57Z",
+          "permalink": "https://github.com/AndrewHartAR/ARKit-CoreLocation/issues/293"
+        },
+        {
+          "number": 292,
+          "title": "Support SwiftUI",
+          "createdAt": "2022-03-07T10:36:21Z",
+          "updatedAt": "2022-03-17T03:09:45Z",
+          "permalink": "https://github.com/AndrewHartAR/ARKit-CoreLocation/issues/292"
+        },
+        {
+          "number": 291,
+          "title": "How to achieve the red arrows",
+          "createdAt": "2022-01-21T10:10:40Z",
+          "updatedAt": "2022-02-28T06:17:18Z",
+          "permalink": "https://github.com/AndrewHartAR/ARKit-CoreLocation/issues/291"
+        },
+        {
+          "number": 289,
+          "title": "same ping showing on different way on different devices",
+          "createdAt": "2021-06-23T15:56:51Z",
+          "updatedAt": "2021-06-23T15:56:51Z",
+          "permalink": "https://github.com/AndrewHartAR/ARKit-CoreLocation/issues/289"
+        },
+        {
+          "number": 288,
+          "title": "LiDAR support",
+          "createdAt": "2021-03-02T10:51:56Z",
+          "updatedAt": "2021-03-02T10:51:56Z",
+          "permalink": "https://github.com/AndrewHartAR/ARKit-CoreLocation/issues/288"
+        },
+        {
+          "number": 287,
+          "title": "How can I add polylines in real world using ARKit-Corelocation",
+          "createdAt": "2021-02-17T05:26:48Z",
+          "updatedAt": "2021-02-17T05:26:48Z",
+          "permalink": "https://github.com/AndrewHartAR/ARKit-CoreLocation/issues/287"
+        },
+        {
+          "number": 286,
+          "title": "didAdd does not seem to be firing for planeDetection",
+          "createdAt": "2021-02-12T03:08:49Z",
+          "updatedAt": "2021-02-12T03:12:47Z",
+          "permalink": "https://github.com/AndrewHartAR/ARKit-CoreLocation/issues/286"
+        },
+        {
+          "number": 283,
+          "title": "how to update the distance when walking from me to node",
+          "createdAt": "2020-07-07T07:17:20Z",
+          "updatedAt": "2020-07-07T07:17:20Z",
+          "permalink": "https://github.com/AndrewHartAR/ARKit-CoreLocation/issues/283"
+        },
+        {
+          "number": 282,
+          "title": "Altitude",
+          "createdAt": "2020-07-04T23:20:01Z",
+          "updatedAt": "2020-07-04T23:20:01Z",
+          "permalink": "https://github.com/AndrewHartAR/ARKit-CoreLocation/issues/282"
+        },
+        {
+          "number": 281,
+          "title": "SceneLocationView.removePolylines does not remove polylines from scene",
+          "createdAt": "2020-06-01T17:36:05Z",
+          "updatedAt": "2020-06-01T17:36:05Z",
+          "permalink": "https://github.com/AndrewHartAR/ARKit-CoreLocation/issues/281"
+        },
+        {
+          "number": 279,
+          "title": "\u4f20\u5165\u4e00\u7ec4\u7ecf\u7eac\u5ea6\u4e0d\u540c\u7684\u8282\u70b9\uff0c\u56e0\u8282\u70b9\u89c6\u56fe\u957f\u5bbd\u7ea6100\u4e2a\u50cf\u7d20\uff0c\u5bfc\u81f4\u8282\u70b9\u91cd\u5408",
+          "createdAt": "2020-04-29T06:07:00Z",
+          "updatedAt": "2020-04-29T06:07:00Z",
+          "permalink": "https://github.com/AndrewHartAR/ARKit-CoreLocation/issues/279"
+        },
+        {
+          "number": 278,
+          "title": "Is it working for indoor map?",
+          "createdAt": "2020-04-16T05:32:01Z",
+          "updatedAt": "2020-04-16T05:32:01Z",
+          "permalink": "https://github.com/AndrewHartAR/ARKit-CoreLocation/issues/278"
+        },
+        {
+          "number": 276,
+          "title": "UIView.image does not capture subviews",
+          "createdAt": "2020-03-30T04:54:11Z",
+          "updatedAt": "2020-03-30T04:54:11Z",
+          "permalink": "https://github.com/AndrewHartAR/ARKit-CoreLocation/issues/276"
+        },
+        {
+          "number": 275,
+          "title": "set node in the floor ",
+          "createdAt": "2020-03-10T11:15:37Z",
+          "updatedAt": "2020-03-10T11:15:37Z",
+          "permalink": "https://github.com/AndrewHartAR/ARKit-CoreLocation/issues/275"
+        },
+        {
+          "number": 272,
+          "title": "SPM Package Name ARKit_CoreLocation",
+          "createdAt": "2020-02-05T14:58:35Z",
+          "updatedAt": "2020-02-05T14:58:35Z",
+          "permalink": "https://github.com/AndrewHartAR/ARKit-CoreLocation/issues/272"
+        },
+        {
+          "number": 270,
+          "title": "POIs is moving with iPhone",
+          "createdAt": "2020-01-28T16:55:27Z",
+          "updatedAt": "2020-10-29T02:31:35Z",
+          "permalink": "https://github.com/AndrewHartAR/ARKit-CoreLocation/issues/270"
+        },
+        {
+          "number": 269,
+          "title": "How to set altitude value",
+          "createdAt": "2020-01-21T10:30:13Z",
+          "updatedAt": "2023-02-02T22:19:17Z",
+          "permalink": "https://github.com/AndrewHartAR/ARKit-CoreLocation/issues/269"
+        },
+        {
+          "number": 268,
+          "title": "How to retain line from start point",
+          "createdAt": "2020-01-21T06:51:24Z",
+          "updatedAt": "2020-01-21T06:51:24Z",
+          "permalink": "https://github.com/AndrewHartAR/ARKit-CoreLocation/issues/268"
+        },
+        {
+          "number": 264,
+          "title": "locationannotationnode is added at my current location where i stand",
+          "createdAt": "2019-12-14T15:22:35Z",
+          "updatedAt": "2022-09-29T13:36:41Z",
+          "permalink": "https://github.com/AndrewHartAR/ARKit-CoreLocation/issues/264"
+        },
+        {
+          "number": 261,
+          "title": "Modify and merge in feature/node-stacking branch",
+          "createdAt": "2019-12-04T06:13:24Z",
+          "updatedAt": "2020-06-14T09:14:40Z",
+          "permalink": "https://github.com/AndrewHartAR/ARKit-CoreLocation/issues/261"
+        },
+        {
+          "number": 257,
+          "title": "AR camera freeze when returning from background on iOS12",
+          "createdAt": "2019-12-01T12:00:18Z",
+          "updatedAt": "2020-06-29T21:11:10Z",
+          "permalink": "https://github.com/AndrewHartAR/ARKit-CoreLocation/issues/257"
+        },
+        {
+          "number": 254,
+          "title": "Fix minor error with placement of route steps",
+          "createdAt": "2019-11-30T18:29:23Z",
+          "updatedAt": "2019-11-30T18:32:36Z",
+          "permalink": "https://github.com/AndrewHartAR/ARKit-CoreLocation/issues/254"
+        },
+        {
+          "number": 246,
+          "title": "accuracy of translation(toLocation:) and translatedLocation(with:)",
+          "createdAt": "2019-11-23T00:30:02Z",
+          "updatedAt": "2019-11-23T08:59:58Z",
+          "permalink": "https://github.com/AndrewHartAR/ARKit-CoreLocation/issues/246"
+        },
+        {
+          "number": 223,
+          "title": "Nodes are moving with me with when I travel",
+          "createdAt": "2019-09-07T10:26:34Z",
+          "updatedAt": "2020-10-29T02:37:54Z",
+          "permalink": "https://github.com/AndrewHartAR/ARKit-CoreLocation/issues/223"
+        },
+        {
+          "number": 221,
+          "title": "Left the view and go back",
+          "createdAt": "2019-09-01T17:29:23Z",
+          "updatedAt": "2019-12-06T18:24:56Z",
+          "permalink": "https://github.com/AndrewHartAR/ARKit-CoreLocation/issues/221"
+        },
+        {
+          "number": 219,
+          "title": "LocationAnnotationNode with video",
+          "createdAt": "2019-08-21T00:25:44Z",
+          "updatedAt": "2019-08-27T19:55:02Z",
+          "permalink": "https://github.com/AndrewHartAR/ARKit-CoreLocation/issues/219"
+        },
+        {
+          "number": 189,
+          "title": "Investigate RealityKit support",
+          "createdAt": "2019-06-11T14:53:48Z",
+          "updatedAt": "2020-12-29T08:13:17Z",
+          "permalink": "https://github.com/AndrewHartAR/ARKit-CoreLocation/issues/189"
+        },
+        {
+          "number": 187,
+          "title": "Add SwiftUI Support",
+          "createdAt": "2019-06-11T14:50:45Z",
+          "updatedAt": "2024-06-26T07:21:45Z",
+          "permalink": "https://github.com/AndrewHartAR/ARKit-CoreLocation/issues/187"
+        },
+        {
+          "number": 174,
+          "title": "how to use this lib in objective c project ?",
+          "createdAt": "2019-04-30T13:13:20Z",
+          "updatedAt": "2020-01-22T15:00:40Z",
+          "permalink": "https://github.com/AndrewHartAR/ARKit-CoreLocation/issues/174"
+        },
+        {
+          "number": 160,
+          "title": "Investigate requiring iOS 11",
+          "createdAt": "2019-02-20T03:20:17Z",
+          "updatedAt": "2019-11-24T04:02:26Z",
+          "permalink": "https://github.com/AndrewHartAR/ARKit-CoreLocation/issues/160"
+        },
+        {
+          "number": 145,
+          "title": "Decrease radius to only show nearest objects",
+          "createdAt": "2018-12-10T12:54:53Z",
+          "updatedAt": "2019-07-17T21:07:20Z",
+          "permalink": "https://github.com/AndrewHartAR/ARKit-CoreLocation/issues/145"
+        }
+      ],
+      "published_release_tags": [
+        "1.2.1",
+        "1.2.0",
+        "1.1.0",
+        "1.0.4",
+        "1.0.3"
+      ],
+      "repository_tags_in_clone": [
+        "1.2.0",
+        "1.2.1",
+        "1.3.0"
+      ]
+    },
+    {
+      "repository": "maxxfrazer/ARKit-SCNPath",
+      "head": "a1862431cdfd31d780f602483cf39746deaa5068",
+      "latest_commit": "2020-01-27T17:30:06Z example is not importing scnpath, files brought in to make development simpler",
+      "latest_non_merge_source_commit": "9e770e41892b829d8dbfe6195fdcf94bf17a9511 2019-06-20T14:21:35+01:00 added Package.swift, minimum version is now ios 11",
+      "license": "MIT",
+      "open_issue_count": 1,
+      "open_issues": [
+        {
+          "number": 13,
+          "title": "Material cutting out on curved surfaces.",
+          "createdAt": "2020-04-22T16:37:07Z",
+          "updatedAt": "2020-04-24T14:48:20Z",
+          "permalink": "https://github.com/maxxfrazer/ARKit-SCNPath/issues/13"
+        }
+      ],
+      "published_release_tags": [],
+      "repository_tags_in_clone": [
+        "0.1.0",
+        "0.1.1",
+        "1.0.0",
+        "1.1.0",
+        "1.2.0"
+      ]
+    },
+    {
+      "repository": "AndrewHartAR/Mirador",
+      "head": "87e0a6a6bcfd08654de3840348d595148e6e916e",
+      "latest_commit": "2025-12-30T16:06:58Z Revise author information and project details in README",
+      "latest_non_merge_source_commit": "d9bbcc5e12c2cb6633906a5efadaebab03278833 2023-05-29T15:42:31+01:00 adds public support for poi images, poi entities and location entities",
+      "license": "MIT",
+      "open_issue_count": 2,
+      "open_issues": [
+        {
+          "number": 7,
+          "title": "Mirador",
+          "createdAt": "2026-03-13T17:07:39Z",
+          "updatedAt": "2026-03-13T17:07:39Z",
+          "permalink": "https://github.com/AndrewHartAR/Mirador/issues/7"
+        },
+        {
+          "number": 6,
+          "title": "Does this work on the AVP or only the iPhone? ",
+          "createdAt": "2024-07-01T19:50:18Z",
+          "updatedAt": "2024-07-01T19:50:18Z",
+          "permalink": "https://github.com/AndrewHartAR/Mirador/issues/6"
+        }
+      ],
+      "published_release_tags": [],
+      "repository_tags_in_clone": []
+    }
+  ]
+}
