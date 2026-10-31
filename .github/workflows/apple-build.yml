@@ -64,8 +64,7 @@ jobs:
           path: .build/startup-failure
       - name: Explain startup failure
         run: |
-          xcrun xcresulttool export diagnostics --path .build/startup-failure/native-tests.xcresult --output-path .build/startup-diagnostics
-          python3 scripts/report-startup-crash.py .build/startup-diagnostics
+          python3 scripts/report-startup-crash.py .build/startup-failure
       - name: Test TourCore on Apple Foundation and CoreGraphics
         shell: bash
         run: |

@@ -4,6 +4,7 @@ from pathlib import Path
 import json
 import re
 import sys
+import subprocess
 
 
 def report(message):
@@ -11,7 +12,15 @@ def report(message):
     print(f'::notice title=Native startup evidence::{escaped[:12000]}')
 
 
-for path in Path(sys.argv[1]).rglob('*'):
+root = Path(sys.argv[1])
+report('Artifact entries: ' + ', '.join(str(p.relative_to(root)) for p in list(root.iterdir())[:20]))
+for result in root.rglob('*.xcresult'):
+    exported = result.parent / (result.stem + '-diagnostics')
+    response = subprocess.run(['xcrun', 'xcresulttool', 'export', 'diagnostics', '--path', str(result),
+                               '--output-path', str(exported)], capture_output=True, text=True)
+    report('Diagnostic export: ' + response.stdout + response.stderr)
+
+for path in root.rglob('*'):
     if not path.is_file() or path.stat().st_size > 30_000_000:
         continue
     if path.suffix not in ('.ips', '.crash', '.log', '.txt'):
