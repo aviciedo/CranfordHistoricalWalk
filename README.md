@@ -1,3 +1,14 @@
+## Build 119 candidate — deeper hunter-green AR chevrons
+
+Appearance-only refinement of build 118's field-confirmed working AR arrows. Deeper
+hunter-green extrusions, a cached green gradient, a fixed artwork presentation angle
+and sufficient spacing expose the sidewalls while retaining the white front geometry.
+Existing viewport fitting constrains display size. Navigation, anchors, route direction,
+tracking, confidence gates and progression are unchanged. See the
+[sidewall change and iPhone checklist](docs/engineering/ar-chevron-sidewalls.md).
+Native Apple checks must pass on this candidate; final appearance in sunlight/shade
+and all maneuver orientations requires iPhone visual inspection. Not yet published.
+
 ## Build 118 — AR guidance recovery and Cranford Hotel photos
 
 Repairs GPS/AR sample ordering so unmatched fresh locations are retried when matching
