@@ -84,7 +84,7 @@ Home/Stops/Map design or previously declined progression UI redesign was impleme
 The final candidate must also pass the existing **Apple compiler checks** workflow on its
 exact commit: core/model tests on Apple Foundation, shipped-project Simulator compilation,
 native host tests and iPhone Release compilation. The validation branch is
-`validation/ar-reliability-116-field-ready`; the matching run's native counts/conclusion are the native
+`validation/ar-reliability-116-final`; the matching run's native counts/conclusion are the native
 testing record. Do not use build 115's successful run to certify these changes.
 
 ## Limitations and device-only work

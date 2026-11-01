@@ -20,10 +20,12 @@ final class GeoSpatialProviderFactoryTests: XCTestCase {
         provider.update(location: LocationSample(coordinate: coordinate, horizontalAccuracy: 3,
             timestamp: sampleDate), heading: HeadingSample(trueHeading: 0, magneticHeading: 0,
             accuracy: 5, timestamp: sampleDate))
-        let point = try XCTUnwrap(provider.worldPosition(for:
-            GeoMath.destination(from: coordinate, bearing: 0, distance: 8), altitude: nil, heightBelowCamera: 0))
-        XCTAssertEqual(point.x, 5, accuracy: 0.01)
-        XCTAssertEqual(point.z, -10, accuracy: 0.01)
+        // Isolate capture-time binding at the known geographic origin. Route distances
+        // use a mean-radius sphere; WGS84 offsets intentionally differ at centimetre scale.
+        let point = try XCTUnwrap(provider.worldPosition(for: coordinate, altitude: nil, heightBelowCamera: 0))
+        XCTAssertEqual(point.x, 5, accuracy: 0.001)
+        XCTAssertEqual(point.y, 1.6, accuracy: 0.001)
+        XCTAssertEqual(point.z, -2, accuracy: 0.001)
         // Replaying a heading update cannot bind an old GPS coordinate to a new camera pose.
         camera.columns.3.x = 9
         provider.update(cameraTransform: camera, trackingState: .normal, timestamp: 100.1)
