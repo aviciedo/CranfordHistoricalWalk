@@ -1,6 +1,7 @@
 import ARKit
 import Foundation
 import Observation
+import OSLog
 import RealityKit
 import simd
 import TourCore
@@ -51,6 +52,7 @@ final class GeoAnchorManager {
     private(set) var hasDetectedGround = false
     private(set) var isNavigationGroundVerified = false
     private(set) var hasPlacedNavigation = false
+    private(set) var isNavigationManeuverOnly = false
     private(set) var navigationNotice: String?
     private(set) var navigationBearing: Double?
     private(set) var spatialMode: ARSpatialConfidence.Mode = .aligning
@@ -105,6 +107,7 @@ final class GeoAnchorManager {
     @ObservationIgnored private var didRequestFallback = false
 
     /// Frames are processed at most this often (seconds). ARKit delivers 60 Hz; 10 Hz is plenty.
+    private static let navigationLogger = Logger(subsystem: "com.cranford.walk", category: "ARWalking")
     static let frameInterval: TimeInterval = 0.1
 
     init(provider: any GeoSpatialProvider, anchors: ARAnchorManager? = nil,
@@ -139,6 +142,7 @@ final class GeoAnchorManager {
 
     private func resetSpatialNavigation() {
         spatialConfidence.reset()
+        isNavigationManeuverOnly = false
         isNavigationGroundVerified = false
         spatialMode = .aligning
         anchors.arrows.resetAnchor()
@@ -414,6 +418,7 @@ final class GeoAnchorManager {
 
     private func placeContent(now: TimeInterval) {
         let date = currentDate()
+        hasPlacedNavigation = false
         guard !hasActivatedStop else { anchors.hideNavigation(); navigationNotice = nil; return }
         guard let cameraTransform, let base = cameraGroundPosition else { anchors.hideNavigation(); return }
         guard let target, StopActivationPolicy.isFresh(target.locationTimestamp, now: date) else {
@@ -445,8 +450,15 @@ final class GeoAnchorManager {
             yawAccuracy: pose?.heading == nil ? .infinity : (pose?.headingAccuracy ?? .infinity),
             routeOffset: target.routeOffset, hasPreview: target.anchorCoordinate != nil,
             alignment: alignmentIsUsable, timestamp: now)
-        if spatialMode != mode { spatialMode = mode }
+        if spatialMode != mode {
+            spatialMode = mode
+            // Sensor quality only: no coordinates, images, keys or retained GPS history.
+            Self.navigationLogger.notice("Spatial gate: \(String(describing: mode), privacy: .public); GPS accuracy=\(target.horizontalAccuracy, privacy: .public)m; route offset=\(target.routeOffset, privacy: .public)m; yaw accuracy=\(pose?.headingAccuracy ?? .infinity, privacy: .public)deg; preview=\(target.anchorCoordinate != nil, privacy: .public)")
+        }
         guard mode == .spatial, let projected, let direction, anchors.arrows.canRender else {
+            if presentManeuverIfUsable(target: target, cameraTransform: cameraTransform,
+                                       ground: base, date: date, now: now) { return }
+            isNavigationManeuverOnly = false
             anchors.hideNavigation()
             // Retain fixed geometry through a brief loss, but never render it while confidence is low.
             let message: String
@@ -461,6 +473,8 @@ final class GeoAnchorManager {
             if navigationNotice != message { navigationNotice = message }
             return
         }
+        if isNavigationManeuverOnly { anchors.arrows.resetAnchor() }
+        isNavigationManeuverOnly = false
         var ground = SIMD3<Float>(projected.x, base.y, projected.z)
         isNavigationGroundVerified = false
         if hasDetectedGround, let refined = detectedGroundPosition(near: ground) {
@@ -480,6 +494,40 @@ final class GeoAnchorManager {
             message = "Turn toward the route to see the arrows."
         } else { message = nil }
         if navigationNotice != message { navigationNotice = message }
+    }
+
+    /// A readable virtual maneuver sign is distinct from street-registered route arrows.
+    /// Its orientation conveys the route instruction, never a compass direction.
+    private func presentManeuverIfUsable(target: NavigationTarget, cameraTransform: simd_float4x4,
+                                         ground: SIMD3<Float>, date: Date, now: TimeInterval) -> Bool {
+        guard ARStreetGuidance.canShowManeuver(tracking: isTrackingReady,
+            locationAge: date.timeIntervalSince(target.locationTimestamp), accuracy: target.horizontalAccuracy,
+            routeOffset: target.routeOffset, hasCue: target.turnCue != nil), let cue = target.turnCue else { return false }
+        let camera = cameraTransform.translation
+        let forward = -SIMD3<Float>(cameraTransform.columns.2.x, 0, cameraTransform.columns.2.z)
+        guard let candidate = ARStreetGuidance.visibleCandidate(projected: nil,
+            camera: SIMD3(Double(camera.x), Double(camera.y), Double(camera.z)),
+            cameraForward: SIMD3(Double(forward.x), Double(forward.y), Double(forward.z)),
+            groundHeight: Double(ground.y)) else { return false }
+        if !isNavigationManeuverOnly { anchors.arrows.resetAnchor() }
+        // A local instruction must remain readable when the visitor looks elsewhere.
+        // This relocation is never applied to a street-registered arrow.
+        if let pinned = anchors.arrows.guidancePosition {
+            let delta = SIMD2(pinned.x - camera.x, pinned.z - camera.z)
+            let length = simd_length(delta), forwardLength = simd_length(forward)
+            if length < 3 || (forwardLength > 0.1 && simd_dot(delta, SIMD2(forward.x, forward.z)) < length * forwardLength * 0.5) {
+                anchors.arrows.resetAnchor()
+            }
+        }
+        isNavigationManeuverOnly = true
+        isNavigationGroundVerified = false
+        anchors.arrows.setVisible(true)
+        anchors.arrows.updateManeuver(ground: SIMD3(Float(candidate.position.x), Float(candidate.position.y), Float(candidate.position.z)),
+            camera: camera, instruction: .init(direction: cue.direction, streetName: cue.streetName),
+            timestamp: now, arView: anchors.arView)
+        hasPlacedNavigation = anchors.arrows.guidancePosition != nil
+        navigationNotice = "Maneuver preview · Not aligned to the street"
+        return hasPlacedNavigation
     }
 
     /// Refine the route point against detected horizontal geometry when it is in view.

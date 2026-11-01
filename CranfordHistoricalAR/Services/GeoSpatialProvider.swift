@@ -120,8 +120,9 @@ final class CoreLocationGeoSpatialProvider: GeoSpatialProvider {
             cameraHistory.append(SIMD3(Double(position.x), Double(position.y), Double(position.z)), at: capturedAt)
         }
         if case .normal = trackingState, let location = pendingLocation {
-            pendingLocation = nil
-            bind(location: location)
+            if bind(location: location) || !StopActivationPolicy.isFresh(location.timestamp, now: currentDate()) {
+                pendingLocation = nil
+            }
         }
         recomputeQuality()
     }
@@ -133,7 +134,7 @@ final class CoreLocationGeoSpatialProvider: GeoSpatialProvider {
         // that old coordinate to a new camera position makes world content drift.
         if pose?.timestamp != location.timestamp || pose?.coordinate != location.coordinate {
             if cameraTransform != nil, case .normal = trackingState {
-                bind(location: location)
+                pendingLocation = bind(location: location) ? nil : location
             } else {
                 pendingLocation = location
             }
@@ -149,15 +150,17 @@ final class CoreLocationGeoSpatialProvider: GeoSpatialProvider {
         recomputeQuality()
     }
 
-    private func bind(location: LocationSample) {
+    @discardableResult
+    private func bind(location: LocationSample) -> Bool {
         guard preferredWorldAlignment == .gravityAndHeading, StopActivationPolicy.isFresh(location.timestamp, now: currentDate()),
-              let matched = cameraHistory.position(at: location.timestamp) else { return }
+              let matched = cameraHistory.position(at: location.timestamp) else { return false }
         alignment.update(coordinate: location.coordinate, camera: matched, accuracy: location.horizontalAccuracy,
                          timestamp: location.timestamp, course: location.course, speed: location.speed)
         if var pose, pose.timestamp == location.timestamp {
             pose.horizontalAccuracy = max(location.horizontalAccuracy, alignment.residualError)
             self.pose = pose
         }
+        return true
     }
 
     func worldDirection(forBearing bearing: Double) -> SIMD3<Float>? {

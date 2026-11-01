@@ -2,6 +2,15 @@ import Foundation
 
 /// Route and world-space placement policy shared by native AR and portable regression tests.
 public enum ARStreetGuidance {
+    /// An informational maneuver sign does not claim geographic registration. Require a
+    /// real route cue and usable live GPS anyway; never display stale/off-route guidance.
+    public static func canShowManeuver(tracking: Bool, locationAge: Double, accuracy: Double,
+                                       routeOffset: Double, hasCue: Bool) -> Bool {
+        tracking && hasCue && locationAge.isFinite && (-1...5).contains(locationAge)
+            && accuracy.isFinite && (0...20).contains(accuracy)
+            && routeOffset.isFinite && (0...15).contains(routeOffset)
+    }
+
     public static let lookAheadMeters = 8.0
     public static let minimumClearanceMeters = 0.16
     public static let chevronScale = 1.45

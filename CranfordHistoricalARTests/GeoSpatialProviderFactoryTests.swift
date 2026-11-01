@@ -3,10 +3,65 @@ import ARKit
 import simd
 import RealityKit
 @testable import CranfordHistoricalAR
-import TourCore
+@testable import TourCore
 
 @MainActor
 final class GeoSpatialProviderFactoryTests: XCTestCase {
+    func testGPSBeforeMatchingFrameIsRetriedWithoutReplayingBoundFixes() throws {
+        let start = Date(timeIntervalSince1970: 1_800_000_000)
+        var now = start
+        var media = 100.0
+        let provider = CoreLocationGeoSpatialProvider(hasCompass: true,
+            currentDate: { now }, mediaTime: { media })
+        provider.attach(session: ARSession())
+        defer { provider.detach() }
+        provider.update(cameraTransform: matrix_identity_float4x4, trackingState: .normal, timestamp: media)
+        now = start.addingTimeInterval(1); media = 101
+        let coordinate = GeoCoordinate(latitude: 40.65, longitude: -74.3)
+        provider.update(location: .init(coordinate: coordinate, horizontalAccuracy: 3, timestamp: now),
+            heading: .init(trueHeading: 0, magneticHeading: 0, accuracy: 5, timestamp: now))
+        XCTAssertNil(provider.worldPosition(for: coordinate, altitude: nil, heightBelowCamera: 0))
+        var camera = matrix_identity_float4x4
+        camera.columns.3 = [4, 1.6, -2, 1]
+        provider.update(cameraTransform: camera, trackingState: .normal, timestamp: media)
+        XCTAssertEqual(try XCTUnwrap(provider.worldPosition(for: coordinate, altitude: nil, heightBelowCamera: 0)).x, 4, accuracy: 0.001)
+    }
+
+    func testOrdinaryOutdoorGPSShowsManeuverAndRecoversToSpatialArrows() {
+        let date = Date(timeIntervalSince1970: 1_800_000_000)
+        let provider = SpatialNavigationTestProvider()
+        provider.pose?.timestamp = date
+        let manager = GeoAnchorManager(provider: provider, currentDate: { date })
+        var target = GeoAnchorManager.NavigationTarget(destination: provider.pose!.coordinate,
+            bearingToWaypoint: 0, anchorCoordinate: provider.pose!.coordinate,
+            turnCue: .init(direction: .right, streetName: "Springfield Ave", distanceMeters: 125,
+                coordinate: nil, stepIndex: 1, isUpcomingTurn: true, isTowardStreet: false),
+            locationTimestamp: date, horizontalAccuracy: 9, routeOffset: 8)
+        manager.setNavigationTarget(target)
+        manager.updateNavigationPose(cameraTransform: matrix_identity_float4x4, trackingState: .normal, timestamp: 0)
+        XCTAssertTrue(manager.hasPlacedNavigation)
+        XCTAssertTrue(manager.isNavigationManeuverOnly)
+        XCTAssertNotNil(manager.anchors.arrows.guidancePosition)
+        XCTAssertTrue(manager.navigationNotice?.contains("Not aligned") == true)
+        target.horizontalAccuracy = 3; target.routeOffset = 0
+        manager.setNavigationTarget(target)
+        for time in stride(from: 0.1, through: 2.2, by: 0.1) {
+            manager.updateNavigationPose(cameraTransform: matrix_identity_float4x4, trackingState: .normal, timestamp: time)
+        }
+        XCTAssertEqual(manager.spatialMode, .spatial)
+        XCTAssertFalse(manager.isNavigationManeuverOnly)
+        XCTAssertTrue(manager.hasPlacedNavigation)
+        manager.trackingStateDidChange(.limited(.insufficientFeatures))
+        XCTAssertNil(manager.anchors.arrows.guidancePosition)
+        target.horizontalAccuracy = 40
+        manager.setNavigationTarget(target)
+        manager.updateNavigationPose(cameraTransform: matrix_identity_float4x4, trackingState: .normal, timestamp: 2.3)
+        XCTAssertFalse(manager.hasPlacedNavigation)
+        XCTAssertNil(manager.anchors.arrows.guidancePosition)
+        manager.setNavigationTarget(nil)
+        XCTAssertNil(manager.anchors.arrows.guidancePosition)
+    }
+
     func testCoreLocationAlignmentUsesFrameCaptureTimeAfterDelayedDelivery() throws {
         let sampleDate = Date(timeIntervalSince1970: 1_800_000_000)
         let provider = CoreLocationGeoSpatialProvider(hasCompass: true,

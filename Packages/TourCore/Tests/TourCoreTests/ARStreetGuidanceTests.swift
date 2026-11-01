@@ -2,6 +2,20 @@ import XCTest
 @testable import TourCore
 
 final class ARStreetGuidanceTests: XCTestCase {
+    func testManeuverPreviewSupportsOrdinaryGPSWithoutClaimingStreetAlignment() {
+        XCTAssertTrue(ARStreetGuidance.canShowManeuver(tracking: true, locationAge: 1,
+            accuracy: 9, routeOffset: 8, hasCue: true))
+        for (tracking, age, accuracy, offset, cue) in [
+            (false, 1.0, 9.0, 8.0, true), (true, 6, 9, 8, true),
+            (true, 1, 21, 8, true), (true, 1, 9, 16, true), (true, 1, 9, 8, false),
+            (true, 1, .infinity, 0, true), (true, 1, 5, .nan, true),
+            (true, -2, 5, 0, true)
+        ] {
+            XCTAssertFalse(ARStreetGuidance.canShowManeuver(tracking: tracking, locationAge: age,
+                accuracy: accuracy, routeOffset: offset, hasCue: cue))
+        }
+    }
+
     func testFirstSignDoesNotRequireGroundPlaneCompassOrGeoProjection() throws {
         let candidate = try XCTUnwrap(ARStreetGuidance.visibleCandidate(projected: nil,
             camera: [2, 1.6, 3], cameraForward: [0, 0, -1], groundHeight: 0.45))

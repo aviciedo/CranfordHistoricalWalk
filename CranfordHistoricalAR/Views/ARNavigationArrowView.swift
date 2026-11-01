@@ -9,6 +9,7 @@ struct ARNavigationArrowView: View {
     var needsGroundScan = false
     var needsOrientation = false
     var groundIsEstimated = false
+    var maneuverOnly = false
     var nextStopName: String? = nil
     var onContinue: (() -> Void)? = nil
 
@@ -33,7 +34,10 @@ struct ARNavigationArrowView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
-            if needsGroundScan {
+            if maneuverOnly {
+                Text("Upcoming instruction · Use the map to follow the path")
+                    .font(.caption).foregroundStyle(.white.opacity(0.85))
+            } else if needsGroundScan {
                 Text("Tilt your phone slightly down to find the ground")
                     .font(.caption).foregroundStyle(.white.opacity(0.85))
             } else if needsOrientation {

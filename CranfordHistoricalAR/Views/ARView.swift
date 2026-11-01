@@ -288,6 +288,7 @@ struct ARHUDView: View {
                                      needsGroundScan: needsGround,
                                      needsOrientation: needsOrientation,
                                      groundIsEstimated: model.geoAnchors.spatialMode == .spatial && !model.geoAnchors.isNavigationGroundVerified,
+                                     maneuverOnly: model.geoAnchors.isNavigationManeuverOnly,
                                      nextStopName: model.tour.nextStop?.name,
                                      onContinue: nextLegAction)
     }

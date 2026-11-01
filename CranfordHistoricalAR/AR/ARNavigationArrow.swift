@@ -65,8 +65,7 @@ final class ARNavigationArrowEntity: Entity {
         addChild(holder)
     }
 
-    @available(*, deprecated, message: "Legacy local sign only. Walking uses updateSpatial with a route-oriented pose.")
-    func update(ground: SIMD3<Float>, camera: SIMD3<Float>,
+    func updateManeuver(ground: SIMD3<Float>, camera: SIMD3<Float>,
                 instruction: ARStreetGuidance.Instruction, timestamp: TimeInterval, arView: ARView? = nil) {
         guard isShowing else { return }
         let candidate = SIMD3<Double>(Double(ground.x), Double(ground.y), Double(ground.z))
