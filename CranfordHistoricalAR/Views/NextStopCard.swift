@@ -123,9 +123,9 @@ struct NextStopCard: View {
             Button("Undo · Return to previous stop") { tour.undoAutomaticTransition() }
                 .accessibilityIdentifier("map.undoAdvance")
         }
-        if let previous = tour.previousStop {
+        if tour.previousStop != nil {
             Button { tour.goToPreviousStop() } label: {
-                Label("Previous stop: \(previous.name)", systemImage: "arrow.left")
+                Label("Previous stop", systemImage: "arrow.left")
             }
             .accessibilityIdentifier("map.previousStop")
         }
@@ -138,7 +138,7 @@ struct NextStopCard: View {
         }
         if tour.canContinueCurrentStop && !tour.isCurrentVisitConfirmed {
             Button { tour.completeCurrentStopAndAdvance() } label: {
-                Label(tour.nextStop == nil ? "Finish walk" : "Continue now", systemImage: "arrow.right")
+                Label(tour.nextStop == nil ? "Finish walk" : "Next stop", systemImage: "arrow.right")
             }
         }
         if let onShowRoute { Button(tour.isWalkingActive ? "Show walking route" : "Show destination", systemImage: "scope", action: onShowRoute) }
