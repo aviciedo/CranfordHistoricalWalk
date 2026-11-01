@@ -14,6 +14,16 @@ public enum MapMarkerSizing {
     public static let maximumOffset: Double = 132
     public static let gap: Double = 10
 
+    /// Reserve a fixed 44pt badge at its geographic anchor, independently of art zoom.
+    /// The image remains centered so existing site offsets and leader lines stay truthful.
+    public static func canvasWidth(scale: Double) -> Double {
+        max(44, width * scale, 2 * abs(width / 2 - badgeCenter.x) * scale + 44)
+    }
+
+    public static func canvasHeight(scale: Double) -> Double {
+        max(44, height * scale, 2 * abs(height / 2 - badgeCenter.y) * scale + 44)
+    }
+
     public struct Placement: Equatable {
         public let site: SIMD2<Double>
         public let center: SIMD2<Double>
@@ -70,7 +80,7 @@ public enum MapMarkerSizing {
             var rectangles: [CGRect] = []
             var placements: [Placement] = []
             var fits = true
-            let w = max(44, width * size), h = max(44, height * size)
+            let w = canvasWidth(scale: size), h = canvasHeight(scale: size)
             let naturalOffset = (SIMD2(width / 2, height / 2) - badgeCenter) * size
             for index in points.indices {
                 let site = points[index]

@@ -366,7 +366,7 @@ struct AppleTourMapView: UIViewRepresentable {
             if let marker = site.marker {
                 if !marker.isIllustrated {
                     view.subviews.filter { $0 is StopMapIconView }.forEach { $0.removeFromSuperview() }
-                    let key = "compact|\(marker.id)|\(marker.order)|\(marker.isWalkingDestination)|\(marker.artwork?.cacheKey ?? "")"
+                    let key = "compact|\(marker.id)|\(marker.order)|\(marker.isTourDestination)|\(marker.isWalkingDestination)|\(marker.artwork?.cacheKey ?? "")"
                     if markerImages[key] == nil { markerImages[key] = StopMapArtwork.compactImage(for: marker) }
                     view.image = markerImages[key]
                     view.zPriority = .defaultSelected
@@ -381,9 +381,10 @@ struct AppleTourMapView: UIViewRepresentable {
                 view.image = nil
                 let icon = (view.subviews.first { $0 is StopMapIconView } as? StopMapIconView) ?? StopMapIconView()
                 if icon.superview == nil { view.addSubview(icon) }
-                let key = "\(marker.id)|\(marker.order)|\(marker.state)|\(marker.isWalkingDestination)|\(marker.artwork?.cacheKey ?? "")"
+                let key = "\(marker.id)|\(marker.order)|\(marker.state)|\(marker.isTourDestination)|\(marker.isWalkingDestination)|\(marker.artwork?.cacheKey ?? "")"
                 if markerImages[key] == nil { markerImages[key] = StopMapArtwork.image(for: marker) }
                 icon.setArtwork(markerImages[key])
+                icon.setBadge(marker)
                 icon.resize(scale: markerScale)
                 view.bounds = icon.bounds
                 icon.center = CGPoint(x: view.bounds.midX, y: view.bounds.midY)
@@ -397,7 +398,7 @@ struct AppleTourMapView: UIViewRepresentable {
                 view.accessibilityTraits = .button
                 view.accessibilityHint = "View stop"
                 view.displayPriority = .required
-                view.zPriority = marker.state == .current ? .max : .defaultSelected
+                view.zPriority = marker.isTourDestination ? .max : .defaultSelected
             } else {
                 view.subviews.filter { $0 is StopMapIconView }.forEach { $0.removeFromSuperview() }
                 view.image = UIGraphicsImageRenderer(size: CGSize(width: 24, height: 24)).image { context in

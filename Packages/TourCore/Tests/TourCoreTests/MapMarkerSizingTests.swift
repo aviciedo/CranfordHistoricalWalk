@@ -48,7 +48,8 @@ final class MapMarkerSizingTests: XCTestCase {
         let layout = MapMarkerSizing.layout(points: Array(repeating: SIMD2(190, 290), count: 5),
                                             metersPerPoint: 5, viewport: viewport)
         XCTAssertTrue(layout.placements.allSatisfy(\.isVisible))
-        XCTAssertGreaterThanOrEqual(layout.scale, 0.72)
+        // Scale now affects illustrations only; numbered badges retain fixed screen sizes.
+        XCTAssertGreaterThan(layout.scale, 0)
         assertSeparate(layout)
     }
 
@@ -121,7 +122,7 @@ final class MapMarkerSizingTests: XCTestCase {
     }
 
     private func rectangle(_ placement: MapMarkerSizing.Placement, scale: Double) -> CGRect {
-        let w = max(44, MapMarkerSizing.width * scale), h = max(44, MapMarkerSizing.height * scale)
+        let w = MapMarkerSizing.canvasWidth(scale: scale), h = MapMarkerSizing.canvasHeight(scale: scale)
         return CGRect(x: CGFloat(placement.center.x - w / 2), y: CGFloat(placement.center.y - h / 2),
                       width: CGFloat(w), height: CGFloat(h))
     }

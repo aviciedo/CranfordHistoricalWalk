@@ -154,7 +154,7 @@ struct GoogleMapView: UIViewRepresentable {
             marker.snippet = model.information
             marker.isTappable = true
             marker.groundAnchor = groundAnchor
-            marker.zIndex = zIndex(for: model.state, isSelected: isSelected)
+            marker.zIndex = model.isTourDestination ? 50 : zIndex(for: model.state, isSelected: isSelected)
             marker.position = model.coordinate
             if markerStyle == .numberedDot && !model.isIllustrated {
                 let view = UIImageView(image: StopMapArtwork.compactImage(for: model))
@@ -167,6 +167,8 @@ struct GoogleMapView: UIViewRepresentable {
                 marker.isTappable = true
             } else {
                 applyIcon(marker, image: icon(for: model, isSelected: isSelected))
+                if markerStyle == .numberedDot, let view = marker.iconView as? StopMapIconView,
+                   view.setBadge(model) { refreshSnapshot(of: marker) }
             }
         }
 
@@ -259,7 +261,7 @@ struct GoogleMapView: UIViewRepresentable {
         }
 
         private func icon(for model: StopMarkerModel, isSelected: Bool) -> UIImage? {
-            let key = "\(model.artwork?.cacheKey ?? "")|\(model.isWalkingDestination)|\(model.isIllustrated)|\(markerStyle)|\(isSelected)|\(model.order)|\(model.state)|\(model.name)|\(colorScheme == .dark)"
+            let key = "\(model.artwork?.cacheKey ?? "")|\(model.isTourDestination)|\(model.isWalkingDestination)|\(model.isIllustrated)|\(markerStyle)|\(isSelected)|\(model.order)|\(model.state)|\(model.name)|\(colorScheme == .dark)"
             if let cached = iconCache[key] { return cached }
             let scheme = colorScheme ?? .light
             let renderer: ImageRenderer<AnyView>
@@ -558,6 +560,8 @@ struct StopNumberBadge: View {
     let isActive: Bool
     var diameter: CGFloat = 28
 
+    static func diameter(for marker: StopMarkerModel) -> CGFloat { marker.isTourDestination ? 40 : 26 }
+
     private var ink: Color { isActive ? .white : AppTheme.forest }
 
     var body: some View {
@@ -574,12 +578,12 @@ struct StopNumberBadge: View {
     }
 }
 
-/// Shared Google/Apple artwork: large landmark with a consistent bottom-left number badge.
+/// Shared Google/Apple art and fixed-size number textures. The icon view composes them.
 @MainActor
 enum StopMapArtwork {
     static func compactImage(for marker: StopMarkerModel) -> UIImage {
         let renderer = ImageRenderer(content:
-            StopNumberBadge(order: marker.order, isActive: marker.isWalkingDestination)
+            StopNumberBadge(order: marker.order, isActive: marker.isWalkingDestination, diameter: StopNumberBadge.diameter(for: marker))
                 .frame(width: 44, height: 44)
                 .environment(\.isEnabled, true))
         renderer.scale = 3
@@ -589,13 +593,10 @@ enum StopMapArtwork {
 
     static func image(for marker: StopMarkerModel, isSelected: Bool = false, scheme: ColorScheme = .light) -> UIImage {
         let renderer = ImageRenderer(content:
-            ZStack(alignment: .bottomLeading) {
-                StopListIllustration(stopID: marker.id, artwork: marker.artwork)
-                    .frame(width: 96, height: 70)
-                    .frame(width: 100, height: 80, alignment: .top)
-                StopNumberBadge(order: marker.order, isActive: marker.isWalkingDestination)
-            }
-            .frame(width: CGFloat(MapMarkerSizing.width), height: CGFloat(MapMarkerSizing.height))
+            // Number badges are separate fixed-size views, never baked into zooming art.
+            StopListIllustration(stopID: marker.id, artwork: marker.artwork)
+                .frame(width: 96, height: 70)
+                .frame(width: CGFloat(MapMarkerSizing.width), height: CGFloat(MapMarkerSizing.height), alignment: .top)
             .environment(\.colorScheme, scheme)
             .environment(\.isEnabled, true))
         // These are full-color illustrations, not template symbols. Keep the alpha channel
@@ -611,6 +612,9 @@ enum StopMapArtwork {
 @MainActor
 final class StopMapIconView: UIView {
     let imageView = UIImageView()
+    let badgeView = UIImageView()
+    private var badgeKey: String?
+    private var currentScale: CGFloat = 1
 
     init() {
         super.init(frame: .zero)
@@ -625,6 +629,9 @@ final class StopMapIconView: UIView {
         imageView.isOpaque = false
         imageView.contentMode = .scaleAspectFit
         addSubview(imageView)
+        badgeView.isHidden = true
+        badgeView.contentMode = .center
+        addSubview(badgeView)
         resize(scale: 1)
     }
 
@@ -641,6 +648,17 @@ final class StopMapIconView: UIView {
     }
 
     @discardableResult
+    func setBadge(_ marker: StopMarkerModel) -> Bool {
+        let key = "\(marker.order)|\(marker.isTourDestination)|\(marker.isWalkingDestination)"
+        guard badgeKey != key else { return false }
+        badgeKey = key
+        badgeView.image = StopMapArtwork.compactImage(for: marker)
+        badgeView.isHidden = false
+        resize(scale: currentScale)
+        return true
+    }
+
+    @discardableResult
     func resize(scale: CGFloat) -> Bool {
         // Tiny projection/latitude changes must not invalidate the Maps texture. Round
         // visible dimensions to physical pixels while retaining the 44-point hit target.
@@ -648,14 +666,23 @@ final class StopMapIconView: UIView {
         let safeScale = scale.isFinite ? max(0, scale) : 0
         let size = CGSize(width: (CGFloat(MapMarkerSizing.width) * safeScale * pixels).rounded() / pixels,
                           height: (CGFloat(MapMarkerSizing.height) * safeScale * pixels).rounded() / pixels)
-        let targetBounds = CGRect(x: 0, y: 0, width: max(44, size.width), height: max(44, size.height))
+        currentScale = safeScale
+        let targetBounds = CGRect(x: 0, y: 0,
+            width: (CGFloat(MapMarkerSizing.canvasWidth(scale: Double(safeScale))) * pixels).rounded() / pixels,
+            height: (CGFloat(MapMarkerSizing.canvasHeight(scale: Double(safeScale))) * pixels).rounded() / pixels)
         let artworkFrame = CGRect(x: (targetBounds.width - size.width) / 2,
                                   y: (targetBounds.height - size.height) / 2,
                                   width: size.width, height: size.height)
-        guard bounds != targetBounds || imageView.frame != artworkFrame else { return false }
+        let badgeCenter = CGPoint(
+            x: artworkFrame.minX + size.width * CGFloat(MapMarkerSizing.badgeCenter.x / MapMarkerSizing.width),
+            y: artworkFrame.minY + size.height * CGFloat(MapMarkerSizing.badgeCenter.y / MapMarkerSizing.height))
+        let badgeFrame = CGRect(x: (badgeCenter.x * pixels).rounded() / pixels - 22,
+                                y: (badgeCenter.y * pixels).rounded() / pixels - 22, width: 44, height: 44)
+        guard bounds != targetBounds || imageView.frame != artworkFrame || badgeView.frame != badgeFrame else { return false }
         UIView.performWithoutAnimation {
             bounds = targetBounds
             imageView.frame = artworkFrame
+            badgeView.frame = badgeFrame
         }
         return true
     }
@@ -779,8 +806,8 @@ struct StopDotMarker: View {
     let showsNumber: Bool
 
     private var diameter: CGFloat {
-        if isSelected { return showsNumber ? 44 : 30 }
-        return showsNumber ? 40 : 14
+        if showsNumber { return StopNumberBadge.diameter(for: model) }
+        return model.isTourDestination ? 40 : (isSelected ? 24 : 14)
     }
 
     var body: some View {
@@ -817,7 +844,7 @@ struct StopMarkerLabel: View {
                 .background(.thinMaterial, in: Capsule())
                 .foregroundStyle(.primary)
             StopNumberBadge(order: model.order, isActive: model.isWalkingDestination,
-                            diameter: model.isWalkingDestination ? 34 : 28)
+                            diameter: StopNumberBadge.diameter(for: model))
         }
         .padding(4)
     }

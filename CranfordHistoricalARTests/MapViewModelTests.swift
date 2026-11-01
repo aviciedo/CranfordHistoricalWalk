@@ -319,6 +319,44 @@ final class MapViewModelTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(icon.bounds.height, 44)
     }
 
+    func testEveryStopHasTheLargestDestinationBadgeIndependentOfArtworkZoomAndVisitHistory() throws {
+        for stop in HistoricalStop.previewStops {
+            var marker = StopMarkerModel(id: stop.id, coordinate: stop.clLocationCoordinate,
+                order: stop.order, name: stop.name, state: .visited, isTourDestination: true)
+            let icon = StopMapIconView()
+            icon.setArtwork(StopMapArtwork.image(for: marker))
+            for walking in [false, true] {
+                marker.isWalkingDestination = walking
+                icon.setBadge(marker)
+                let badge = try XCTUnwrap(icon.badgeView.image)
+                XCTAssertEqual(try opaqueBadgeWidth(badge), 40, accuracy: 1)
+                for scale in [0.1, 0.47, 0.72, 1.0, 1.3] {
+                    icon.resize(scale: scale)
+                    XCTAssertEqual(icon.badgeView.bounds.size, CGSize(width: 44, height: 44))
+                    XCTAssertTrue(icon.bounds.insetBy(dx: -0.5, dy: -0.5).contains(icon.badgeView.frame))
+                    XCTAssertTrue(icon.badgeView.image === badge, "Zoom must not shrink or regenerate the number")
+                }
+                marker.isTourDestination = false
+                XCTAssertEqual(try opaqueBadgeWidth(StopMapArtwork.compactImage(for: marker)), 26, accuracy: 1)
+                marker.isTourDestination = true
+            }
+        }
+    }
+
+    private func opaqueBadgeWidth(_ image: UIImage) throws -> CGFloat {
+        let source = try XCTUnwrap(image.cgImage)
+        let width = source.width, height = source.height
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        let opaque = try pixels.withUnsafeMutableBytes { bytes -> Int in
+            let context = try XCTUnwrap(CGContext(data: bytes.baseAddress, width: width, height: height,
+                bitsPerComponent: 8, bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+            context.draw(source, in: CGRect(x: 0, y: 0, width: CGFloat(width), height: CGFloat(height)))
+            return (0..<width).filter { bytes[(height / 2 * width + $0) * 4 + 3] > 127 }.count
+        }
+        return CGFloat(opaque) / image.scale
+    }
+
     func testLandmarkReplacementKeepsItsLayoutAndUsesNewArtwork() {
         let icon = StopMapIconView()
         icon.resize(scale: 0.8)

@@ -207,6 +207,31 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertTrue(map.markers(for: tour).allSatisfy(\.isIllustrated), "Other map consumers keep their existing artwork")
     }
 
+    func testDestinationBadgeFollowsEveryStopWhileWalkingPausedVisitedAndBrowsing() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        let map = MapViewModel()
+        XCTAssertEqual(map.markers(for: tour).filter(\.isTourDestination).map(\.id), [stops[0].id])
+        tour.startTour()
+        for stop in stops {
+            for illustratedOnly in [false, true] {
+                let walking = map.markers(for: tour, emphasizesDestinationOnly: illustratedOnly)
+                XCTAssertEqual(walking.filter(\.isTourDestination).map(\.id), [stop.id])
+                XCTAssertEqual(walking.filter(\.isWalkingDestination).map(\.id), [stop.id])
+            }
+            tour.stopWalk()
+            XCTAssertEqual(map.markers(for: tour).filter(\.isTourDestination).map(\.id), [stop.id])
+            XCTAssertTrue(map.markers(for: tour).allSatisfy { !$0.isWalkingDestination })
+            tour.startTour()
+            tour.progress.markCurrentStopVisited()
+            map.show(stop: stops.first { $0.id != stop.id }!)
+            let visited = map.markers(for: tour)
+            XCTAssertEqual(visited.filter(\.isTourDestination).map(\.id), [stop.id])
+            XCTAssertEqual(visited.first { $0.id == stop.id }?.state, .visited)
+            tour.completeCurrentStopAndAdvance()
+        }
+        XCTAssertTrue(map.markers(for: tour).allSatisfy { !$0.isTourDestination })
+    }
+
     func testQuietMapSelectionChangesOnlyVisualEmphasis() async {
         let tour = await makeTour(); defer { cleanUp(tour) }
         tour.startTour()
