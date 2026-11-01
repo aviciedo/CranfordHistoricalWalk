@@ -77,6 +77,57 @@ final class RouteProgressTests: XCTestCase {
         XCTAssertTrue(p.remainingSeconds.isFinite)
     }
 
+    func testNearTieUsesTheForwardWindowAndAClearlyCloserSegmentDoesNot() throws {
+        let user = place(east: 3, north: 10)
+        let onRoute = place(east: 0, north: 10)
+        var lastAccepted: (traveled: Double, prior: Double)?
+        var refusedAt: Double?
+        for spike in stride(from: 3.0, through: 24, by: 0.5) {
+            let result = snap(user: user, previousLocation: onRoute, spike: spike, closeEast: 1)
+            if result.segmentIndex == 4 {
+                lastAccepted = (result.traveledMeters, result.priorMeters)
+            } else if result.segmentIndex == 0 {
+                refusedAt = spike
+                break
+            } else {
+                return XCTFail("Near-tie resolved to segment \(result.segmentIndex)")
+            }
+        }
+        let accepted = try XCTUnwrap(lastAccepted)
+        _ = try XCTUnwrap(refusedAt)
+        XCTAssertEqual(accepted.traveled, accepted.prior + 25, accuracy: 1.5,
+                       "The near-tie window closes at 25 m ahead of the previous fix")
+        XCTAssertLessThanOrEqual(accepted.traveled, accepted.prior + 25.05)
+
+        let obvious = snap(user: user, previousLocation: onRoute, spike: 20, closeEast: 2.9)
+        XCTAssertEqual(obvious.segmentIndex, 4, "More than 2 m closer is a different street, even past the near-tie window")
+        XCTAssertGreaterThan(obvious.traveledMeters, obvious.priorMeters + 25)
+    }
+
+    private func place(east: Double, north: Double) -> GeoCoordinate {
+        let movedNorth = GeoMath.destination(from: cranfordCenter, bearing: 0, distance: max(north, 0))
+        let bearing = east < 0 ? 270.0 : 90.0
+        return GeoMath.destination(from: movedNorth, bearing: bearing, distance: abs(east))
+    }
+
+    private func snap(user: GeoCoordinate, previousLocation: GeoCoordinate, spike: Double, closeEast: Double)
+        -> (segmentIndex: Int, traveledMeters: Double, priorMeters: Double) {
+        let points = [
+            place(east: 0, north: 0),
+            place(east: 0, north: 12),
+            place(east: 0, north: 12 + spike),
+            place(east: 0, north: 14),
+            place(east: closeEast, north: 14),
+            place(east: closeEast, north: 6)
+        ]
+        let length = zip(points, points.dropFirst()).reduce(0.0) { $0 + GeoMath.distance(from: $1.0, to: $1.1) }
+        let route = WalkingRoute(origin: points[0], destination: points[5], distanceMeters: length,
+            durationSeconds: length / 1.4, routeCoordinates: points, source: .googleRoutesAPI)
+        let previous = RouteProgressCalculator.progress(along: route, userLocation: previousLocation)
+        let progress = RouteProgressCalculator.progress(along: route, userLocation: user, previous: previous)
+        return (progress.segmentIndex, progress.traveledMeters, previous.traveledMeters)
+    }
+
     func testStraightLineEstimateIsLabeled() {
         let far = GeoMath.destination(from: cranfordCenter, bearing: 90, distance: 1000)
         let route = WalkingRoute.straightLineEstimate(from: cranfordCenter, to: far)

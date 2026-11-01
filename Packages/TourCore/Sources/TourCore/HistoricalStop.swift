@@ -126,6 +126,13 @@ public struct HistoricalStop: Identifiable, Hashable, Codable, Sendable {
         !galleryPhotos.isEmpty || imageURL != nil || illustrationURL != nil
     }
 
+    /// In-memory texture identity. Catalog, asset name, remote URLs, and the sample flag
+    /// all participate so a second tour or a replaced photograph cannot reuse a cached image.
+    public var renderedImageCacheKey: String {
+        [catalogID ?? "", id, imageName ?? "", imageURL?.absoluteString ?? "",
+         illustrationURL?.absoluteString ?? "", String(isSample)].joined(separator: "\u{1f}")
+    }
+
     /// Ignore empty/duplicate entries while preserving editorial order and old single-photo stops.
     public var galleryPhotos: [HistoricalStopPhoto] {
         var seen = Set<String>()
