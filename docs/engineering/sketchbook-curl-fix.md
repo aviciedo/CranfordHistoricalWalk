@@ -4,14 +4,14 @@ Scope: reverse-arrow crash and pale strips exposed by the turning sheet. No chan
 
 ## Cause and changes
 
-The coordinator enabled `UIPageViewController.isDoubleSided` but passed only one controller to `setViewControllers`. Apple's UIKit header explicitly requires two controllers for a double-sided minimum/maximum spine (front and reverse). Prior regression tests checked nonanimated opening only and incorrectly asserted a one-controller contract.
+The coordinator passed only one controller to every `setViewControllers` call. That is correct for minimum-spine opening, but the reported iPhone exception occurs during an animated reverse turn, which needs the turning sheet's back as well. Prior regression tests checked nonanimated opening only. Supplying two faces for every call was also rejected during native validation; controller count must follow the transition, rather than a universal one- or two-controller rule.
 
-- Load the page-controller view before configuring double-sided rendering; supply both physical faces for opening and animated turns, retaining one logical sketch per stop.
+- Load the page-controller view before configuring double-sided rendering. Preserve one-front opening/forward turns and supply both physical faces for animated reverse turns, retaining one logical sketch per stop.
 - Keep the minimum spine across rotations.
 - Defer queued turns until UIKit has returned from its animation completion. Do not replace hosting controllers or refresh their content during a curl. Honor unsuccessful programmatic completions and reconcile completed/cancelled swipes without dropping a queued arrow request.
 - Remove the front sheet's external vertical padding/shadow and disable hosting safe-area margins. Both faces use full-bleed parchment; the existing artwork and native curl shading remain.
 
-Reference: public UIKit `UIPageViewController.h`, `setViewControllers:direction:animated:completion:` comment. A minimum spine normally displays one front, but `doubleSided == YES` additionally requires its back in the supplied array.
+Reference: public UIKit `UIPageViewController.h`, `setViewControllers:direction:animated:completion:` discusses the additional back for double-sided turns. Its broad wording does not capture the runtime difference between initial presentation and an animated reverse transition. The native regression tests exercise both paths. CI crash reporting also now exports diagnostic bundles for test-host abort/restart failures, not just startup/dynamic-library errors.
 
 ## Regression coverage
 

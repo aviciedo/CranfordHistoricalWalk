@@ -56,7 +56,7 @@ final class MapViewModelTests: XCTestCase {
         XCTAssertTrue(controller.viewControllers?.first === coordinator.controllers[2])
     }
 
-    func testSketchbookOpeningEveryPageProvidesBothFaces() throws {
+    func testSketchbookOpeningEveryPageUsesOneVisibleController() throws {
         // Includes a single-stop book and future books larger than the current two stops.
         for count in [1, 2, 6] {
             for initial in 0..<count {
@@ -66,8 +66,7 @@ final class MapViewModelTests: XCTestCase {
                 let controller = SketchbookPageCurl.makePageController()
                 coordinator.configure(controller)
                 let visible = try XCTUnwrap(controller.viewControllers)
-                XCTAssertEqual(visible.count, 2, "A double-sided minimum-spine curl requires a front and back")
-                XCTAssertTrue(visible.last === coordinator.controllers[initial * 2 + 1])
+                XCTAssertEqual(visible.count, 1, "Nonanimated minimum-spine opening requires one front")
                 XCTAssertTrue(visible.first === coordinator.controllers[initial * 2])
                 // SwiftUI refreshes must preserve the requested page without invalidating the curl.
                 coordinator.configure(controller)
@@ -94,11 +93,11 @@ final class MapViewModelTests: XCTestCase {
             XCTAssertEqual(blue, 230 / 255.0, accuracy: 0.005)
             XCTAssertEqual(alpha, 1)
         }
-        // Both physical faces are supplied for initial presentation and later turns.
-        XCTAssertEqual(controller.viewControllers?.count, 2)
+        // Preserve one-front opening while retaining two physical faces per logical page.
+        XCTAssertEqual(controller.viewControllers?.count, 1)
         XCTAssertEqual(coordinator.controllers.count, 4)
         coordinator.configure(controller)
-        XCTAssertEqual(controller.viewControllers?.count, 2)
+        XCTAssertEqual(controller.viewControllers?.count, 1)
     }
 
     func testSketchbookCurlUsesPaperBacksWithoutAddingLogicalPages() throws {
@@ -110,14 +109,14 @@ final class MapViewModelTests: XCTestCase {
         coordinator.configure(controller)
         XCTAssertTrue(controller.isDoubleSided)
         let first = try XCTUnwrap(controller.viewControllers)
-        XCTAssertEqual(first.count, 2, "A double-sided curl needs both physical faces")
+        XCTAssertEqual(first.count, 1, "Opening uses one front; animated reverse turns also supply its back")
         let firstBack = try XCTUnwrap(coordinator.pageViewController(controller, viewControllerAfter: first[0]))
         XCTAssertTrue(firstBack.view.accessibilityElementsHidden)
         XCTAssertNil(coordinator.pageViewController(controller, viewControllerBefore: first[0]))
         let nextFront = try XCTUnwrap(coordinator.pageViewController(controller, viewControllerAfter: firstBack))
         let nextBack = try XCTUnwrap(coordinator.pageViewController(controller, viewControllerAfter: nextFront))
         XCTAssertNil(coordinator.pageViewController(controller, viewControllerAfter: nextBack))
-        controller.setViewControllers([nextFront, nextBack], direction: .forward, animated: false)
+        controller.setViewControllers([nextFront], direction: .forward, animated: false)
         coordinator.pageViewController(controller, didFinishAnimating: true,
                                        previousViewControllers: first, transitionCompleted: true)
         XCTAssertEqual(selected, 1, "The paper back must not become another sketchbook page")
@@ -152,7 +151,6 @@ final class MapViewModelTests: XCTestCase {
             await waitForSketchbookTurn(coordinator)
             XCTAssertEqual(coordinator.displayedIndex, target)
             XCTAssertTrue(controller.viewControllers?.first === coordinator.controllers[target * 2])
-            XCTAssertTrue(controller.viewControllers?.last === coordinator.controllers[target * 2 + 1])
             XCTAssertEqual(controller.spineLocation, .min)
             for host in coordinator.controllers { XCTAssertTrue(host.safeAreaRegions.isEmpty) }
         }

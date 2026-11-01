@@ -341,10 +341,8 @@ struct SketchbookPageCurl: UIViewControllerRepresentable {
                 controller.delegate = self
                 displayedIndex = SketchbookPageIndex.clamped(parent.index, pageCount: parent.pages.count)
                 if !controllers.isEmpty {
-                    // Assert the double-sided contract after the view has loaded, for
-                    // initial presentation as well as every subsequent arrow turn.
-                    controller.isDoubleSided = true
-                    controller.setViewControllers(faces(for: displayedIndex), direction: .forward, animated: false)
+                    controller.setViewControllers(faces(for: displayedIndex, direction: .forward, animated: false),
+                                                  direction: .forward, animated: false)
                 }
             } else {
                 for (index, page) in parent.pages.enumerated() {
@@ -354,7 +352,8 @@ struct SketchbookPageCurl: UIViewControllerRepresentable {
             guard parent.index != displayedIndex, parent.pages.indices.contains(parent.index) else { return }
             let target = parent.index
             transitioning = true
-            controller.setViewControllers(faces(for: target), direction: target > displayedIndex ? .forward : .reverse,
+            let direction: UIPageViewController.NavigationDirection = target > displayedIndex ? .forward : .reverse
+            controller.setViewControllers(faces(for: target, direction: direction, animated: true), direction: direction,
                                           animated: true) { [weak self, weak controller] completed in
                 guard let self, let controller else { return }
                 // Defer until UIKit has unwound its transition completion. Reentrant
@@ -383,11 +382,16 @@ struct SketchbookPageCurl: UIViewControllerRepresentable {
             AnyView(page.background { SketchbookPageBack().ignoresSafeArea() }.ignoresSafeArea())
         }
 
-        private func faces(for page: Int) -> [UIViewController] {
+        private func faces(for page: Int, direction: UIPageViewController.NavigationDirection,
+                           animated: Bool) -> [UIViewController] {
             let front = SketchbookCurlLayout.frontControllerIndex(logicalPage: page)
-            // UIKit's setViewControllers contract requires two faces with doubleSided
-            // enabled, even at a minimum spine: the second supplies the turning back.
-            return [controllers[front], controllers[front + 1]]
+            // At a minimum spine UIKit opens with one front. An animated reverse
+            // turn additionally needs that sheet's back; forward curls obtain it
+            // from the data source. Applying either count to every turn can throw.
+            if animated && direction == .reverse {
+                return [controllers[front], controllers[front + 1]]
+            }
+            return [controllers[front]]
         }
 
         func pageViewController(_ pageViewController: UIPageViewController,

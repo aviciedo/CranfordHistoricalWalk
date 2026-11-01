@@ -78,7 +78,7 @@ def main():
     for message in unique[:20]:
         print(f'::error title=Apple build/test diagnostic::{annotation(message[:1600])}')
     native_log = directory / 'native-tests.log'
-    if native_log.exists() and re.search(r'Early unexpected exit|Symbol not found|Library not loaded',
+    if native_log.exists() and re.search(r'Early unexpected exit|Symbol not found|Library not loaded|crashed with signal|Exceeded max restart',
                                         native_log.read_text(errors='replace')):
         subprocess.run([sys.executable, str(Path(__file__).with_name('report-startup-crash.py')),
                         str(directory)], check=False)
