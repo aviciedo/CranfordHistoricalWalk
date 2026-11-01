@@ -329,7 +329,14 @@ final class GeoSpatialProviderFactoryTests: XCTestCase {
         }
         inspect(arrow)
         let texturedSides = materials.filter { $0.color.texture != nil }
-        let whiteFaces = materials.filter { $0.color.texture == nil && $0.color.tint == UIColor.white }
+        let whiteFaces = materials.filter { material in
+            guard material.color.texture == nil else { return false }
+            // RealityKit can return an equivalent white in a different color space.
+            // Compare resolved components rather than UIColor object/color-space equality.
+            var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
+            guard material.color.tint.getRed(&red, green: &green, blue: &blue, alpha: &alpha) else { return false }
+            return [red, green, blue, alpha].allSatisfy { abs($0 - 1) < 0.001 }
+        }
         XCTAssertEqual(texturedSides.count, 3, "Each extruded body needs its cached hunter-green gradient")
         XCTAssertEqual(whiteFaces.count, 3, "Keep the three bright white front faces")
         XCTAssertTrue(arrow.canRender)
