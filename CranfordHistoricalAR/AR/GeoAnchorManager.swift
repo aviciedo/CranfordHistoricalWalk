@@ -495,7 +495,7 @@ final class GeoAnchorManager {
                 guard let plane = result.anchor as? ARPlaneAnchor else { return false }
                 return plane.classification != .table && plane.classification != .seat && plane.classification != .ceiling
                     && abs(result.worldTransform.translation.y - groundHeight) < 0.6
-            }) {
+            }), let plane = hit.anchor as? ARPlaneAnchor {
                 // A raycast supplies height only. Never move route geometry sideways onto another surface.
                 grounded.y = hit.worldTransform.translation.y
                 // A raycast proves a horizontal surface, not that an unclassified
