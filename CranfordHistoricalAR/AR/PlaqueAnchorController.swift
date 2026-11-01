@@ -5,12 +5,13 @@ import simd
 import TourCore
 
 /// Loads the `PlaqueAnchors` reference-image group and parents the tour card to a detected
-/// `ARImageAnchor`. Failures (missing group, Simulator, lost track) never throw — callers fall
-/// back to the geo-anchored sign.
+/// `ARImageAnchor`. Missing resources, Simulator and tracking loss never substitute a
+/// geographic sign for a verified image anchor.
 @MainActor
 final class PlaqueAnchorController {
     private(set) weak var arView: ARView?
     private var imageAnchorEntity: AnchorEntity?
+    private var boundAnchorID: UUID?
     private(set) var trackedAnchor: ARImageAnchor?
     private(set) var trackedImageName: String?
 
@@ -27,13 +28,15 @@ final class PlaqueAnchorController {
     /// World-tracking configuration that also looks for the bundled plates. Returns false when
     /// the group is empty so the caller can skip `detectionImages` entirely.
     @discardableResult
-    static func applyDetectionImages(to configuration: ARWorldTrackingConfiguration, bundle: Bundle = .main) -> Bool {
-        let images = loadReferenceImages(in: bundle)
-        guard !images.isEmpty else { return false }
+    static func applyDetectionImages(to configuration: ARWorldTrackingConfiguration, bundle: Bundle = .main,
+                                     referenceNames: Set<String>? = nil) -> Bool {
+        let images = loadReferenceImages(in: bundle).filter { image in
+            referenceNames.map { $0.contains(image.name ?? "") } ?? true
+        }
         configuration.detectionImages = images
-        configuration.maximumNumberOfTrackedImages = 1
-        configuration.automaticImageScaleEstimationEnabled = true
-        return true
+        configuration.maximumNumberOfTrackedImages = images.isEmpty ? 0 : 1
+        configuration.automaticImageScaleEstimationEnabled = !images.isEmpty
+        return !images.isEmpty
     }
 
     func attach(to arView: ARView) {
@@ -51,21 +54,25 @@ final class PlaqueAnchorController {
     }
 
     /// Parents `sign` to the image so the card rides with the physical plate.
-    func bind(imageAnchor: ARImageAnchor, sign: ARHistoricalSignEntity, offset: PlaqueCardOffset) {
+    @discardableResult
+    func bind(imageAnchor: ARImageAnchor, sign: ARHistoricalSignEntity, offset: PlaqueCardOffset) -> Bool {
         #if targetEnvironment(simulator)
         // Image tracking is unavailable here. The Intel iOS Simulator RealityKit
         // runtime also omits AnchorEntity.init(anchor:), so even an unreachable
         // reference aborts the whole test host at dynamic-library load time.
         // Compile it out rather than presenting a simulated tracked plaque.
-        return
+        return false
         #else
-        guard let arView else { return }
-        if trackedAnchor?.identifier != imageAnchor.identifier || imageAnchorEntity == nil {
+        guard imageAnchor.isTracked, let arView else { return false }
+        // Observing the new image must not make an entity bound to the previous
+        // anchor look current. Observation identity and binding identity differ.
+        if boundAnchorID != imageAnchor.identifier || imageAnchorEntity == nil {
             imageAnchorEntity?.removeFromParent()
             let entity = AnchorEntity(anchor: imageAnchor)
             entity.name = "plaque-image-anchor"
             arView.scene.addAnchor(entity)
             imageAnchorEntity = entity
+            boundAnchorID = imageAnchor.identifier
         }
         trackedAnchor = imageAnchor
         trackedImageName = imageAnchor.referenceImage.name
@@ -78,6 +85,7 @@ final class PlaqueAnchorController {
         // Plane faces +Z; rotate so +Z maps to image +Y (out of the plate toward the camera).
         // After that rotation, card-up (+Y) maps to image −Z (up the wall).
         sign.orientation = simd_quatf(angle: -.pi / 2, axis: [1, 0, 0])
+        return true
         #endif
     }
 
@@ -93,6 +101,7 @@ final class PlaqueAnchorController {
         }
         imageAnchorEntity?.removeFromParent()
         imageAnchorEntity = nil
+        boundAnchorID = nil
         trackedAnchor = nil
         trackedImageName = nil
     }

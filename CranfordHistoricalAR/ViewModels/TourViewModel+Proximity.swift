@@ -138,11 +138,17 @@ extension TourViewModel {
 
     func closeSign() {
         guard let stop = arStop, stop.id == currentStop?.id, var machine = proximityMachine else {
-            presentedSignStopID = nil; return
+            presentedSignStopID = nil; signPresentationSource = nil; return
         }
         let effects = machine.handle(.userClosedSign)
         proximityMachine = machine
         apply(effects, for: stop, source: .manual)
+        // Camera-only recognition can present a plaque before any GPS proximity event.
+        // Its Close action must not depend on the GPS state already being signPresented.
+        if stop.hasPlaqueReference {
+            presentedSignStopID = nil
+            signPresentationSource = nil
+        }
     }
 
     @discardableResult

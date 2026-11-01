@@ -11,6 +11,32 @@ import CoreLocation
 /// The same state-flow tests run against the native model and its Linux Foundation harness.
 @MainActor
 final class TourCompletionFlowTests: XCTestCase {
+    func testClosingRecognizedPlaqueWithoutGPSHidesCardWithoutLosingTheAwardOrDestination() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        let destination = tour.currentStop?.id
+        for stop in tour.sketchbookStops {
+            XCTAssertTrue(tour.preparePlaqueScanner(stopID: stop.id))
+            XCTAssertNil(tour.userLocation)
+            XCTAssertEqual(tour.recognizeSketchPlaque(imageName: stop.plaque?.referenceImageName,
+                isTracked: true, trackingReady: true), .allow(.recognizedPlaque))
+            XCTAssertTrue(tour.isSignPresented)
+            let award = tour.activities[stop.id].plaqueUnlockedAt
+            tour.closeSign()
+            XCTAssertFalse(tour.isSignPresented)
+            XCTAssertEqual(tour.activities[stop.id].plaqueUnlockedAt, award)
+            XCTAssertEqual(tour.pendingSketchStopID, stop.id)
+            XCTAssertEqual(tour.currentStop?.id, destination)
+            XCTAssertEqual(tour.phase, .notStarted)
+            XCTAssertEqual(tour.takeUnlockedSketch(), stop.id)
+            // A later qualified rescan can reopen the card without another award/event.
+            XCTAssertEqual(tour.recognizeSketchPlaque(imageName: stop.plaque?.referenceImageName,
+                isTracked: true, trackingReady: true), .alreadyActivated)
+            XCTAssertTrue(tour.isSignPresented)
+            XCTAssertNil(tour.pendingSketchStopID)
+            tour.endARDiscoverySession()
+        }
+    }
+
     func testEveryConfiguredPlaqueUsesTheSamePassportUnlockLifecycle() async {
         let tour = await makeTour(); defer { cleanUp(tour) }
         let plaqueStops = tour.sketchbookStops

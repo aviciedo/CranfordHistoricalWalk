@@ -8,7 +8,7 @@ import UIKit
 /// Shared three-dimensional chevron artwork: opaque white faces, hunter-green extruded sides.
 @MainActor
 private enum ARChevronArt {
-    static let bodyMesh = makeMesh(ARChevronGeometry.body(depth: ARChevronGeometry.bodyDepth), name: "blue-chevron-body")
+    static let bodyMesh = makeMesh(ARChevronGeometry.body(depth: ARChevronGeometry.bodyDepth), name: "hunter-green-chevron-body")
     static let faceMesh = makeMesh(ARChevronGeometry.front(), name: "white-chevron-face")
 
     static func makeMesh(_ data: ARChevronGeometry.Mesh, name: String) -> MeshResource? {
@@ -30,7 +30,7 @@ private enum ARChevronArt {
             body.position.x = Float(index - 1) * ARChevronGeometry.groupSpacing
             let face = ModelEntity(mesh: faceMesh, materials: [white])
             face.scale = SIMD3<Float>(0.985, 0.985, 1)
-            face.position.z = 0.006 // Clear the blue front face without z-fighting.
+            face.position.z = 0.006 // Clear the green front face without z-fighting.
             body.addChild(face)
             group.addChild(body)
         }

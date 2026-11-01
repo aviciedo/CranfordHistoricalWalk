@@ -93,6 +93,93 @@ final class GeoSpatialProviderFactoryTests: XCTestCase {
         XCTAssertNil(tour.pendingSketchStopID, "Opening the scanner does not award a stamp")
     }
 
+    func testReferenceImageWidthsMatchCatalogMetadata() async throws {
+        let document = try await BundledJSONHistoricalStopService().loadTour()
+        let images = PlaqueAnchorController.loadReferenceImages()
+        for stop in document.stops where stop.hasPlaqueReference {
+            let plaque = try XCTUnwrap(stop.plaque)
+            let matching = images.filter { $0.name == plaque.referenceImageName }
+            XCTAssertEqual(matching.count, 1)
+            let image = try XCTUnwrap(matching.first)
+            XCTAssertEqual(Double(image.physicalSize.width), plaque.physicalWidthMeters, accuracy: 0.00001)
+            XCTAssertGreaterThan(image.physicalSize.height, 0)
+        }
+        // This checks internal consistency, not the unmeasured outdoor dimensions.
+    }
+
+    func testReferenceImageFilterClearsPreviousDetectionConfiguration() {
+        let configuration = ARWorldTrackingConfiguration()
+        XCTAssertTrue(PlaqueAnchorController.applyDetectionImages(to: configuration,
+            referenceNames: [SignPlacementPolicy.millReferenceImageName]))
+        if ARWorldTrackingConfiguration.isSupported {
+            XCTAssertEqual(Set(configuration.detectionImages?.compactMap(\.name) ?? []),
+                           [SignPlacementPolicy.millReferenceImageName])
+        }
+        XCTAssertFalse(PlaqueAnchorController.applyDetectionImages(to: configuration, referenceNames: []))
+        XCTAssertTrue(configuration.detectionImages?.isEmpty ?? true)
+        XCTAssertEqual(configuration.maximumNumberOfTrackedImages, 0)
+    }
+
+    func testInactiveScannerDoesNotRecoverOnLateInterruptionCallbackOrAwardAnything() async {
+        let dependencies = AppDependencies.preview()
+        let tour = dependencies.tourViewModel
+        await tour.loadStopsIfNeeded()
+        let destination = tour.currentStop?.id
+        let model = ARViewModel(tour: tour, provider: CoreLocationGeoSpatialProvider(hasCompass: false),
+            imageLoader: dependencies.imageLoader, narrationPlayer: dependencies.narrationPlayer,
+            isPlaqueScanner: true)
+        _ = model.makeSessionConfiguration()
+        model.setApplicationActive(false)
+        model.sessionWasInterrupted()
+        model.sessionInterruptionEnded()
+        XCTAssertEqual(model.localizationState, .interrupted)
+        XCTAssertFalse(model.isConfirmingPlaque)
+        XCTAssertTrue(model.scannerInstruction(at: Date()).contains("paused"))
+        XCTAssertEqual(model.placementMode, .hidden)
+        XCTAssertNil(tour.pendingSketchStopID)
+        XCTAssertFalse(tour.isARSessionActive)
+        XCTAssertEqual(tour.currentStop?.id, destination)
+        XCTAssertEqual(tour.phase, .notStarted)
+        model.setApplicationActive(true)
+        model.sessionInterruptionEnded()
+        XCTAssertEqual(model.localizationState, .initializing)
+        XCTAssertNil(tour.pendingSketchStopID)
+    }
+
+    func testSessionFailureImmediatelyClearsWorldGuidance() {
+        let date = Date(timeIntervalSince1970: 1_800_000_000)
+        let provider = SpatialNavigationTestProvider()
+        provider.pose?.timestamp = date
+        let manager = GeoAnchorManager(provider: provider, currentDate: { date })
+        manager.setNavigationTarget(.init(destination: provider.pose!.coordinate,
+            bearingToWaypoint: 0, anchorCoordinate: provider.pose!.coordinate, turnCue: nil,
+            locationTimestamp: date, horizontalAccuracy: 3, routeOffset: 0))
+        for time in stride(from: 0.0, through: 2.1, by: 0.1) {
+            manager.updateNavigationPose(cameraTransform: matrix_identity_float4x4,
+                trackingState: .normal, timestamp: time)
+        }
+        XCTAssertTrue(manager.hasPlacedNavigation)
+        manager.sessionDidFail("Test interruption")
+        XCTAssertFalse(manager.hasPlacedNavigation)
+        XCTAssertNil(manager.anchors.arrows.guidancePosition)
+        XCTAssertEqual(manager.localizationState, .failed("Test interruption"))
+        XCTAssertNil(manager.navigationNotice, "An old alignment notice must not mask a session error")
+    }
+
+    func testScannerFailureShowsRecoveryInsteadOfCameraStarting() async {
+        let dependencies = AppDependencies.preview()
+        await dependencies.tourViewModel.loadStopsIfNeeded()
+        let model = ARViewModel(tour: dependencies.tourViewModel,
+            provider: CoreLocationGeoSpatialProvider(hasCompass: false),
+            imageLoader: dependencies.imageLoader, narrationPlayer: dependencies.narrationPlayer,
+            isPlaqueScanner: true)
+        model.sessionDidFail(message: "Test camera failure", code: nil)
+        XCTAssertEqual(model.scannerPhaseTitle, "Scanning stopped")
+        XCTAssertTrue(model.scannerInstruction(at: Date()).contains("Try again"))
+        XCTAssertNil(dependencies.tourViewModel.pendingSketchStopID)
+        XCTAssertEqual(model.placementMode, .hidden)
+    }
+
     func testNormalTrackingWithoutGeographicAlignmentDoesNotInventStreetArrows() {
         let manager = GeoAnchorManager(provider: CoreLocationGeoSpatialProvider(hasCompass: false))
         manager.setNavigationTarget(.init(destination: .init(latitude: 40.65, longitude: -74.30),

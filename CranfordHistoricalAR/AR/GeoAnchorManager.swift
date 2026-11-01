@@ -198,8 +198,13 @@ final class GeoAnchorManager {
     }
 
     func sessionDidFail(_ message: String) {
-        anchors.hideNavigation()
+        hasPlacedNavigation = false
+        resetSpatialNavigation()
+        plaqueAnchors.unbind(sign: anchors.sign, returningTo: anchors.worldRoot)
+        anchors.hideAll()
+        signAnchoredPosition = nil
         navigationBearing = nil
+        navigationNotice = nil
         localizationState = .failed(message)
     }
 
@@ -257,8 +262,10 @@ final class GeoAnchorManager {
         }
         signRequest = request
         if anchorToPlaque || appearance == .plaqueCard {
-            if let imageAnchor = plaqueAnchors.trackedAnchor {
-                plaqueAnchors.bind(imageAnchor: imageAnchor, sign: anchors.sign, offset: .abovePlaque)
+            guard let imageAnchor = plaqueAnchors.trackedAnchor,
+                  plaqueAnchors.bind(imageAnchor: imageAnchor, sign: anchors.sign, offset: .abovePlaque) else {
+                dismissSign()
+                return
             }
             if !wasOnPlaque || previousAppearance != appearance || !anchors.sign.isPresented {
                 anchors.sign.presentOnPlaque()

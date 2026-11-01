@@ -72,6 +72,7 @@ struct ARTourView: View {
     private func returnToMap() {
         guard !isLeavingAR else { return }
         isLeavingAR = true
+        model?.setApplicationActive(false)
         motionManager.stopDeviceMotionUpdates()
         dismiss()
     }
@@ -94,6 +95,7 @@ struct ARTourView: View {
         if model == nil {
             model = ARViewModel(tour: tour, provider: dependencies.makeGeoSpatialProvider(), imageLoader: dependencies.imageLoader, narrationPlayer: dependencies.narrationPlayer)
         }
+        model?.setApplicationActive(scenePhase == .active)
         Task { await model?.requestCameraAccessIfNeeded() }
     }
 
@@ -121,8 +123,12 @@ struct ARTourView: View {
             }
             ARHUDView(model: model, onClose: returnToMap)
         }
-        .onAppear { beginPhoneOrientationMonitoring() }
+        .onAppear {
+            model.setApplicationActive(scenePhase == .active)
+            beginPhoneOrientationMonitoring()
+        }
         .onDisappear {
+            model.setApplicationActive(false)
             motionManager.stopDeviceMotionUpdates()
             tour.endARDiscoverySession()
         }
@@ -425,10 +431,16 @@ struct PlaqueScannerView: View {
                 provider: CoreLocationGeoSpatialProvider(hasCompass: false),
                 imageLoader: dependencies.imageLoader, narrationPlayer: dependencies.narrationPlayer,
                 isPlaqueScanner: true)
+            scanner.setApplicationActive(scenePhase == .active)
             model = scanner
             await scanner.requestCameraAccessIfNeeded()
         }
-        .onDisappear { tour.endARDiscoverySession() }
+        .onAppear { model?.setApplicationActive(scenePhase == .active) }
+        .onChange(of: scenePhase) { _, phase in model?.setApplicationActive(phase == .active) }
+        .onDisappear {
+            model?.setApplicationActive(false)
+            tour.endARDiscoverySession()
+        }
         .task(id: revealContext) {
             guard scenePhase == .active, let id = tour.pendingSketchStopID,
                   tour.activities[id].plaqueUnlockedAt != nil else { return }
@@ -468,9 +480,16 @@ private struct PlaqueScannerHUD: View {
                         .accessibilityLabel("Reference photograph of the plaque to find")
                 }
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Frame this plaque").font(.headline)
+                    Text(model.placementMode == .plaqueAnchored ? "Plaque recognized" :
+                         (model.isConfirmingPlaque ? "Hold steady" : "Frame this plaque"))
+                        .font(.headline)
                     Text(model.destinationName ?? "Plaque discovery").font(.subheadline)
                         .fixedSize(horizontal: false, vertical: true)
+                    TimelineView(.periodic(from: .now, by: 1)) { context in
+                        Text(model.scannerInstruction(at: context.date)).font(.caption)
+                            .foregroundStyle(AppTheme.forest.opacity(0.8))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
