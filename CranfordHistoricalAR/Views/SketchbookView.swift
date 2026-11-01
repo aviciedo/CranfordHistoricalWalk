@@ -193,8 +193,8 @@ private struct SketchbookLeaf: View {
         .environment(\.colorScheme, .light)
         .background { SketchbookPaper() }
         .clipShape(RoundedRectangle(cornerRadius: 12))
-        .padding(.vertical, 4)
-        .shadow(color: AppTheme.forest.opacity(0.12), radius: 3, x: 1, y: 3)
+        // The physical sheet fills its host. Insets/shadows here become pale strips
+        // when UIKit snapshots and bends the front surface.
     }
 }
 
@@ -302,6 +302,7 @@ struct SketchbookPageCurl: UIViewControllerRepresentable {
     static func makePageController() -> UIPageViewController {
         let controller = UIPageViewController(transitionStyle: .pageCurl, navigationOrientation: .horizontal,
                                             options: [.spineLocation: UIPageViewController.SpineLocation.min.rawValue])
+        controller.loadViewIfNeeded()
         controller.isDoubleSided = true
         controller.view.backgroundColor = UIColor(AppTheme.sketchbookPaper)
         controller.view.isOpaque = true
@@ -325,49 +326,73 @@ struct SketchbookPageCurl: UIViewControllerRepresentable {
         var controllers: [UIHostingController<AnyView>] = []
         var displayedIndex = 0
         var transitioning = false
+        private var interactiveStartIndex: Int?
         init(_ parent: SketchbookPageCurl) { self.parent = parent }
 
         func configure(_ controller: UIPageViewController) {
+            // SwiftUI may update during an interactive curl. Never replace a controller
+            // or its rendered face while UIKit is using it in an animation.
+            guard !transitioning else { return }
             if controllers.count != parent.pages.count * 2 {
-                controllers = parent.pages.flatMap { page -> [UIHostingController<AnyView>] in
-                    let front = UIHostingController(rootView: Self.paperBacked(page))
-                    front.view.backgroundColor = UIColor(AppTheme.sketchbookPaper)
-                    front.view.isOpaque = true
-                    let back = UIHostingController(rootView: AnyView(SketchbookPageBack()))
-                    back.view.backgroundColor = UIColor(AppTheme.sketchbookPaper)
-                    back.view.isOpaque = true
-                    back.view.accessibilityElementsHidden = true
-                    return [front, back]
+                controllers = parent.pages.flatMap { page in
+                    [Self.host(Self.paperBacked(page)), Self.host(AnyView(SketchbookPageBack().ignoresSafeArea()), back: true)]
                 }
                 controller.dataSource = self
                 controller.delegate = self
                 displayedIndex = SketchbookPageIndex.clamped(parent.index, pageCount: parent.pages.count)
-                if !controllers.isEmpty { controller.setViewControllers(visibleFront(for: displayedIndex), direction: .forward, animated: false) }
+                if !controllers.isEmpty {
+                    // Assert the double-sided contract after the view has loaded, for
+                    // initial presentation as well as every subsequent arrow turn.
+                    controller.isDoubleSided = true
+                    controller.setViewControllers(faces(for: displayedIndex), direction: .forward, animated: false)
+                }
             } else {
-                for (index, page) in parent.pages.enumerated() { controllers[SketchbookCurlLayout.frontControllerIndex(logicalPage: index)].rootView = Self.paperBacked(page) }
+                for (index, page) in parent.pages.enumerated() {
+                    controllers[SketchbookCurlLayout.frontControllerIndex(logicalPage: index)].rootView = Self.paperBacked(page)
+                }
             }
-            guard !transitioning, parent.index != displayedIndex, parent.pages.indices.contains(parent.index) else { return }
+            guard parent.index != displayedIndex, parent.pages.indices.contains(parent.index) else { return }
             let target = parent.index
             transitioning = true
-            controller.setViewControllers(visibleFront(for: target), direction: target > displayedIndex ? .forward : .reverse,
+            controller.setViewControllers(faces(for: target), direction: target > displayedIndex ? .forward : .reverse,
                                           animated: true) { [weak self, weak controller] completed in
-                guard let self else { return }
-                self.displayedIndex = target
-                self.transitioning = false
-                // Catch an arrow tap that arrived while the previous curl was finishing.
-                if let controller { self.configure(controller) }
+                guard let self, let controller else { return }
+                // Defer until UIKit has unwound its transition completion. Reentrant
+                // setViewControllers calls here can invalidate the curl's controller count.
+                Task { @MainActor [weak self, weak controller] in
+                    guard let self, let controller else { return }
+                    if completed { self.displayedIndex = target }
+                    else { self.parent.index = self.displayedIndex }
+                    self.transitioning = false
+                    self.configure(controller)
+                }
             }
         }
-        private static func paperBacked(_ page: AnyView) -> AnyView {
-            // Rounded front corners, padding and shadows must reveal paper, not host ivory.
-            AnyView(page.background { SketchbookPageBack() })
+
+        private static func host(_ page: AnyView, back: Bool = false) -> UIHostingController<AnyView> {
+            let host = UIHostingController(rootView: page)
+            // A curl snapshots the entire hosting view, including its safe-area margins.
+            host.safeAreaRegions = []
+            host.view.backgroundColor = UIColor(AppTheme.sketchbookPaper)
+            host.view.isOpaque = true
+            host.view.accessibilityElementsHidden = back
+            return host
         }
 
-        private func visibleFront(for page: Int) -> [UIViewController] {
-            // A .min spine displays ONE front even with isDoubleSided enabled.
-            // UIKit requests the parchment reverse from the data source during the curl.
-            // Supplying [front, back] here throws NSInvalidArgumentException on iPhone.
-            [controllers[SketchbookCurlLayout.frontControllerIndex(logicalPage: page)]]
+        private static func paperBacked(_ page: AnyView) -> AnyView {
+            AnyView(page.background { SketchbookPageBack().ignoresSafeArea() }.ignoresSafeArea())
+        }
+
+        private func faces(for page: Int) -> [UIViewController] {
+            let front = SketchbookCurlLayout.frontControllerIndex(logicalPage: page)
+            // UIKit's setViewControllers contract requires two faces with doubleSided
+            // enabled, even at a minimum spine: the second supplies the turning back.
+            return [controllers[front], controllers[front + 1]]
+        }
+
+        func pageViewController(_ pageViewController: UIPageViewController,
+                                spineLocationFor orientation: UIInterfaceOrientation) -> UIPageViewController.SpineLocation {
+            .min
         }
 
         func pageViewController(_ pageViewController: UIPageViewController, viewControllerBefore viewController: UIViewController) -> UIViewController? {
@@ -379,6 +404,7 @@ struct SketchbookPageCurl: UIViewControllerRepresentable {
             return controllers[i + 1]
         }
         func pageViewController(_ pageViewController: UIPageViewController, willTransitionTo pendingViewControllers: [UIViewController]) {
+            interactiveStartIndex = parent.index
             transitioning = true
         }
         func pageViewController(_ pageViewController: UIPageViewController, didFinishAnimating finished: Bool,
@@ -386,9 +412,15 @@ struct SketchbookPageCurl: UIViewControllerRepresentable {
             if completed, let visible = pageViewController.viewControllers?.first,
                let i = controllers.firstIndex(where: { $0 === visible }) {
                 displayedIndex = SketchbookCurlLayout.logicalPage(controllerIndex: i)
-                parent.index = displayedIndex
+                if interactiveStartIndex == nil || parent.index == interactiveStartIndex { parent.index = displayedIndex }
             }
-            transitioning = false
+            interactiveStartIndex = nil
+            // Swipes use the same deferred queue as arrow taps, including cancellation.
+            Task { @MainActor [weak self, weak pageViewController] in
+                guard let self, let pageViewController else { return }
+                self.transitioning = false
+                self.configure(pageViewController)
+            }
         }
     }
 }

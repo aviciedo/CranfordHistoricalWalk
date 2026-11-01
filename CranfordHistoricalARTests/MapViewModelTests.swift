@@ -56,7 +56,7 @@ final class MapViewModelTests: XCTestCase {
         XCTAssertTrue(controller.viewControllers?.first === coordinator.controllers[2])
     }
 
-    func testSketchbookOpeningEveryPageUsesOneVisibleController() throws {
+    func testSketchbookOpeningEveryPageProvidesBothFaces() throws {
         // Includes a single-stop book and future books larger than the current two stops.
         for count in [1, 2, 6] {
             for initial in 0..<count {
@@ -66,7 +66,8 @@ final class MapViewModelTests: XCTestCase {
                 let controller = SketchbookPageCurl.makePageController()
                 coordinator.configure(controller)
                 let visible = try XCTUnwrap(controller.viewControllers)
-                XCTAssertEqual(visible.count, 1, "UIKit minimum spine requires exactly one visible front")
+                XCTAssertEqual(visible.count, 2, "A double-sided minimum-spine curl requires a front and back")
+                XCTAssertTrue(visible.last === coordinator.controllers[initial * 2 + 1])
                 XCTAssertTrue(visible.first === coordinator.controllers[initial * 2])
                 // SwiftUI refreshes must preserve the requested page without invalidating the curl.
                 coordinator.configure(controller)
@@ -93,11 +94,11 @@ final class MapViewModelTests: XCTestCase {
             XCTAssertEqual(blue, 230 / 255.0, accuracy: 0.005)
             XCTAssertEqual(alpha, 1)
         }
-        // Keep the minimum-spine crash fix while covering both front/back paper materials.
-        XCTAssertEqual(controller.viewControllers?.count, 1)
+        // Both physical faces are supplied for initial presentation and later turns.
+        XCTAssertEqual(controller.viewControllers?.count, 2)
         XCTAssertEqual(coordinator.controllers.count, 4)
         coordinator.configure(controller)
-        XCTAssertEqual(controller.viewControllers?.count, 1)
+        XCTAssertEqual(controller.viewControllers?.count, 2)
     }
 
     func testSketchbookCurlUsesPaperBacksWithoutAddingLogicalPages() throws {
@@ -109,14 +110,14 @@ final class MapViewModelTests: XCTestCase {
         coordinator.configure(controller)
         XCTAssertTrue(controller.isDoubleSided)
         let first = try XCTUnwrap(controller.viewControllers)
-        XCTAssertEqual(first.count, 1, "A minimum-spine curl displays one controller, not a front/back pair")
+        XCTAssertEqual(first.count, 2, "A double-sided curl needs both physical faces")
         let firstBack = try XCTUnwrap(coordinator.pageViewController(controller, viewControllerAfter: first[0]))
         XCTAssertTrue(firstBack.view.accessibilityElementsHidden)
         XCTAssertNil(coordinator.pageViewController(controller, viewControllerBefore: first[0]))
         let nextFront = try XCTUnwrap(coordinator.pageViewController(controller, viewControllerAfter: firstBack))
         let nextBack = try XCTUnwrap(coordinator.pageViewController(controller, viewControllerAfter: nextFront))
         XCTAssertNil(coordinator.pageViewController(controller, viewControllerAfter: nextBack))
-        controller.setViewControllers([nextFront], direction: .forward, animated: false)
+        controller.setViewControllers([nextFront, nextBack], direction: .forward, animated: false)
         coordinator.pageViewController(controller, didFinishAnimating: true,
                                        previousViewControllers: first, transitionCompleted: true)
         XCTAssertEqual(selected, 1, "The paper back must not become another sketchbook page")
@@ -131,6 +132,84 @@ final class MapViewModelTests: XCTestCase {
         coordinator.pageViewController(controller, didFinishAnimating: false,
                                        previousViewControllers: first, transitionCompleted: false)
         XCTAssertEqual(selected, 0, "A cancelled curl must not change the logical page")
+    }
+
+    func testSketchbookAnimatedArrowsCanReturnFromGreystoneRepeatedly() async throws {
+        var selected = 0
+        let curl = SketchbookPageCurl(pages: [AnyView(Text("Mill")), AnyView(Text("Greystone")), AnyView(Text("Future stop"))],
+            index: Binding(get: { selected }, set: { selected = $0 }), enabled: true)
+        let coordinator = curl.makeCoordinator()
+        let controller = SketchbookPageCurl.makePageController()
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        window.rootViewController = controller
+        window.isHidden = false
+        defer { window.isHidden = true; window.rootViewController = nil }
+        coordinator.configure(controller)
+        controller.view.layoutIfNeeded()
+        for target in [1, 0, 1, 2, 1, 0] {
+            selected = target
+            coordinator.configure(controller)
+            await waitForSketchbookTurn(coordinator)
+            XCTAssertEqual(coordinator.displayedIndex, target)
+            XCTAssertTrue(controller.viewControllers?.first === coordinator.controllers[target * 2])
+            XCTAssertTrue(controller.viewControllers?.last === coordinator.controllers[target * 2 + 1])
+            XCTAssertEqual(controller.spineLocation, .min)
+            for host in coordinator.controllers { XCTAssertTrue(host.safeAreaRegions.isEmpty) }
+        }
+    }
+
+    func testSketchbookQueuesRapidReverseAndContentRefreshUntilCurlFinishes() async {
+        var selected = 0
+        let curl = SketchbookPageCurl(pages: [AnyView(Text("Mill")), AnyView(Text("Greystone"))],
+            index: Binding(get: { selected }, set: { selected = $0 }), enabled: true)
+        let coordinator = curl.makeCoordinator()
+        let controller = SketchbookPageCurl.makePageController()
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        window.rootViewController = controller
+        window.isHidden = false
+        defer { window.isHidden = true; window.rootViewController = nil }
+        coordinator.configure(controller)
+        selected = 1
+        coordinator.configure(controller)
+        selected = 0
+        coordinator.configure(controller)
+        await waitForSketchbookTurn(coordinator)
+        XCTAssertEqual(selected, 0)
+        XCTAssertEqual(coordinator.displayedIndex, 0)
+        XCTAssertTrue(controller.viewControllers?.first === coordinator.controllers[0])
+    }
+
+    func testSketchbookArrowAfterCancelledInteractiveCurl() async {
+        var selected = 1
+        let curl = SketchbookPageCurl(pages: [AnyView(Text("Mill")), AnyView(Text("Greystone"))],
+            index: Binding(get: { selected }, set: { selected = $0 }), enabled: true)
+        let coordinator = curl.makeCoordinator()
+        let controller = SketchbookPageCurl.makePageController()
+        coordinator.configure(controller)
+        let original = coordinator.controllers
+        coordinator.pageViewController(controller, willTransitionTo: [original[0], original[1]])
+        // A SwiftUI refresh during a swipe must not rebuild hosts, even if catalog changes.
+        coordinator.parent = SketchbookPageCurl(pages: curl.pages + [AnyView(Text("Future"))],
+            index: curl.$index, enabled: true)
+        coordinator.configure(controller)
+        XCTAssertEqual(coordinator.controllers.count, 4)
+        selected = 0 // queued arrow while gesture is cancelling
+        coordinator.pageViewController(controller, didFinishAnimating: false,
+            previousViewControllers: [original[2], original[3]], transitionCompleted: false)
+        await waitForSketchbookTurn(coordinator)
+        XCTAssertEqual(selected, 0)
+        XCTAssertEqual(coordinator.displayedIndex, 0)
+        XCTAssertEqual(coordinator.controllers.count, 6)
+    }
+
+    private func waitForSketchbookTurn(_ coordinator: SketchbookPageCurl.Coordinator,
+                                      file: StaticString = #filePath, line: UInt = #line) async {
+        // Yield the main actor so real UIKit animation completions and queued turns run.
+        for _ in 0..<200 {
+            try? await Task.sleep(for: .milliseconds(25))
+            if !coordinator.transitioning { return }
+        }
+        XCTFail("Page curl did not settle", file: file, line: line)
     }
 
     func testStopsListHasInkForEveryStopAndWatercolorOnlyForUnlockableSketches() throws {

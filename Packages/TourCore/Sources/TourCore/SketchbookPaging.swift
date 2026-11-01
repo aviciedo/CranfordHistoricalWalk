@@ -13,8 +13,8 @@ public enum SketchbookPageIndex {
     }
 }
 
-/// A minimum page-curl spine shows one front. Each logical sketch occupies a
-/// front and a parchment back; the back is not another page.
+/// Each logical sketch occupies a front and a parchment back. UIKit receives
+/// both faces for a double-sided curl; the back is not another logical page.
 public enum SketchbookCurlLayout {
     public static func frontControllerIndex(logicalPage: Int) -> Int {
         logicalPage * 2
