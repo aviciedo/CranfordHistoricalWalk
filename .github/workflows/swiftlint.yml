@@ -10,6 +10,8 @@ on:
       - '.swiftlint-baseline.json'
       - 'scripts/install-swiftlint.sh'
       - '.github/workflows/swiftlint.yml'
+      - 'project.yml'
+      - 'CranfordHistoricalAR.xcodeproj/**'
   pull_request:
     paths:
       - 'CranfordHistoricalAR/**/*.swift'
@@ -18,6 +20,8 @@ on:
       - '.swiftlint-baseline.json'
       - 'scripts/install-swiftlint.sh'
       - '.github/workflows/swiftlint.yml'
+      - 'project.yml'
+      - 'CranfordHistoricalAR.xcodeproj/**'
   workflow_dispatch:
 
 permissions:
