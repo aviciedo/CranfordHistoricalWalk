@@ -1,3 +1,11 @@
+## Build 116 candidate — AR walking and plaque reliability
+
+Source-based evaluation of ARKit-CoreLocation, ARKit-SCNPath and Mirador favors targeted native improvements. Walking retains the existing hunter-green extruded chevrons and Google route geometry, with capture-time sensor matching and safer turn placement. Plaque recognition requires continuous fresh visual evidence, attaches the existing historical card to its tracked image, and recovers cleanly across camera/background transitions. GPS never substitutes for plaque evidence. Existing new-unlock celebration/sketchbook flow and tour progression rules are preserved.
+
+Validation: 296 core and 130 actual portable model-flow tests passed, plus Debug/Release native syntax. The exact candidate must pass the existing Apple SDK build/native-test workflow; outdoor iPhone alignment, plaque recognition under glare/occlusion, measured reference sizes and Instruments profiling remain pending. No third-party package or unrelated screen redesign was added.
+
+See the [repository evaluation and matrix](docs/engineering/ar-capability-evaluation.md), [implementation/change/test report](docs/engineering/ar-implementation-and-validation.md), and [Cranford AR field checklist](docs/engineering/ar-field-validation.md). This candidate summary is not physical-device acceptance.
+
 ## Build 115 — incremental stability consolidation
 
 Completed the six-stage code sequence in reviewable commits: main release authority/exact-commit validation workflow; a pure progression decision and bounded Developer Mode trace; shared GPS movement accounting plus close-parallel-route repair; selective viewport/page-index policies from PR #23 while preserving the approved dotted route; separate route/visit session state with generation-safe callbacks; and validated catalog-driven artwork, resource-aware caches and second-tour isolation tests.
