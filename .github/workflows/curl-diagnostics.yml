@@ -31,7 +31,7 @@ jobs:
           for path in Path('.build/prior-curl-diagnostics').rglob('native-tests.log'):
               lines = path.read_text(errors='replace').splitlines()
               selected = [x for x in lines if re.search(r'Sketchbook|SketchbookPage|Exception|Terminating|reason:|failed|crash|Restart|Testing', x, re.I)]
-              for line in selected[-70:]:
-                  escaped = line.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
-                  print('::notice title=Saved native test evidence::' + escaped[:2500])
+              text = '\n'.join(selected[-90:])
+              escaped = text.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+              print('::notice title=Saved native test evidence::' + escaped[:40000])
           PY
