@@ -1,3 +1,16 @@
+## SwiftLint developer check
+
+SwiftLint 0.65.1 checks five focused safety rules in app and TourCore production sources.
+Install and run from the repository root:
+
+```sh
+scripts/install-swiftlint.sh
+.build/tools/swiftlint/swiftlint lint --config .swiftlint.yml --strict --cache-path .build/swiftlint-cache
+```
+
+See [SwiftLint setup and policy](docs/engineering/swiftlint.md). This tooling adds no app dependency,
+Xcode build phase, or runtime behavior change. Maestro and snapshot testing are not installed.
+
 ## Build 117 — reliable sketchbook turns and prominent destinations
 
 Repairs the double-sided UIKit page-curl controller count, serializes overlapping turns, and reconciles the actual visible sketch after interrupted animations. Both faces use full-bleed parchment with hosting safe-area margins removed. The current/next stop uses a fixed 40pt numbered circle and inactive stops use 26pt circles, independently of landmark zoom, visit history, and map selection, on both map providers. Map menu labels are now “Next stop” and “Previous stop”; their actions are unchanged.

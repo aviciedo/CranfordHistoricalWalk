@@ -1,0 +1,57 @@
+name: SwiftLint
+
+on:
+  push:
+    branches: [main, 'validation/**']
+    paths:
+      - 'CranfordHistoricalAR/**/*.swift'
+      - 'Packages/TourCore/Sources/**/*.swift'
+      - '.swiftlint.yml'
+      - '.swiftlint-baseline.json'
+      - 'scripts/install-swiftlint.sh'
+      - '.github/workflows/swiftlint.yml'
+  pull_request:
+    paths:
+      - 'CranfordHistoricalAR/**/*.swift'
+      - 'Packages/TourCore/Sources/**/*.swift'
+      - '.swiftlint.yml'
+      - '.swiftlint-baseline.json'
+      - 'scripts/install-swiftlint.sh'
+      - '.github/workflows/swiftlint.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: swiftlint-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  swiftlint:
+    runs-on: macos-15-intel
+    timeout-minutes: 10
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install pinned SwiftLint
+        run: scripts/install-swiftlint.sh
+      - name: Enforce reviewed lint policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f .swiftlint-baseline.json
+          .build/tools/swiftlint/swiftlint version
+          .build/tools/swiftlint/swiftlint lint --config .swiftlint.yml --strict \
+            --reporter github-actions-logging --cache-path .build/swiftlint-cache \
+            2>&1 | tee .build/swiftlint-results.log
+          git diff --exit-code
+      - name: Preserve lint report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: swiftlint-report
+          path: .build/swiftlint-results.log
+          if-no-files-found: ignore
+          retention-days: 7

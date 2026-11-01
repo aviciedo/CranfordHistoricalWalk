@@ -10,13 +10,14 @@ The approved unpublished starting point is build 114,
 1. Keep changes in small committed increments. Use `validation/**` for the exact candidate.
 2. Apple compiler checks must succeed on that exact commit: TourCore, actual model flows,
    Simulator build/native tests, and iPhone Release build. Linux parsing is not this gate.
+   The separate SwiftLint check must also pass on the exact candidate commit.
 3. Preserve the approved field-test checklist; record untested device behavior honestly.
 4. Promote the same verified commit to main by fast-forward only. No force pushes.
 5. The existing stabilization and xcode-download release aliases may follow that commit;
    do not independently develop or merge conflicting features on those aliases.
 6. Record an immutable release tag/archive. Do not delete old branches as part of release.
 
-Recommended repository setting: protect main, require the `apple-toolchain` check,
+Recommended repository setting: protect main, require the `apple-toolchain` and `swiftlint` checks,
 require review and disallow force pushes/deletions. GitHub API/connector settings access
 is not available in this environment; this document does not claim those server-side
 settings have been applied.
