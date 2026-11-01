@@ -237,6 +237,14 @@ final class ARHistoricalSignEntity: Entity {
         }
     }
 
+    /// Tracking loss is not an animated user dismissal. Stop rendering before a
+    /// detached image card is reparented into another coordinate system.
+    func hideImmediately() {
+        isPresented = false
+        isEnabled = false
+        stopAllAnimations(recursive: true)
+    }
+
     func dismiss() {
         guard isPresented else { return }
         isPresented = false

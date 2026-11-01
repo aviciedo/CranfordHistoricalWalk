@@ -180,6 +180,22 @@ final class GeoSpatialProviderFactoryTests: XCTestCase {
         XCTAssertEqual(model.placementMode, .hidden)
     }
 
+    func testTrackingLossHidesHistoricalContentWithoutAWorldSpaceFade() {
+        let manager = GeoAnchorManager(provider: CoreLocationGeoSpatialProvider(hasCompass: false))
+        manager.anchors.sign.presentOnPlaque()
+        XCTAssertTrue(manager.anchors.sign.isEnabled)
+        manager.trackingStateDidChange(.limited(.insufficientFeatures))
+        XCTAssertFalse(manager.anchors.sign.isEnabled)
+        XCTAssertFalse(manager.anchors.sign.isPresented)
+        manager.anchors.sign.presentOnPlaque()
+        manager.updateNavigationPose(cameraTransform: matrix_identity_float4x4,
+            trackingState: .limited(.relocalizing), timestamp: 1)
+        XCTAssertFalse(manager.anchors.sign.isEnabled)
+        manager.anchors.sign.presentOnPlaque()
+        manager.sessionDidFail("Test camera failure")
+        XCTAssertFalse(manager.anchors.sign.isEnabled)
+    }
+
     func testNormalTrackingWithoutGeographicAlignmentDoesNotInventStreetArrows() {
         let manager = GeoAnchorManager(provider: CoreLocationGeoSpatialProvider(hasCompass: false))
         manager.setNavigationTarget(.init(destination: .init(latitude: 40.65, longitude: -74.30),

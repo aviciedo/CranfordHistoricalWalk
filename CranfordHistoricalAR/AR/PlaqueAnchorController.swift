@@ -94,6 +94,9 @@ final class PlaqueAnchorController {
     }
 
     func unbind(sign: ARHistoricalSignEntity? = nil, returningTo worldParent: Entity? = nil) {
+        if let sign, let imageAnchorEntity, sign.parent === imageAnchorEntity {
+            sign.hideImmediately()
+        }
         if let sign, let worldParent, sign.parent !== worldParent {
             sign.removeFromParent()
             worldParent.addChild(sign)

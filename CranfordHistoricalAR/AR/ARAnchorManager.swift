@@ -48,6 +48,6 @@ final class ARAnchorManager {
 
     func hideAll() {
         hideNavigation()
-        sign.dismiss()
+        sign.hideImmediately()
     }
 }

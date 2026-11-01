@@ -39,6 +39,7 @@ rescan may reopen it. The Close regression also covers a plaque recognized witho
 | `Packages/TourCore/Sources/TourCore/PlaqueRecognitionEvidence.swift` | New bounded camera-evidence policy; no GPS/story input |
 | `CranfordHistoricalAR/Services/GeoSpatialProvider.swift` | Timestamp-matched capture positions and injectable clocks; existing provider ownership retained |
 | `CranfordHistoricalAR/AR/ARNavigationArrow.swift` | Hide rejected/stale placements; retain the same white/green mesh/material design |
+| `CranfordHistoricalAR/AR/ARHistoricalSign.swift`, `ARAnchorManager.swift` | Immediate trust-loss hiding; preserve normal animated user dismissal |
 | `CranfordHistoricalAR/AR/GeoAnchorManager.swift` | Honest floor confidence, failed-session cleanup and successful-binding requirement for plaque cards |
 | `CranfordHistoricalAR/AR/PlaqueAnchorController.swift` | Filter configured references, clear empty configurations, separate bound identity and report binding success |
 | `CranfordHistoricalAR/ViewModels/ARViewModel.swift` | Live evidence → existing award → image card; deduplicated award calls; lifecycle and instruction recovery |
@@ -80,7 +81,7 @@ Home/Stops/Map design or previously declined progression UI redesign was impleme
 The final candidate must also pass the existing **Apple compiler checks** workflow on its
 exact commit: core/model tests on Apple Foundation, shipped-project Simulator compilation,
 native host tests and iPhone Release compilation. The validation branch is
-`validation/ar-reliability-116`; the matching run's native counts/conclusion are the native
+`validation/ar-reliability-116-final`; the matching run's native counts/conclusion are the native
 testing record. Do not use build 115's successful run to certify these changes.
 
 ## Limitations and device-only work
@@ -104,6 +105,8 @@ plaques. Removing them wholesale would add regression risk without improving loc
 ## Rollback and review
 
 Start from `build-115` (`d91859f`), then review the audit, walking and plaque commits in order.
-Each capability has its own focused commit. Keep this work on its candidate branch until
+Each capability has its own focused commit. A follow-up integration fix immediately hides
+image cards before reparenting: an ordinary 0.25-second dismissal fade would otherwise
+render detached content briefly in the wrong coordinate system. Keep this work on its candidate branch until
 native verification and field acceptance are assessed. No old branch must be deleted or
 merged to run the candidate. A failed native gate must be repaired rather than suppressed.

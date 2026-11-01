@@ -211,7 +211,8 @@ final class GeoAnchorManager {
     func trackingStateDidChange(_ state: ARCamera.TrackingState) {
         trackingState = state
         if case .normal = state {} else {
-            anchors.hideNavigation()
+            anchors.hideAll()
+            plaqueAnchors.unbind(sign: anchors.sign, returningTo: anchors.worldRoot)
             spatialConfidence.reset()
             spatialMode = .degraded(.tracking)
         }
@@ -237,6 +238,7 @@ final class GeoAnchorManager {
                               timestamp: TimeInterval) {
         self.cameraTransform = cameraTransform
         self.trackingState = trackingState
+        if case .normal = trackingState {} else { anchors.hideAll() }
         provider.update(cameraTransform: cameraTransform, trackingState: trackingState, timestamp: timestamp)
         refreshLocalizationState()
         considerGeospatialFallback()
