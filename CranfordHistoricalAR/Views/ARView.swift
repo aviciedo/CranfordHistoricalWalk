@@ -386,6 +386,11 @@ struct PlaqueScannerView: View {
     private var revealContext: RevealContext {
         RevealContext(stopID: tour.pendingSketchStopID, isActive: scenePhase == .active)
     }
+    private var shouldRunCamera: Bool { scenePhase == .active && model?.isShowingSignDetails != true }
+    private var detailPresentation: Binding<Bool> {
+        Binding(get: { model?.isShowingSignDetails ?? false },
+                set: { model?.isShowingSignDetails = $0 })
+    }
 
     var body: some View {
         ZStack {
@@ -431,15 +436,23 @@ struct PlaqueScannerView: View {
                 provider: CoreLocationGeoSpatialProvider(hasCompass: false),
                 imageLoader: dependencies.imageLoader, narrationPlayer: dependencies.narrationPlayer,
                 isPlaqueScanner: true)
-            scanner.setApplicationActive(scenePhase == .active)
+            scanner.setApplicationActive(shouldRunCamera)
             model = scanner
             await scanner.requestCameraAccessIfNeeded()
         }
-        .onAppear { model?.setApplicationActive(scenePhase == .active) }
-        .onChange(of: scenePhase) { _, phase in model?.setApplicationActive(phase == .active) }
+        .sheet(isPresented: detailPresentation) {
+            if let stop = model?.tour.arStop {
+                // Reading reuses the same stop UI, without recursively creating a camera.
+                StopDetailView(stop: stop, allowsPlaqueActions: false)
+            }
+        }
+        .onAppear { model?.setApplicationActive(shouldRunCamera) }
+        .onChange(of: shouldRunCamera) { _, active in model?.setApplicationActive(active) }
         .onDisappear {
             model?.setApplicationActive(false)
-            tour.endARDiscoverySession()
+            // A reading/photo presentation pauses this camera without ending its AR subject.
+            // Actual teardown still clears the context in arViewWillUnload.
+            if model?.isShowingSignDetails != true { tour.endARDiscoverySession() }
         }
         .task(id: revealContext) {
             guard scenePhase == .active, let id = tour.pendingSketchStopID,

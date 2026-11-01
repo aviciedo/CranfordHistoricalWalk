@@ -7,8 +7,10 @@ struct StopDetailView: View {
     @Environment(AppNavigation.self) private var navigation
     @Environment(\.dismiss) private var dismiss
     let initialStop: HistoricalStop
-    init(stop: HistoricalStop) {
+    private let allowsPlaqueActions: Bool
+    init(stop: HistoricalStop, allowsPlaqueActions: Bool = true) {
         initialStop = stop
+        self.allowsPlaqueActions = allowsPlaqueActions
     }
     // A scanner can identify another supported plaque. Return to that site's actual story.
     @State private var discoveredStop: HistoricalStop?
@@ -23,6 +25,7 @@ struct StopDetailView: View {
     private var hasStopDetails: Bool { !stop.longDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     private var hasStoryScript: Bool { !script.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     private func openPlaqueActivity() {
+        guard allowsPlaqueActions else { return }
         if tour.activities[stop.id].plaqueUnlockedAt != nil {
             sketchbookPresentation = SketchbookPresentation(stopID: stop.id, animated: false)
             return
@@ -31,7 +34,7 @@ struct StopDetailView: View {
     }
 
     private func openPlaqueScanner() {
-        guard tour.preparePlaqueScanner(stopID: stop.id) else { return }
+        guard allowsPlaqueActions, tour.preparePlaqueScanner(stopID: stop.id) else { return }
         scannerHasPresented = true
         isShowingScanner = true
     }
@@ -116,7 +119,7 @@ struct StopDetailView: View {
                                 }
                             }
                         }
-                        if stop.hasPlaqueReference {
+                        if stop.hasPlaqueReference && allowsPlaqueActions {
                             VStack(alignment: .leading, spacing: 12) {
                                 Button(action: openPlaqueActivity) {
                                     HStack(spacing: 12) {
@@ -141,7 +144,7 @@ struct StopDetailView: View {
                                 }
                                 .buttonStyle(.plain)
                                 .accessibilityIdentifier("stop.findPlaque")
-                                if tour.activities[stop.id].plaqueUnlockedAt != nil {
+                                if allowsPlaqueActions && tour.activities[stop.id].plaqueUnlockedAt != nil {
                                     Button(action: openPlaqueScanner) {
                                         Label("View plaque in AR", systemImage: "viewfinder")
                                             .font(.subheadline.weight(.semibold))
@@ -184,7 +187,7 @@ struct StopDetailView: View {
                         if !stop.hasPlaqueReference { Divider() }
                     }
                 }
-                if stop.hasPlaqueReference {
+                if stop.hasPlaqueReference && allowsPlaqueActions {
                     SketchCollectionRow(stop: stop,
                                      isCollected: tour.activities[stop.id].plaqueUnlockedAt != nil) {
                         sketchbookPresentation = SketchbookPresentation(stopID: stop.id, animated: false)

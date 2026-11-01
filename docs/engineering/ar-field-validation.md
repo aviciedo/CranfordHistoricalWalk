@@ -60,6 +60,11 @@ unit test is not evidence that either estimate equals the actual site.
    the plaque. Verify out-of-wall/front orientation, scale and approximately 0.25 m upward offset.
 5. Close the card using its close control. It stays hidden while that same lock continues.
    Look away and reframe (or Retry): it can reopen after fresh qualification, without another award.
+   Tap the card to read more too: the shared stop details should open, with camera capture
+   paused and no nested AR-entry action. Dismiss details: the same session resumes and
+   requires fresh tracking before showing the card again. Reading must not replace the
+   walking destination or manufacture another plaque award. Normal stop details retain
+   their existing sketchbook actions.
 6. Lose target tracking, cover the camera briefly, then reacquire. The spatial card hides
    when evidence is lost; the saved sketch remains. A different/new anchor ID cannot reuse
    the previous target's confirmation time or scene binding.
