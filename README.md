@@ -1,3 +1,20 @@
+## Build 118 — AR guidance recovery and Cranford Hotel photos
+
+Repairs GPS/AR sample ordering so unmatched fresh locations are retried when matching
+camera history becomes available. Walking retains strict street-alignment safeguards
+and adds an explicitly labelled, non-street-aligned chunky 3D maneuver preview under
+moderate GPS uncertainty. Tracking loss, stale locations and substantially off-route
+positions retain map fallback. Sensor-quality transition diagnostics omit coordinates
+and camera images. Five supplied photographs are added to the Cranford Hotel gallery
+with captions and the existing swipe/enlarge controls.
+
+The implementation passed 639 Apple-platform tests, Simulator and iPhone Release
+builds, and strict macOS SwiftLint. Release metadata must pass those same gates on
+this exact commit before publication. Outdoor alignment and preview readability
+remain unverified on a physical iPhone; follow the
+[AR investigation and field checklist](docs/engineering/ar-arrow-investigation.md).
+No dependency, arrival-detection, plaque-unlock or tour-progression change is introduced.
+
 ## SwiftLint developer check
 
 SwiftLint 0.65.1 checks five focused safety rules in app and TourCore production sources.
