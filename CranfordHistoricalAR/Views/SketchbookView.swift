@@ -360,8 +360,16 @@ struct SketchbookPageCurl: UIViewControllerRepresentable {
                 // setViewControllers calls here can invalidate the curl's controller count.
                 DispatchQueue.main.async { [weak self, weak controller] in
                     guard let self, let controller else { return }
-                    if completed { self.displayedIndex = target }
-                    else { self.parent.index = self.displayedIndex }
+                    // `completed` describes the animation, not whether UIKit installed
+                    // the destination. Interrupted/offscreen turns can return false
+                    // with the new page already visible. Reconcile the actual face.
+                    if let visible = controller.viewControllers?.first,
+                       let physical = self.controllers.firstIndex(where: { $0 === visible }) {
+                        self.displayedIndex = SketchbookCurlLayout.logicalPage(controllerIndex: physical)
+                    }
+                    if !completed, self.parent.index == target, self.displayedIndex != target {
+                        self.parent.index = self.displayedIndex
+                    }
                     self.transitioning = false
                     self.configure(controller)
                 }

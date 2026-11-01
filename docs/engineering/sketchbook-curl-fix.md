@@ -8,14 +8,14 @@ The coordinator passed only one controller to every `setViewControllers` call. T
 
 - Load the page-controller view before configuring double-sided rendering. Preserve one-front opening and supply both physical faces for animated turns in either direction, retaining one logical sketch per stop.
 - Keep the minimum spine across rotations.
-- Use main-queue callbacks to defer queued turns until UIKit has returned from its animation completion. Do not replace hosting controllers or refresh their content during a curl. Honor unsuccessful programmatic completions and reconcile completed/cancelled swipes without dropping a queued arrow request.
+- Use main-queue callbacks to defer queued turns until UIKit has returned from its animation completion. Do not replace hosting controllers or refresh their content during a curl. Reconcile UIKit’s actual visible page even when an interrupted animation reports `false`; that flag does not prove that the destination was not installed. Preserve pending arrow requests and reconcile completed/cancelled swipes.
 - Remove the front sheet's external vertical padding/shadow and disable hosting safe-area margins. Both faces use full-bleed parchment; the existing artwork and native curl shading remain.
 
 Reference: public UIKit `UIPageViewController.h`, `setViewControllers:direction:animated:completion:` discusses the additional back for double-sided turns. Its broad wording does not capture the runtime difference between initial presentation and an animated transition. The native regression tests exercise both paths. CI crash reporting now exports diagnostic bundles whenever the native test run fails, including runtime allocation aborts which do not appear as XCTest failure summaries. A Swift task-allocation abort was observed in the new async live-animation tests; the final tests pump the main run loop synchronously, and UIKit deferrals use the main dispatch queue instead of unstructured Swift tasks.
 
 ## Regression coverage
 
-Native UIKit tests cover initial opening at every page in one-, two-, and six-stop books; both paper faces; animated forward/reverse turns including Greystone → Mill; repeated turns; rapid reverse taps; queued content changes after a cancelled interactive transition; and safe-area suppression. The cancellation test invokes the real coordinator's delegate callbacks; it does not synthesize a physical finger gesture.
+Scene-attached native UIKit tests cover live forward/reverse animations; standalone tests cover initial opening at every page in one-, two-, and six-stop books; both paper faces; animated forward/reverse turns including Greystone → Mill; repeated turns; rapid reverse taps; queued content changes after a cancelled interactive transition; and safe-area suppression. The cancellation test invokes the real coordinator's delegate callbacks; it does not synthesize a physical finger gesture.
 
 The shared TourCore suite remains unchanged apart from correcting its layout documentation. Apple CI runs Simulator compilation/native tests and unsigned iPhone Release compilation. See the linked validation run in the delivery message for the exact tested revision and results.
 

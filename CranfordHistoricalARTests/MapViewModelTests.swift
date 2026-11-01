@@ -139,11 +139,15 @@ final class MapViewModelTests: XCTestCase {
             index: Binding(get: { selected }, set: { selected = $0 }), enabled: true)
         let coordinator = curl.makeCoordinator()
         let controller = SketchbookPageCurl.makePageController()
-        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+        let originalKey = scene.windows.first(where: \.isKeyWindow)
+        let window = UIWindow(windowScene: scene)
+        window.frame = scene.coordinateSpace.bounds
         window.rootViewController = controller
-        window.isHidden = false
-        defer { window.isHidden = true; window.rootViewController = nil }
         coordinator.configure(controller)
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true; window.rootViewController = nil; originalKey?.makeKey() }
+        window.layoutIfNeeded()
         controller.view.layoutIfNeeded()
         for target in [1, 0, 1, 2, 1, 0] {
             selected = target
@@ -151,23 +155,29 @@ final class MapViewModelTests: XCTestCase {
             coordinator.configure(controller)
             waitForSketchbookTurn(coordinator)
             XCTAssertEqual(coordinator.displayedIndex, target)
-            XCTAssertTrue(controller.viewControllers?.first === coordinator.controllers[target * 2])
+            XCTAssertTrue(controller.viewControllers?.first === coordinator.controllers[target * 2],
+                          "The settled face must be the requested sketch front (page \(target)), not parchment")
             XCTAssertEqual(controller.spineLocation, .min)
             for host in coordinator.controllers { XCTAssertTrue(host.safeAreaRegions.isEmpty) }
         }
     }
 
-    func testSketchbookQueuesRapidReverseAndContentRefreshUntilCurlFinishes() {
+    func testSketchbookQueuesRapidReverseAndContentRefreshUntilCurlFinishes() throws {
         var selected = 0
         let curl = SketchbookPageCurl(pages: [AnyView(Text("Mill")), AnyView(Text("Greystone"))],
             index: Binding(get: { selected }, set: { selected = $0 }), enabled: true)
         let coordinator = curl.makeCoordinator()
         let controller = SketchbookPageCurl.makePageController()
-        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+        let originalKey = scene.windows.first(where: \.isKeyWindow)
+        let window = UIWindow(windowScene: scene)
+        window.frame = scene.coordinateSpace.bounds
         window.rootViewController = controller
-        window.isHidden = false
-        defer { window.isHidden = true; window.rootViewController = nil }
         coordinator.configure(controller)
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true; window.rootViewController = nil; originalKey?.makeKey() }
+        window.layoutIfNeeded()
+        controller.view.layoutIfNeeded()
         selected = 1
         coordinator.configure(controller)
         selected = 0
