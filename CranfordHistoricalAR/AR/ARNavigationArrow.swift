@@ -8,6 +8,7 @@ import UIKit
 /// Shared three-dimensional chevron artwork: opaque white faces, hunter-green extruded sides.
 @MainActor
 private enum ARChevronArt {
+    static let sideTexture = makeSideTexture()
     static let bodyMesh = makeMesh(ARChevronGeometry.body(depth: ARChevronGeometry.bodyDepth), name: "hunter-green-chevron-body")
     static let faceMesh = makeMesh(ARChevronGeometry.front(), name: "white-chevron-face")
 
@@ -15,15 +16,42 @@ private enum ARChevronArt {
         var descriptor = MeshDescriptor(name: name)
         descriptor.positions = MeshBuffers.Positions(data.positions)
         descriptor.normals = MeshBuffers.Normals(data.normals)
+        // One cached vertical color ramp across the extruded hunter-green material.
+        descriptor.textureCoordinates = MeshBuffers.TextureCoordinates(data.positions.map {
+            SIMD2<Float>(($0.z + ARChevronGeometry.bodyDepth) / ARChevronGeometry.bodyDepth,
+                         ($0.y + 1.1) / 2.2)
+        })
         descriptor.primitives = .triangles(data.indices)
         return try? MeshResource.generate(from: [descriptor])
+    }
+
+    static func makeSideTexture() -> TextureResource? {
+        let base = UIColor(AppTheme.forest)
+        var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 1
+        guard base.getRed(&red, green: &green, blue: &blue, alpha: &alpha) else { return nil }
+        let light = UIColor(red: red + (1 - red) * 0.13, green: green + (1 - green) * 0.13,
+                            blue: blue + (1 - blue) * 0.13, alpha: 1)
+        let dark = UIColor(red: red * 0.62, green: green * 0.62, blue: blue * 0.62, alpha: 1)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1; format.opaque = true
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 16, height: 256), format: format).image { context in
+            base.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 16, height: 256))
+            guard let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
+                colors: [light.cgColor, base.cgColor, dark.cgColor] as CFArray, locations: [0, 0.48, 1]) else { return }
+            context.cgContext.drawLinearGradient(gradient, start: .zero, end: CGPoint(x: 0, y: 256), options: [])
+        }
+        guard let cgImage = image.cgImage else { return nil }
+        return try? TextureResource.generate(from: cgImage, options: .init(semantic: .color))
     }
 
     static func makeGroup() -> Entity {
         let group = Entity()
         guard let bodyMesh, let faceMesh else { return group }
-        let green = SimpleMaterial(color: UIColor(AppTheme.forest),
-                                   roughness: 0.7, isMetallic: false)
+        // Authored shading stays hunter green in outdoor shade instead of turning
+        // almost black when environment lighting is weak. White faces remain unlit too.
+        var green = UnlitMaterial(color: UIColor(AppTheme.forest))
+        if let sideTexture { green.color = .init(tint: .white, texture: .init(sideTexture)) }
         let white = UnlitMaterial(color: .white)
         for index in 0..<3 {
             let body = ModelEntity(mesh: bodyMesh, materials: [green])
@@ -34,6 +62,9 @@ private enum ARChevronArt {
             body.addChild(face)
             group.addChild(body)
         }
+        // Rotate only the artwork, not the anchor or navigation direction. Perspective
+        // exposes the substantial green extrusion even from the initial viewing position.
+        group.orientation = simd_quatf(angle: ARChevronGeometry.presentationYawRadians, axis: [0, 1, 0])
         group.scale = SIMD3<Float>(repeating: 1.0)
         return group
     }

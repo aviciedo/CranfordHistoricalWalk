@@ -9,8 +9,10 @@ public enum ARChevronGeometry {
         public var indices: [UInt32]
     }
 
-    public static let bodyDepth: Float = 0.25
-    public static let groupSpacing: Float = 1.36
+    public static let bodyDepth: Float = 0.72
+    /// Artwork-only three-quarter view reveals the sidewalls without changing route yaw.
+    public static let presentationYawRadians: Float = .pi / 6
+    public static let groupSpacing: Float = 1.75
 
     /// Small corner chamfers give original geometry a substantial, softened silhouette.
     public static let outline: [SIMD2<Float>] = {
@@ -58,7 +60,7 @@ public enum ARChevronGeometry {
     }
 
     public static func body(depth: Float = 0.18) -> Mesh {
-        let depth = depth.isFinite ? max(0.01, min(0.5, depth)) : 0.18
+        let depth = depth.isFinite ? max(0.01, min(1.2, depth)) : 0.18
         var mesh = front()
         mesh.positions += outline.map { [$0.x, $0.y, -depth] }
         mesh.normals += Array(repeating: [0, 0, -1], count: outline.count)

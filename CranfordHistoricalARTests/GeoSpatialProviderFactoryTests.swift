@@ -2,6 +2,7 @@ import XCTest
 import ARKit
 import simd
 import RealityKit
+import UIKit
 @testable import CranfordHistoricalAR
 @testable import TourCore
 
@@ -315,6 +316,23 @@ final class GeoSpatialProviderFactoryTests: XCTestCase {
         manager.updateNavigationPose(cameraTransform: matrix_identity_float4x4, trackingState: .normal, timestamp: 2)
         XCTAssertNil(manager.anchors.arrows.guidancePosition)
         XCTAssertTrue(manager.navigationNotice?.contains("fresh location") == true)
+    }
+
+    func testChevronArtworkRetainsWhiteFacesAndVisibleTexturedGreenSidewalls() {
+        let arrow = ARNavigationArrowEntity()
+        var materials: [UnlitMaterial] = []
+        func inspect(_ entity: Entity) {
+            if let model = entity as? ModelEntity {
+                materials += (model.model?.materials ?? []).compactMap { $0 as? UnlitMaterial }
+            }
+            for child in entity.children { inspect(child) }
+        }
+        inspect(arrow)
+        let texturedSides = materials.filter { $0.color.texture != nil }
+        let whiteFaces = materials.filter { $0.color.texture == nil && $0.color.tint == UIColor.white }
+        XCTAssertEqual(texturedSides.count, 3, "Each extruded body needs its cached hunter-green gradient")
+        XCTAssertEqual(whiteFaces.count, 3, "Keep the three bright white front faces")
+        XCTAssertTrue(arrow.canRender)
     }
 
     func testNavigationArrowMeshesAndInitialGroundedPlacementAreRenderable() {

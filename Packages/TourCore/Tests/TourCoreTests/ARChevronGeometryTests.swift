@@ -51,6 +51,21 @@ final class ARChevronGeometryTests: XCTestCase {
         XCTAssertTrue(mesh.indices.allSatisfy { Int($0) < mesh.positions.count })
     }
 
+    func testDeepSidesAreVisibleAtPresentationAngleWithoutChangingWhiteFace() {
+        let face = ARChevronGeometry.front()
+        XCTAssertTrue(face.positions.allSatisfy { $0.z == 0 })
+        let projectedSideWidth = ARChevronGeometry.bodyDepth * sin(ARChevronGeometry.presentationYawRadians)
+        XCTAssertGreaterThan(projectedSideWidth, 0.2, "Sidewalls should read as a broad solid surface, not a thin outline")
+        XCTAssertLessThan(ARChevronGeometry.presentationYawRadians, .pi / 5, "Keep the white faces readable")
+        let xs = ARChevronGeometry.outline.map(\.x)
+        let projectedFace = (xs.max()! - xs.min()!) * cos(ARChevronGeometry.presentationYawRadians)
+        let projectedSpacing = ARChevronGeometry.groupSpacing * cos(ARChevronGeometry.presentationYawRadians)
+        XCTAssertGreaterThan(projectedSpacing, projectedFace + projectedSideWidth,
+                             "Deep sidewalls must not overlap the next white face")
+        let deep = ARChevronGeometry.body(depth: ARChevronGeometry.bodyDepth)
+        XCTAssertEqual(deep.positions.map(\.z).min()!, -ARChevronGeometry.bodyDepth, accuracy: 0.00001)
+    }
+
     func testLargeSignFitsPortraitLandscapeAndTallDirectionsWithoutDistortion() {
         for viewport in [(390.0, 844.0), (320.0, 568.0), (844.0, 390.0)] {
             for group in [(900.0, 440.0), (440.0, 900.0), (800.0, 800.0)] {
@@ -76,8 +91,8 @@ final class ARChevronGeometryTests: XCTestCase {
         XCTAssertGreaterThan(width, 1.2)
         XCTAssertGreaterThan(ARChevronGeometry.groupSpacing, width,
                              "Adjacent broad faces need a visible gap")
-        XCTAssertGreaterThanOrEqual(ARChevronGeometry.bodyDepth / width, 0.15)
-        XCTAssertLessThanOrEqual(ARChevronGeometry.bodyDepth / width, 0.25)
+        XCTAssertGreaterThanOrEqual(ARChevronGeometry.bodyDepth / width, 0.5)
+        XCTAssertLessThanOrEqual(ARChevronGeometry.bodyDepth / width, 0.65)
         XCTAssertEqual(ARChevronGeometry.frontIndices.count, (ARChevronGeometry.outline.count - 2) * 3)
     }
 
