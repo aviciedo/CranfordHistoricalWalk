@@ -5,7 +5,9 @@ on:
     branches: [main, 'validation/**']
     paths:
       - 'CranfordHistoricalAR/**/*.swift'
+      - 'CranfordHistoricalARTests/**'
       - 'Packages/TourCore/Sources/**/*.swift'
+      - 'Packages/TourCore/Tests/**'
       - '.swiftlint.yml'
       - '.swiftlint-baseline.json'
       - 'scripts/install-swiftlint.sh'
@@ -15,7 +17,9 @@ on:
   pull_request:
     paths:
       - 'CranfordHistoricalAR/**/*.swift'
+      - 'CranfordHistoricalARTests/**'
       - 'Packages/TourCore/Sources/**/*.swift'
+      - 'Packages/TourCore/Tests/**'
       - '.swiftlint.yml'
       - '.swiftlint-baseline.json'
       - 'scripts/install-swiftlint.sh'
