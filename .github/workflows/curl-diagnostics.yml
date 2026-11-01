@@ -1,0 +1,37 @@
+name: Inspect saved page-curl test diagnostics
+on:
+  push:
+    branches: ['validation/sketchbook-curl-117']
+    paths: ['.github/workflows/curl-diagnostics.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  inspect:
+    runs-on: macos-15-intel
+    timeout-minutes: 10
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v5
+        with:
+          name: apple-compiler-logs
+          run-id: 41324113254
+          github-token: ${{ github.token }}
+          path: .build/prior-curl-diagnostics
+      - name: Export crash evidence from the saved native result
+        run: python3 scripts/report-startup-crash.py .build/prior-curl-diagnostics
+      - name: Report native test endings and failed test names
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          for path in Path('.build/prior-curl-diagnostics').rglob('native-tests.log'):
+              lines = path.read_text(errors='replace').splitlines()
+              selected = [x for x in lines if re.search(r'Sketchbook|SketchbookPage|Exception|Terminating|reason:|failed|crash|Restart|Testing', x, re.I)]
+              for line in selected[-70:]:
+                  escaped = line.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+                  print('::notice title=Saved native test evidence::' + escaped[:2500])
+          PY
