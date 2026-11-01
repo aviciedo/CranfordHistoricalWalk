@@ -53,7 +53,8 @@ unit test is not evidence that either estimate equals the actual site.
 3. First discovery: confirm the saved sketch, correct site name, existing celebration and
    automatic opening of that site's sketchbook page. Closing early must not lose the award.
    This preserves the current automatic flow; it is separate from inspecting a returning AR card.
-4. Re-enter for an already unlocked plaque. No new celebration/award should occur. The
+4. Use **View plaque in AR** on an already unlocked stop. Existing View sketch/Sketch unlocked
+   actions must still open its corresponding sketchbook page. No new celebration/award should occur. The
    historical card should attach above the correct image, with no GPS substitute. Move the
    phone sideways/up/down and view it obliquely: its perspective changes while it stays on
    the plaque. Verify out-of-wall/front orientation, scale and approximately 0.25 m upward offset.

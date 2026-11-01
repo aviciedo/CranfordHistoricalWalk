@@ -27,6 +27,10 @@ struct StopDetailView: View {
             sketchbookPresentation = SketchbookPresentation(stopID: stop.id, animated: false)
             return
         }
+        openPlaqueScanner()
+    }
+
+    private func openPlaqueScanner() {
         guard tour.preparePlaqueScanner(stopID: stop.id) else { return }
         scannerHasPresented = true
         isShowingScanner = true
@@ -137,6 +141,17 @@ struct StopDetailView: View {
                                 }
                                 .buttonStyle(.plain)
                                 .accessibilityIdentifier("stop.findPlaque")
+                                if tour.activities[stop.id].plaqueUnlockedAt != nil {
+                                    Button(action: openPlaqueScanner) {
+                                        Label("View plaque in AR", systemImage: "viewfinder")
+                                            .font(.subheadline.weight(.semibold))
+                                            .frame(maxWidth: .infinity, minHeight: 44)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .foregroundStyle(AppTheme.forest)
+                                    .accessibilityIdentifier("stop.viewPlaqueAR")
+                                    .accessibilityHint("Scan this plaque again to view its anchored historical card")
+                                }
                             }
                         }
                     }

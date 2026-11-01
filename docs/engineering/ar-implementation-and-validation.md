@@ -27,7 +27,9 @@ changes reset tracking. Session errors hide all spatial content and expose recov
 scanner's existing instruction card now displays its hold/retry/reacquisition instructions.
 
 The current new-unlock celebration and automatic matching sketchbook opening are preserved.
-An already unlocked target can be rescanned to inspect its anchored card. Closing the card
+An already unlocked target has a separate **View plaque in AR** action to inspect its
+anchored card; existing View sketch and Sketch unlocked actions still open the sketchbook.
+Closing the card
 uses the tour's presentation state, not a new competing navigation state; a qualified later
 rescan may reopen it. The Close regression also covers a plaque recognized without GPS.
 
@@ -45,6 +47,7 @@ rescan may reopen it. The Close regression also covers a plaque recognized witho
 | `CranfordHistoricalAR/ViewModels/ARViewModel.swift` | Live evidence → existing award → image card; deduplicated award calls; lifecycle and instruction recovery |
 | `CranfordHistoricalAR/ViewModels/TourViewModel+Proximity.swift` | Close a camera-presented plaque independently of GPS state; no arrival/progression policy change |
 | `CranfordHistoricalAR/Views/ARView.swift` | Forward scanner lifecycle; pause on exit; show concise scanner guidance inside its existing card |
+| `CranfordHistoricalAR/Views/StopDetailView.swift` | Separate AR re-entry for unlocked targets; existing sketchbook navigation retained |
 | `Packages/TourCore/Tests/TourCoreTests/ARSpatialNavigationTests.swift` | Delayed-frame clocks, passed/turning poses, jitter, yaw stability and wrap regressions |
 | `Packages/TourCore/Tests/TourCoreTests/PlaqueRecognitionEvidenceTests.swift` | Seven visual-evidence qualification/loss/reacquisition tests |
 | `CranfordHistoricalARTests/GeoSpatialProviderFactoryTests.swift` | Native provider/renderer, reference dimensions/filtering, inactive/error recovery tests |
@@ -81,7 +84,7 @@ Home/Stops/Map design or previously declined progression UI redesign was impleme
 The final candidate must also pass the existing **Apple compiler checks** workflow on its
 exact commit: core/model tests on Apple Foundation, shipped-project Simulator compilation,
 native host tests and iPhone Release compilation. The validation branch is
-`validation/ar-reliability-116-final`; the matching run's native counts/conclusion are the native
+`validation/ar-reliability-116-field-ready`; the matching run's native counts/conclusion are the native
 testing record. Do not use build 115's successful run to certify these changes.
 
 ## Limitations and device-only work
