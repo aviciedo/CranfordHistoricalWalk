@@ -13,7 +13,7 @@ public enum SketchbookPageIndex {
     }
 }
 
-/// Each logical sketch occupies a front and a parchment back. Reverse curls
+/// Each logical sketch occupies a front and a parchment back. Animated curls
 /// need both physical faces; the back is not another logical page.
 public enum SketchbookCurlLayout {
     public static func frontControllerIndex(logicalPage: Int) -> Int {

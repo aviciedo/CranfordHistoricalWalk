@@ -341,7 +341,7 @@ struct SketchbookPageCurl: UIViewControllerRepresentable {
                 controller.delegate = self
                 displayedIndex = SketchbookPageIndex.clamped(parent.index, pageCount: parent.pages.count)
                 if !controllers.isEmpty {
-                    controller.setViewControllers(faces(for: displayedIndex, direction: .forward, animated: false),
+                    controller.setViewControllers(faces(for: displayedIndex, animated: false),
                                                   direction: .forward, animated: false)
                 }
             } else {
@@ -353,7 +353,7 @@ struct SketchbookPageCurl: UIViewControllerRepresentable {
             let target = parent.index
             transitioning = true
             let direction: UIPageViewController.NavigationDirection = target > displayedIndex ? .forward : .reverse
-            controller.setViewControllers(faces(for: target, direction: direction, animated: true), direction: direction,
+            controller.setViewControllers(faces(for: target, animated: true), direction: direction,
                                           animated: true) { [weak self, weak controller] completed in
                 guard let self, let controller else { return }
                 // Defer until UIKit has unwound its transition completion. Reentrant
@@ -382,13 +382,12 @@ struct SketchbookPageCurl: UIViewControllerRepresentable {
             AnyView(page.background { SketchbookPageBack().ignoresSafeArea() }.ignoresSafeArea())
         }
 
-        private func faces(for page: Int, direction: UIPageViewController.NavigationDirection,
-                           animated: Bool) -> [UIViewController] {
+        private func faces(for page: Int, animated: Bool) -> [UIViewController] {
             let front = SketchbookCurlLayout.frontControllerIndex(logicalPage: page)
-            // At a minimum spine UIKit opens with one front. An animated reverse
-            // turn additionally needs that sheet's back; forward curls obtain it
-            // from the data source. Applying either count to every turn can throw.
-            if animated && direction == .reverse {
+            // Bootstrap a minimum-spine book with one front. Once animating,
+            // double-sided UIKit turns require both front and parchment reverse
+            // in either direction. A universal one- or two-face rule can throw.
+            if animated {
                 return [controllers[front], controllers[front + 1]]
             }
             return [controllers[front]]

@@ -78,7 +78,8 @@ def main():
     for message in unique[:20]:
         print(f'::error title=Apple build/test diagnostic::{annotation(message[:1600])}')
     native_log = directory / 'native-tests.log'
-    if native_log.exists() and '** TEST SUCCEEDED **' not in native_log.read_text(errors='replace'):
+    if native_log.exists() and not re.search(r'\*\* TEST(?: EXECUTE)? SUCCEEDED \*\*',
+                                           native_log.read_text(errors='replace')):
         subprocess.run([sys.executable, str(Path(__file__).with_name('report-startup-crash.py')),
                         str(directory)], check=False)
     # Reporting never replaces or masks the original build/test exit code.

@@ -109,7 +109,7 @@ final class MapViewModelTests: XCTestCase {
         coordinator.configure(controller)
         XCTAssertTrue(controller.isDoubleSided)
         let first = try XCTUnwrap(controller.viewControllers)
-        XCTAssertEqual(first.count, 1, "Opening uses one front; animated reverse turns also supply its back")
+        XCTAssertEqual(first.count, 1, "Opening uses one front; animated turns also supply its back")
         let firstBack = try XCTUnwrap(coordinator.pageViewController(controller, viewControllerAfter: first[0]))
         XCTAssertTrue(firstBack.view.accessibilityElementsHidden)
         XCTAssertNil(coordinator.pageViewController(controller, viewControllerBefore: first[0]))

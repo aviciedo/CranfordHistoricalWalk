@@ -89,6 +89,9 @@ jobs:
             -derivedDataPath .build/apple-verification/simulator \
             -resultBundlePath .build/apple-verification/native-tests.xcresult \
             CODE_SIGNING_ALLOWED=NO test-without-building 2>&1 | tee .build/apple-verification/native-tests.log
+      - name: Report native failures before the Release compile
+        if: failure()
+        run: python3 scripts/summarize-apple-checks.py
       - name: Compile Release for iPhone
         if: ${{ !cancelled() && steps.simulator-build.outcome == 'success' }}
         shell: bash
