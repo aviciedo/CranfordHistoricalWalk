@@ -40,6 +40,6 @@ for path in root.rglob('*'):
         report(path.name + ': ' + data[:10000])
     else:
         lines = [line for line in data.splitlines() if re.search(
-            r'Could not cast|abort\(\)|Terminating app|Library not loaded|Symbol not found|reason:|Fatal error:', line, re.I)]
+            r'Could not cast|abort\(\)|Terminating app|Library not loaded|Symbol not found|reason:|Fatal error:|freed pointer|Sketchbook curl test request', line, re.I)]
         if lines:
             report(path.name + ': ' + '\n'.join(lines[-12:]))

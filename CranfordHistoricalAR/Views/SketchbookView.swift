@@ -358,7 +358,7 @@ struct SketchbookPageCurl: UIViewControllerRepresentable {
                 guard let self, let controller else { return }
                 // Defer until UIKit has unwound its transition completion. Reentrant
                 // setViewControllers calls here can invalidate the curl's controller count.
-                Task { @MainActor [weak self, weak controller] in
+                DispatchQueue.main.async { [weak self, weak controller] in
                     guard let self, let controller else { return }
                     if completed { self.displayedIndex = target }
                     else { self.parent.index = self.displayedIndex }
@@ -420,7 +420,7 @@ struct SketchbookPageCurl: UIViewControllerRepresentable {
             }
             interactiveStartIndex = nil
             // Swipes use the same deferred queue as arrow taps, including cancellation.
-            Task { @MainActor [weak self, weak pageViewController] in
+            DispatchQueue.main.async { [weak self, weak pageViewController] in
                 guard let self, let pageViewController else { return }
                 self.transitioning = false
                 self.configure(pageViewController)

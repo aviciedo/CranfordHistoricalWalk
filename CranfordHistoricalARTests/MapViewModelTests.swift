@@ -133,7 +133,7 @@ final class MapViewModelTests: XCTestCase {
         XCTAssertEqual(selected, 0, "A cancelled curl must not change the logical page")
     }
 
-    func testSketchbookAnimatedArrowsCanReturnFromGreystoneRepeatedly() async throws {
+    func testSketchbookAnimatedArrowsCanReturnFromGreystoneRepeatedly() throws {
         var selected = 0
         let curl = SketchbookPageCurl(pages: [AnyView(Text("Mill")), AnyView(Text("Greystone")), AnyView(Text("Future stop"))],
             index: Binding(get: { selected }, set: { selected = $0 }), enabled: true)
@@ -147,8 +147,9 @@ final class MapViewModelTests: XCTestCase {
         controller.view.layoutIfNeeded()
         for target in [1, 0, 1, 2, 1, 0] {
             selected = target
+            print("Sketchbook curl test request: \(coordinator.displayedIndex) → \(target)")
             coordinator.configure(controller)
-            await waitForSketchbookTurn(coordinator)
+            waitForSketchbookTurn(coordinator)
             XCTAssertEqual(coordinator.displayedIndex, target)
             XCTAssertTrue(controller.viewControllers?.first === coordinator.controllers[target * 2])
             XCTAssertEqual(controller.spineLocation, .min)
@@ -156,7 +157,7 @@ final class MapViewModelTests: XCTestCase {
         }
     }
 
-    func testSketchbookQueuesRapidReverseAndContentRefreshUntilCurlFinishes() async {
+    func testSketchbookQueuesRapidReverseAndContentRefreshUntilCurlFinishes() {
         var selected = 0
         let curl = SketchbookPageCurl(pages: [AnyView(Text("Mill")), AnyView(Text("Greystone"))],
             index: Binding(get: { selected }, set: { selected = $0 }), enabled: true)
@@ -171,13 +172,13 @@ final class MapViewModelTests: XCTestCase {
         coordinator.configure(controller)
         selected = 0
         coordinator.configure(controller)
-        await waitForSketchbookTurn(coordinator)
+        waitForSketchbookTurn(coordinator)
         XCTAssertEqual(selected, 0)
         XCTAssertEqual(coordinator.displayedIndex, 0)
         XCTAssertTrue(controller.viewControllers?.first === coordinator.controllers[0])
     }
 
-    func testSketchbookArrowAfterCancelledInteractiveCurl() async {
+    func testSketchbookArrowAfterCancelledInteractiveCurl() {
         var selected = 1
         let curl = SketchbookPageCurl(pages: [AnyView(Text("Mill")), AnyView(Text("Greystone"))],
             index: Binding(get: { selected }, set: { selected = $0 }), enabled: true)
@@ -194,19 +195,21 @@ final class MapViewModelTests: XCTestCase {
         selected = 0 // queued arrow while gesture is cancelling
         coordinator.pageViewController(controller, didFinishAnimating: false,
             previousViewControllers: [original[2], original[3]], transitionCompleted: false)
-        await waitForSketchbookTurn(coordinator)
+        waitForSketchbookTurn(coordinator)
         XCTAssertEqual(selected, 0)
         XCTAssertEqual(coordinator.displayedIndex, 0)
         XCTAssertEqual(coordinator.controllers.count, 6)
     }
 
     private func waitForSketchbookTurn(_ coordinator: SketchbookPageCurl.Coordinator,
-                                      file: StaticString = #filePath, line: UInt = #line) async {
-        // Yield the main actor so real UIKit animation completions and queued turns run.
-        for _ in 0..<200 {
-            try? await Task.sleep(for: .milliseconds(25))
+                                      file: StaticString = #filePath, line: UInt = #line) {
+        // Pump the main run loop, rather than blocking it or nesting a Swift async
+        // test task around UIKit's animation callbacks. Real curls still execute.
+        let deadline = Date().addingTimeInterval(8)
+        repeat {
+            RunLoop.main.run(until: Date().addingTimeInterval(0.025))
             if !coordinator.transitioning { return }
-        }
+        } while Date() < deadline
         XCTFail("Page curl did not settle", file: file, line: line)
     }
 

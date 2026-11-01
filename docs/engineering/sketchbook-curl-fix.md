@@ -8,10 +8,10 @@ The coordinator passed only one controller to every `setViewControllers` call. T
 
 - Load the page-controller view before configuring double-sided rendering. Preserve one-front opening/forward turns and supply both physical faces for animated reverse turns, retaining one logical sketch per stop.
 - Keep the minimum spine across rotations.
-- Defer queued turns until UIKit has returned from its animation completion. Do not replace hosting controllers or refresh their content during a curl. Honor unsuccessful programmatic completions and reconcile completed/cancelled swipes without dropping a queued arrow request.
+- Use main-queue callbacks to defer queued turns until UIKit has returned from its animation completion. Do not replace hosting controllers or refresh their content during a curl. Honor unsuccessful programmatic completions and reconcile completed/cancelled swipes without dropping a queued arrow request.
 - Remove the front sheet's external vertical padding/shadow and disable hosting safe-area margins. Both faces use full-bleed parchment; the existing artwork and native curl shading remain.
 
-Reference: public UIKit `UIPageViewController.h`, `setViewControllers:direction:animated:completion:` discusses the additional back for double-sided turns. Its broad wording does not capture the runtime difference between initial presentation and an animated reverse transition. The native regression tests exercise both paths. CI crash reporting also now exports diagnostic bundles for test-host abort/restart failures, not just startup/dynamic-library errors.
+Reference: public UIKit `UIPageViewController.h`, `setViewControllers:direction:animated:completion:` discusses the additional back for double-sided turns. Its broad wording does not capture the runtime difference between initial presentation and an animated reverse transition. The native regression tests exercise both paths. CI crash reporting now exports diagnostic bundles whenever the native test run fails, including runtime allocation aborts which do not appear as XCTest failure summaries. A Swift task-allocation abort was observed in the new async live-animation tests; the final tests pump the main run loop synchronously, and UIKit deferrals use the main dispatch queue instead of unstructured Swift tasks.
 
 ## Regression coverage
 
