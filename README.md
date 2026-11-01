@@ -1,3 +1,11 @@
+## Build 117 — reliable sketchbook turns and prominent destinations
+
+Repairs the double-sided UIKit page-curl controller count, serializes overlapping turns, and reconciles the actual visible sketch after interrupted animations. Both faces use full-bleed parchment with hosting safe-area margins removed. The current/next stop uses a fixed 40pt numbered circle and inactive stops use 26pt circles, independently of landmark zoom, visit history, and map selection, on both map providers. Map menu labels are now “Next stop” and “Previous stop”; their actions are unchanged.
+
+Validation covers geometry, every-stop progression/paused/visited/selection states, rendered badge dimensions and clipping, and native animated sketchbook forward/reverse turns. The exact release commit must pass Apple compiler checks before promotion. Physical iPhone curl-edge appearance and outdoor AR/GPS acceptance remain subject to the existing field checklists.
+
+See [sketchbook repair and iPhone checklist](docs/engineering/sketchbook-curl-fix.md) and [active-stop marker hierarchy](docs/engineering/active-stop-marker-sizing.md). The build retains the native AR improvements from build 116 and adds no third-party runtime dependency.
+
 ## Build 116 candidate — AR walking and plaque reliability
 
 Source-based evaluation of ARKit-CoreLocation, ARKit-SCNPath and Mirador favors targeted native improvements. Walking retains the existing hunter-green extruded chevrons and Google route geometry, with capture-time sensor matching and safer turn placement. Plaque recognition requires continuous fresh visual evidence, attaches the existing historical card to its tracked image, and recovers cleanly across camera/background transitions. GPS never substitutes for plaque evidence. Existing new-unlock celebration/sketchbook flow and tour progression rules are preserved.
