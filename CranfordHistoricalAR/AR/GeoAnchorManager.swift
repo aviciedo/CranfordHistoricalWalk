@@ -489,7 +489,9 @@ final class GeoAnchorManager {
             }) {
                 // A raycast supplies height only. Never move route geometry sideways onto another surface.
                 grounded.y = hit.worldTransform.translation.y
-                return (grounded, true)
+                // A raycast proves a horizontal surface, not that an unclassified
+                // bench/ledge is ground. Only a classified floor earns this flag.
+                return (grounded, plane.classification == .floor)
             }
         }
         return (grounded, false)

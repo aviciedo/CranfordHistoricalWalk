@@ -2,6 +2,27 @@ import XCTest
 @testable import TourCore
 
 final class ARSpatialNavigationTests: XCTestCase {
+    func testDelayedCameraDeliveryMatchesGPSAtCaptureTime() throws {
+        let gpsDate = Date(timeIntervalSince1970: 1000)
+        let capture = try XCTUnwrap(ARFrameWallClock.captureDate(frameTime: 100,
+            receivedAt: gpsDate.addingTimeInterval(0.8), mediaTime: 100.8))
+        XCTAssertEqual(capture.timeIntervalSince(gpsDate), 0, accuracy: 0.00001)
+        var history = ARCameraPositionHistory()
+        history.append([5, 0, -2], at: capture)
+        XCTAssertEqual(history.position(at: gpsDate), [5, 0, -2])
+        var callbackHistory = ARCameraPositionHistory()
+        callbackHistory.append([5, 0, -2], at: gpsDate.addingTimeInterval(0.8))
+        XCTAssertNil(callbackHistory.position(at: gpsDate), "Receipt time cannot stand in for capture time")
+    }
+
+    func testInvalidFutureOrExcessivelyDelayedCameraTimesAreRejected() {
+        let date = Date(timeIntervalSince1970: 1000)
+        for frame in [-1, Double.nan, .infinity, 100.2, 97] {
+            XCTAssertNil(ARFrameWallClock.captureDate(frameTime: frame, receivedAt: date, mediaTime: 100))
+        }
+        XCTAssertNil(ARFrameWallClock.captureDate(frameTime: 100, receivedAt: date, mediaTime: .nan))
+    }
+
     private let origin = GeoCoordinate(latitude: 40.65, longitude: -74.3)
     private func point(_ bearing: Double, _ meters: Double) -> GeoCoordinate {
         GeoMath.destination(from: origin, bearing: bearing, distance: meters)
@@ -239,9 +260,65 @@ final class ARSpatialNavigationTests: XCTestCase {
     func testManeuverReplacementSettlesBeforeChangingWorldPose() {
         var state = ARWorldPlacementState()
         let first = state.update(position: [0, 0, -7], routeYaw: 0, direction: .ahead, segment: 0, camera: .zero, timestamp: 0)
-        XCTAssertEqual(state.update(position: [5, 0, -7], routeYaw: .pi / 2, direction: .right,
-            segment: 1, camera: .zero, timestamp: 0.5), first)
+        XCTAssertNil(state.update(position: [5, 0, -7], routeYaw: .pi / 2, direction: .right,
+            segment: 1, camera: .zero, timestamp: 0.5), "Hide the old direction during a sharp turn")
         XCTAssertNotEqual(state.update(position: [5, 0, -7], routeYaw: .pi / 2, direction: .right,
             segment: 1, camera: .zero, timestamp: 1.5), first)
+    }
+
+    func testPassedChevronCannotReappearWhileNextLegSettles() throws {
+        var state = ARWorldPlacementState()
+        _ = state.update(position: [0, 0, -7], routeYaw: 0, direction: .ahead,
+                         segment: 0, camera: .zero, timestamp: 0)
+        for time in [0.1, 0.6] {
+            XCTAssertNil(state.update(position: [6, 0, -8], routeYaw: -.pi / 2, direction: .ahead,
+                segment: 1, camera: [0, 0, -8], timestamp: time))
+        }
+        let next = try XCTUnwrap(state.update(position: [6, 0, -8], routeYaw: -.pi / 2, direction: .ahead,
+            segment: 1, camera: [0, 0, -8], timestamp: 1.1))
+        XCTAssertEqual(next.position, [6, 0, -8])
+    }
+
+    func testGentlePolylineChangeKeepsValidWorldPoseDuringDebounce() {
+        var state = ARWorldPlacementState()
+        let first = state.update(position: [0, 0, -7], routeYaw: 0, direction: .ahead,
+                                 segment: 0, camera: .zero, timestamp: 0)
+        XCTAssertEqual(state.update(position: [0.3, 0, -8], routeYaw: 0.05, direction: .ahead,
+            segment: 1, camera: .zero, timestamp: 0.5), first)
+        XCTAssertNotEqual(state.update(position: [0.3, 0, -8], routeYaw: 0.05, direction: .ahead,
+            segment: 1, camera: .zero, timestamp: 1.5), first)
+    }
+
+    func testUnstableRouteYawCannotSatisfyTurnDebounce() {
+        var state = ARWorldPlacementState()
+        _ = state.update(position: [0, 0, -7], routeYaw: 0, direction: .ahead,
+                         segment: 0, camera: .zero, timestamp: 0)
+        for (time, degrees) in [(0.1, -70.0), (0.6, -110), (1.1, -70), (1.6, -110), (2.1, -90)] {
+            XCTAssertNil(state.update(position: [7, 0, 0], routeYaw: degrees * .pi / 180,
+                direction: .ahead, segment: 1, camera: .zero, timestamp: time))
+        }
+        _ = state.update(position: [7, 0, 0], routeYaw: -.pi / 2, direction: .ahead,
+                         segment: 1, camera: .zero, timestamp: 2.6)
+        XCTAssertNotNil(state.update(position: [7, 0, 0], routeYaw: -.pi / 2, direction: .ahead,
+            segment: 1, camera: .zero, timestamp: 3.2))
+    }
+
+    func testInvalidPoseInputsHideWithoutDestroyingTheWorldAnchor() {
+        var state = ARWorldPlacementState()
+        let first = state.update(position: [0, 0, -7], routeYaw: 0, direction: .ahead,
+                                 segment: 0, camera: .zero, timestamp: 0)
+        XCTAssertNil(state.update(position: [.nan, 0, -7], routeYaw: 0, direction: .ahead,
+            segment: 0, camera: .zero, timestamp: 0.1))
+        XCTAssertEqual(state.pose, first)
+        XCTAssertEqual(state.update(position: [0, 0, -7], routeYaw: 0, direction: .ahead,
+            segment: 0, camera: .zero, timestamp: 0.2), first)
+    }
+
+    func testWorldYawWrapDoesNotInventASharpTurn() {
+        var state = ARWorldPlacementState()
+        let first = state.update(position: [0, 0, 7], routeYaw: 179 * .pi / 180,
+            direction: .ahead, segment: 0, camera: .zero, timestamp: 0)
+        XCTAssertEqual(state.update(position: [0, 0, 7], routeYaw: -179 * .pi / 180,
+            direction: .ahead, segment: 0, camera: .zero, timestamp: 0.5), first)
     }
 }

@@ -7,6 +7,47 @@ import TourCore
 
 @MainActor
 final class GeoSpatialProviderFactoryTests: XCTestCase {
+    func testCoreLocationAlignmentUsesFrameCaptureTimeAfterDelayedDelivery() throws {
+        let sampleDate = Date(timeIntervalSince1970: 1_800_000_000)
+        let provider = CoreLocationGeoSpatialProvider(hasCompass: true,
+            currentDate: { sampleDate.addingTimeInterval(0.8) }, mediaTime: { 100.8 })
+        provider.attach(session: ARSession())
+        defer { provider.detach() }
+        var camera = matrix_identity_float4x4
+        camera.columns.3 = [5, 1.6, -2, 1]
+        provider.update(cameraTransform: camera, trackingState: .normal, timestamp: 100)
+        let coordinate = GeoCoordinate(latitude: 40.65, longitude: -74.30)
+        provider.update(location: LocationSample(coordinate: coordinate, horizontalAccuracy: 3,
+            timestamp: sampleDate), heading: HeadingSample(trueHeading: 0, magneticHeading: 0,
+            accuracy: 5, timestamp: sampleDate))
+        let point = try XCTUnwrap(provider.worldPosition(for:
+            GeoMath.destination(from: coordinate, bearing: 0, distance: 8), altitude: nil, heightBelowCamera: 0))
+        XCTAssertEqual(point.x, 5, accuracy: 0.01)
+        XCTAssertEqual(point.z, -10, accuracy: 0.01)
+        // Replaying a heading update cannot bind an old GPS coordinate to a new camera pose.
+        camera.columns.3.x = 9
+        provider.update(cameraTransform: camera, trackingState: .normal, timestamp: 100.1)
+        provider.update(location: LocationSample(coordinate: coordinate, horizontalAccuracy: 3,
+            timestamp: sampleDate), heading: HeadingSample(trueHeading: 0, magneticHeading: 0,
+            accuracy: 5, timestamp: sampleDate))
+        XCTAssertEqual(provider.worldPosition(for: coordinate, altitude: nil, heightBelowCamera: 0)?.x ?? -1,
+                       5, accuracy: 0.01)
+    }
+
+    func testPassedWorldChevronHidesUntilNextDirectionSettles() {
+        let arrows = ARNavigationArrowEntity()
+        arrows.setVisible(true)
+        arrows.updateSpatial(ground: [0, 0, -7], camera: .zero, routeDirection: [0, 0, -1],
+            instruction: .init(direction: .ahead, streetName: nil), segment: 0, timestamp: 0)
+        XCTAssertNotNil(arrows.guidancePosition)
+        arrows.updateSpatial(ground: [6, 0, -8], camera: [0, 0, -8], routeDirection: [1, 0, 0],
+            instruction: .init(direction: .ahead, streetName: nil), segment: 1, timestamp: 0.5)
+        XCTAssertNil(arrows.guidancePosition)
+        arrows.updateSpatial(ground: [6, 0, -8], camera: [0, 0, -8], routeDirection: [1, 0, 0],
+            instruction: .init(direction: .ahead, streetName: nil), segment: 1, timestamp: 1.5)
+        XCTAssertNotNil(arrows.guidancePosition)
+    }
+
     func testWalkingSessionNeverEnablesPlaqueRecognitionOrChangesToScanner() async {
         let dependencies = AppDependencies.preview()
         let tour = dependencies.tourViewModel

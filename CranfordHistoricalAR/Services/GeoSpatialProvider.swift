@@ -1,6 +1,7 @@
 import ARKit
 import CoreLocation
 import Foundation
+import QuartzCore
 import simd
 import TourCore
 
@@ -74,10 +75,16 @@ final class CoreLocationGeoSpatialProvider: GeoSpatialProvider {
     private var cameraHistory = ARCameraPositionHistory()
     private var pendingLocation: LocationSample?
     private var latestHeading: HeadingSample?
+    private let currentDate: () -> Date
+    private let mediaTime: () -> TimeInterval
 
-    init(hasCompass: Bool = CLLocationManager.headingAvailable(), fallbackReason: GeoSpatialFallbackReason? = nil) {
+    init(hasCompass: Bool = CLLocationManager.headingAvailable(), fallbackReason: GeoSpatialFallbackReason? = nil,
+         currentDate: @escaping () -> Date = { Date() },
+         mediaTime: @escaping () -> TimeInterval = { CACurrentMediaTime() }) {
         preferredWorldAlignment = hasCompass ? .gravityAndHeading : .gravity
         self.fallbackReason = fallbackReason
+        self.currentDate = currentDate
+        self.mediaTime = mediaTime
     }
 
     func attach(session: ARSession) {
@@ -107,8 +114,10 @@ final class CoreLocationGeoSpatialProvider: GeoSpatialProvider {
         self.cameraTransform = cameraTransform
         self.trackingState = trackingState
         let position = cameraTransform.translation
-        if case .normal = trackingState {
-            cameraHistory.append(SIMD3(Double(position.x), Double(position.y), Double(position.z)), at: Date())
+        if case .normal = trackingState,
+           let capturedAt = ARFrameWallClock.captureDate(frameTime: timestamp,
+               receivedAt: currentDate(), mediaTime: mediaTime()) {
+            cameraHistory.append(SIMD3(Double(position.x), Double(position.y), Double(position.z)), at: capturedAt)
         }
         if case .normal = trackingState, let location = pendingLocation {
             pendingLocation = nil
@@ -141,7 +150,7 @@ final class CoreLocationGeoSpatialProvider: GeoSpatialProvider {
     }
 
     private func bind(location: LocationSample) {
-        guard preferredWorldAlignment == .gravityAndHeading, StopActivationPolicy.isFresh(location.timestamp),
+        guard preferredWorldAlignment == .gravityAndHeading, StopActivationPolicy.isFresh(location.timestamp, now: currentDate()),
               let matched = cameraHistory.position(at: location.timestamp) else { return }
         alignment.update(coordinate: location.coordinate, camera: matched, accuracy: location.horizontalAccuracy,
                          timestamp: location.timestamp, course: location.course, speed: location.speed)
@@ -166,9 +175,10 @@ final class CoreLocationGeoSpatialProvider: GeoSpatialProvider {
 
     private func recomputeQuality() {
         guard session != nil, let pose, let heading = latestHeading else { quality = .unavailable; return }
-        guard StopActivationPolicy.isFresh(pose.timestamp), pose.coordinate.isValid,
+        let now = currentDate()
+        guard StopActivationPolicy.isFresh(pose.timestamp, now: now), pose.coordinate.isValid,
               pose.horizontalAccuracy.isFinite, heading.isReliable,
-              heading.trueHeading != nil, StopActivationPolicy.isFresh(heading.timestamp),
+              heading.trueHeading != nil, StopActivationPolicy.isFresh(heading.timestamp, now: now),
               preferredWorldAlignment == .gravityAndHeading, alignment.isConsistent,
               case .normal = trackingState else { quality = .unavailable; return }
         quality = GeoSpatialSelector.quality(horizontalAccuracy: pose.horizontalAccuracy, yawAccuracy: heading.accuracy)

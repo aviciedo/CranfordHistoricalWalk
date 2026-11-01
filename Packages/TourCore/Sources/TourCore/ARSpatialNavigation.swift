@@ -1,5 +1,18 @@
 import Foundation
 
+/// ARFrame timestamps use the media clock; CLLocation timestamps use wall time.
+/// Pair sensor exposure instants, not the time a busy main actor receives a frame.
+public enum ARFrameWallClock {
+    public static func captureDate(frameTime: TimeInterval, receivedAt: Date,
+                                   mediaTime: TimeInterval) -> Date? {
+        guard frameTime.isFinite, frameTime >= 0, mediaTime.isFinite, mediaTime >= 0,
+              receivedAt.timeIntervalSinceReferenceDate.isFinite else { return nil }
+        let age = mediaTime - frameTime
+        guard (-0.01...2).contains(age) else { return nil }
+        return receivedAt.addingTimeInterval(-max(0, age))
+    }
+}
+
 /// WGS84 ECEF → local east/north/up; ARKit north-aligned axes are east/up/south.
 public struct WGS84LocalFrame: Sendable {
     public let origin: GeoCoordinate
@@ -181,32 +194,54 @@ public struct ARWorldPlacementState: Sendable {
     private var placedCamera: SIMD3<Double>?
     private var pendingSegment: Int?
     private var pendingDirection: ARWalkingGuidance.Direction?
+    private var pendingYaw: Double?
     private var pendingSince: TimeInterval?
     private var lastTime: TimeInterval?
     public init() {}
     public mutating func reset() { self = Self() }
+    private mutating func clearPending() {
+        pendingSegment = nil; pendingDirection = nil; pendingSince = nil; pendingYaw = nil
+    }
+
+    /// Keep a settled sign only while it still belongs to the route ahead of the walker.
+    /// Turning the camera is deliberately not an input to this test.
+    private func canRetain(_ pose: Pose, camera: SIMD3<Double>, routeYaw: Double) -> Bool {
+        let dx = pose.position.x - camera.x, dz = pose.position.z - camera.z
+        let range = hypot(dx, dz)
+        let yawChange = abs(GeoMath.relativeBearing(heading: pose.yaw * 180 / .pi,
+                                                    bearing: routeYaw * 180 / .pi))
+        let forward = -dx * sin(routeYaw) - dz * cos(routeYaw)
+        return (2.5...16).contains(range) && yawChange <= 25 && forward > 1
+    }
+
     public mutating func update(position: SIMD3<Double>, routeYaw: Double, direction: ARWalkingGuidance.Direction,
                                 segment: Int, camera: SIMD3<Double>, timestamp: TimeInterval) -> Pose? {
         guard [position.x, position.y, position.z, routeYaw, camera.x, camera.y, camera.z, timestamp].allSatisfy(\.isFinite),
-              lastTime.map({ timestamp >= $0 }) ?? true else { return pose }
-        if let lastTime, timestamp - lastTime > 1 { pendingSince = nil; pendingSegment = nil }
+              lastTime.map({ timestamp >= $0 }) ?? true else { clearPending(); return nil }
+        if let lastTime, timestamp - lastTime > 1 { clearPending() }
         lastTime = timestamp
         if let pose, let placedCamera {
             let moving = hypot(camera.x - placedCamera.x, camera.z - placedCamera.z) >= 3
             let approaching = hypot(camera.x - pose.position.x, camera.z - pose.position.z) < 3
-            let changed = pose.segment != segment || pose.direction != direction
+            let yawChanged = abs(GeoMath.relativeBearing(heading: pose.yaw * 180 / .pi,
+                                                         bearing: routeYaw * 180 / .pi)) > 25
+            let changed = pose.segment != segment || pose.direction != direction || yawChanged
+            let retained = canRetain(pose, camera: camera, routeYaw: routeYaw) ? pose : nil
             if changed {
-                if pendingSegment != segment || pendingDirection != direction || pendingSince == nil {
-                    pendingSegment = segment; pendingDirection = direction; pendingSince = timestamp
+                let stableYaw = pendingYaw.map {
+                    abs(GeoMath.relativeBearing(heading: $0 * 180 / .pi, bearing: routeYaw * 180 / .pi)) <= 10
+                } ?? false
+                if pendingSegment != segment || pendingDirection != direction || pendingSince == nil || !stableYaw {
+                    pendingSegment = segment; pendingDirection = direction; pendingSince = timestamp; pendingYaw = routeYaw
                 }
-                guard timestamp - (pendingSince ?? timestamp) >= 1 else { return pose }
-            } else { pendingSegment = nil; pendingSince = nil }
-            guard changed || moving || approaching else { return pose }
+                guard timestamp - (pendingSince ?? timestamp) >= 1 else { return retained }
+            } else { clearPending() }
+            guard changed || moving || approaching else { return retained }
         }
         let range = hypot(position.x - camera.x, position.z - camera.z)
-        guard (2.5...16).contains(range) else { return pose }
+        guard (2.5...16).contains(range) else { return nil }
         let next = Pose(position: position, yaw: routeYaw, direction: direction, segment: segment)
-        pose = next; placedCamera = camera; pendingSegment = nil; pendingSince = nil
+        pose = next; placedCamera = camera; clearPending()
         return next
     }
 }

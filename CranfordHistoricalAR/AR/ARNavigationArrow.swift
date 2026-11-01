@@ -5,7 +5,7 @@ import SwiftUI
 import TourCore
 import UIKit
 
-/// Shared three-dimensional chevron artwork: opaque white faces, blue extruded sides.
+/// Shared three-dimensional chevron artwork: opaque white faces, hunter-green extruded sides.
 @MainActor
 private enum ARChevronArt {
     static let bodyMesh = makeMesh(ARChevronGeometry.body(depth: ARChevronGeometry.bodyDepth), name: "blue-chevron-body")
@@ -22,11 +22,11 @@ private enum ARChevronArt {
     static func makeGroup() -> Entity {
         let group = Entity()
         guard let bodyMesh, let faceMesh else { return group }
-        let blue = SimpleMaterial(color: UIColor(AppTheme.forest),
+        let green = SimpleMaterial(color: UIColor(AppTheme.forest),
                                    roughness: 0.7, isMetallic: false)
         let white = UnlitMaterial(color: .white)
         for index in 0..<3 {
-            let body = ModelEntity(mesh: bodyMesh, materials: [blue])
+            let body = ModelEntity(mesh: bodyMesh, materials: [green])
             body.position.x = Float(index - 1) * ARChevronGeometry.groupSpacing
             let face = ModelEntity(mesh: faceMesh, materials: [white])
             face.scale = SIMD3<Float>(0.985, 0.985, 1)
@@ -125,7 +125,10 @@ final class ARNavigationArrowEntity: Entity {
         let yaw = atan2(-Double(routeDirection.x), -Double(routeDirection.z))
         guard let pose = spatialState.update(position: SIMD3(Double(ground.x), Double(ground.y), Double(ground.z)),
             routeYaw: yaw, direction: instruction.direction, segment: segment,
-            camera: SIMD3(Double(camera.x), Double(camera.y), Double(camera.z)), timestamp: timestamp) else { return }
+            camera: SIMD3(Double(camera.x), Double(camera.y), Double(camera.z)), timestamp: timestamp) else {
+            holder.isEnabled = false
+            return
+        }
         holder.isEnabled = true
         guard pose != renderedSpatialPose else { return }
         let degrees = ARChevronGeometry.rotationDegrees(direction: pose.direction)
