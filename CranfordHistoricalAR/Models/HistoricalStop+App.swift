@@ -206,6 +206,14 @@ extension HistoricalStop {
             address: "1 S Union Ave, Cranford, NJ",
             shortDescription: "New narration is coming soon.",
             longDescription: "",
+            imageName: "cranford-hotel-exterior",
+            photos: [
+                HistoricalStopPhoto(imageName: "cranford-hotel-exterior", caption: "Cranford Hotel, viewed from across the street"),
+                HistoricalStopPhoto(imageName: "cranford-hotel-corner", caption: "Corner entrance and balcony at Cranford Hotel"),
+                HistoricalStopPhoto(imageName: "cranford-hotel-sign", caption: "Cranford Hotel’s restaurant and pub sign"),
+                HistoricalStopPhoto(imageName: "cranford-hotel-doorway", caption: "Gold Cranford Hotel lettering above the entrance"),
+                HistoricalStopPhoto(imageName: "cranford-hotel-front", caption: "Front façade and balcony of Cranford Hotel"),
+            ],
             order: 5, isSample: false, coordinatesUnverified: true, narrationPending: true
         )
     ].map { preview in

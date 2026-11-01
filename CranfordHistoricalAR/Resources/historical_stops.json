@@ -217,7 +217,29 @@
       "shortDescription": "New narration is coming soon.",
       "longDescription": "",
       "historicalDate": null,
-      "imageName": null,
+      "imageName": "cranford-hotel-exterior",
+      "photos": [
+        {
+          "imageName": "cranford-hotel-exterior",
+          "caption": "Cranford Hotel, viewed from across the street"
+        },
+        {
+          "imageName": "cranford-hotel-corner",
+          "caption": "Corner entrance and balcony at Cranford Hotel"
+        },
+        {
+          "imageName": "cranford-hotel-sign",
+          "caption": "Cranford Hotel’s restaurant and pub sign"
+        },
+        {
+          "imageName": "cranford-hotel-doorway",
+          "caption": "Gold Cranford Hotel lettering above the entrance"
+        },
+        {
+          "imageName": "cranford-hotel-front",
+          "caption": "Front façade and balcony of Cranford Hotel"
+        }
+      ],
       "imageURL": null,
       "illustrationURL": null,
       "audioURL": null,
