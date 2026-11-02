@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify/rebuild owner-approved registered Mill assets without generative editing.
+"""Verify/rebuild owner-approved registered Mill/Greystone assets without generative editing.
 
 Requires Pillow and NumPy. Default is read-only; --write updates the four existing
 asset slots. No changes to app layout, catalog references or unlock state.
@@ -14,14 +14,15 @@ from PIL import Image
 from PIL.PngImagePlugin import PngInfo
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / 'artwork/mill'
 CATALOG = ROOT / 'CranfordHistoricalAR/Assets.xcassets'
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--write', action='store_true', help='Rebuild the existing app asset files')
+    parser.add_argument('--landmark', choices=['mill', 'greystone'], default='mill', help='Approved artwork collection (default: mill)')
     args = parser.parse_args()
+    SOURCE = ROOT / 'artwork' / args.landmark
     manifest = json.loads((SOURCE / 'manifest.json').read_text())
     size = tuple(manifest['canvas'])
     for filename, expected in manifest['source_files'].items():
@@ -47,7 +48,8 @@ def main():
         image.alpha_composite(layers['INK_MASTER'])
         image.putalpha(mask)
         pixels = np.asarray(image).copy()
-        pixels[np.asarray(mask) == 0, :3] = 0
+        if manifest.get('clear_transparent_rgb', True):
+            pixels[np.asarray(mask) == 0, :3] = 0
         return Image.fromarray(pixels)
 
     ink, watercolor = composite(False), composite(True)
@@ -59,8 +61,8 @@ def main():
     crop = home.crop((offset[0], offset[1], offset[0] + size[0], offset[1] + size[1]))
     if crop.tobytes() != ink.tobytes():
         raise ValueError('Home padding must not change the authoritative ink drawing')
-    expected_assets = {'home-sketch-mill': home, 'stop-ink-mill': ink,
-                       'sketchbook-mill': watercolor, 'mill-map-landmark': watercolor}
+    expected_assets = {f'home-sketch-{args.landmark}': home, f'stop-ink-{args.landmark}': ink,
+                       f'sketchbook-{args.landmark}': watercolor, f'{args.landmark}-map-landmark': watercolor}
     for name, expected in expected_assets.items():
         folder = CATALOG / f'{name}.imageset'
         catalog = json.loads((folder / 'Contents.json').read_text())

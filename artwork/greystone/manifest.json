@@ -1,0 +1,44 @@
+{
+  "status": "Owner-approved authoritative Greystone ink/watercolor pair",
+  "canvas": [
+    1536,
+    1024
+  ],
+  "source_files": {
+    "INK_MASTER.png": "f95930cbd428954c1b927f6f9b86a349a57b8309cde14d2074186bb1547e333f",
+    "SUBJECT_BASE.png": "8b91a440410f509d591a4f532a6a78e6614fbc538eb9c50bde3e9921a85d0428",
+    "ARTWORK_MASK.png": "db12a3d6095c06c9d1eaf7763eb73a33f3f9218717666216f3049adeeffc4296",
+    "WHITE_RESERVES.png": "83477ca164d31e2590fe8a4276b8245660c3bef9513f4504dbe91bdc63593e4c",
+    "WATERCOLOR_UNDERLAY.png": "41a034595a136011d689c16fcb5224d7f1d7f5d22650c61a1180929cc89a51f2"
+  },
+  "ink_master_raw_rgba_sha256": "31cb3b14055def94b73651e3896a5b67bf5e9087996e58932cada21f310d37a0",
+  "alpha_raw_sha256": "99d71eb7ecb4c9f7d2721c6979563f25178cca2e22461bf8787f61c78851a088",
+  "home_canvas": [
+    1536,
+    1536
+  ],
+  "home_ink_offset": [
+    0,
+    256
+  ],
+  "clear_transparent_rgb": false,
+  "assets": {
+    "home-sketch-greystone": "Square-padded ink; no rescaling or cropping",
+    "stop-ink-greystone": "Registered ink",
+    "sketchbook-greystone": "Registered watercolor",
+    "greystone-map-landmark": "Same registered watercolor"
+  },
+  "approval_context": "Owner approved latest roof-repair review and requested implementation.",
+  "approved_features": [
+    "rounded bushes partially obscure arch window",
+    "divided-pane window inside arch",
+    "original draped flag and pole",
+    "removed circled incidental roof and pipe details",
+    "removed circled twigs",
+    "repaired roof edges and color coverage"
+  ],
+  "approved_composite_files": {
+    "greystone-ink.png": "0c6e421be233ee5b9b3eb35a029aa641d9cd30694d0ddcd31067063353926c90",
+    "greystone-watercolor.png": "cfc28f77be60533060eec7e6061c4c61f49b60a61c3924f9d50ff65487caac7c"
+  }
+}

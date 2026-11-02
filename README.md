@@ -1,3 +1,20 @@
+## Build 122 candidate — authoritative registered Greystone illustrations
+
+The owner-approved Greystone pair replaces Home ink, Stops ink, sketchbook watercolor
+and the shared colored map landmark. It includes the rounded bushes, divided-pane
+arch window, original draped flag/pole, removal of marked twigs/incidental details,
+and approved roof repairs. Canonical composites remain 1536 × 1024 with matching alpha;
+Home adds transparent padding only. Build 121's approved Mill artwork is retained.
+
+Source layers, approved hashes and rebuild instructions are in
+[artwork/greystone](artwork/greystone/README.md). Verify with
+`python3 scripts/build-mill-artwork.py --landmark greystone`.
+Existing catalog mappings, plaque recognition targets, unlock history, page curls,
+layout and all provider/navigation logic are unchanged. No new reveal animation is
+introduced. Local pixel, alpha, sRGB, padding and catalog checks pass for both Mill
+and Greystone. Native compilation and iPhone visual verification remain pending.
+This candidate is not published; build 120 remains the published rollback baseline.
+
 ## Build 121 candidate — authoritative registered Mill illustrations
 
 The owner-approved Mill ink/watercolor pair replaces the four active Mill illustration
