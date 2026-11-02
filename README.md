@@ -1,3 +1,19 @@
+## Build 123 candidate — approved loose First Baptist Church illustrations
+
+The approved church pair replaces Home ink, Stops ink and the colored map landmark.
+The full-canvas registered pair remains 1024 × 1536 with identical alpha; Home adds
+transparent square padding only. The watercolor is also bundled as `sketchbook-church`
+for future use. The church remains outside plaque-based sketchbook collection until
+an actual recognition target is selected; catalog mappings and unlock rules are unchanged.
+
+Canonical layers, hashes and reproduction instructions are in
+[artwork/church](artwork/church/README.md). Verify with
+`python3 scripts/build-mill-artwork.py --landmark church`.
+The existing Mill and Greystone artwork is retained. No AR, provider, navigation,
+saved-progress or animation code changes are included. Pixel, alpha, sRGB, Home padding
+and catalog checks pass locally. Native Apple compilation and iPhone visual checks
+remain pending. This candidate is not published; build 120 is the published baseline.
+
 ## Build 122 candidate — authoritative registered Greystone illustrations
 
 The owner-approved Greystone pair replaces Home ink, Stops ink, sketchbook watercolor

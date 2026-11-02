@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify/rebuild owner-approved registered Mill/Greystone assets without generative editing.
+"""Verify/rebuild owner-approved registered Mill/Greystone/Church assets without generative editing.
 
 Requires Pillow and NumPy. Default is read-only; --write updates the four existing
 asset slots. No changes to app layout, catalog references or unlock state.
@@ -20,7 +20,7 @@ CATALOG = ROOT / 'CranfordHistoricalAR/Assets.xcassets'
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--write', action='store_true', help='Rebuild the existing app asset files')
-    parser.add_argument('--landmark', choices=['mill', 'greystone'], default='mill', help='Approved artwork collection (default: mill)')
+    parser.add_argument('--landmark', choices=['mill', 'greystone', 'church'], default='mill', help='Approved artwork collection (default: mill)')
     args = parser.parse_args()
     SOURCE = ROOT / 'artwork' / args.landmark
     manifest = json.loads((SOURCE / 'manifest.json').read_text())
@@ -61,8 +61,11 @@ def main():
     crop = home.crop((offset[0], offset[1], offset[0] + size[0], offset[1] + size[1]))
     if crop.tobytes() != ink.tobytes():
         raise ValueError('Home padding must not change the authoritative ink drawing')
-    expected_assets = {f'home-sketch-{args.landmark}': home, f'stop-ink-{args.landmark}': ink,
-                       f'sketchbook-{args.landmark}': watercolor, f'{args.landmark}-map-landmark': watercolor}
+    asset_names = manifest.get('asset_names', {
+        'home': f'home-sketch-{args.landmark}', 'ink': f'stop-ink-{args.landmark}',
+        'watercolor': f'sketchbook-{args.landmark}', 'map': f'{args.landmark}-map-landmark'})
+    expected_assets = {asset_names['home']: home, asset_names['ink']: ink,
+                       asset_names['watercolor']: watercolor, asset_names['map']: watercolor}
     for name, expected in expected_assets.items():
         folder = CATALOG / f'{name}.imageset'
         catalog = json.loads((folder / 'Contents.json').read_text())
