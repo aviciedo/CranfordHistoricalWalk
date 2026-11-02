@@ -1,18 +1,18 @@
 {
-  "status": "Approved watercolor source pair, with newer owner-approved loose-ink override; new watercolor pending review",
+  "status": "Owner-approved authoritative Greystone loose ink and watercolor pair",
   "canvas": [
     1536,
     1024
   ],
   "source_files": {
-    "INK_MASTER.png": "f95930cbd428954c1b927f6f9b86a349a57b8309cde14d2074186bb1547e333f",
-    "SUBJECT_BASE.png": "8b91a440410f509d591a4f532a6a78e6614fbc538eb9c50bde3e9921a85d0428",
-    "ARTWORK_MASK.png": "db12a3d6095c06c9d1eaf7763eb73a33f3f9218717666216f3049adeeffc4296",
-    "WHITE_RESERVES.png": "83477ca164d31e2590fe8a4276b8245660c3bef9513f4504dbe91bdc63593e4c",
-    "WATERCOLOR_UNDERLAY.png": "41a034595a136011d689c16fcb5224d7f1d7f5d22650c61a1180929cc89a51f2"
+    "INK_MASTER.png": "37eefa58c8bbcfa31021a7d1fd54c9b0c226e44d9bf64f4dce22ab349f540705",
+    "SUBJECT_BASE.png": "8b9453aa47966f9f49423edbae33ce288caaf2893e6c22fd08d0498cf9a20163",
+    "ARTWORK_MASK.png": "adbd27ccd2c603f3c8e258e372385582f1fe421892091a0b90ad8d97ca380748",
+    "WHITE_RESERVES.png": "9b6f56282ca30ac0870583b036eab294393b1abb1b1b860df484c46981dee79c",
+    "WATERCOLOR_UNDERLAY.png": "3b3b3caba0bfa06f4c252aa1bda7ce543f84ad027cdb7f69437b79e564b15c93"
   },
-  "ink_master_raw_rgba_sha256": "31cb3b14055def94b73651e3896a5b67bf5e9087996e58932cada21f310d37a0",
-  "alpha_raw_sha256": "99d71eb7ecb4c9f7d2721c6979563f25178cca2e22461bf8787f61c78851a088",
+  "ink_master_raw_rgba_sha256": "f0b676a19d48916b4e3263ea5e80ec89a9b2783738108f757cea2cb58ead92fa",
+  "alpha_raw_sha256": "fa47cb708b3de898bdeaf28ab3a5bb79259d2489cb8fda17439c787142cc62c3",
   "home_canvas": [
     1536,
     1536
@@ -21,29 +21,24 @@
     0,
     256
   ],
-  "clear_transparent_rgb": false,
+  "clear_transparent_rgb": true,
   "assets": {
     "home-sketch-greystone": "Square-padded ink; no rescaling or cropping",
     "stop-ink-greystone": "Registered ink",
     "sketchbook-greystone": "Registered watercolor",
     "greystone-map-landmark": "Same registered watercolor"
   },
-  "approval_context": "Owner approved latest roof-repair review and requested implementation.",
+  "approval_context": "Owner approved the new watercolor after side-by-side comparison with the previous approved version and requested implementation.",
   "approved_features": [
-    "rounded bushes partially obscure arch window",
-    "divided-pane window inside arch",
-    "original draped flag and pole",
-    "removed circled incidental roof and pipe details",
-    "removed circled twigs",
-    "repaired roof edges and color coverage"
+    "loose broken contours and uneven pen strokes",
+    "fewer surface description lines",
+    "loose foliage and expressive watercolor",
+    "rounded bushes partially obscure the divided-pane arch window",
+    "original draped flag and pole retained",
+    "earlier incidental roof and pipe removals retained"
   ],
   "approved_composite_files": {
-    "greystone-ink.png": "0c6e421be233ee5b9b3eb35a029aa641d9cd30694d0ddcd31067063353926c90",
-    "greystone-watercolor.png": "cfc28f77be60533060eec7e6061c4c61f49b60a61c3924f9d50ff65487caac7c"
-  },
-  "ink_override": {
-    "file": "loose-ink/greystone-ink.png",
-    "sha256": "95335a11a6aa219d87ce1296f3f2df076f4a2fbf085eb0513e223dcc62e1d973",
-    "approval": "Owner approved looser broken ink and requested ink implementation; watercolor revision remains pending."
+    "greystone-ink.png": "95335a11a6aa219d87ce1296f3f2df076f4a2fbf085eb0513e223dcc62e1d973",
+    "greystone-watercolor.png": "354c78e9b8f9447c0127a08d5dba51bca9876f4cc482ff1c28f6f53924e7c6f4"
   }
 }

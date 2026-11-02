@@ -1,3 +1,17 @@
+## Build 125 candidate — approved Greystone loose ink and watercolor pair
+
+The owner approved the new watercolor after a side-by-side comparison. It now replaces
+the map landmark and sketchbook watercolor, using the same frozen pen layer and final
+alpha as the already approved loose ink. All four Greystone slots reproduce the
+registered pair; Home uses transparent padding only. The temporary ink override is
+removed. Sources, hashes and rebuild instructions are in
+[artwork/greystone](artwork/greystone/README.md).
+
+Pixel, alpha, sRGB, Home padding and catalog checks pass for Greystone, Mill and Church.
+Existing saved progress, unlock rules, AR, routes, provider selection and animations
+are unchanged. Native Xcode compilation and iPhone visual checks remain pending.
+This candidate is not published; build 120 remains the published baseline.
+
 ## Build 124 candidate — approved looser Greystone ink
 
 Replaces Home and Stops Greystone ink with the owner-approved broken contours,

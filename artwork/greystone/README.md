@@ -1,67 +1,44 @@
-## Current ink revision — build 124 candidate
+# Authoritative Greystone loose ink and watercolor
 
-The owner approved the new loose broken pen-work and requested implementation, followed
-by watercolor review. `loose-ink/` preserves the approved new ink, base, reserves, mask,
-composite and frozen hashes. `manifest.json` selects this as an `ink_override` for Home
-and Stops. Home adds the same transparent square padding without scaling.
+The owner approved the looser pen-and-ink drawing, then approved the new watercolor
+after reviewing the previous and new versions side by side. These five source layers
+now define the authoritative registered pair. The original owner-selected red-mill
+watercolor remains the sole style reference. Greystone photographs establish the
+subject architecture and colors.
 
-The prior approved watercolor still supplies the map and sketchbook. The older source
-layers below remain immutable for reproduction and rollback. The app currently displays
-two separately approved revisions; they are **not** a registered animation pair.
-The new registered watercolor proposal is outside the app pending visual approval.
-Do not use the prior watercolor with the new ink for a paint-reveal transition.
-Revert this revision's Git commit to restore build 123 artwork selection.
+The pair retains broken contours, uneven strokes, sparse surface description and
+loose foliage; the draped flag/pole and partially obscured divided-pane arch window
+remain. Earlier incidental roof details and side pipe removals remain in effect.
 
-# Authoritative Greystone artwork
+## App assets
 
-The owner approved the latest roof-repair review and requested app implementation.
-These five frozen source layers are the authoritative Greystone artwork. Prior
-Greystone illustrations and review variants are historical, not style authorities.
-The original owner-selected red-mill watercolor remains the sole style reference;
-the supplied Greystone photograph provided the subject architecture and colors.
-
-## Approved features
-
-- Rounded bushes partially obscure the lower-right arch window.
-- The arch contains a divided-pane window based on neighboring windows.
-- The original draped American flag and its pole are retained.
-- Marked incidental roof features, the right-side pipe and isolated twigs are removed.
-- Left roof coverage and right gable joins follow the approved repaired drawing.
-
-`manifest.json` records approval context, source hashes, full-canvas pixel hashes
-and the approved composite file hashes. Do not regenerate the ink or independently
-trim, resize or reposition any source layer.
-
-## Existing app slots
-
-| Slot | Approved content |
+| Asset | Approved content |
 | --- | --- |
-| `home-sketch-greystone` | Ink, centered with transparent padding to 1536 × 1536 |
-| `stop-ink-greystone` | Registered ink at 1536 × 1024 |
-| `sketchbook-greystone` | Registered watercolor at 1536 × 1024 |
-| `greystone-map-landmark` | The identical watercolor composite |
+| `home-sketch-greystone` | Ink, transparent padding to 1536 × 1536 |
+| `stop-ink-greystone` | Registered ink, 1536 × 1024 |
+| `sketchbook-greystone` | Registered watercolor, 1536 × 1024 |
+| `greystone-map-landmark` | Identical watercolor |
 
-Home's derivative is not a paint-reveal master. Use the original-size pair or the
-unchanged `INK_MASTER`, `WHITE_RESERVES`, `SUBJECT_BASE`, `WATERCOLOR_UNDERLAY` and
-shared `ARTWORK_MASK` for any future reveal work. No animation behavior is changed
-by this asset replacement. Light subject reserves remain distinct from transparency.
+Both originals share the same final alpha and unchanged pen layer. Home padding
+adds no scaling or cropping. `manifest.json` records source, raw ink/mask and approved
+composite hashes. Do not regenerate ink or independently trim, scale or reposition
+exports. For any future paint reveal, keep INK_MASTER, SUBJECT_BASE, WHITE_RESERVES
+and ARTWORK_MASK stationary; reveal only WATERCOLOR_UNDERLAY. WHITE_RESERVES is a
+frozen empty layer for this revision; light paint details are reserved in the underlay.
 
-Existing plaque-unlock rules, saved progress and image names are retained; photographs
-and AR recognition reference images are untouched. All other tour artwork is preserved.
-
-## Rebuild or verify
-
-With the Python dependencies in `requirements.txt` installed:
+## Reproduction and rollback
 
 ```sh
 python3 scripts/build-mill-artwork.py --landmark greystone
 python3 scripts/build-mill-artwork.py --landmark greystone --write
-python3 scripts/build-mill-artwork.py # Verify the retained Mill assets
 ```
 
-Default mode verifies without writing. Source hashes, exact composite pixels,
-matching alpha, sRGB interpretation, square Home padding and catalog registration
-are checked. Transparent RGB is preserved to match the approved exported files.
+The default verifies without writing. All four app slots must match reconstructed
+pixels, dimensions, sRGB and catalog registrations. `loose-ink/` preserves the prior
+ink-only implementation snapshot for provenance; there is no active ink override.
+Earlier complete pairs remain in Git history. Reverting this implementation commit
+restores the prior watercolor while retaining the already approved loose ink.
 
-The parent commit retains the previous app artwork for rollback. This candidate
-requires native build checks before publication and visual verification on iPhone.
+Build 125 candidate includes asset replacements only, with existing collection,
+recognition, animation, provider and navigation behavior preserved. Native Xcode
+compilation and iPhone visual checks remain pending before publication.
