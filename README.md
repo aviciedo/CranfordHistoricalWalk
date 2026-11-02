@@ -1,3 +1,17 @@
+## Build 128 candidate — approved Cranford Hotel illustrations
+
+Home and Stops now use the selected Hotel ink. The map uses the approved watercolor;
+an identical watercolor is bundled for future sketchbook use without granting Hotel
+collection eligibility. Both registered originals remain 1536 × 1024 with identical
+alpha, unchanged selected ink and transparent square padding only for Home.
+
+The later impressionistic ink variant is not used. Sources, hashes and rebuild steps
+are in [artwork/hotel](artwork/hotel/README.md). Existing Mill, Greystone and Church
+artwork is retained. No recognition target, route, provider, saved-progress, narration
+or animation behavior changes are included. Local artwork and catalog checks pass.
+Native Xcode compilation and iPhone visual checks remain pending. Not published;
+build 127 remains the published baseline.
+
 ## Build 127 candidate — approved watercolor reference refinements
 
 Integrates the three owner-approved before/after revisions: broken coral/slate and

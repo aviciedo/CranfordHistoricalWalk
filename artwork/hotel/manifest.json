@@ -1,0 +1,44 @@
+{
+  "status": "Owner-approved authoritative Cranford Hotel registered ink and watercolor pair",
+  "canvas": [
+    1536,
+    1024
+  ],
+  "source_files": {
+    "INK_MASTER.png": "1ffc132d1a9691d25f7ecb4f332e7bb433c2f7ed3fd2bc15c7d5483ca8495b33",
+    "SUBJECT_BASE.png": "8279685f4c38210230208f0ec6ba11608b448653da4bd434f70f0f9fff4d3fa4",
+    "WHITE_RESERVES.png": "05ca7ec3f38c189e3834abdc226c69ab93611cfeec12541daede69b8751a9f4a",
+    "ARTWORK_MASK.png": "5542fe829a7ce6356bd18dffa570510cf3b61404f84cc83b6678f42f80b013f9",
+    "WATERCOLOR_UNDERLAY.png": "af85553c1da6795b627a79e9d1da2e740b4caa210aa98c4a6373028b634eb191"
+  },
+  "ink_master_raw_rgba_sha256": "bb4df5c788cc8a234543b509e7115bdce6be7c04dd7892109d8bad4c2d20a612",
+  "alpha_raw_sha256": "878f2fdda995ccae670c7c47fc7e61caeccc57d6e6e97e7444ab5e83c814f3b6",
+  "home_canvas": [
+    1536,
+    1536
+  ],
+  "home_ink_offset": [
+    0,
+    256
+  ],
+  "clear_transparent_rgb": true,
+  "asset_names": {
+    "home": "home-sketch-hotel",
+    "ink": "stop-ink-hotel",
+    "watercolor": "sketchbook-hotel",
+    "map": "hotel-map-landmark"
+  },
+  "approval_context": "Owner selected the attached refined ink version, approved its registered watercolor, and requested implementation. The later impressionistic ink variant was not selected.",
+  "approved_features": [
+    "frontal main three-story facade and bracketed cornice",
+    "white balcony with structural columns and balustrade",
+    "burgundy awning and lintels, cream walls, dark green frames and red brick base",
+    "chimney body retained, protruding pipes removed",
+    "traffic signs, street poles, bollards/chains, red planter, Halloween decorations, red window box, PORCH text and hydrant removed",
+    "no invented furniture, foundation shrubs or cropped adjoining wing"
+  ],
+  "approved_composite_files": {
+    "cranford-hotel-ink.png": "503f54e81091f168ff76922177096ad7395c8af7bd949c3cd96d003d3ef6a7c5",
+    "cranford-hotel-watercolor.png": "dbbd3e0a8b3ebe2ef62b68c3cc615deb341dd5f4e64cccf629a563f8aee19654"
+  }
+}

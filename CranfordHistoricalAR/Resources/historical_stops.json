@@ -252,7 +252,8 @@
       "narrationPending": true,
       "artwork": {
         "homeInk": "home-sketch-hotel",
-        "listInk": "stop-ink-hotel"
+        "listInk": "stop-ink-hotel",
+        "mapLandmark": "hotel-map-landmark"
       }
     }
   ],

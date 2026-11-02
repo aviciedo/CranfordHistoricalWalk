@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify/rebuild owner-approved registered Mill/Greystone/Church assets without generative editing.
+"""Verify/rebuild owner-approved registered Mill/Greystone/Church/Hotel assets without generative editing.
 
 Requires Pillow and NumPy. Default is read-only; --write updates the four existing
 asset slots. No changes to app layout, catalog references or unlock state.
@@ -20,7 +20,7 @@ CATALOG = ROOT / 'CranfordHistoricalAR/Assets.xcassets'
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--write', action='store_true', help='Rebuild the existing app asset files')
-    parser.add_argument('--landmark', choices=['mill', 'greystone', 'church'], default='mill', help='Approved artwork collection (default: mill)')
+    parser.add_argument('--landmark', choices=['mill', 'greystone', 'church', 'hotel'], default='mill', help='Approved artwork collection (default: mill)')
     args = parser.parse_args()
     SOURCE = ROOT / 'artwork' / args.landmark
     manifest = json.loads((SOURCE / 'manifest.json').read_text())
