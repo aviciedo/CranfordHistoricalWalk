@@ -494,8 +494,9 @@ private struct PlaqueScannerHUD: View {
                         .accessibilityLabel("Reference photograph of the plaque to find")
                 }
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(model.placementMode == .plaqueAnchored ? "Plaque recognized" :
-                         (model.isConfirmingPlaque ? "Hold steady" : "Frame this plaque"))
+                    Text(PlaqueScannerGuidance.hudHeadline(
+                        isPlaqueAnchored: model.placementMode == .plaqueAnchored,
+                        isConfirming: model.isConfirmingPlaque))
                         .font(.headline)
                     Text(model.destinationName ?? "Plaque discovery").font(.subheadline)
                         .fixedSize(horizontal: false, vertical: true)

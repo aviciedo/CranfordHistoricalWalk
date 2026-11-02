@@ -29,6 +29,17 @@ final class SignPlacementPolicyTests: XCTestCase {
         XCTAssertNil(SignPlacementPolicy.recognizedStop(imageName: name, isTracked: true, trackingReady: true, stops: stops + [park]))
     }
 
+    func testDuplicatePlaqueNamesAreOmittedFromDetection() {
+        let mill = SignPlacementPolicy.millReferenceImageName
+        let park = SignPlacementPolicy.parkReferenceImageName
+        XCTAssertEqual(SignPlacementPolicy.unambiguousReferenceNames([mill, park, mill]), [park])
+        XCTAssertEqual(SignPlacementPolicy.unambiguousReferenceNames([mill, park]), [mill, park])
+        XCTAssertEqual(SignPlacementPolicy.unambiguousReferenceNames([mill, "\(mill) "]), [mill, "\(mill) "])
+        XCTAssertTrue(SignPlacementPolicy.unambiguousReferenceNames(["", ""]).isEmpty)
+        XCTAssertEqual(SignPlacementPolicy.unambiguousReferenceNames([""]), [""])
+        XCTAssertTrue(SignPlacementPolicy.unambiguousReferenceNames([]).isEmpty)
+    }
+
     func testSearchingUntilTimeoutThenGeoFallback() {
         var input = presentedMill()
         XCTAssertEqual(SignPlacementPolicy.mode(input), .searchingForPlaque)

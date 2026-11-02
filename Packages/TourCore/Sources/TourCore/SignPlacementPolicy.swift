@@ -88,6 +88,12 @@ public enum SignPlacementPolicy {
         return detectedName == expectedName
     }
 
+    /// Image detection may register a reference only when exactly one stop uses that name.
+    /// A shared name would award the wrong site, so both copies are omitted.
+    public static func unambiguousReferenceNames(_ names: [String]) -> Set<String> {
+        Set(Dictionary(grouping: names, by: { $0 }).filter { $0.value.count == 1 }.keys)
+    }
+
     public static func mode(_ input: SignPlacementInput) -> SignPlacementMode {
         // Dismissed this visit: do not re-show from a later image-track. Leave and
         // re-enter the 50 m departure radius (existing hysteresis) to re-arm.

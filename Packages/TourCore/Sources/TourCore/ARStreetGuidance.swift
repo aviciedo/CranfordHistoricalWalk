@@ -11,6 +11,20 @@ public enum ARStreetGuidance {
             && routeOffset.isFinite && (0...15).contains(routeOffset)
     }
 
+    /// A local maneuver sign is relocated when the visitor has walked up to it or turned
+    /// so far that it is no longer in front of the camera. Street-registered arrows do not use this.
+    /// Closer than 3 m always resets. Past 60° resets only while the horizontal forward is longer than 0.1 m.
+    public static func shouldResetManeuverSign(pinnedX: Double, pinnedZ: Double,
+                                               cameraX: Double, cameraZ: Double,
+                                               forwardX: Double, forwardZ: Double) -> Bool {
+        let dx = pinnedX - cameraX
+        let dz = pinnedZ - cameraZ
+        let length = hypot(dx, dz)
+        let forwardLength = hypot(forwardX, forwardZ)
+        let lookingAway = forwardLength > 0.1 && dx * forwardX + dz * forwardZ < length * forwardLength * 0.5
+        return length < 3 || lookingAway
+    }
+
     public static let lookAheadMeters = 8.0
     public static let minimumClearanceMeters = 0.16
     public static let chevronScale = 1.45

@@ -214,7 +214,7 @@ final class ARViewModel {
         configuration.isLightEstimationEnabled = true
         configuration.isAutoFocusEnabled = true
         let names = tour.stops.filter(\.hasPlaqueReference).compactMap { $0.plaque?.referenceImageName }
-        supportedPlaqueReferences = Set(Dictionary(grouping: names, by: { $0 }).filter { $0.value.count == 1 }.keys)
+        supportedPlaqueReferences = SignPlacementPolicy.unambiguousReferenceNames(names)
         imageTrackingAvailable = isPlaqueScanner && PlaqueAnchorController.applyDetectionImages(
             to: configuration, referenceNames: supportedPlaqueReferences)
         return configuration
@@ -480,11 +480,7 @@ final class ARViewModel {
     }
 
     var scannerPhaseTitle: String {
-        if case .failed = localizationState { return "Scanning stopped" }
-        guard isSessionRunning else { return "Camera starting" }
-        guard imageTrackingAvailable else { return "Recognition unavailable" }
-        if placementMode == .plaqueAnchored { return "Plaque found" }
-        return isConfirmingPlaque ? "Hold steady" : "Looking for plaque"
+        PlaqueScannerGuidance.phaseTitle(scannerGuidance(at: scannerAttemptStartedAt))
     }
 
     var scannerSketchResult: String {
@@ -496,22 +492,23 @@ final class ARViewModel {
     }
 
     func scannerInstruction(at date: Date) -> String {
-        if case .failed = localizationState { return "Scanning stopped. Try again, or return to the story." }
-        guard isApplicationActive else { return "Scanning paused. Return to the app to continue." }
-        guard isSessionRunning else { return "Preparing the camera. You can return to the story at any time." }
-        guard imageTrackingAvailable else { return "Plaque recognition is unavailable. Return to the story or try again." }
-        if placementMode == .plaqueAnchored { return "Move slowly to view the card above the plaque." }
-        if isConfirmingPlaque { return "Hold steady while the plaque is confirmed." }
-        if tour.discovery.hasVerifiedPlaque {
-            if qualifiedPlaqueAnchorID != nil && !tour.isSignPresented {
-                return "Look away, then frame the plaque again to reopen its AR card."
-            }
-            return "Frame the plaque again to place its AR card."
-        }
-        if date.timeIntervalSince(scannerAttemptStartedAt) >= 12 {
-            return "Move closer until the whole plaque is visible. Hold steady, avoid glare and try better light. You can retry or return to the story."
-        }
-        return "Frame the entire plaque and some surrounding wall in good light."
+        PlaqueScannerGuidance.instruction(scannerGuidance(at: date))
+    }
+
+    private func scannerGuidance(at date: Date) -> PlaqueScannerGuidance.Input {
+        let failed: Bool
+        if case .failed = localizationState { failed = true } else { failed = false }
+        return PlaqueScannerGuidance.Input(
+            localizationFailed: failed,
+            isApplicationActive: isApplicationActive,
+            isSessionRunning: isSessionRunning,
+            imageTrackingAvailable: imageTrackingAvailable,
+            isPlaqueAnchored: placementMode == .plaqueAnchored,
+            isConfirmingPlaque: isConfirmingPlaque,
+            hasVerifiedPlaque: tour.discovery.hasVerifiedPlaque,
+            hasQualifiedAnchor: qualifiedPlaqueAnchorID != nil,
+            isSignPresented: tour.isSignPresented,
+            secondsSinceAttempt: date.timeIntervalSince(scannerAttemptStartedAt))
     }
 
     /// Retry discards camera tracking only; saved learning/visits/sketches and routing survive.

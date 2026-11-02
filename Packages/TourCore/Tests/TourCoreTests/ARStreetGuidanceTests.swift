@@ -14,6 +14,39 @@ final class ARStreetGuidanceTests: XCTestCase {
             XCTAssertFalse(ARStreetGuidance.canShowManeuver(tracking: tracking, locationAge: age,
                 accuracy: accuracy, routeOffset: offset, hasCue: cue))
         }
+        XCTAssertTrue(ARStreetGuidance.canShowManeuver(tracking: true, locationAge: -1,
+            accuracy: 0, routeOffset: 0, hasCue: true))
+        XCTAssertTrue(ARStreetGuidance.canShowManeuver(tracking: true, locationAge: 5,
+            accuracy: 20, routeOffset: 15, hasCue: true))
+        for (age, accuracy, offset) in [(-1.0001, 0.0, 0.0), (5.0001, 0, 0), (0, -0.0001, 0),
+                                         (0, 20.0001, 0), (0, 0, -0.0001), (0, 0, 15.0001),
+                                         (Double.nan, 0, 0)] {
+            XCTAssertFalse(ARStreetGuidance.canShowManeuver(tracking: true, locationAge: age,
+                accuracy: accuracy, routeOffset: offset, hasCue: true))
+        }
+    }
+
+    func testLocalManeuverSignResetsWhenTooCloseOrTurnedAway() {
+        XCTAssertTrue(ARStreetGuidance.shouldResetManeuverSign(pinnedX: 0, pinnedZ: -2.999,
+            cameraX: 0, cameraZ: 0, forwardX: 0, forwardZ: -1))
+        XCTAssertFalse(ARStreetGuidance.shouldResetManeuverSign(pinnedX: 0, pinnedZ: -3,
+            cameraX: 0, cameraZ: 0, forwardX: 0, forwardZ: -1))
+        XCTAssertFalse(ARStreetGuidance.shouldResetManeuverSign(pinnedX: 0, pinnedZ: -10,
+            cameraX: 0, cameraZ: 0, forwardX: 0, forwardZ: -1))
+        XCTAssertFalse(ARStreetGuidance.shouldResetManeuverSign(pinnedX: 6, pinnedZ: 8,
+            cameraX: 0, cameraZ: 0, forwardX: 1, forwardZ: 0), "A 3-4-5 offset is inside 60 degrees")
+        XCTAssertFalse(ARStreetGuidance.shouldResetManeuverSign(pinnedX: 5, pinnedZ: (75 as Double).squareRoot(),
+            cameraX: 0, cameraZ: 0, forwardX: 1, forwardZ: 0), "Cosine of one half does not reset")
+        XCTAssertTrue(ARStreetGuidance.shouldResetManeuverSign(pinnedX: 5, pinnedZ: 12,
+            cameraX: 0, cameraZ: 0, forwardX: 1, forwardZ: 0))
+        XCTAssertTrue(ARStreetGuidance.shouldResetManeuverSign(pinnedX: 0, pinnedZ: 10,
+            cameraX: 0, cameraZ: 0, forwardX: 0, forwardZ: -1))
+        XCTAssertFalse(ARStreetGuidance.shouldResetManeuverSign(pinnedX: 0, pinnedZ: 5,
+            cameraX: 0, cameraZ: 0, forwardX: 0.1, forwardZ: 0))
+        XCTAssertTrue(ARStreetGuidance.shouldResetManeuverSign(pinnedX: 0, pinnedZ: 5,
+            cameraX: 0, cameraZ: 0, forwardX: 0.1000001, forwardZ: 0))
+        XCTAssertFalse(ARStreetGuidance.shouldResetManeuverSign(pinnedX: .nan, pinnedZ: 0,
+            cameraX: 0, cameraZ: 0, forwardX: 0, forwardZ: -1))
     }
 
     func testFirstSignDoesNotRequireGroundPlaneCompassOrGeoProjection() throws {

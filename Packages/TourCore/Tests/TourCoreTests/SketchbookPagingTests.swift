@@ -45,4 +45,25 @@ final class SketchbookPagingTests: XCTestCase {
         XCTAssertEqual(SketchbookCurlLayout.logicalPage(controllerIndex: 1), 0)
         XCTAssertEqual(SketchbookCurlLayout.logicalPage(controllerIndex: 2), 1)
     }
+
+    func testAnimatedTurnsSupplyBothFacesInEitherDirection() {
+        XCTAssertEqual(SketchbookCurlLayout.presentedControllerIndices(logicalPage: 0, animated: false), [0])
+        XCTAssertEqual(SketchbookCurlLayout.presentedControllerIndices(logicalPage: 0, animated: true), [0, 1])
+        XCTAssertEqual(SketchbookCurlLayout.presentedControllerIndices(logicalPage: 3, animated: false), [6])
+        XCTAssertEqual(SketchbookCurlLayout.presentedControllerIndices(logicalPage: 3, animated: true), [6, 7])
+        XCTAssertNotEqual(SketchbookCurlLayout.presentedControllerIndices(logicalPage: 1, animated: true), [3, 2])
+    }
+
+    func testInterruptedCurlFollowsTheVisibleFaceOnlyWhileTheRequestStands() {
+        XCTAssertEqual(SketchbookCurlLayout.indexAfterAnimatedCurl(requested: 2, visible: 1,
+            animationCompleted: false, parentIndex: 2), 1)
+        XCTAssertEqual(SketchbookCurlLayout.indexAfterAnimatedCurl(requested: 2, visible: 1,
+            animationCompleted: true, parentIndex: 2), 2)
+        XCTAssertEqual(SketchbookCurlLayout.indexAfterAnimatedCurl(requested: 2, visible: 1,
+            animationCompleted: false, parentIndex: 4), 4)
+        XCTAssertEqual(SketchbookCurlLayout.indexAfterAnimatedCurl(requested: 0, visible: 1,
+            animationCompleted: false, parentIndex: 0), 1)
+        XCTAssertEqual(SketchbookCurlLayout.indexAfterAnimatedCurl(requested: 0, visible: 0,
+            animationCompleted: false, parentIndex: 0), 0)
+    }
 }
