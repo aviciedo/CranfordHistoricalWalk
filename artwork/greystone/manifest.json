@@ -1,5 +1,5 @@
 {
-  "status": "Owner-approved authoritative Greystone ink/watercolor pair",
+  "status": "Approved watercolor source pair, with newer owner-approved loose-ink override; new watercolor pending review",
   "canvas": [
     1536,
     1024
@@ -40,5 +40,10 @@
   "approved_composite_files": {
     "greystone-ink.png": "0c6e421be233ee5b9b3eb35a029aa641d9cd30694d0ddcd31067063353926c90",
     "greystone-watercolor.png": "cfc28f77be60533060eec7e6061c4c61f49b60a61c3924f9d50ff65487caac7c"
+  },
+  "ink_override": {
+    "file": "loose-ink/greystone-ink.png",
+    "sha256": "95335a11a6aa219d87ce1296f3f2df076f4a2fbf085eb0513e223dcc62e1d973",
+    "approval": "Owner approved looser broken ink and requested ink implementation; watercolor revision remains pending."
   }
 }

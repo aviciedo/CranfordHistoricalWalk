@@ -1,3 +1,17 @@
+## Current ink revision — build 124 candidate
+
+The owner approved the new loose broken pen-work and requested implementation, followed
+by watercolor review. `loose-ink/` preserves the approved new ink, base, reserves, mask,
+composite and frozen hashes. `manifest.json` selects this as an `ink_override` for Home
+and Stops. Home adds the same transparent square padding without scaling.
+
+The prior approved watercolor still supplies the map and sketchbook. The older source
+layers below remain immutable for reproduction and rollback. The app currently displays
+two separately approved revisions; they are **not** a registered animation pair.
+The new registered watercolor proposal is outside the app pending visual approval.
+Do not use the prior watercolor with the new ink for a paint-reveal transition.
+Revert this revision's Git commit to restore build 123 artwork selection.
+
 # Authoritative Greystone artwork
 
 The owner approved the latest roof-repair review and requested app implementation.

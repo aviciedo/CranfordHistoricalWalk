@@ -1,3 +1,18 @@
+## Build 124 candidate — approved looser Greystone ink
+
+Replaces Home and Stops Greystone ink with the owner-approved broken contours,
+uneven pen strokes, sparse surface marks and looser foliage. Home adds transparent
+padding only. The prior approved watercolor remains on the map and in the sketchbook
+while the replacement watercolor is reviewed. These temporarily displayed ink/color
+versions are not a registered paint-reveal pair; do not animate between them.
+
+The new frozen ink layers are in `artwork/greystone/loose-ink`. The Greystone manifest
+selects the approved ink override while retaining the earlier watercolor source layers.
+Verify with `python3 scripts/build-mill-artwork.py --landmark greystone`.
+Build 123 church and build 121 Mill artwork remain unchanged. No unlock, AR, route,
+provider or animation behavior changed. Native Xcode and iPhone checks remain pending.
+Not published; build 120 remains the published baseline.
+
 ## Build 123 candidate — approved loose First Baptist Church illustrations
 
 The approved church pair replaces Home ink, Stops ink and the colored map landmark.

@@ -1,0 +1,19 @@
+{
+  "composition_approved": true,
+  "approval": "Owner approved loose Greystone ink and requested ink implementation followed by watercolor review.",
+  "canvas": [
+    1536,
+    1024
+  ],
+  "canonical_ink_raw_rgba_sha256": "f0b676a19d48916b4e3263ea5e80ec89a9b2783738108f757cea2cb58ead92fa",
+  "canonical_alpha_raw_sha256": "fa47cb708b3de898bdeaf28ab3a5bb79259d2489cb8fda17439c787142cc62c3",
+  "layers_frozen_before_watercolor_generation": true,
+  "canonical_layers": {
+    "INK_MASTER.png": "37eefa58c8bbcfa31021a7d1fd54c9b0c226e44d9bf64f4dce22ab349f540705",
+    "SUBJECT_BASE.png": "8b9453aa47966f9f49423edbae33ce288caaf2893e6c22fd08d0498cf9a20163",
+    "WHITE_RESERVES.png": "9b6f56282ca30ac0870583b036eab294393b1abb1b1b860df484c46981dee79c",
+    "ARTWORK_MASK.png": "adbd27ccd2c603f3c8e258e372385582f1fe421892091a0b90ad8d97ca380748"
+  },
+  "note": "Approved RGBA pen strokes unchanged. White subject base is supplied below broken contours. Intentional white paint reserves will be supplied by the paint-only proposal; WHITE_RESERVES is an empty frozen layer.",
+  "approved_draft_file_sha256": "3ef01c8859a767efa4b857a5ad4e4a283e255deab3e72938e8fc0fb4fe411cb1"
+}

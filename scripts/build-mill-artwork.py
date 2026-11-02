@@ -55,6 +55,15 @@ def main():
     ink, watercolor = composite(False), composite(True)
     if ink.getchannel('A').tobytes() != watercolor.getchannel('A').tobytes():
         raise ValueError('Ink and watercolor alpha must match byte-for-byte')
+    # A newly approved ink may ship before its replacement watercolor is approved.
+    # Keep the prior watercolor sources immutable until the review is complete.
+    if override := manifest.get('ink_override'):
+        path = SOURCE / override['file']
+        if hashlib.sha256(path.read_bytes()).hexdigest() != override['sha256']:
+            raise ValueError('Approved ink override changed')
+        ink = Image.open(path).convert('RGBA')
+        if ink.size != size:
+            raise ValueError('Ink override must retain the original full canvas')
     home = Image.new('RGBA', tuple(manifest['home_canvas']), (0, 0, 0, 0))
     offset = tuple(manifest['home_ink_offset'])
     home.paste(ink, offset)  # Copy bytes; no scaling, cropping or alpha recompositing.
@@ -83,7 +92,7 @@ def main():
         if installed.info.get('srgb') != 0:
             raise ValueError(f'Missing consistent sRGB interpretation: {name}')
         print(f'{name}: {expected.width}x{expected.height}, RGBA, exact approved pixels')
-    print('PASS: unchanged canonical ink; zero differing alpha pixels; Home padding only; all four asset slots verified.')
+    print('PASS: canonical source pair has matching alpha; approved ink selection verified; Home padding only; all four asset slots verified.')
 
 
 if __name__ == '__main__':
