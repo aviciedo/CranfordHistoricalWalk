@@ -44,6 +44,7 @@ final class ARViewModel {
     @ObservationIgnored private var supportedPlaqueReferences: Set<String> = []
     private(set) var isConfirmingPlaque = false
     @ObservationIgnored private var observedStopID: String?
+    private let allowsGeospatialFallback: Bool
     let isPlaqueScanner: Bool
     private(set) var scannerAttemptStartedAt = Date()
     /// True when world tracking accepted a non-empty `PlaqueAnchors` group. Missing assets
@@ -53,10 +54,13 @@ final class ARViewModel {
     /// Restrained HUD line while looking for the mill plate.
     private(set) var plaqueHint: String?
 
-    init(tour: TourViewModel, provider: any GeoSpatialProvider, imageLoader: any ImageLoader, narrationPlayer: NarrationPlayer, isPlaqueScanner: Bool = false) {
+    init(tour: TourViewModel, provider: any GeoSpatialProvider, imageLoader: any ImageLoader, narrationPlayer: NarrationPlayer, isPlaqueScanner: Bool = false, allowsGeospatialFallback: Bool = true) {
         self.tour = tour
+        self.allowsGeospatialFallback = allowsGeospatialFallback
         self.isPlaqueScanner = isPlaqueScanner
-        self.geoAnchors = GeoAnchorManager(provider: provider)
+        let geoAnchors = GeoAnchorManager(provider: provider)
+        geoAnchors.allowsNativePositioningFallback = allowsGeospatialFallback
+        self.geoAnchors = geoAnchors
         self.imageLoader = imageLoader
         self.narrationPlayer = narrationPlayer
         // Compute into locals first: @Observable turns stored properties into accessors on self,
@@ -70,6 +74,17 @@ final class ARViewModel {
 
     var localizationState: ARLocalizationState { geoAnchors.localizationState }
     var statusMessage: String? {
+        if !isPlaqueScanner, !allowsGeospatialFallback {
+            if localizationState.isUsable {
+                return geoAnchors.navigationNotice ?? geoAnchors.provider.vpsCoverage.userMessage
+            }
+            if let reason = geoAnchors.provider.fallbackReason {
+                return "Google-only AR is unavailable (\(reason.rawValue)). Check ARCore setup, consent and location. Apple positioning fallback is disabled."
+            }
+            if case .failed = localizationState { return localizationState.userMessage }
+            if case .interrupted = localizationState { return localizationState.userMessage }
+            return "Google-only AR is waiting for localization. Apple positioning fallback is disabled."
+        }
         if !isPlaqueScanner, let notice = geoAnchors.navigationNotice { return notice }
         if !isPlaqueScanner, geoAnchors.spatialMode == .spatial { return nil }
         if placementMode == .plaqueAnchored, geoAnchors.isTrackingReady { return nil }
@@ -533,7 +548,7 @@ final class ARViewModel {
 
     /// Geospatial unavailable: same AR session owner, same LocationService, Core Location provider.
     func fallbackToCoreLocation(reason: GeoSpatialFallbackReason) {
-        guard geoAnchors.provider.backend == .arCoreGeospatial else { return }
+        guard allowsGeospatialFallback, geoAnchors.provider.backend == .arCoreGeospatial else { return }
         let next = CoreLocationGeoSpatialProvider(fallbackReason: reason)
         geoAnchors.replaceProvider(with: next, session: arView?.session)
         if let arView {

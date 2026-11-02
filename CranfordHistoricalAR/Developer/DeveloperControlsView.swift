@@ -9,9 +9,21 @@ struct DeveloperControlsView: View {
     @Environment(AppDependencies.self) private var dependencies
     @Environment(\.dismiss) private var dismiss
     @Environment(AppNavigation.self) private var navigation
+    @State private var pendingProviderMode = DeveloperProviderSettings.load()
     @State private var captureStopID = ""
     @State private var captureLabel = ""
     @State private var csvExport: GPSCaptureExport?
+
+    private var routeSourceLabel: String {
+        guard let source = tour.currentRoute?.source else { return "No route requested" }
+        switch source {
+        case .googleRoutesAPI: return "Google Routes API"
+        case .googleDirectionsLegacy: return "Google Directions (legacy)"
+        case .appleMaps: return "Apple Maps"
+        case .straightLineEstimate: return "Distance estimate — no walking route"
+        case .simulated: return "Practice route"
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -54,6 +66,34 @@ struct DeveloperControlsView: View {
                 }
             }
             .textSelection(.enabled)
+
+            Section {
+                Picker("Provider mode", selection: $pendingProviderMode) {
+                    ForEach(TourProviderMode.allCases, id: \.self) { mode in
+                        Text(mode.title).tag(mode)
+                    }
+                }
+                .accessibilityIdentifier("developer.providerMode")
+                .onChange(of: pendingProviderMode) { _, mode in DeveloperProviderSettings.save(mode) }
+                row("Active this launch", dependencies.providerMode.title)
+                if pendingProviderMode != dependencies.providerMode {
+                    Label("Restart required to apply \(pendingProviderMode.title)", systemImage: "arrow.clockwise")
+                        .font(.footnote).foregroundStyle(AppTheme.warning)
+                    Text("Close the app from the app switcher, then reopen it. Your saved visits, stories and sketches are kept.")
+                        .font(.footnote)
+                }
+                row("Selected map backend", dependencies.mapBackend == .google ? "Google Maps" :
+                    (dependencies.mapBackend == .apple ? "Apple Maps" : "Google unavailable; fallback disabled"))
+                row("Current route source", routeSourceLabel)
+                if let error = tour.routingError { Text(error).font(.footnote).foregroundStyle(AppTheme.warning) }
+                row("Last walking AR provider", dependencies.lastWalkingARProvider)
+                if let notice = dependencies.lastWalkingARNotice { Text(notice).font(.footnote) }
+                Button("Restore default provider mode") { pendingProviderMode = .automatic }
+            } header: {
+                Text("Map, route & AR testing")
+            } footer: {
+                Text("Changes apply on next launch. Default keeps configured Google services with Apple fallback. Google only disables Apple map/routing and native positioning fallback, and requires ARCore setup and consent for walking AR. Apple only skips Google services. GPS, arrow rendering and plaque recognition use Apple frameworks in every mode. This tests provider behavior; Google SDKs remain installed. Release builds ignore this setting.")
+            }
 
             Section {
                 Toggle("Save visit history", isOn: $developer.isVisitRecordingEnabled)
@@ -193,11 +233,14 @@ struct DeveloperControlsView: View {
                 let selection = GeoSpatialProviderFactory.selection(
                     configuration: dependencies.configuration,
                     locationAuthorized: tour.locationAuthorization == .authorized,
-                    preciseLocation: tour.isPreciseLocation
+                    preciseLocation: tour.isPreciseLocation,
+                    mode: dependencies.providerMode
                 )
-                row("Would use", selection.backend == .arCoreGeospatial ? "ARCore Geospatial" : "Core Location")
+                row("AR selection", selection.backend == .arCoreGeospatial ? "ARCore Geospatial" : "Core Location")
                 if let reason = selection.fallbackReason {
-                    Text(reason.userMessage).font(.footnote).foregroundStyle(AppTheme.warning)
+                    Text(dependencies.providerMode == .googleOnly
+                        ? "Google-only AR unavailable (\(reason.rawValue)); Apple positioning fallback is disabled."
+                        : reason.userMessage).font(.footnote).foregroundStyle(AppTheme.warning)
                 }
                 row("Bundle", AppConfiguration.iosBundleIdentifier())
             }

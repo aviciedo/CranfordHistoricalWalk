@@ -936,3 +936,11 @@ enum MapStyle {
     ]
     """
 }
+
+/// Strict provider testing exposes missing Google setup instead of silently using MapKit.
+struct GoogleMapUnavailableView: View {
+    var body: some View {
+        ContentUnavailableView("Google Maps unavailable", systemImage: "map",
+            description: Text("Google-only testing is active. Check the Maps SDK configuration and access. Apple fallback is disabled."))
+    }
+}

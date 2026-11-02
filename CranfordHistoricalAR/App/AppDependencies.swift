@@ -8,6 +8,8 @@ import TourCore
 @MainActor
 @Observable
 final class AppDependencies {
+    let providerMode: TourProviderMode
+    var mapBackend: TourProviderMode.MapBackend { providerMode.mapBackend(googleConfigured: GoogleMapsBootstrap.isConfigured) }
     let configuration: AppConfiguration
     let stopService: any HistoricalStopService
     let locationService: any LocationService
@@ -18,9 +20,12 @@ final class AppDependencies {
     #if DEVELOPER_MENU
     /// Developer Mode (spec §19); Debug builds only.
     private(set) var developer: DeveloperModeController?
+    var lastWalkingARProvider = "Not started this launch"
+    var lastWalkingARNotice: String?
     #endif
 
-    init(configuration: AppConfiguration, stopService: any HistoricalStopService, locationService: any LocationService, directionsService: any DirectionsService, imageLoader: any ImageLoader, narrationPlayer: NarrationPlayer? = nil, tourViewModel: TourViewModel) {
+    init(configuration: AppConfiguration, stopService: any HistoricalStopService, locationService: any LocationService, directionsService: any DirectionsService, imageLoader: any ImageLoader, narrationPlayer: NarrationPlayer? = nil, tourViewModel: TourViewModel, providerMode: TourProviderMode = .automatic) {
+        self.providerMode = providerMode
         self.configuration = configuration
         self.stopService = stopService
         self.locationService = locationService
@@ -38,17 +43,26 @@ final class AppDependencies {
         GeoSpatialProviderFactory.make(
             configuration: configuration,
             locationAuthorized: tourViewModel.locationAuthorization == .authorized,
-            preciseLocation: tourViewModel.isPreciseLocation
+            preciseLocation: tourViewModel.isPreciseLocation,
+            mode: providerMode
         )
     }
 
     static func live(configuration: AppConfiguration, tourResourceName: String = "historical_stops") -> AppDependencies {
-        GoogleMapsBootstrap.configure(with: configuration)
+        #if DEVELOPER_MENU
+        let mode = DeveloperProviderSettings.load()
+        #else
+        let mode = TourProviderMode.launchMode(storedValue: nil, developerEnabled: false)
+        #endif
+        var configuration = configuration
+        if mode == .appleOnly { configuration.arCoreGeospatialEnabled = false }
+        if mode == .googleOnly { configuration.arCoreGeospatialEnabled = true }
+        if mode != .appleOnly { GoogleMapsBootstrap.configure(with: configuration) }
         let stopService = BundledJSONHistoricalStopService(resourceName: tourResourceName)
         let locationService = CoreLocationService()
-        let directionsService = DirectionsServiceFactory.make(configuration: configuration)
+        let directionsService = DirectionsServiceFactory.make(configuration: configuration, mode: mode)
         let tour = TourViewModel(stopService: stopService, locationService: locationService, directionsService: directionsService, visitStore: LocalStopVisitStore(), activityStore: LocalStopActivityStore(), walkResumeStore: LocalWalkResumeStore())
-        let dependencies = AppDependencies(configuration: configuration, stopService: stopService, locationService: locationService, directionsService: directionsService, imageLoader: CompositeImageLoader(), narrationPlayer: NarrationPlayer(resumeStore: LocalNarrationResumeStore()), tourViewModel: tour)
+        let dependencies = AppDependencies(configuration: configuration, stopService: stopService, locationService: locationService, directionsService: directionsService, imageLoader: CompositeImageLoader(), narrationPlayer: NarrationPlayer(resumeStore: LocalNarrationResumeStore()), tourViewModel: tour, providerMode: mode)
         dependencies.installDeveloperMode()
         return dependencies
     }

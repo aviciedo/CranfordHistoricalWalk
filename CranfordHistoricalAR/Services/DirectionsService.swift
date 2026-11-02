@@ -13,6 +13,7 @@ protocol DirectionsService: Sendable {
 
 enum DirectionsError: LocalizedError, Equatable {
     case missingAPIKey
+    case googleOnlyUnavailable
     case offline
     case timedOut
     case network(String)
@@ -23,6 +24,7 @@ enum DirectionsError: LocalizedError, Equatable {
 
     var errorDescription: String? {
         switch self {
+        case .googleOnlyUnavailable: return "Google-only walking directions require a valid Routes API key. Apple fallback is disabled."
         case .missingAPIKey: return "No Routes API key is configured, so walking distances are estimates."
         case .offline: return "You're offline. Showing the last known route."
         case .timedOut: return "Directions took too long. Showing the last known route."
@@ -256,8 +258,12 @@ struct FallbackWalkingDirectionsService: DirectionsService {
 enum DirectionsServiceFactory {
     /// The default remains Apple's real network; injection makes provider selection testable offline.
     static func make(configuration: AppConfiguration,
-                     apple: any DirectionsService = AppleWalkingDirectionsService()) -> any DirectionsService {
-        guard configuration.hasGoogleMapsKey, AppConfiguration.looksLikeKey(configuration.googleRoutesAPIKey) else {
+                     apple: any DirectionsService = AppleWalkingDirectionsService(),
+                     mode: TourProviderMode = .automatic,
+                     google injectedGoogle: (any DirectionsService)? = nil) -> any DirectionsService {
+        if mode == .appleOnly { return CachedDirectionsService(upstream: apple) }
+        guard configuration.hasRoutesKey, mode == .googleOnly || configuration.hasGoogleMapsKey else {
+            if mode == .googleOnly { return UnavailableGoogleDirectionsService() }
             return CachedDirectionsService(upstream: apple)
         }
         let google: any DirectionsService
@@ -266,6 +272,15 @@ enum DirectionsServiceFactory {
         case .routes: google = GoogleRoutesDirectionsService(apiKey: configuration.googleRoutesAPIKey, bundleIdentifier: bundleID)
         case .legacy: google = LegacyGoogleDirectionsService(apiKey: configuration.googleRoutesAPIKey, bundleIdentifier: bundleID)
         }
-        return CachedDirectionsService(upstream: FallbackWalkingDirectionsService(primary: google, fallback: apple))
+        let selectedGoogle = injectedGoogle ?? google
+        if mode == .googleOnly { return CachedDirectionsService(upstream: selectedGoogle) }
+        return CachedDirectionsService(upstream: FallbackWalkingDirectionsService(primary: selectedGoogle, fallback: apple))
+    }
+}
+
+/// A strict test failure must never invoke Apple's routing service.
+private struct UnavailableGoogleDirectionsService: DirectionsService {
+    func walkingRoute(from origin: CLLocationCoordinate2D, to destination: CLLocationCoordinate2D) async throws -> WalkingRoute {
+        throw DirectionsError.googleOnlyUnavailable
     }
 }

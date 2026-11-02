@@ -56,3 +56,18 @@ struct AppConfiguration: Sendable, Equatable {
 
     static let empty = AppConfiguration(googleMapsAPIKey: "", googleRoutesAPIKey: "", googleARCoreAPIKey: "", directionsProvider: .routes, arCoreGeospatialEnabled: false)
 }
+
+#if DEVELOPER_MENU
+/// Only Developer builds read this setting. Changing it never resets tour activity.
+enum DeveloperProviderSettings {
+    static let key = "cranford.developer.provider-mode.v1"
+
+    static func load(defaults: UserDefaults = .standard) -> TourProviderMode {
+        TourProviderMode.launchMode(storedValue: defaults.string(forKey: key), developerEnabled: true)
+    }
+
+    static func save(_ mode: TourProviderMode, defaults: UserDefaults = .standard) {
+        defaults.set(mode.rawValue, forKey: key)
+    }
+}
+#endif

@@ -49,6 +49,7 @@ final class GeoAnchorManager {
     /// Placement decided by `SignPlacementPolicy` (image vs geo). Not tour progress.
     var placementMode: SignPlacementMode = .hidden
     var hasActivatedStop = false
+    var allowsNativePositioningFallback = true
     private(set) var hasDetectedGround = false
     private(set) var isNavigationGroundVerified = false
     private(set) var hasPlacedNavigation = false
@@ -321,6 +322,7 @@ final class GeoAnchorManager {
         if let geo = provider.worldPosition(for: request.stop.coordinate, altitude: request.stop.altitude, heightBelowCamera: GeoAnchorManager.signBaseBelowCamera) {
             base = geo
         } else {
+            guard allowsNativePositioningFallback else { anchors.sign.hideImmediately(); return }
             let forward = -SIMD3<Float>(cameraTransform.columns.2.x, 0, cameraTransform.columns.2.z)
             let dir = simd_length(forward) > 0.1 ? simd_normalize(forward) : SIMD3<Float>(0, 0, -1)
             base = cameraPosition + dir * 3.5
@@ -500,7 +502,7 @@ final class GeoAnchorManager {
     /// Its orientation conveys the route instruction, never a compass direction.
     private func presentManeuverIfUsable(target: NavigationTarget, cameraTransform: simd_float4x4,
                                          ground: SIMD3<Float>, date: Date, now: TimeInterval) -> Bool {
-        guard ARStreetGuidance.canShowManeuver(tracking: isTrackingReady,
+        guard allowsNativePositioningFallback, ARStreetGuidance.canShowManeuver(tracking: isTrackingReady,
             locationAge: date.timeIntervalSince(target.locationTimestamp), accuracy: target.horizontalAccuracy,
             routeOffset: target.routeOffset, hasCue: target.turnCue != nil), let cue = target.turnCue else { return false }
         let camera = cameraTransform.translation

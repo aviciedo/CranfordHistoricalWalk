@@ -93,11 +93,21 @@ struct ARTourView: View {
 
     private func startAR() {
         if model == nil {
-            model = ARViewModel(tour: tour, provider: dependencies.makeGeoSpatialProvider(), imageLoader: dependencies.imageLoader, narrationPlayer: dependencies.narrationPlayer)
+            model = ARViewModel(tour: tour, provider: dependencies.makeGeoSpatialProvider(), imageLoader: dependencies.imageLoader, narrationPlayer: dependencies.narrationPlayer,
+                allowsGeospatialFallback: dependencies.providerMode.allowsNativeARFallback)
         }
         model?.setApplicationActive(scenePhase == .active)
         Task { await model?.requestCameraAccessIfNeeded() }
     }
+
+    #if DEVELOPER_MENU
+    private func recordARProvider(_ model: ARViewModel) {
+        // Closing AR must not replace its last useful diagnostic with a startup prompt.
+        guard model.localizationState != .notStarted else { return }
+        dependencies.lastWalkingARProvider = model.geoAnchors.provider.displayName
+        dependencies.lastWalkingARNotice = model.statusMessage
+    }
+    #endif
 
     @ViewBuilder
     private func content(_ model: ARViewModel) -> some View {
@@ -123,6 +133,11 @@ struct ARTourView: View {
             }
             ARHUDView(model: model, onClose: returnToMap)
         }
+        #if DEVELOPER_MENU
+        .onChange(of: model.geoAnchors.provider.backend, initial: true) { _, _ in recordARProvider(model) }
+        .onChange(of: model.localizationState, initial: true) { _, _ in recordARProvider(model) }
+        .onChange(of: model.statusMessage, initial: true) { _, _ in recordARProvider(model) }
+        #endif
         .onAppear {
             model.setApplicationActive(scenePhase == .active)
             beginPhoneOrientationMonitoring()

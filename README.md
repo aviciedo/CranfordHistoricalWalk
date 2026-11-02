@@ -1,3 +1,16 @@
+## Build 120 candidate — Developer provider comparisons
+
+Adds a Developer-only launch-scoped selector for configured Google + Apple fallback,
+strict Google-only services, and Apple-only maps/routes/AR positioning. Selection is
+saved for the next launch; active mode and actual route/last AR provider diagnostics
+are shown separately. Strict Google failures never silently switch to Apple services.
+All modes retain native GPS, AR rendering, plaque recognition and saved tour activity.
+Release ignores the preference and preserves its existing configured behavior. Google
+packages remain linked: this is provider testing, not SDK removal.
+
+See [provider modes and iPhone test steps](docs/engineering/provider-testing.md).
+Native Apple validation and outdoor provider comparisons are required. Not yet published.
+
 ## Build 119 candidate — deeper hunter-green AR chevrons
 
 Appearance-only refinement of build 118's field-confirmed working AR arrows. Deeper

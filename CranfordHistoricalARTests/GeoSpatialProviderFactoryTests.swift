@@ -8,6 +8,49 @@ import UIKit
 
 @MainActor
 final class GeoSpatialProviderFactoryTests: XCTestCase {
+    func testAppleOnlyNeverSelectsARCoreEvenWhenGoogleIsConfigured() {
+        var configuration = AppConfiguration.empty
+        configuration.googleARCoreAPIKey = "test-arcore-key"
+        configuration.arCoreGeospatialEnabled = true
+        let selected = GeoSpatialProviderFactory.selection(configuration: configuration,
+            locationAuthorized: true, preciseLocation: true, userConsented: true,
+            networkAvailable: true, mode: .appleOnly)
+        XCTAssertEqual(selected.backend, .coreLocation)
+        XCTAssertNil(selected.fallbackReason)
+        let provider = GeoSpatialProviderFactory.make(configuration: configuration,
+            locationAuthorized: true, preciseLocation: true, userConsented: true,
+            networkAvailable: true, mode: .appleOnly)
+        XCTAssertTrue(provider is CoreLocationGeoSpatialProvider)
+    }
+
+    func testStrictGoogleDoesNotCreateNativeProviderWhenConsentIsMissing() {
+        var configuration = AppConfiguration.empty
+        configuration.googleARCoreAPIKey = "test-arcore-key"
+        let provider = GeoSpatialProviderFactory.make(configuration: configuration,
+            locationAuthorized: true, preciseLocation: true, userConsented: false,
+            networkAvailable: true, mode: .googleOnly)
+        XCTAssertEqual(provider.backend, .arCoreGeospatial)
+        XCTAssertNotNil(provider.fallbackReason)
+        XCTAssertNotEqual(provider.fallbackReason, .flagDisabled)
+        XCTAssertNil(provider.pose)
+        XCTAssertEqual(provider.quality, .unavailable)
+        XCTAssertFalse(provider is CoreLocationGeoSpatialProvider)
+    }
+
+    func testStrictGoogleARExposesUnavailableStateWithoutSwitchingToNative() {
+        let dependencies = AppDependencies.preview()
+        let provider = GeoSpatialProviderFactory.make(configuration: .empty,
+            locationAuthorized: true, preciseLocation: true, userConsented: false,
+            networkAvailable: true, mode: .googleOnly)
+        let model = ARViewModel(tour: dependencies.tourViewModel, provider: provider,
+            imageLoader: dependencies.imageLoader, narrationPlayer: dependencies.narrationPlayer,
+            allowsGeospatialFallback: false)
+        model.fallbackToCoreLocation(reason: .localizationTimedOut)
+        XCTAssertEqual(model.geoAnchors.provider.backend, .arCoreGeospatial)
+        XCTAssertFalse(model.geoAnchors.allowsNativePositioningFallback)
+        XCTAssertTrue(model.statusMessage?.contains("fallback is disabled") == true)
+    }
+
     func testGPSBeforeMatchingFrameIsRetriedWithoutReplayingBoundFixes() throws {
         let start = Date(timeIntervalSince1970: 1_800_000_000)
         var now = start

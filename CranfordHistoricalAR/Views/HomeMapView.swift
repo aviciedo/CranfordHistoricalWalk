@@ -5,12 +5,13 @@ import TourCore
 struct HomeMapView: View {
     @Environment(AppNavigation.self) private var navigation
     @Environment(TourViewModel.self) private var tour
+    @Environment(AppDependencies.self) private var dependencies
     @State private var mapModel = MapViewModel()
     @State private var detailStop: HistoricalStop?
 
     var body: some View {
         Group {
-            if GoogleMapsBootstrap.isConfigured {
+            if dependencies.mapBackend == .google {
                 GoogleMapView(
                     markers: mapModel.markers(for: tour),
                     userPuck: mapModel.userPuck(for: tour),
@@ -32,6 +33,8 @@ struct HomeMapView: View {
                 .onAppear { mapModel.requestOverview(animated: false) }
                 .onChange(of: tour.stops.count) { _, _ in mapModel.requestOverview(animated: false) }
                 .clipShape(RoundedRectangle(cornerRadius: 16))
+            } else if dependencies.mapBackend == .unavailable {
+                GoogleMapUnavailableView()
             } else {
                 AppleTourMapView(markers: mapModel.markers(for: tour), userPuck: nil,
                     routeCoordinates: [], cameraRequest: mapModel.cameraRequest,

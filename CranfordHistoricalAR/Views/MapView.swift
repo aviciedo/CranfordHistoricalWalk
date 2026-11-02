@@ -6,6 +6,7 @@ import TourCore
 /// the location/permission notices. Keeps no business logic.
 struct TourMapView: View {
     @Environment(TourViewModel.self) private var tour
+    @Environment(AppDependencies.self) private var dependencies
     var mapModel: MapViewModel
     var bottomInset: CGFloat
     @State private var appleMapError: String?
@@ -19,7 +20,7 @@ struct TourMapView: View {
     var body: some View {
         GeometryReader { viewport in
             ZStack(alignment: .top) {
-                if GoogleMapsBootstrap.isConfigured {
+                if dependencies.mapBackend == .google {
                     GoogleMapView(
                         markers: mapModel.markers(for: tour, emphasizesDestinationOnly: true),
                         userPuck: mapModel.userPuck(for: tour),
@@ -36,6 +37,8 @@ struct TourMapView: View {
                         onMapTap: { mapModel.clearViewedStop() },
                         trailSegments: mapModel.walkedTrailCoordinates(for: tour).map { $0.map(\.clLocationCoordinate) }
                     )
+                } else if dependencies.mapBackend == .unavailable {
+                    GoogleMapUnavailableView()
                 } else {
                     AppleTourMapView(markers: mapModel.markers(for: tour, emphasizesDestinationOnly: true),
                         userPuck: mapModel.userPuck(for: tour),
@@ -47,7 +50,7 @@ struct TourMapView: View {
                         trailSegments: mapModel.walkedTrailCoordinates(for: tour).map { $0.map(\.clLocationCoordinate) })
                 }
 
-                if let appleMapError, !GoogleMapsBootstrap.isConfigured {
+                if let appleMapError, dependencies.mapBackend == .apple {
                     Label(appleMapError, systemImage: "wifi.exclamationmark")
                         .font(.footnote).padding(12)
                         .background(AppTheme.parchment, in: RoundedRectangle(cornerRadius: 12))
