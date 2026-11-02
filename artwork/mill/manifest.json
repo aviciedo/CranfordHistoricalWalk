@@ -1,5 +1,5 @@
 {
-  "status": "Owner-approved authoritative Mill artwork; supersedes earlier Mill illustrations",
+  "status": "Owner-approved refined Mill ink override, with prior approved watercolor retained",
   "canvas": [
     1536,
     1024
@@ -14,8 +14,8 @@
   "ink_master_raw_rgba_sha256": "b472432dd03495696785e936133571395a4f31b4bef7217aaf7d901655dd987d",
   "alpha_raw_sha256": "5698829dfb67c07b539f91be6885a0b685b7a089fb3f1772d41eb5aa39164ac2",
   "assets": {
-    "home-sketch-mill": "Ink, centered on a square transparent canvas; no scaling or cropping",
-    "stop-ink-mill": "Registered ink composite",
+    "home-sketch-mill": "Approved refined ink with transparent square padding only",
+    "stop-ink-mill": "Approved refined ink, original 1536 x 1024 canvas",
     "sketchbook-mill": "Registered watercolor composite",
     "mill-map-landmark": "Same registered watercolor composite"
   },
@@ -28,5 +28,10 @@
     256
   ],
   "approval_context": "Owner approved the generated/registered pair and requested replacement as the authoritative app version.",
-  "style_reference": "Only the owner-provided red-mill watercolor illustration; other Mill/Greystone art is not a style authority."
+  "style_reference": "Only the owner-provided red-mill watercolor illustration; other Mill/Greystone art is not a style authority.",
+  "ink_override": {
+    "file": "loose-ink/mill-ink.png",
+    "sha256": "346ad0055ed469c3c6b03f8989199684b64d2d94b12b1ff6eb5fe2a89856bf8a",
+    "approval": "Owner approved the intermediate-detail broken-pen revision after removal of circled rooftop equipment, vertical pipes and capped walkway fixture, and requested implementation."
+  }
 }

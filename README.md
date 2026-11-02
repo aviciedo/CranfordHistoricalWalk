@@ -1,3 +1,18 @@
+## Build 126 candidate — approved refined Mill ink
+
+Home and Stops now use the approved Mill ink mockup with intermediate detail, broken
+contours and uneven pen strokes. The circled rooftop equipment, vertical pipes and
+small capped walkway fixture are removed. Home adds transparent square padding only.
+The existing approved watercolor remains in the map and sketchbook; these two revisions
+must not be used together as a registered reveal pair. No watercolor revision or new
+animation is introduced. Sources and hashes are in
+[artwork/mill](artwork/mill/README.md).
+
+All artwork checks pass for Mill, Greystone and Church. Existing collection, saved
+progress, AR, routes and provider logic remain unchanged. Native Xcode compilation
+and iPhone visual checks remain pending. This candidate is not published; build 120
+remains the published baseline.
+
 ## Build 125 candidate — approved Greystone loose ink and watercolor pair
 
 The owner approved the new watercolor after a side-by-side comparison. It now replaces

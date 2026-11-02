@@ -1,3 +1,15 @@
+## Current ink revision — build 126 candidate
+
+The approved intermediate-detail ink with broken contours and removed circled fixtures
+now supplies Home and Stops. `loose-ink/mill-ink.png` is the unchanged approved PNG;
+`manifest.json` selects and hashes this ink override. Home adds transparent padding only.
+The prior watercolor and its source layers below remain intact for maps and sketchbook.
+The currently displayed ink and watercolor are separate approved revisions, not a
+registered paint-reveal pair. Do not animate between them. Existing unlock rules remain.
+Reverting this implementation commit restores the previous ink.
+
+## Retained watercolor source pair
+
 # Authoritative Droescher’s Mill artwork
 
 The owner approved this registered ink/watercolor pair as the app's authoritative Mill
