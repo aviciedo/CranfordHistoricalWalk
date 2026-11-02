@@ -367,9 +367,10 @@ struct SketchbookPageCurl: UIViewControllerRepresentable {
                        let physical = self.controllers.firstIndex(where: { $0 === visible }) {
                         self.displayedIndex = SketchbookCurlLayout.logicalPage(controllerIndex: physical)
                     }
-                    if !completed, self.parent.index == target, self.displayedIndex != target {
-                        self.parent.index = self.displayedIndex
-                    }
+                    let reconciled = SketchbookCurlLayout.indexAfterAnimatedCurl(
+                        requested: target, visible: self.displayedIndex,
+                        animationCompleted: completed, parentIndex: self.parent.index)
+                    if reconciled != self.parent.index { self.parent.index = reconciled }
                     self.transitioning = false
                     self.configure(controller)
                 }
@@ -391,14 +392,10 @@ struct SketchbookPageCurl: UIViewControllerRepresentable {
         }
 
         private func faces(for page: Int, animated: Bool) -> [UIViewController] {
-            let front = SketchbookCurlLayout.frontControllerIndex(logicalPage: page)
             // Bootstrap a minimum-spine book with one front. Once animating,
             // double-sided UIKit turns require both front and parchment reverse
             // in either direction. A universal one- or two-face rule can throw.
-            if animated {
-                return [controllers[front], controllers[front + 1]]
-            }
-            return [controllers[front]]
+            SketchbookCurlLayout.presentedControllerIndices(logicalPage: page, animated: animated).map { controllers[$0] }
         }
 
         func pageViewController(_ pageViewController: UIPageViewController,

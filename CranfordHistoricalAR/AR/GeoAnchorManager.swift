@@ -512,12 +512,12 @@ final class GeoAnchorManager {
         if !isNavigationManeuverOnly { anchors.arrows.resetAnchor() }
         // A local instruction must remain readable when the visitor looks elsewhere.
         // This relocation is never applied to a street-registered arrow.
-        if let pinned = anchors.arrows.guidancePosition {
-            let delta = SIMD2(pinned.x - camera.x, pinned.z - camera.z)
-            let length = simd_length(delta), forwardLength = simd_length(forward)
-            if length < 3 || (forwardLength > 0.1 && simd_dot(delta, SIMD2(forward.x, forward.z)) < length * forwardLength * 0.5) {
-                anchors.arrows.resetAnchor()
-            }
+        if let pinned = anchors.arrows.guidancePosition,
+           ARStreetGuidance.shouldResetManeuverSign(
+            pinnedX: Double(pinned.x), pinnedZ: Double(pinned.z),
+            cameraX: Double(camera.x), cameraZ: Double(camera.z),
+            forwardX: Double(forward.x), forwardZ: Double(forward.z)) {
+            anchors.arrows.resetAnchor()
         }
         isNavigationManeuverOnly = true
         isNavigationGroundVerified = false
