@@ -1,28 +1,33 @@
-# Authoritative First Baptist Church artwork
+# Authoritative Church artwork — build 127
 
-The owner approved the loose, broken pen-and-ink composition, then the registered watercolor pair, and requested implementation. The original approved red-mill watercolor is the sole artistic style reference. The church photograph supplies architecture and material colors. Earlier church review variants are historical.
+The owner approved the watercolor reference refinements after reviewing before/after
+comparisons for all three stops, and requested implementation and publication.
+The five canonical layers in this folder define the current registered pair.
+`manifest.json` freezes their hashes and canvas; no ink override is active.
 
-## App assets
-
-| Asset | Content |
-| --- | --- |
-| `home-sketch-church` | Approved ink, transparent padding to 1536 × 1536 |
-| `stop-ink-church` | Original registered ink, 1024 × 1536 |
-| `first-baptist-church-illustration` | Original registered watercolor, 1024 × 1536 |
-| `sketchbook-church` | Identical watercolor, reserved for future sketchbook integration |
-
-The church has no approved plaque recognition target. Its existing catalog mappings and unlock rules are preserved: Home and Stops show ink, the map shows watercolor, and the church is not a collectible sketchbook page. Merely bundling watercolor must not grant collection or invent a recognition target. No animation behavior changes are included.
-
-## Frozen layers and reproduction
-
-`manifest.json` records approved source hashes, raw ink/mask hashes and final composite hashes. All five canonical source layers retain their original 1024 × 1536 canvas and pixel data. Both registered outputs use unchanged ink and the same alpha mask. Home adds transparent padding at (256, 0), without resizing or cropping. White subject reserves remain opaque, distinct from the exterior transparency.
+Verify or reproduce the four app asset slots:
 
 ```sh
 python3 scripts/build-mill-artwork.py --landmark church
-# Deliberately rebuild the existing slots:
 python3 scripts/build-mill-artwork.py --landmark church --write
 ```
 
-Keep ink, reserves, base and mask stationary during any future paint reveal. Reveal only WATERCOLOR_UNDERLAY underneath the locked ink. Do not independently crop, scale or regenerate either composite. The removed chimney, entrance light and both side spouts remain absent.
+Keep INK_MASTER, SUBJECT_BASE, WHITE_RESERVES and ARTWORK_MASK stationary for future
+paint reveal work. Reveal only WATERCOLOR_UNDERLAY underneath the locked ink. Both
+original-size exports use identical alpha. Home adds transparent square padding only,
+without scaling or cropping. Never independently transform registered exports.
 
-The preceding Git commit retains previous artwork for rollback. Mill/Greystone assets, photos, AR targets, provider behavior and saved progress are unchanged. Native compilation and iPhone visual checks remain required before publication.
+The fixed ink, base, reserves and mask remain byte-identical to the preceding approved version. Only the watercolor underlay changes.
+
+Church remains without a recognition target. Home/Stops show ink; the map shows watercolor. The watercolor is also bundled for future sketchbook use, without adding collection eligibility.
+
+The original owner-selected red-mill illustration is the sole style authority. Actual
+subject photographs supply architecture/material colors. The critique, accepted
+methods and generation prompts are in `docs/design/watercolor-reference-refinement`.
+Any `loose-ink/` snapshot is historical provenance, not the active pair. Previous
+versions remain in Git history for rollback. Recognition targets, saved progress,
+provider modes, navigation, collection and animation behavior remain unchanged.
+
+The local artwork checks pass. Native Apple checks must pass on the exact candidate
+before main promotion, under docs/engineering/release-policy.md. Publication status
+must be established from the release record, not this artwork approval.

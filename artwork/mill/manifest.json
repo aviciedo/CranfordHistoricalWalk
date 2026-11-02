@@ -1,21 +1,21 @@
 {
-  "status": "Owner-approved refined Mill ink override, with prior approved watercolor retained",
+  "status": "Owner-approved watercolor reference refinement; authoritative registered pair",
   "canvas": [
     1536,
     1024
   ],
   "source_files": {
-    "INK_MASTER.png": "3d1e9c668f66a6016fe231f36a5dfab96e334459b2e5fe3e72c08bdfa285a1b1",
-    "SUBJECT_BASE.png": "76c2f15bd5db549997ef7deb1d7f850f413cc8b1092dc229a70e0bf284a99f4f",
-    "ARTWORK_MASK.png": "83f6e7281f085b10875cf1c5651009df91541d833b5d3ffd5c136158ca7a6110",
-    "WHITE_RESERVES.png": "92effe6591314a6883a9cdbc9f2c12619a8dabe933fc3c5f2dd5c90965634628",
-    "WATERCOLOR_UNDERLAY.png": "21eac1969f548e191397710da1e9db46b30f575169b6eb0785e6a742023540d8"
+    "INK_MASTER.png": "d434de7ba7169d6ad13c453c2c81cbf651e56cc924449e5ba761547df4c5189b",
+    "SUBJECT_BASE.png": "2b2d23918a5af1f15d869282e949ebf6b7725e15840a4e283c3be2904fbad1fe",
+    "WHITE_RESERVES.png": "df3b70db2fcdc29fed627f50d45db50fa1574c91dd31d299cea6035ea4284edd",
+    "ARTWORK_MASK.png": "c8d4a46d04bce3f4363893c4dc229e8111c4dce33c33cb50c85fdf4a98496141",
+    "WATERCOLOR_UNDERLAY.png": "207f72c6332db34e4d7387a778c73a5c1cb3446389f1eaa6e0442ee4771f3540"
   },
-  "ink_master_raw_rgba_sha256": "b472432dd03495696785e936133571395a4f31b4bef7217aaf7d901655dd987d",
-  "alpha_raw_sha256": "5698829dfb67c07b539f91be6885a0b685b7a089fb3f1772d41eb5aa39164ac2",
+  "ink_master_raw_rgba_sha256": "3bd2211f96e161ac089e35122e31304ba4f5a1f8b7c2c7186d0ecd7e2aeeb952",
+  "alpha_raw_sha256": "c52d5b1f3114dd53ccde82cd75f6fd9395af9d0635c84a9a803451b672e71027",
   "assets": {
-    "home-sketch-mill": "Approved refined ink with transparent square padding only",
-    "stop-ink-mill": "Approved refined ink, original 1536 x 1024 canvas",
+    "home-sketch-mill": "Authoritative refined ink, transparent square padding only",
+    "stop-ink-mill": "Authoritative registered refined ink",
     "sketchbook-mill": "Registered watercolor composite",
     "mill-map-landmark": "Same registered watercolor composite"
   },
@@ -27,11 +27,12 @@
     0,
     256
   ],
-  "approval_context": "Owner approved the generated/registered pair and requested replacement as the authoritative app version.",
+  "approval_context": "Owner reviewed three before/after watercolor comparisons, then requested implementation and publication of all changes.",
   "style_reference": "Only the owner-provided red-mill watercolor illustration; other Mill/Greystone art is not a style authority.",
-  "ink_override": {
-    "file": "loose-ink/mill-ink.png",
-    "sha256": "346ad0055ed469c3c6b03f8989199684b64d2d94b12b1ff6eb5fe2a89856bf8a",
-    "approval": "Owner approved the intermediate-detail broken-pen revision after removal of circled rooftop equipment, vertical pipes and capped walkway fixture, and requested implementation."
-  }
+  "clear_transparent_rgb": true,
+  "approved_composite_files": {
+    "ink.png": "23dbae2347c35e22ead761f7d0ef4ad0772a9db53cada59444fa1f73a33982de",
+    "after.png": "dbf8c475fa86ddb4a3fde89ca98aa42d1edf68372a3699a58a0262efee82e5b4"
+  },
+  "refinement": "Broken coral/slate washes and open water reserves; cleaned approved ink."
 }

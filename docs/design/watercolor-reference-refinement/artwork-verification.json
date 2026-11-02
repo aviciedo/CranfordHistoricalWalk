@@ -1,0 +1,54 @@
+{
+  "mill": {
+    "canvas": [
+      1536,
+      1024
+    ],
+    "fixed_layers_unchanged": true,
+    "ink_sha256": "3bd2211f96e161ac089e35122e31304ba4f5a1f8b7c2c7186d0ecd7e2aeeb952",
+    "alpha_difference_pixels_new_ink_vs_new_watercolor": 0,
+    "all_five_reveal_alphas_identical": true,
+    "srgb_tag": 0,
+    "resized_or_warped_master": false,
+    "same_ink_in_before_and_after": false,
+    "note": "New Mill canonical layers separated from approved flattened ink before painting; no stroke positions moved. Before is current app watercolor with earlier dense ink, so comparison also includes already approved ink replacement.",
+    "after_sha256": "dbf8c475fa86ddb4a3fde89ca98aa42d1edf68372a3699a58a0262efee82e5b4",
+    "visual_review_status": "Approved by owner; integrated into build 127",
+    "app_modified": true
+  },
+  "greystone": {
+    "canvas": [
+      1536,
+      1024
+    ],
+    "fixed_layers_unchanged": true,
+    "ink_sha256": "f0b676a19d48916b4e3263ea5e80ec89a9b2783738108f757cea2cb58ead92fa",
+    "alpha_difference_pixels_new_ink_vs_new_watercolor": 0,
+    "all_five_reveal_alphas_identical": true,
+    "srgb_tag": 0,
+    "resized_or_warped_master": false,
+    "same_ink_in_before_and_after": true,
+    "note": "All four fixed layers copied byte-for-byte from current authoritative app sources; paint only may change.",
+    "after_sha256": "0ba661a84c8f300b836a3cbd5a03141bb446772ce661bcae9c4e3a04fb8fac83",
+    "visual_review_status": "Approved by owner; integrated into build 127",
+    "app_modified": true
+  },
+  "church": {
+    "canvas": [
+      1024,
+      1536
+    ],
+    "fixed_layers_unchanged": true,
+    "ink_sha256": "425a056feeccd7be9905b4d57a7fde634d09b677b117bff8c536a620ca4355de",
+    "alpha_difference_pixels_new_ink_vs_new_watercolor": 0,
+    "all_five_reveal_alphas_identical": true,
+    "srgb_tag": 0,
+    "resized_or_warped_master": false,
+    "same_ink_in_before_and_after": true,
+    "note": "All four fixed layers copied byte-for-byte from current authoritative app sources; paint only may change.",
+    "after_sha256": "bf547c3b8b12ce96274e71eb3bc89aa0d61d1b409a0b8e44a07261bb1cdbe200",
+    "visual_review_status": "Approved by owner; integrated into build 127",
+    "app_modified": true,
+    "paint_only_adjustments": "Facade paint alpha attenuated 65% within softly bounded wall regions; selected glass regions retain 75% prior approved underlay pigment."
+  }
+}

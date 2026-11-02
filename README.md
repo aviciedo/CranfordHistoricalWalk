@@ -1,3 +1,23 @@
+## Build 127 candidate — approved watercolor reference refinements
+
+Integrates the three owner-approved before/after revisions: broken coral/slate and
+open turquoise water at the Mill; connected gray/buff stone washes at Greystone;
+protected white walls and localized color at First Baptist. All original-size pairs
+use frozen ink and shared alpha. Home adds transparent square padding only. The Mill
+watercolor now uses the latest approved cleaned ink; no ink override remains.
+
+Sources and hashes are in `artwork/mill`, `artwork/greystone`, `artwork/church`.
+Critique, accepted assembly methods and prompts are in
+[the watercolor review](docs/design/watercolor-reference-refinement/REVIEW.md).
+All 12 asset checks pass; installed composites match the approved reviewed pixels.
+Collection, AR, navigation, provider modes, saved progress and narration are unchanged.
+Church collection still awaits an actual recognition target. No animation is added.
+
+Publication is requested. Native Apple compiler and SwiftLint gates must pass on
+this exact candidate before promoting main. Local Linux checks do not satisfy that
+gate. The included Xcode project uses 0.2.0 (127); copy personal Secrets.xcconfig
+locally as usual. Keep build 120 as the published rollback baseline until promotion.
+
 ## Build 126 candidate — approved refined Mill ink
 
 Home and Stops now use the approved Mill ink mockup with intermediate detail, broken

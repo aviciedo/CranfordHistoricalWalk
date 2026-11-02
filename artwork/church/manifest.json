@@ -1,5 +1,5 @@
 {
-  "status": "Owner-approved authoritative First Baptist Church loose ink/watercolor pair",
+  "status": "Owner-approved watercolor reference refinement; authoritative registered pair",
   "canvas": [
     1024,
     1536
@@ -9,7 +9,7 @@
     "SUBJECT_BASE.png": "457433a680f6ba2a9e105a16f07a186aebf161c65333392b66b25cfdeb15097e",
     "WHITE_RESERVES.png": "0a325c0da177c4793cebee45d488bb58c2fd8727868dcf9be9a6de22513e61f8",
     "ARTWORK_MASK.png": "f1d0814ff4785b062a89e603f8cf43bfba68f789a1386b028bb401a1a04f0ba2",
-    "WATERCOLOR_UNDERLAY.png": "7bb898dea09efc8af3a94b41f457320c7790902858a7ff6eef753c47c0183813"
+    "WATERCOLOR_UNDERLAY.png": "27234c24f0ac6c0a17f904b0cf13d3db831b713a5b0f932daf2c7a22366fc6c5"
   },
   "ink_master_raw_rgba_sha256": "425a056feeccd7be9905b4d57a7fde634d09b677b117bff8c536a620ca4355de",
   "alpha_raw_sha256": "032998f7c778004f92a1677cd490da4bc5e46f55c2bc40ebbc632b15a8b9e2be",
@@ -28,7 +28,7 @@
     "watercolor": "sketchbook-church",
     "map": "first-baptist-church-illustration"
   },
-  "approval_context": "Owner approved the loose broken ink, then the registered watercolor pair, and requested implementation.",
+  "approval_context": "Owner reviewed three before/after watercolor comparisons, then requested implementation and publication of all changes.",
   "approved_features": [
     "loose broken economical pen strokes",
     "white clapboard walls and slate roof",
@@ -36,7 +36,8 @@
     "chimney, entrance light and both side water spouts removed"
   ],
   "approved_composite_files": {
-    "first-baptist-ink.png": "04c233206be0b1371610708fe3ef8de0aa096dee518a3521f35844bdd76f113b",
-    "first-baptist-watercolor.png": "398147ebf1347933f7281278bcfd3d5fee1e3355ea097f7598cda0a2dec89ae1"
-  }
+    "ink.png": "04c233206be0b1371610708fe3ef8de0aa096dee518a3521f35844bdd76f113b",
+    "after.png": "bf547c3b8b12ce96274e71eb3bc89aa0d61d1b409a0b8e44a07261bb1cdbe200"
+  },
+  "refinement": "Protected white facade, localized roof/door/step pigment; prior blue-violet glazing retained."
 }

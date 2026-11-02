@@ -1,44 +1,31 @@
-# Authoritative Greystone loose ink and watercolor
+# Authoritative Greystone artwork — build 127
 
-The owner approved the looser pen-and-ink drawing, then approved the new watercolor
-after reviewing the previous and new versions side by side. These five source layers
-now define the authoritative registered pair. The original owner-selected red-mill
-watercolor remains the sole style reference. Greystone photographs establish the
-subject architecture and colors.
+The owner approved the watercolor reference refinements after reviewing before/after
+comparisons for all three stops, and requested implementation and publication.
+The five canonical layers in this folder define the current registered pair.
+`manifest.json` freezes their hashes and canvas; no ink override is active.
 
-The pair retains broken contours, uneven strokes, sparse surface description and
-loose foliage; the draped flag/pole and partially obscured divided-pane arch window
-remain. Earlier incidental roof details and side pipe removals remain in effect.
-
-## App assets
-
-| Asset | Approved content |
-| --- | --- |
-| `home-sketch-greystone` | Ink, transparent padding to 1536 × 1536 |
-| `stop-ink-greystone` | Registered ink, 1536 × 1024 |
-| `sketchbook-greystone` | Registered watercolor, 1536 × 1024 |
-| `greystone-map-landmark` | Identical watercolor |
-
-Both originals share the same final alpha and unchanged pen layer. Home padding
-adds no scaling or cropping. `manifest.json` records source, raw ink/mask and approved
-composite hashes. Do not regenerate ink or independently trim, scale or reposition
-exports. For any future paint reveal, keep INK_MASTER, SUBJECT_BASE, WHITE_RESERVES
-and ARTWORK_MASK stationary; reveal only WATERCOLOR_UNDERLAY. WHITE_RESERVES is a
-frozen empty layer for this revision; light paint details are reserved in the underlay.
-
-## Reproduction and rollback
+Verify or reproduce the four app asset slots:
 
 ```sh
 python3 scripts/build-mill-artwork.py --landmark greystone
 python3 scripts/build-mill-artwork.py --landmark greystone --write
 ```
 
-The default verifies without writing. All four app slots must match reconstructed
-pixels, dimensions, sRGB and catalog registrations. `loose-ink/` preserves the prior
-ink-only implementation snapshot for provenance; there is no active ink override.
-Earlier complete pairs remain in Git history. Reverting this implementation commit
-restores the prior watercolor while retaining the already approved loose ink.
+Keep INK_MASTER, SUBJECT_BASE, WHITE_RESERVES and ARTWORK_MASK stationary for future
+paint reveal work. Reveal only WATERCOLOR_UNDERLAY underneath the locked ink. Both
+original-size exports use identical alpha. Home adds transparent square padding only,
+without scaling or cropping. Never independently transform registered exports.
 
-Build 125 candidate includes asset replacements only, with existing collection,
-recognition, animation, provider and navigation behavior preserved. Native Xcode
-compilation and iPhone visual checks remain pending before publication.
+The fixed ink, base, reserves and mask remain byte-identical to the preceding approved version. Only the watercolor underlay changes.
+
+The original owner-selected red-mill illustration is the sole style authority. Actual
+subject photographs supply architecture/material colors. The critique, accepted
+methods and generation prompts are in `docs/design/watercolor-reference-refinement`.
+Any `loose-ink/` snapshot is historical provenance, not the active pair. Previous
+versions remain in Git history for rollback. Recognition targets, saved progress,
+provider modes, navigation, collection and animation behavior remain unchanged.
+
+The local artwork checks pass. Native Apple checks must pass on the exact candidate
+before main promotion, under docs/engineering/release-policy.md. Publication status
+must be established from the release record, not this artwork approval.

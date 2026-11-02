@@ -1,5 +1,5 @@
 {
-  "status": "Owner-approved authoritative Greystone loose ink and watercolor pair",
+  "status": "Owner-approved watercolor reference refinement; authoritative registered pair",
   "canvas": [
     1536,
     1024
@@ -7,9 +7,9 @@
   "source_files": {
     "INK_MASTER.png": "37eefa58c8bbcfa31021a7d1fd54c9b0c226e44d9bf64f4dce22ab349f540705",
     "SUBJECT_BASE.png": "8b9453aa47966f9f49423edbae33ce288caaf2893e6c22fd08d0498cf9a20163",
-    "ARTWORK_MASK.png": "adbd27ccd2c603f3c8e258e372385582f1fe421892091a0b90ad8d97ca380748",
     "WHITE_RESERVES.png": "9b6f56282ca30ac0870583b036eab294393b1abb1b1b860df484c46981dee79c",
-    "WATERCOLOR_UNDERLAY.png": "3b3b3caba0bfa06f4c252aa1bda7ce543f84ad027cdb7f69437b79e564b15c93"
+    "ARTWORK_MASK.png": "adbd27ccd2c603f3c8e258e372385582f1fe421892091a0b90ad8d97ca380748",
+    "WATERCOLOR_UNDERLAY.png": "039c3d3a36544c3685f3af217e66567eb4fd7508704d8b6a744484d75c9118df"
   },
   "ink_master_raw_rgba_sha256": "f0b676a19d48916b4e3263ea5e80ec89a9b2783738108f757cea2cb58ead92fa",
   "alpha_raw_sha256": "fa47cb708b3de898bdeaf28ab3a5bb79259d2489cb8fda17439c787142cc62c3",
@@ -28,7 +28,7 @@
     "sketchbook-greystone": "Registered watercolor",
     "greystone-map-landmark": "Same registered watercolor"
   },
-  "approval_context": "Owner approved the new watercolor after side-by-side comparison with the previous approved version and requested implementation.",
+  "approval_context": "Owner reviewed three before/after watercolor comparisons, then requested implementation and publication of all changes.",
   "approved_features": [
     "loose broken contours and uneven pen strokes",
     "fewer surface description lines",
@@ -38,7 +38,8 @@
     "earlier incidental roof and pipe removals retained"
   ],
   "approved_composite_files": {
-    "greystone-ink.png": "95335a11a6aa219d87ce1296f3f2df076f4a2fbf085eb0513e223dcc62e1d973",
-    "greystone-watercolor.png": "354c78e9b8f9447c0127a08d5dba51bca9876f4cc482ff1c28f6f53924e7c6f4"
-  }
+    "ink.png": "95335a11a6aa219d87ce1296f3f2df076f4a2fbf085eb0513e223dcc62e1d973",
+    "after.png": "0ba661a84c8f300b836a3cbd5a03141bb446772ce661bcae9c4e3a04fb8fac83"
+  },
+  "refinement": "Connected gray/buff stone washes, lighter timber and grouped foliage."
 }
