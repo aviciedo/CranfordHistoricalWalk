@@ -1,4 +1,24 @@
-## Build 120 candidate — Developer provider comparisons
+## Build 121 candidate — authoritative registered Mill illustrations
+
+The owner-approved Mill ink/watercolor pair replaces the four active Mill illustration
+assets: Home ink, Stops ink, sketchbook watercolor and the shared colored map landmark.
+The registered pair retains its 1536 × 1024 canvas and byte-identical alpha. Home uses
+transparent padding to satisfy its existing square artwork contract without cropping
+or rescaling the ink drawing. Existing plaque unlocks, saved progress, page curls,
+layout, routes and all three provider modes are unchanged. No new reveal animation
+or Apple-provider hardening changes are included.
+
+The authoritative source layers, hashes and updated prompts are in
+[artwork/mill](artwork/mill/README.md). Run `python3 scripts/build-mill-artwork.py`
+to verify the app's four PNGs or add `--write` to rebuild them deterministically.
+Older Mill design references and illustration export archives are historical.
+
+Validation: source hashes, registered pixels/alpha, sRGB metadata, Home padding and
+all four catalog registrations passed local verification. Native Apple compilation
+and on-device visual acceptance are pending. This candidate is not yet published;
+build 120 remains the published rollback baseline.
+
+## Build 120 — Developer provider comparisons
 
 Adds a Developer-only launch-scoped selector for configured Google + Apple fallback,
 strict Google-only services, and Apple-only maps/routes/AR positioning. Selection is
@@ -9,7 +29,8 @@ Release ignores the preference and preserves its existing configured behavior. G
 packages remain linked: this is provider testing, not SDK removal.
 
 See [provider modes and iPhone test steps](docs/engineering/provider-testing.md).
-Native Apple validation and outdoor provider comparisons are required. Not yet published.
+Published as `build-120` at `84030e1`. Exact-commit native Apple builds, 650 automated
+tests and SwiftLint passed. Outdoor provider comparisons still require an iPhone.
 
 ## Build 119 candidate — deeper hunter-green AR chevrons
 
