@@ -48,9 +48,37 @@ final class AppConfigurationTests: XCTestCase {
         let missing = DirectionsServiceFactory.make(configuration: .empty, apple: apple,
             mode: .googleOnly, google: google)
         do { _ = try await missing.walkingRoute(from: origin, to: end); XCTFail("Missing Google credentials must be explicit") }
-        catch { XCTAssertEqual(error as? DirectionsError, .googleOnlyUnavailable) }
+        catch {
+            XCTAssertEqual(error as? DirectionsError, .googleOnlyUnavailable)
+            XCTAssertEqual((error as? DirectionsError)?.errorDescription, TourProviderMode.googleOnlyDirectionsUnavailable)
+        }
         let appleCalls = await apple.calls
+        let googleCalls = await google.calls
         XCTAssertEqual(appleCalls, 0)
+        XCTAssertEqual(googleCalls, 1, "The successful strict request is the only Google call")
+    }
+
+    @MainActor
+    func testAutomaticRoutesKeyWithoutMapsKeyStaysOnApple() async throws {
+        let origin = CLLocationCoordinate2D(latitude: 40.65, longitude: -74.3)
+        let end = CLLocationCoordinate2D(latitude: 40.66, longitude: -74.3)
+        var configuration = AppConfiguration.empty
+        configuration.googleRoutesAPIKey = "test-routes-key"
+        let google = ProviderRouteStub(source: .googleRoutesAPI)
+        let apple = ProviderRouteStub(source: .appleMaps)
+        let service = DirectionsServiceFactory.make(configuration: configuration, apple: apple,
+            mode: .automatic, google: google)
+        let route = try await service.walkingRoute(from: origin, to: end)
+        XCTAssertEqual(route.source, .appleMaps)
+        XCTAssertEqual(await google.calls, 0)
+        configuration.googleMapsAPIKey = "test-maps-key"
+        configuration.googleRoutesAPIKey = "$(GOOGLE_ROUTES_API_KEY)"
+        let strict = DirectionsServiceFactory.make(configuration: configuration, apple: apple,
+            mode: .googleOnly, google: google)
+        do { _ = try await strict.walkingRoute(from: origin, to: end); XCTFail("A placeholder routes key is not a credential") }
+        catch { XCTAssertEqual(error as? DirectionsError, .googleOnlyUnavailable) }
+        XCTAssertEqual(await google.calls, 0)
+        XCTAssertEqual(await apple.calls, 1, "Only the automatic Apple route may call Apple")
     }
 
     #if DEBUG

@@ -11,6 +11,27 @@ public enum ARStreetGuidance {
             && routeOffset.isFinite && (0...15).contains(routeOffset)
     }
 
+    public enum NativeSignPlacement: Equatable, Sendable {
+        case provider
+        case aheadOfCamera
+        case hidden
+    }
+
+    /// A provider pose is placed even when native fallback is disabled. Without one, strict
+    /// Google hides the sign instead of standing it in front of the camera.
+    public static func nativeSignPlacement(providerPositionAvailable: Bool,
+                                           allowsNativeFallback: Bool) -> NativeSignPlacement {
+        if providerPositionAvailable { return .provider }
+        return allowsNativeFallback ? .aheadOfCamera : .hidden
+    }
+
+    public static func canShowNativeManeuver(allowsNativeFallback: Bool, tracking: Bool,
+                                             locationAge: Double, accuracy: Double,
+                                             routeOffset: Double, hasCue: Bool) -> Bool {
+        allowsNativeFallback && canShowManeuver(tracking: tracking, locationAge: locationAge,
+            accuracy: accuracy, routeOffset: routeOffset, hasCue: hasCue)
+    }
+
     public static let lookAheadMeters = 8.0
     public static let minimumClearanceMeters = 0.16
     public static let chevronScale = 1.45

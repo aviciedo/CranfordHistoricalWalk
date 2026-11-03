@@ -8,6 +8,20 @@ public enum RouteSource: String, Codable, Sendable {
     /// Haversine fallback used only when no routing provider is reachable.
     case straightLineEstimate
     case simulated
+
+    public var developerLabel: String {
+        switch self {
+        case .googleRoutesAPI: return "Google Routes API"
+        case .googleDirectionsLegacy: return "Google Directions (legacy)"
+        case .appleMaps: return "Apple Maps"
+        case .straightLineEstimate: return "Distance estimate — no walking route"
+        case .simulated: return "Practice route"
+        }
+    }
+
+    public static func developerLabel(for source: Self?) -> String {
+        source?.developerLabel ?? "No route requested"
+    }
 }
 
 /// One navigation instruction worth of route.

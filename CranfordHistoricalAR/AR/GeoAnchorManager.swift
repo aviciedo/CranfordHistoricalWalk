@@ -318,11 +318,17 @@ final class GeoAnchorManager {
         let cameraPosition = cameraTransform.translation
 
         // Geographic placement when the provider can localize; otherwise a comfortable spot ahead.
+        let geo = provider.worldPosition(for: request.stop.coordinate, altitude: request.stop.altitude, heightBelowCamera: GeoAnchorManager.signBaseBelowCamera)
         var base: SIMD3<Float>
-        if let geo = provider.worldPosition(for: request.stop.coordinate, altitude: request.stop.altitude, heightBelowCamera: GeoAnchorManager.signBaseBelowCamera) {
+        switch ARStreetGuidance.nativeSignPlacement(providerPositionAvailable: geo != nil,
+                                                    allowsNativeFallback: allowsNativePositioningFallback) {
+        case .provider:
+            guard let geo else { anchors.sign.hideImmediately(); return }
             base = geo
-        } else {
-            guard allowsNativePositioningFallback else { anchors.sign.hideImmediately(); return }
+        case .hidden:
+            anchors.sign.hideImmediately()
+            return
+        case .aheadOfCamera:
             let forward = -SIMD3<Float>(cameraTransform.columns.2.x, 0, cameraTransform.columns.2.z)
             let dir = simd_length(forward) > 0.1 ? simd_normalize(forward) : SIMD3<Float>(0, 0, -1)
             base = cameraPosition + dir * 3.5
@@ -502,9 +508,10 @@ final class GeoAnchorManager {
     /// Its orientation conveys the route instruction, never a compass direction.
     private func presentManeuverIfUsable(target: NavigationTarget, cameraTransform: simd_float4x4,
                                          ground: SIMD3<Float>, date: Date, now: TimeInterval) -> Bool {
-        guard allowsNativePositioningFallback, ARStreetGuidance.canShowManeuver(tracking: isTrackingReady,
-            locationAge: date.timeIntervalSince(target.locationTimestamp), accuracy: target.horizontalAccuracy,
-            routeOffset: target.routeOffset, hasCue: target.turnCue != nil), let cue = target.turnCue else { return false }
+        guard ARStreetGuidance.canShowNativeManeuver(allowsNativeFallback: allowsNativePositioningFallback,
+            tracking: isTrackingReady, locationAge: date.timeIntervalSince(target.locationTimestamp),
+            accuracy: target.horizontalAccuracy, routeOffset: target.routeOffset, hasCue: target.turnCue != nil),
+              let cue = target.turnCue else { return false }
         let camera = cameraTransform.translation
         let forward = -SIMD3<Float>(cameraTransform.columns.2.x, 0, cameraTransform.columns.2.z)
         guard let candidate = ARStreetGuidance.visibleCandidate(projected: nil,

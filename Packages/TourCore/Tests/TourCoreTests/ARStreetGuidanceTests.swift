@@ -2,6 +2,26 @@ import XCTest
 @testable import TourCore
 
 final class ARStreetGuidanceTests: XCTestCase {
+    func testStrictGoogleHidesUnregisteredSignsAndManeuversWithoutDroppingAProviderPose() {
+        XCTAssertEqual(ARStreetGuidance.nativeSignPlacement(providerPositionAvailable: true, allowsNativeFallback: false), .provider)
+        XCTAssertEqual(ARStreetGuidance.nativeSignPlacement(providerPositionAvailable: true, allowsNativeFallback: true), .provider)
+        XCTAssertEqual(ARStreetGuidance.nativeSignPlacement(providerPositionAvailable: false, allowsNativeFallback: true), .aheadOfCamera)
+        XCTAssertEqual(ARStreetGuidance.nativeSignPlacement(providerPositionAvailable: false, allowsNativeFallback: false), .hidden)
+
+        XCTAssertTrue(ARStreetGuidance.canShowNativeManeuver(allowsNativeFallback: true, tracking: true,
+            locationAge: -1, accuracy: 0, routeOffset: 0, hasCue: true))
+        XCTAssertTrue(ARStreetGuidance.canShowNativeManeuver(allowsNativeFallback: true, tracking: true,
+            locationAge: 5, accuracy: 20, routeOffset: 15, hasCue: true))
+        for (age, accuracy, offset): (Double, Double, Double) in [
+            (-1.0001, 0, 0), (5.0001, 20, 15), (0, 20.0001, 0), (0, 0, 15.0001), (0, .nan, 0)
+        ] {
+            XCTAssertFalse(ARStreetGuidance.canShowNativeManeuver(allowsNativeFallback: true, tracking: true,
+                locationAge: age, accuracy: accuracy, routeOffset: offset, hasCue: true))
+        }
+        XCTAssertFalse(ARStreetGuidance.canShowNativeManeuver(allowsNativeFallback: false, tracking: true,
+            locationAge: 0, accuracy: 0, routeOffset: 0, hasCue: true))
+    }
+
     func testManeuverPreviewSupportsOrdinaryGPSWithoutClaimingStreetAlignment() {
         XCTAssertTrue(ARStreetGuidance.canShowManeuver(tracking: true, locationAge: 1,
             accuracy: 9, routeOffset: 8, hasCue: true))

@@ -185,6 +185,28 @@ public enum GeoSpatialSelector {
         return GeoSpatialSelection(backend: .arCoreGeospatial)
     }
 
+    /// Apple-only never selects ARCore and does not report an ARCore failure. Google-only
+    /// forces the request on, then keeps ARCore identity for every failure so the app can
+    /// show an unavailable Google provider instead of Core Location.
+    public static func select(_ input: GeoSpatialSelectionInput, mode: TourProviderMode) -> GeoSpatialSelection {
+        if mode == .appleOnly {
+            return GeoSpatialSelection(backend: .coreLocation)
+        }
+        let resolved: GeoSpatialSelectionInput
+        if mode == .googleOnly {
+            var forced = input
+            forced.flagEnabled = true
+            resolved = forced
+        } else {
+            resolved = input
+        }
+        let chosen = select(resolved)
+        if mode == .googleOnly {
+            return GeoSpatialSelection(backend: .arCoreGeospatial, fallbackReason: chosen.fallbackReason)
+        }
+        return chosen
+    }
+
     /// Maps horizontal (meters) and yaw (degrees) uncertainty onto the four quality buckets.
     /// Negative yaw means “unknown / invalid” (Core Location headingAccuracy convention).
     public static func quality(horizontalAccuracy: Double, yawAccuracy: Double) -> GeoLocalizationQuality {

@@ -32,6 +32,35 @@ final class GeoSpatialSelectionTests: XCTestCase {
         XCTAssertNil(selection.reducedAccuracyMessage)
     }
 
+    func testProviderModeCannotSilentlySubstituteTheOtherBackend() {
+        for candidate in [input(), input(flag: false), input(consent: false)] {
+            XCTAssertEqual(GeoSpatialSelector.select(candidate, mode: .automatic), GeoSpatialSelector.select(candidate))
+        }
+        for candidate in [input(), input(sdk: false, flag: false, key: false, consent: false, device: false, location: false, precise: false, network: false)] {
+            let apple = GeoSpatialSelector.select(candidate, mode: .appleOnly)
+            XCTAssertEqual(apple.backend, .coreLocation)
+            XCTAssertNil(apple.fallbackReason)
+        }
+        let forced = GeoSpatialSelector.select(input(flag: false), mode: .googleOnly)
+        XCTAssertEqual(forced.backend, .arCoreGeospatial)
+        XCTAssertNil(forced.fallbackReason)
+        let failures: [(GeoSpatialSelectionInput, GeoSpatialFallbackReason)] = [
+            (input(sdk: false), .sdkNotLinked),
+            (input(sdk: false, flag: false), .sdkNotLinked),
+            (input(key: false), .missingAPIKey),
+            (input(consent: false), .missingUserConsent),
+            (input(device: false), .deviceUnsupported),
+            (input(location: false), .locationPermissionDenied),
+            (input(precise: false), .preciseLocationRequired),
+            (input(network: false), .networkUnavailable),
+        ]
+        for (candidate, reason) in failures {
+            let selected = GeoSpatialSelector.select(candidate, mode: .googleOnly)
+            XCTAssertEqual(selected.backend, .arCoreGeospatial, reason.rawValue)
+            XCTAssertEqual(selected.fallbackReason, reason, reason.rawValue)
+        }
+    }
+
     func testFallbackOrderPrefersFirstBlockingReason() {
         XCTAssertEqual(GeoSpatialSelector.select(input(sdk: false, flag: false)).fallbackReason, .sdkNotLinked)
         XCTAssertEqual(GeoSpatialSelector.select(input(flag: false)).fallbackReason, .flagDisabled)

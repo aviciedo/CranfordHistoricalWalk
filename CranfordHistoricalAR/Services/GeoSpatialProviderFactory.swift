@@ -25,21 +25,16 @@ enum GeoSpatialProviderFactory {
         deviceSupportsGeospatial: Bool = true,
         mode: TourProviderMode = .automatic
     ) -> GeoSpatialSelection {
-        if mode == .appleOnly { return GeoSpatialSelection(backend: .coreLocation) }
-        let chosen = GeoSpatialSelector.select(GeoSpatialSelectionInput(
+        GeoSpatialSelector.select(GeoSpatialSelectionInput(
             sdkLinked: isSDKLinked,
-            flagEnabled: mode == .googleOnly || configuration.arCoreGeospatialEnabled,
+            flagEnabled: configuration.arCoreGeospatialEnabled,
             hasAPIKey: configuration.hasARCoreKey,
             userConsented: userConsented,
             deviceSupportsGeospatial: deviceSupportsGeospatial,
             locationAuthorized: locationAuthorized,
             preciseLocation: preciseLocation,
             networkAvailable: networkAvailable ?? NetworkPathMonitor.shared.isSatisfied
-        ))
-        if mode == .googleOnly {
-            return GeoSpatialSelection(backend: .arCoreGeospatial, fallbackReason: chosen.fallbackReason)
-        }
-        return chosen
+        ), mode: mode)
     }
 
     @MainActor
