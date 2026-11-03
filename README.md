@@ -1,3 +1,23 @@
+## Build 129 candidate — Cranford Hotel plaque unlock
+
+The supplied oval Cranford Hotel plaque marked Established 1882 now unlocks the
+approved Hotel watercolor through the existing camera-only discovery flow. It adds
+the Hotel to the sketchbook and paints its Stops illustration after valid recognition.
+The three targets are now Mill, Greystone and Hotel. First Baptist remains without a
+recognition target. Opening a scanner, an ordinary visit or missing/limited tracking
+cannot award a sketch. Recognition persists once without changing the walking
+itinerary or requiring Hotel narration, which remains pending.
+
+The source photograph is preserved and the AR reference is a tight, unresampled crop.
+Its physical width is unknown: 0.30 m is explicitly an unmeasured estimate for the
+cropped reference frame. ARKit scale estimation remains enabled. See
+[Hotel plaque implementation and field checks](docs/engineering/hotel-plaque-unlock.md).
+The approved Hotel pair from build 128 and revised reusable artwork instructions are
+included. Provider selection, routes and the existing plaque-unlock implementation
+remain shared. Publication is requested; exact-commit Apple and SwiftLint checks are
+required before release promotion. Build 127 remains the published rollback baseline
+until promotion, and physical iPhone recognition/scale checks remain necessary.
+
 ## Build 128 candidate — approved Cranford Hotel illustrations
 
 Home and Stops now use the selected Hotel ink. The map uses the approved watercolor;

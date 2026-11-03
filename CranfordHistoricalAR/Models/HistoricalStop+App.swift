@@ -214,7 +214,12 @@ extension HistoricalStop {
                 HistoricalStopPhoto(imageName: "cranford-hotel-doorway", caption: "Gold Cranford Hotel lettering above the entrance"),
                 HistoricalStopPhoto(imageName: "cranford-hotel-front", caption: "Front façade and balcony of Cranford Hotel"),
             ],
-            order: 5, isSample: false, coordinatesUnverified: true, narrationPending: true
+            order: 5, isSample: false, coordinatesUnverified: true,
+            plaque: StopPlaque(transcription: "THE\nCRANFORD HOTEL\nESTABLISHED 1882\nOPEN DAILY - LUNCH & DINNER",
+                              quoteLabel: "Hotel plaque",
+                              referenceImageName: SignPlacementPolicy.hotelReferenceImageName,
+                              physicalWidthMeters: SignPlacementPolicy.assumedHotelReferenceWidthMeters),
+            narrationPending: true
         )
     ].map { preview in
         var stop = preview

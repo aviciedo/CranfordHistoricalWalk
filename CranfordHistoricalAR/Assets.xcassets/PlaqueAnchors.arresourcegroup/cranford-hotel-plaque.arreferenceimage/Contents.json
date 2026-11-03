@@ -1,0 +1,16 @@
+{
+  "images": [
+    {
+      "filename": "cranford-hotel-plaque.jpg",
+      "idiom": "universal"
+    }
+  ],
+  "info": {
+    "author": "xcode",
+    "version": 1
+  },
+  "properties": {
+    "width": 0.3,
+    "unit": "meters"
+  }
+}

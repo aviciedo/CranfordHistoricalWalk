@@ -89,11 +89,45 @@ final class TourCompletionFlowTests: XCTestCase {
         ledger.read(stops[1].id)
         store.save(ledger)
         let tour = await makeTour(activityStore: store); defer { cleanUp(tour) }
-        XCTAssertEqual(tour.sketchbookStops.map(\.id), [stops[0].id, stops[1].id])
+        XCTAssertEqual(tour.sketchbookStops.map(\.id), [stops[0].id, stops[1].id, stops[4].id])
         XCTAssertEqual(tour.sketchbookCollectedCount, 1, "Visits and reading do not award stamps")
         XCTAssertNil(tour.pendingSketchStopID)
         XCTAssertNil(tour.takeUnlockedSketch())
         XCTAssertEqual(tour.phase, .notStarted)
+    }
+
+    func testHotelPlaqueUnlocksItsWatercolorWithoutNarrationOrChangingDestination() async throws {
+        let store = InMemoryStopActivityStore()
+        let tour = await makeTour(activityStore: store); defer { cleanUp(tour) }
+        let hotel = try XCTUnwrap(tour.stops.first(where: { $0.id == "hpab-005" }))
+        let destination = tour.currentStop?.id
+        let now = Date(timeIntervalSince1970: 2500)
+        XCTAssertTrue(hotel.hasPlaqueReference)
+        XCTAssertNil(hotel.narrationSource)
+        XCTAssertEqual(hotel.artwork?.watercolor, "sketchbook-hotel")
+        XCTAssertTrue(tour.preparePlaqueScanner(stopID: hotel.id))
+        XCTAssertEqual(tour.recognizeSketchPlaque(imageName: SignPlacementPolicy.hotelReferenceImageName,
+            isTracked: false, trackingReady: true), .deny(.markerNotReady))
+        XCTAssertEqual(tour.recognizeSketchPlaque(imageName: SignPlacementPolicy.hotelReferenceImageName,
+            isTracked: true, trackingReady: false), .deny(.trackingNotReady))
+        XCTAssertNil(tour.activities[hotel.id].plaqueUnlockedAt)
+        XCTAssertEqual(tour.recognizeSketchPlaque(imageName: SignPlacementPolicy.hotelReferenceImageName,
+            isTracked: true, trackingReady: true, now: now), .allow(.recognizedPlaque))
+        XCTAssertEqual(store.load()[hotel.id].plaqueUnlockedAt, now)
+        XCTAssertEqual(tour.pendingSketchStopID, hotel.id)
+        XCTAssertEqual(tour.sketchbookCollectedCount, 1)
+        XCTAssertEqual(tour.currentStop?.id, destination)
+        XCTAssertEqual(tour.phase, .notStarted)
+        XCTAssertEqual(tour.takeUnlockedSketch(), hotel.id)
+        XCTAssertNil(tour.takeUnlockedSketch())
+        XCTAssertEqual(tour.recognizeSketchPlaque(imageName: SignPlacementPolicy.hotelReferenceImageName,
+            isTracked: true, trackingReady: true), .alreadyActivated)
+        XCTAssertEqual(tour.activities[hotel.id].plaqueUnlockedAt, now)
+        XCTAssertNil(tour.pendingSketchStopID)
+        tour.endARDiscoverySession()
+        let reloaded = await makeTour(activityStore: store); defer { cleanUp(reloaded) }
+        XCTAssertEqual(reloaded.activities[hotel.id].plaqueUnlockedAt, now)
+        XCTAssertNil(reloaded.pendingSketchStopID)
     }
 
     func testNewRealPlaqueQueuesExactlyOnePassportRevealAndSurvivesNewWalk() async {

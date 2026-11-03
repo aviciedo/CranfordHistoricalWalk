@@ -33,6 +33,23 @@ final class HistoricalStopTests: XCTestCase {
         }
     }
 
+    func testHotelPlaqueResolvesOnlyHotelWithoutAddingNarration() throws {
+        let stops = try HistoricalStopDecoder.decode(Fixtures.data("historical_stops")).stops
+        let hotel = try XCTUnwrap(stops.first(where: { $0.id == "hpab-005" }))
+        XCTAssertTrue(hotel.hasPlaqueReference)
+        XCTAssertNil(hotel.narrationSource)
+        XCTAssertEqual(hotel.plaque?.transcription,
+                       "THE\nCRANFORD HOTEL\nESTABLISHED 1882\nOPEN DAILY - LUNCH & DINNER")
+        XCTAssertEqual(hotel.plaque?.physicalWidthMeters, SignPlacementPolicy.assumedHotelReferenceWidthMeters)
+        XCTAssertEqual(hotel.artwork?.watercolor, "sketchbook-hotel")
+        XCTAssertEqual(SignPlacementPolicy.recognizedStop(imageName: SignPlacementPolicy.hotelReferenceImageName,
+            isTracked: true, trackingReady: true, stops: stops)?.id, hotel.id)
+        XCTAssertNil(SignPlacementPolicy.recognizedStop(imageName: SignPlacementPolicy.hotelReferenceImageName,
+            isTracked: false, trackingReady: true, stops: stops))
+        XCTAssertNil(SignPlacementPolicy.recognizedStop(imageName: SignPlacementPolicy.hotelReferenceImageName,
+            isTracked: true, trackingReady: false, stops: stops))
+    }
+
     func testPendingNarrationCannotAccidentallyPlayOrSpeakPlaceholderCopy() {
         var stop = makeStop()
         stop.audioURL = URL(string: "https://example.org/legacy.mp3")

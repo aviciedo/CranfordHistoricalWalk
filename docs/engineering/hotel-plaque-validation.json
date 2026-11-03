@@ -1,0 +1,18 @@
+{
+  "build": 129,
+  "portable_core_tests": 302,
+  "actual_model_tests": 132,
+  "failures": 0,
+  "recognition_targets": [
+    "droeschers-mill-plaque",
+    "greystone-cranford-park-plaque",
+    "cranford-hotel-plaque"
+  ],
+  "hotel_reference_size_matches_catalog_and_fixture": true,
+  "original_photo_hash_matches": true,
+  "reference_photo_hash_matches": true,
+  "hotel_width_measured": false,
+  "estimated_reference_width_m": 0.3,
+  "native_apple_gate": "Required on exact release candidate",
+  "physical_recognition_field_check": "Pending on iPhone; not certified by portable or hosted tests"
+}

@@ -1,0 +1,25 @@
+{
+  "stopID": "hpab-005",
+  "referenceImageName": "cranford-hotel-plaque",
+  "original_sha256": "33effb8b281fe913768ce10252cb7984f00a2d6aaf0a8696e70155704143bbc1",
+  "reference_sha256": "4bb30de74c8442f72c6cad36d77bb286cf4ea65f6bd0f9a4b1d2864b796dd845",
+  "source_canvas": [
+    960,
+    1280
+  ],
+  "crop_box_left_top_right_bottom": [
+    24,
+    359,
+    951,
+    990
+  ],
+  "reference_canvas": [
+    927,
+    631
+  ],
+  "resampled": false,
+  "generative_processing": false,
+  "reference_frame_width_meters": 0.3,
+  "physical_width_status": "Unmeasured estimate for initial testing; owner answered unknown. Applies to the entire cropped reference frame, not a measured plaque width.",
+  "next_step": "Measure reference-frame/plaque width on site and update catalog, AR asset width and assumedHotelReferenceWidthMeters together; verify recognition on iPhone."
+}

@@ -66,10 +66,17 @@ public enum SignPlacementPolicy {
     /// width of that entire reference frame, NOT a measured plaque width.
     public static let assumedParkReferenceWidthMeters: Double = 0.75
 
+    public static let hotelReferenceImageName = "cranford-hotel-plaque"
+    /// Unmeasured initial estimate for the full cropped reference frame. ARKit can
+    /// estimate image scale; replace this value and both catalog/asset widths together
+    /// after an on-site measurement.
+    public static let assumedHotelReferenceWidthMeters: Double = 0.30
+
     public static func discoveryHint(referenceImageName: String?) -> String {
         switch referenceImageName {
         case millReferenceImageName: return "Find the plaque beside the red double doors"
         case parkReferenceImageName: return "Find the black Cranford Park plaque on the stone wall"
+        case hotelReferenceImageName: return "Find the oval Cranford Hotel plaque marked Established 1882"
         default: return "Find this stop’s plaque"
         }
     }

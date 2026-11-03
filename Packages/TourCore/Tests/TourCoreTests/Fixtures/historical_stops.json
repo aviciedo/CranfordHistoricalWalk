@@ -188,6 +188,18 @@
     {
       "id": "hpab-005",
       "name": "Cranford Hotel",
+      "plaque": {
+        "transcription": "THE\nCRANFORD HOTEL\nESTABLISHED 1882\nOPEN DAILY - LUNCH & DINNER",
+        "quoteLabel": "Hotel plaque",
+        "referenceImageName": "cranford-hotel-plaque",
+        "physicalWidthMeters": 0.3
+      },
+      "artwork": {
+        "homeInk": "home-sketch-hotel",
+        "listInk": "stop-ink-hotel",
+        "watercolor": "sketchbook-hotel",
+        "mapLandmark": "hotel-map-landmark"
+      },
       "latitude": 40.65513,
       "longitude": -74.304765,
       "address": "1 S Union Ave, Cranford, NJ",
