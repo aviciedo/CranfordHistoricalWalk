@@ -15,14 +15,7 @@ struct DeveloperControlsView: View {
     @State private var csvExport: GPSCaptureExport?
 
     private var routeSourceLabel: String {
-        guard let source = tour.currentRoute?.source else { return "No route requested" }
-        switch source {
-        case .googleRoutesAPI: return "Google Routes API"
-        case .googleDirectionsLegacy: return "Google Directions (legacy)"
-        case .appleMaps: return "Apple Maps"
-        case .straightLineEstimate: return "Distance estimate — no walking route"
-        case .simulated: return "Practice route"
-        }
+        RouteSource.developerLabel(for: tour.currentRoute?.source)
     }
 
     var body: some View {
@@ -82,8 +75,7 @@ struct DeveloperControlsView: View {
                     Text("Close the app from the app switcher, then reopen it. Your saved visits, stories and sketches are kept.")
                         .font(.footnote)
                 }
-                row("Selected map backend", dependencies.mapBackend == .google ? "Google Maps" :
-                    (dependencies.mapBackend == .apple ? "Apple Maps" : "Google unavailable; fallback disabled"))
+                row("Selected map backend", dependencies.providerMode.mapBackendTitle(googleConfigured: GoogleMapsBootstrap.isConfigured))
                 row("Current route source", routeSourceLabel)
                 if let error = tour.routingError { Text(error).font(.footnote).foregroundStyle(AppTheme.warning) }
                 row("Last walking AR provider", dependencies.lastWalkingARProvider)
@@ -239,7 +231,7 @@ struct DeveloperControlsView: View {
                 row("AR selection", selection.backend == .arCoreGeospatial ? "ARCore Geospatial" : "Core Location")
                 if let reason = selection.fallbackReason {
                     Text(dependencies.providerMode == .googleOnly
-                        ? "Google-only AR unavailable (\(reason.rawValue)); Apple positioning fallback is disabled."
+                        ? TourProviderMode.developerGoogleOnlyUnavailable(reason)
                         : reason.userMessage).font(.footnote).foregroundStyle(AppTheme.warning)
                 }
                 row("Bundle", AppConfiguration.iosBundleIdentifier())

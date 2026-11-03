@@ -24,7 +24,7 @@ enum DirectionsError: LocalizedError, Equatable {
 
     var errorDescription: String? {
         switch self {
-        case .googleOnlyUnavailable: return "Google-only walking directions require a valid Routes API key. Apple fallback is disabled."
+        case .googleOnlyUnavailable: return TourProviderMode.googleOnlyDirectionsUnavailable
         case .missingAPIKey: return "No Routes API key is configured, so walking distances are estimates."
         case .offline: return "You're offline. Showing the last known route."
         case .timedOut: return "Directions took too long. Showing the last known route."
@@ -261,20 +261,23 @@ enum DirectionsServiceFactory {
                      apple: any DirectionsService = AppleWalkingDirectionsService(),
                      mode: TourProviderMode = .automatic,
                      google injectedGoogle: (any DirectionsService)? = nil) -> any DirectionsService {
-        if mode == .appleOnly { return CachedDirectionsService(upstream: apple) }
-        guard configuration.hasRoutesKey, mode == .googleOnly || configuration.hasGoogleMapsKey else {
-            if mode == .googleOnly { return UnavailableGoogleDirectionsService() }
+        let plan = mode.walkingDirectionsPlan(hasRoutesKey: configuration.hasRoutesKey, hasMapsKey: configuration.hasGoogleMapsKey)
+        switch plan {
+        case .apple:
             return CachedDirectionsService(upstream: apple)
+        case .googleUnavailable:
+            return UnavailableGoogleDirectionsService()
+        case .googleOnly, .googleWithAppleFallback:
+            let google: any DirectionsService
+            let bundleID = AppConfiguration.iosBundleIdentifier()
+            switch configuration.directionsProvider {
+            case .routes: google = GoogleRoutesDirectionsService(apiKey: configuration.googleRoutesAPIKey, bundleIdentifier: bundleID)
+            case .legacy: google = LegacyGoogleDirectionsService(apiKey: configuration.googleRoutesAPIKey, bundleIdentifier: bundleID)
+            }
+            let selectedGoogle = injectedGoogle ?? google
+            if plan == .googleOnly { return CachedDirectionsService(upstream: selectedGoogle) }
+            return CachedDirectionsService(upstream: FallbackWalkingDirectionsService(primary: selectedGoogle, fallback: apple))
         }
-        let google: any DirectionsService
-        let bundleID = AppConfiguration.iosBundleIdentifier()
-        switch configuration.directionsProvider {
-        case .routes: google = GoogleRoutesDirectionsService(apiKey: configuration.googleRoutesAPIKey, bundleIdentifier: bundleID)
-        case .legacy: google = LegacyGoogleDirectionsService(apiKey: configuration.googleRoutesAPIKey, bundleIdentifier: bundleID)
-        }
-        let selectedGoogle = injectedGoogle ?? google
-        if mode == .googleOnly { return CachedDirectionsService(upstream: selectedGoogle) }
-        return CachedDirectionsService(upstream: FallbackWalkingDirectionsService(primary: selectedGoogle, fallback: apple))
     }
 }
 

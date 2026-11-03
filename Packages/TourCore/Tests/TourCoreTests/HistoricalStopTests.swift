@@ -40,10 +40,21 @@ final class HistoricalStopTests: XCTestCase {
         XCTAssertNil(hotel.narrationSource)
         XCTAssertEqual(hotel.plaque?.transcription,
                        "THE\nCRANFORD HOTEL\nESTABLISHED 1882\nOPEN DAILY - LUNCH & DINNER")
+        XCTAssertEqual(SignPlacementPolicy.assumedHotelReferenceWidthMeters, 0.30)
         XCTAssertEqual(hotel.plaque?.physicalWidthMeters, SignPlacementPolicy.assumedHotelReferenceWidthMeters)
         XCTAssertEqual(hotel.artwork?.watercolor, "sketchbook-hotel")
+        XCTAssertEqual(stops.filter(\.hasPlaqueReference).map(\.id), ["hpab-001", "hpab-002", "hpab-005"])
+        XCTAssertEqual(SignPlacementPolicy.discoveryHint(referenceImageName: SignPlacementPolicy.hotelReferenceImageName),
+                       "Find the oval Cranford Hotel plaque marked Established 1882")
+        XCTAssertEqual(SignPlacementPolicy.discoveryHint(referenceImageName: SignPlacementPolicy.hotelReferenceImageName + " "),
+                       "Find this stop’s plaque")
+        XCTAssertFalse(SignPlacementPolicy.discoveryHint(referenceImageName: SignPlacementPolicy.hotelReferenceImageName).contains("doors"))
         XCTAssertEqual(SignPlacementPolicy.recognizedStop(imageName: SignPlacementPolicy.hotelReferenceImageName,
             isTracked: true, trackingReady: true, stops: stops)?.id, hotel.id)
+        XCTAssertNil(SignPlacementPolicy.recognizedStop(imageName: SignPlacementPolicy.hotelReferenceImageName + " ",
+            isTracked: true, trackingReady: true, stops: stops))
+        XCTAssertNil(SignPlacementPolicy.recognizedStop(imageName: SignPlacementPolicy.hotelReferenceImageName,
+            isTracked: true, trackingReady: true, stops: stops + [hotel]))
         XCTAssertNil(SignPlacementPolicy.recognizedStop(imageName: SignPlacementPolicy.hotelReferenceImageName,
             isTracked: false, trackingReady: true, stops: stops))
         XCTAssertNil(SignPlacementPolicy.recognizedStop(imageName: SignPlacementPolicy.hotelReferenceImageName,

@@ -74,16 +74,35 @@ final class ARViewModel {
 
     var localizationState: ARLocalizationState { geoAnchors.localizationState }
     var statusMessage: String? {
-        if !isPlaqueScanner, !allowsGeospatialFallback {
-            if localizationState.isUsable {
-                return geoAnchors.navigationNotice ?? geoAnchors.provider.vpsCoverage.userMessage
-            }
-            if let reason = geoAnchors.provider.fallbackReason {
-                return "Google-only AR is unavailable (\(reason.rawValue)). Check ARCore setup, consent and location. Apple positioning fallback is disabled."
-            }
-            if case .failed = localizationState { return localizationState.userMessage }
-            if case .interrupted = localizationState { return localizationState.userMessage }
-            return "Google-only AR is waiting for localization. Apple positioning fallback is disabled."
+        let failureMessage: String?
+        let interruptionMessage: String?
+        switch localizationState {
+        case .failed(let text):
+            failureMessage = text
+            interruptionMessage = nil
+        case .interrupted:
+            failureMessage = nil
+            interruptionMessage = localizationState.userMessage
+        default:
+            failureMessage = nil
+            interruptionMessage = nil
+        }
+        switch TourProviderMode.strictGoogleARStatus(
+            isPlaqueScanner: isPlaqueScanner,
+            allowsNativeFallback: allowsGeospatialFallback,
+            isUsable: localizationState.isUsable,
+            navigationNotice: geoAnchors.navigationNotice,
+            coverageMessage: geoAnchors.provider.vpsCoverage.userMessage,
+            fallbackReason: geoAnchors.provider.fallbackReason,
+            failureMessage: failureMessage,
+            interruptionMessage: interruptionMessage
+        ) {
+        case .passthrough:
+            break
+        case .suppressed:
+            return nil
+        case .text(let message):
+            return message
         }
         if !isPlaqueScanner, let notice = geoAnchors.navigationNotice { return notice }
         if !isPlaqueScanner, geoAnchors.spatialMode == .spatial { return nil }
