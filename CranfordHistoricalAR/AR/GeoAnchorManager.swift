@@ -395,26 +395,38 @@ final class GeoAnchorManager {
     /// hold a stable estimated height rather than making the arrow bob with the camera.
     private func updateGroundHeight(frame: ARFrame) {
         let camera = frame.camera.transform.translation
-        let candidates = frame.anchors.compactMap { $0 as? ARPlaneAnchor }.filter { plane in
+        let planes = frame.anchors.compactMap { anchor -> GroundPlaneSelection.Observation? in
+            guard let plane = anchor as? ARPlaneAnchor else { return nil }
             let center = plane.transform * SIMD4<Float>(plane.center.x, plane.center.y, plane.center.z, 1)
-            let below = camera.y - center.y
-            let planeArea = plane.planeExtent.width * plane.planeExtent.height
-            return plane.alignment == .horizontal && planeArea >= 0.5
-                && plane.classification != .table && plane.classification != .seat && plane.classification != .ceiling
-                && below > 0.45 && below < 2.5
-                && simd_length(SIMD2(center.x - camera.x, center.z - camera.z)) < 8
+            return GroundPlaneSelection.Observation(
+                center: SIMD3(center.x, center.y, center.z),
+                area: plane.planeExtent.width * plane.planeExtent.height,
+                isHorizontal: plane.alignment == .horizontal,
+                classification: groundKind(plane.classification),
+                horizontalDistance: simd_length(SIMD2(center.x - camera.x, center.z - camera.z)))
         }
-        hasDetectedGround = !candidates.isEmpty
-        let closest = candidates.min { lhs, rhs in
-            let l = lhs.transform * SIMD4<Float>(lhs.center.x, lhs.center.y, lhs.center.z, 1)
-            let r = rhs.transform * SIMD4<Float>(rhs.center.x, rhs.center.y, rhs.center.z, 1)
-            return simd_length(SIMD2(l.x - camera.x, l.z - camera.z)) < simd_length(SIMD2(r.x - camera.x, r.z - camera.z))
+        if let chosen = GroundPlaneSelection.chosenCenter(planes, cameraY: camera.y) {
+            hasDetectedGround = true
+            groundHeight = GroundPlaneSelection.updatedHeight(previous: groundHeight, measuredY: chosen.y)
+        } else {
+            hasDetectedGround = false
+            if groundHeight == nil, case .normal = frame.camera.trackingState {
+                groundHeight = camera.y - ARNavigationArrowEntity.heightBelowCamera
+            }
         }
-        if let closest {
-            let center = closest.transform * SIMD4<Float>(closest.center.x, closest.center.y, closest.center.z, 1)
-            groundHeight = groundHeight.map { $0 + (center.y - $0) * 0.12 } ?? center.y
-        } else if groundHeight == nil, case .normal = frame.camera.trackingState {
-            groundHeight = camera.y - ARNavigationArrowEntity.heightBelowCamera
+    }
+
+    private func groundKind(_ classification: ARPlaneAnchor.Classification) -> GroundSurfaceKind {
+        switch classification {
+        case .none: return .none
+        case .wall: return .wall
+        case .floor: return .floor
+        case .ceiling: return .ceiling
+        case .table: return .table
+        case .seat: return .seat
+        case .window: return .window
+        case .door: return .door
+        @unknown default: return .unknown
         }
     }
 
@@ -541,16 +553,17 @@ final class GeoAnchorManager {
         grounded.y = groundHeight
         if let arView = anchors.arView, let screen = arView.project(grounded), arView.bounds.contains(screen) {
             let hits = arView.raycast(from: screen, allowing: .existingPlaneGeometry, alignment: .horizontal)
-            if let hit = hits.first(where: { result in
-                guard let plane = result.anchor as? ARPlaneAnchor else { return false }
-                return plane.classification != .table && plane.classification != .seat && plane.classification != .ceiling
-                    && abs(result.worldTransform.translation.y - groundHeight) < 0.6
-            }), let plane = hit.anchor as? ARPlaneAnchor {
+            for result in hits {
+                guard let plane = result.anchor as? ARPlaneAnchor,
+                      let choice = GroundPlaneSelection.raycastChoice(
+                        classification: groundKind(plane.classification),
+                        hitHeight: result.worldTransform.translation.y,
+                        groundHeight: groundHeight) else { continue }
                 // A raycast supplies height only. Never move route geometry sideways onto another surface.
-                grounded.y = hit.worldTransform.translation.y
+                grounded.y = choice.height
                 // A raycast proves a horizontal surface, not that an unclassified
                 // bench/ledge is ground. Only a classified floor earns this flag.
-                return (grounded, plane.classification == .floor)
+                return (grounded, choice.isVerifiedFloor)
             }
         }
         return (grounded, false)

@@ -23,6 +23,23 @@ final class ARSpatialNavigationTests: XCTestCase {
         XCTAssertNil(ARFrameWallClock.captureDate(frameTime: 100, receivedAt: date, mediaTime: .nan))
     }
 
+    func testCaptureWindowKeepsAFrameFromJustAheadThroughExactlyTwoSecondsOld() {
+        let received = Date(timeIntervalSince1970: 1000)
+        XCTAssertEqual(ARFrameWallClock.captureDate(frameTime: 100, receivedAt: received, mediaTime: 100), received)
+        XCTAssertEqual(ARFrameWallClock.captureDate(frameTime: 0, receivedAt: received, mediaTime: 0), received)
+        let oldest = ARFrameWallClock.captureDate(frameTime: 98, receivedAt: received, mediaTime: 100)
+        XCTAssertEqual(oldest, received.addingTimeInterval(-2))
+        XCTAssertNil(ARFrameWallClock.captureDate(frameTime: 97.999, receivedAt: received, mediaTime: 100))
+        let barelyAhead = ARFrameWallClock.captureDate(frameTime: 100.009, receivedAt: received, mediaTime: 100)
+        XCTAssertEqual(barelyAhead, received, "A frame up to 10 ms ahead stays on the receipt instant")
+        XCTAssertNil(ARFrameWallClock.captureDate(frameTime: 100.02, receivedAt: received, mediaTime: 100))
+        XCTAssertNil(ARFrameWallClock.captureDate(frameTime: 1, receivedAt: received, mediaTime: -0.0001))
+        XCTAssertNil(ARFrameWallClock.captureDate(frameTime: 1,
+            receivedAt: Date(timeIntervalSinceReferenceDate: .infinity), mediaTime: 1))
+        XCTAssertNil(ARFrameWallClock.captureDate(frameTime: 1,
+            receivedAt: Date(timeIntervalSinceReferenceDate: .nan), mediaTime: 1))
+    }
+
     private let origin = GeoCoordinate(latitude: 40.65, longitude: -74.3)
     private func point(_ bearing: Double, _ meters: Double) -> GeoCoordinate {
         GeoMath.destination(from: origin, bearing: bearing, distance: meters)

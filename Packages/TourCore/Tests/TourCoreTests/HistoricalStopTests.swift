@@ -33,6 +33,42 @@ final class HistoricalStopTests: XCTestCase {
         }
     }
 
+    func testShippedPlaqueWidthsMatchReferenceAssetsAndConstants() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let shipped = try HistoricalStopDecoder.decode(Data(contentsOf: root.appendingPathComponent(
+            "CranfordHistoricalAR/Resources/historical_stops.json")))
+        let fixture = try HistoricalStopDecoder.decode(Fixtures.data("historical_stops"))
+        let expected = [
+            SignPlacementPolicy.millReferenceImageName: SignPlacementPolicy.assumedPlaqueWidthMeters,
+            SignPlacementPolicy.parkReferenceImageName: SignPlacementPolicy.assumedParkReferenceWidthMeters,
+            SignPlacementPolicy.hotelReferenceImageName: SignPlacementPolicy.assumedHotelReferenceWidthMeters
+        ]
+        let group = root.appendingPathComponent(
+            "CranfordHistoricalAR/Assets.xcassets/PlaqueAnchors.arresourcegroup")
+        let assetNames = try FileManager.default.contentsOfDirectory(at: group, includingPropertiesForKeys: nil)
+            .filter { $0.pathExtension == "arreferenceimage" }
+            .map { $0.deletingPathExtension().lastPathComponent }
+        XCTAssertEqual(Set(assetNames), Set(expected.keys))
+        for (name, width) in expected {
+            for document in [shipped, fixture] {
+                let matches = document.stops.filter { $0.plaque?.referenceImageName == name }
+                XCTAssertEqual(matches.count, 1)
+                XCTAssertEqual(matches[0].plaque?.physicalWidthMeters ?? -1, width, accuracy: 0.000_000_001)
+                XCTAssertTrue(matches[0].hasPlaqueReference)
+            }
+            let asset = group.appendingPathComponent("\(name).arreferenceimage/Contents.json")
+            let json = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: asset)) as? [String: Any])
+            let properties = try XCTUnwrap(json["properties"] as? [String: Any])
+            XCTAssertEqual(properties["unit"] as? String, "meters")
+            XCTAssertEqual(try XCTUnwrap(properties["width"] as? Double), width, accuracy: 0.000_000_001)
+        }
+        XCTAssertEqual(Set(shipped.stops.compactMap { $0.hasPlaqueReference ? $0.plaque?.referenceImageName : nil }),
+                       Set(expected.keys))
+    }
+
     func testHotelPlaqueResolvesOnlyHotelWithoutAddingNarration() throws {
         let stops = try HistoricalStopDecoder.decode(Fixtures.data("historical_stops")).stops
         let hotel = try XCTUnwrap(stops.first(where: { $0.id == "hpab-005" }))
