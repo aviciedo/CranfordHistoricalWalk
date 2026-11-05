@@ -50,6 +50,71 @@ final class HistoricalStopTests: XCTestCase {
             isTracked: true, trackingReady: false, stops: stops))
     }
 
+    func testShippedHotelGalleryMatchesTheFixtureAndIsNotARecognitionTarget() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let shipped = try HistoricalStopDecoder.decode(Data(contentsOf: root.appendingPathComponent(
+            "CranfordHistoricalAR/Resources/historical_stops.json")))
+        let fixture = try HistoricalStopDecoder.decode(Fixtures.data("historical_stops"))
+        let expectedNames = [
+            "cranford-hotel-exterior", "cranford-hotel-corner", "cranford-hotel-sign",
+            "cranford-hotel-doorway", "cranford-hotel-front"
+        ]
+        let expectedCaptions = [
+            "Cranford Hotel, viewed from across the street",
+            "Corner entrance and balcony at Cranford Hotel",
+            "Cranford Hotel’s restaurant and pub sign",
+            "Gold Cranford Hotel lettering above the entrance",
+            "Front façade and balcony of Cranford Hotel"
+        ]
+        for document in [shipped, fixture] {
+            let hotel = try XCTUnwrap(document.stops.first { $0.id == "hpab-005" })
+            XCTAssertEqual(hotel.galleryPhotos.map(\.imageName), expectedNames)
+            XCTAssertEqual(hotel.galleryPhotos.map(\.caption), expectedCaptions)
+            XCTAssertNotEqual(hotel.galleryPhotos.first?.caption, hotel.name,
+                              "The cover name must not be inserted again in front of the same photograph")
+            for stop in document.stops {
+                let photographs = Set(stop.galleryPhotos.map(\.imageName))
+                if let reference = stop.plaque?.referenceImageName {
+                    XCTAssertFalse(photographs.contains(reference), stop.id)
+                }
+            }
+            for id in ["hpab-003", "hpab-004"] {
+                let stop = try XCTUnwrap(document.stops.first { $0.id == id })
+                XCTAssertFalse(stop.hasPlaqueReference, id)
+                XCTAssertNil(stop.artwork?.watercolor, id)
+            }
+        }
+    }
+
+    func testPlaqueMissingTextNameOrPositiveWidthCannotBeRecognized() throws {
+        let name = SignPlacementPolicy.hotelReferenceImageName
+        let text = "THE CRANFORD HOTEL"
+        let blanks = [
+            StopPlaque(transcription: " \n ", referenceImageName: name, physicalWidthMeters: 0.30),
+            StopPlaque(transcription: text, referenceImageName: "", physicalWidthMeters: 0.30),
+            StopPlaque(transcription: text, referenceImageName: name, physicalWidthMeters: 0),
+            StopPlaque(transcription: text, referenceImageName: name, physicalWidthMeters: -0.30),
+            StopPlaque(transcription: text, referenceImageName: name, physicalWidthMeters: .nan)
+        ]
+        for plaque in blanks {
+            XCTAssertFalse(plaque.isUsable)
+            var stop = makeStop(id: "hpab-005")
+            stop.plaque = plaque
+            XCTAssertFalse(stop.hasPlaqueReference)
+            XCTAssertNil(SignPlacementPolicy.recognizedStop(imageName: name, isTracked: true,
+                trackingReady: true, stops: [stop]))
+        }
+        var usable = makeStop(id: "hpab-005")
+        usable.plaque = StopPlaque(transcription: " \(text) ", referenceImageName: name,
+            physicalWidthMeters: SignPlacementPolicy.assumedHotelReferenceWidthMeters)
+        XCTAssertTrue(usable.hasPlaqueReference)
+        XCTAssertEqual(SignPlacementPolicy.recognizedStop(imageName: name, isTracked: true,
+            trackingReady: true, stops: [usable])?.id, usable.id)
+    }
+
     func testPendingNarrationCannotAccidentallyPlayOrSpeakPlaceholderCopy() {
         var stop = makeStop()
         stop.audioURL = URL(string: "https://example.org/legacy.mp3")
