@@ -27,7 +27,7 @@ final class MapViewModelTests: XCTestCase {
         XCTAssertEqual(HomeStopEmblem.assetName(for: id, artwork: media), media.homeInk)
         XCTAssertEqual(SketchArtwork.assetName(for: id, artwork: media), media.watercolor)
         XCTAssertEqual(StopCollectionIllustration.assetName(for: id, isSketchUnlocked: false, artwork: media), media.listInk)
-        XCTAssertEqual(StopCollectionIllustration.assetName(for: id, isSketchUnlocked: true, artwork: media), media.watercolor)
+        XCTAssertEqual(StopCollectionIllustration.assetName(for: id, isSketchUnlocked: true, artwork: media), media.listInk)
         for name in media.assetNames { XCTAssertNotNil(UIImage(named: name)) }
         for stop in try XCTUnwrap(BundledStopArtwork.document).stops {
             for name in stop.artwork?.assetNames ?? [] {
@@ -223,17 +223,15 @@ final class MapViewModelTests: XCTestCase {
         XCTFail("Page curl did not settle", file: file, line: line)
     }
 
-    func testStopsListHasInkForEveryStopAndWatercolorOnlyForUnlockableSketches() throws {
+    func testStopsListKeepsInkForEveryStopAfterUnlockWhileSketchbookKeepsWatercolor() throws {
         for stop in HistoricalStop.previewStops {
             let ink = try XCTUnwrap(StopCollectionIllustration.assetName(for: stop.id, isSketchUnlocked: false))
             XCTAssertNotNil(UIImage(named: ink), "Missing unframed ink illustration for \(stop.name)")
             let unlocked = try XCTUnwrap(StopCollectionIllustration.assetName(for: stop.id, isSketchUnlocked: true))
             XCTAssertNotNil(UIImage(named: unlocked), "Missing collected illustration for \(stop.name)")
+            XCTAssertEqual(ink, unlocked, "Stops retain hunter-green ink after a plaque unlock")
             if stop.hasPlaqueReference {
-                XCTAssertNotEqual(ink, unlocked, "A plaque unlock should reveal its watercolor sketch")
-                XCTAssertEqual(unlocked, SketchArtwork.assetName(for: stop.id))
-            } else {
-                XCTAssertEqual(ink, unlocked, "Stops without sketch unlocks must remain in pen and ink")
+                XCTAssertNotEqual(ink, SketchArtwork.assetName(for: stop.id), "Sketchbook retains its watercolor")
             }
         }
     }
@@ -280,9 +278,12 @@ final class MapViewModelTests: XCTestCase {
     }
 
     func testEveryPlaqueStopHasItsSketchAndSketchbookPaperInTheAppBundle() throws {
-        let stops = HistoricalStop.previewStops.filter(\.hasPlaqueReference)
+        let stops = try XCTUnwrap(BundledStopArtwork.document).stops.filter(\.hasPlaqueReference)
         XCTAssertFalse(stops.isEmpty)
         for stop in stops {
+            let reference = try XCTUnwrap(stop.plaque?.referenceImageName)
+            XCTAssertNotNil(UIImage(named: reference + "-target"),
+                            "Scanner card must show the plaque photograph for \(stop.name)")
             let name = try XCTUnwrap(SketchArtwork.assetName(for: stop.id), stop.name)
             let image = try XCTUnwrap(UIImage(named: name), "Missing sketch for \(stop.name)")
             let cgImage = try XCTUnwrap(image.cgImage)

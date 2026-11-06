@@ -175,9 +175,10 @@ struct HomeStopEmblem: View {
 
     var body: some View {
         GeometryReader { viewport in
+            let circleInset = viewport.size.width * 0.034
             ZStack {
                 // A fine ivory rim separates ink drawing from the blue river.
-                Circle().fill(AppTheme.ivory).padding(viewport.size.width * 0.034)
+                Circle().fill(AppTheme.ivory).padding(circleInset)
                 if let asset = Self.assetName(for: stopID, artwork: artwork) {
                     Image(asset).renderingMode(.original).resizable().scaledToFit()
                 } else {
@@ -190,6 +191,7 @@ struct HomeStopEmblem: View {
                         .overlay(Circle().strokeBorder(AppTheme.forest, lineWidth: 2))
                         .padding(viewport.size.width * 0.04)
                 }
+                // Restored Home artwork already includes its original hunter-green circle.
             }
         }
         .accessibilityHidden(true)

@@ -7,6 +7,42 @@ import AVFoundation
 
 @MainActor
 final class NarrationPlayerTests: XCTestCase {
+    func testCompactPlayerTimeLabelsHandleUnknownDurationsAndHourBoundaries() {
+        XCTAssertEqual(NarrationPlaybackTime.text(nil), "--:--")
+        XCTAssertEqual(NarrationPlaybackTime.text(.nan), "--:--")
+        XCTAssertEqual(NarrationPlaybackTime.text(.infinity), "--:--")
+        XCTAssertEqual(NarrationPlaybackTime.text(-1), "0:00")
+        XCTAssertEqual(NarrationPlaybackTime.text(45.9), "0:45")
+        XCTAssertEqual(NarrationPlaybackTime.text(210), "3:30")
+        XCTAssertEqual(NarrationPlaybackTime.text(3599), "59:59")
+        XCTAssertEqual(NarrationPlaybackTime.text(3600), "1:00:00")
+    }
+
+    func testFifteenSecondSkipsKeepPausedStoryAndClampToRecordingBounds() async throws {
+        let player = NarrationPlayer()
+        let stop = HistoricalStop.previewStops[0]
+        defer { player.stop() }
+        XCTAssertTrue(player.prepare(stop))
+        try await waitForAudio { player.canSeek }
+        let duration = try XCTUnwrap(player.duration)
+        player.pause()
+        let middle = duration / 2
+        player.seek(to: middle)
+        player.skip(by: NarrationPlayer.skipInterval)
+        XCTAssertEqual(player.elapsed, min(duration, middle + 15), accuracy: 0.01)
+        player.seek(to: middle)
+        player.skip(by: -NarrationPlayer.skipInterval)
+        XCTAssertEqual(player.elapsed, max(0, middle - 15), accuracy: 0.01)
+        player.seek(to: max(0, duration - 2))
+        player.skip(by: NarrationPlayer.skipInterval)
+        XCTAssertEqual(player.elapsed, duration, accuracy: 0.01)
+        player.seek(to: 2)
+        player.skip(by: -NarrationPlayer.skipInterval)
+        XCTAssertEqual(player.elapsed, 0, accuracy: 0.01)
+        XCTAssertEqual(player.stopID, stop.id)
+        XCTAssertFalse(player.isPlaying, "Seeking a paused narration must not start playback")
+    }
+
     func testClosingPersistentPlayerPausesWithoutLosingBookmark() async throws {
         let player = NarrationPlayer()
         let stop = HistoricalStop.previewStops[0]

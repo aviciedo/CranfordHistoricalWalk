@@ -225,17 +225,19 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertFalse(tour.shouldSuppressWalkingAR, "Previous must guide back even though the visit persists")
     }
 
-    func testQuietMapEmphasizesOnlyDestinationWithoutHidingOtherStops() async {
+    func testMapIllustratesEveryStopBeforeAndAfterDestinationChanges() async {
         let tour = await makeTour(); defer { cleanUp(tour) }
         let map = MapViewModel()
-        let welcome = map.markers(for: tour, emphasizesDestinationOnly: true)
+        let welcome = map.markers(for: tour)
         XCTAssertEqual(welcome.count, stops.count)
-        XCTAssertEqual(welcome.filter(\.isIllustrated).map(\.id), [stops[0].id])
+        XCTAssertTrue(welcome.allSatisfy(\.isIllustrated))
+        XCTAssertEqual(welcome.filter(\.isTourDestination).map(\.id), [stops[0].id])
         tour.startTour()
         tour.completeCurrentStopAndAdvance()
         tour.progress.markCurrentStopVisited()
-        let active = map.markers(for: tour, emphasizesDestinationOnly: true)
-        XCTAssertEqual(active.filter(\.isIllustrated).map(\.id), [stops[1].id])
+        let active = map.markers(for: tour)
+        XCTAssertTrue(active.allSatisfy(\.isIllustrated))
+        XCTAssertEqual(active.filter(\.isTourDestination).map(\.id), [stops[1].id])
         XCTAssertEqual(active.first { $0.id == stops[1].id }?.state, .visited,
                        "A visited active destination still deserves the illustration")
         XCTAssertTrue(map.markers(for: tour).allSatisfy(\.isIllustrated), "Other map consumers keep their existing artwork")

@@ -192,36 +192,35 @@ private struct SketchbookLeaf: View {
         .foregroundStyle(AppTheme.forest)
         .environment(\.colorScheme, .light)
         .background { SketchbookPaper() }
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        // The physical sheet fills its host. Insets/shadows here become pale strips
-        // when UIKit snapshots and bends the front surface.
+        // Keep the snapshot rectangular and opaque to its last pixel. A rounded
+        // mask reveals the hosting background at the bottom of a moving leaf.
     }
 }
 
 /// Shared physical paper surface: the green cloth gutter and worn corners are in the asset.
 struct SketchbookPaper: View {
     var body: some View {
-        Image("sketchbook-paper").resizable()
-            .accessibilityHidden(true)
-    }
-}
-
-/// Full-bleed interior paper: no front-cover binding, printed edge or baked-in folded corner.
-/// UIKit bends this surface itself; an image of a second page edge would expose a pale rim.
-struct SketchbookPageBack: View {
-    var body: some View {
         GeometryReader { viewport in
-            // Use the existing texture's interior, excluding every decorative outer edge.
-            SketchbookPaper()
-                .frame(width: viewport.size.width / 0.78, height: viewport.size.height / 0.72)
-                .offset(x: -viewport.size.width * 0.12 / 0.78,
-                        y: -viewport.size.height * 0.10 / 0.72)
+            // Exclude the source scan's pale exterior beyond the right/bottom
+            // paper edge. Keep the cloth gutter and the worn paper itself.
+            Image("sketchbook-paper").resizable()
+                .frame(width: viewport.size.width / 0.985,
+                       height: viewport.size.height / 0.992)
                 .frame(width: viewport.size.width, height: viewport.size.height, alignment: .topLeading)
                 .clipped()
-                .scaleEffect(x: -1, y: 1)
         }
         .background(AppTheme.sketchbookPaper)
         .accessibilityHidden(true)
+    }
+}
+
+/// Flat, blank, full-bleed reverse with subtle handling wear at its actual edges.
+/// UIKit supplies the bend and shadow; no lettering or baked-in curl belongs here.
+struct SketchbookPageBack: View {
+    var body: some View {
+        Image("sketchbook-paper-reverse").resizable()
+            .background(AppTheme.sketchbookPaper)
+            .accessibilityHidden(true)
     }
 }
 

@@ -1,3 +1,26 @@
+## Build 130 — green illustrations and compact narration controls
+
+Restores the earlier hunter-green illustrations on Home, Stops and both map
+providers. Every visible tour stop has artwork; the active destination is 15%
+larger with shared collision-aware placement. Home retains its circular artwork,
+and Stops stays in green ink after unlock while the sketchbook retains its
+watercolors. The sketchbook has a full-bleed worn-paper reverse and adjusted
+bottom/right paper edges. The Hotel scanner card now includes the plaque photo.
+
+The approved compact narration player uses a rounded forest-green panel, green
+illustration on an ivory tile, prominent play/pause at right, larger close control,
+quiet 15-second skip buttons, and actual elapsed/total time. Existing saved-position
+and walking-destination behavior remain. The bottom menu uses matching outline/filled
+Home, Map and signpost symbols plus the hunter-green selection underline.
+
+Required publication gates run on the exact candidate: Apple TourCore/model tests,
+Simulator compilation/native tests, iPhone Release compilation and SwiftLint.
+Physical-device page-curl appearance, outdoor AR recognition and final visual
+comparison remain field checks. Build 129 is the preceding rollback release;
+older build tags remain intact. See the [artwork restoration notes](docs/engineering/hunter-green-artwork-restoration.md),
+[player reference and acceptance checklist](docs/design/narration-player-implementation.md)
+and [page-curl field checks](docs/engineering/sketchbook-curl-fix.md).
+
 ## Build 129 candidate — Cranford Hotel plaque unlock
 
 The supplied oval Cranford Hotel plaque marked Established 1882 now unlocks the

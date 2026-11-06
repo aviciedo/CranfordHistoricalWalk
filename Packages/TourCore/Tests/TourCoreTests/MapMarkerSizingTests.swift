@@ -9,6 +9,28 @@ import CoreGraphics
 final class MapMarkerSizingTests: XCTestCase {
     private let viewport = CGRect(x: 10, y: 10, width: 370, height: 590)
 
+    func testEveryDestinationFitsWithLargerArtworkAndTruthfulLeaderAnchors() {
+        let points: [SIMD2<Double>] = [[205, 430], [232, 383], [40, 60], [190, 366], [168, 320]]
+        for active in points.indices {
+            let layout = MapMarkerSizing.layout(points: points, metersPerPoint: 4,
+                viewport: viewport, activeIndices: [active])
+            XCTAssertGreaterThan(layout.scale, 0)
+            XCTAssertTrue(layout.placements.allSatisfy(\.isVisible))
+            let rectangles = layout.placements.enumerated().map { index, placement in
+                rectangle(placement, scale: MapMarkerSizing.artworkScale(baseScale: layout.scale, isActive: index == active))
+            }
+            for index in rectangles.indices {
+                XCTAssertEqual(layout.placements[index].site, points[index])
+                XCTAssertTrue(viewport.contains(rectangles[index]))
+                for other in rectangles.indices where other > index {
+                    XCTAssertFalse(rectangles[index].insetBy(dx: -8, dy: -8).intersects(rectangles[other]))
+                }
+            }
+            XCTAssertEqual(MapMarkerSizing.artworkScale(baseScale: layout.scale, isActive: true) / layout.scale,
+                           1.15, accuracy: 0.0001)
+        }
+    }
+
     func testZoomChangesSizeWithinReadableBounds() {
         XCTAssertEqual(MapMarkerSizing.scale(metersPerPoint: 100), 0.72)
         XCTAssertGreaterThan(MapMarkerSizing.scale(metersPerPoint: 2.5), MapMarkerSizing.scale(metersPerPoint: 10))

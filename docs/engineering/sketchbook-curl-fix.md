@@ -1,5 +1,26 @@
 # Sketchbook curl repair
 
+## Weathered paper refinement
+
+The reverse now uses `sketchbook-paper-reverse`, an opaque, full-bleed blank
+paper texture with restrained handling wear at the edges. It contains no
+lettering, binding, illustration or pre-rendered curl; UIKit still creates the
+bend, occlusion and shadows. The existing front paper keeps its cloth gutter
+and worn corners, with the scan's outermost right/bottom pale margin excluded
+(1.5% horizontally, 0.8% vertically). The front no longer has a rounded mask
+that exposes its backing at the sheet corners. Artwork and text are not scaled
+or cropped by this paper-only adjustment.
+
+No controller, page ordering, gesture, next-page reveal, unlock, pagination or
+Reduce Motion logic changes. The prior Home-circle restoration remains a
+separate working-tree change.
+
+Native visual acceptance is still required: slowly turn Mill to Greystone from
+both corners and in reverse; verify the next sketch is exposed, the moving
+reverse stays blank, and no pale seam appears under the book. Check settled
+pages, cancelled turns, large text and Reduce Motion as well. The generated
+review mockup is a material target, not a recording of UIKit execution.
+
 Scope: reverse-arrow crash and pale strips exposed by the turning sheet. No changes to tour progression, artwork, unlock rules, or other screens.
 
 ## Cause and changes

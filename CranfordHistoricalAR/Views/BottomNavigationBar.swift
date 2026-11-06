@@ -10,7 +10,7 @@ struct BottomNavigationBar: View {
         HStack(spacing: 0) {
             tab(.home, title: "Home", symbol: "house", selectedSymbol: "house.fill")
             tab(.map, title: "Map", symbol: "map", selectedSymbol: "map.fill")
-            tab(.stops, title: "Stops", symbol: "signpost.right.and.left.fill", selectedSymbol: "signpost.right.and.left.fill")
+            tab(.stops, title: "Stops", symbol: "signpost.right.and.left", selectedSymbol: "signpost.right.and.left.fill")
         }
         .padding(.vertical, 4)
         .background(AppTheme.navigationBackground)
@@ -23,14 +23,24 @@ struct BottomNavigationBar: View {
         return Button { selection = tab } label: {
             VStack(spacing: 5) {
                 Image(systemName: selected ? selectedSymbol : symbol)
+                    .symbolRenderingMode(.monochrome)
                     .font(.system(size: 24, weight: .regular))
-                    .frame(height: 27)
+                    .frame(width: 32, height: 27)
                     .accessibilityHidden(true)
                 Text(title)
                     .font(.caption.weight(selected ? .semibold : .regular))
             }
             .frame(maxWidth: .infinity, minHeight: 52)
             .padding(.vertical, 2)
+            .overlay(alignment: .bottom) {
+                Rectangle()
+                    .fill(AppTheme.forest)
+                    .frame(height: 2)
+                    .padding(.horizontal, 12)
+                    .opacity(selected ? 1 : 0)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

@@ -62,7 +62,7 @@ struct StopsContent: View {
         .onChange(of: navigation.homeReturnID) { _, _ in detailStop = nil }
     }
 
-    /// Visit is the only text status; artwork reflects the independent sketch unlock.
+    /// Visits affect the status label; the list always keeps its hunter-green ink artwork.
     private func statusLabels(for stop: HistoricalStop) -> [String] {
         var labels: [String] = []
         if tour.activities[stop.id].visitedAt != nil || tour.isCompleted(stop) { labels.append("Visited") }
@@ -81,7 +81,7 @@ struct StopsContent: View {
     }
 }
 
-/// Stops-list-only artwork. Physical visits alone never paint an undiscovered sketch.
+/// Stops-list ink stays consistent before and after a sketch unlock.
 struct StopCollectionIllustration: View {
     let stopID: String
     let isSketchUnlocked: Bool
@@ -89,7 +89,6 @@ struct StopCollectionIllustration: View {
     var artwork: StopArtwork? = nil
     static func assetName(for stopID: String, isSketchUnlocked: Bool, artwork: StopArtwork? = nil) -> String? {
         let media = BundledStopArtwork.resolve(stopID: stopID, override: artwork)
-        if isSketchUnlocked, let watercolor = media?.watercolor { return watercolor }
         return media?.listInk
     }
 
@@ -105,14 +104,16 @@ struct StopCollectionIllustration: View {
     }
 }
 
-/// Original-color landmark cutouts; the church painting follows the owner’s field photograph.
+/// Shared landmark cutouts; map/list callers can request the hunter-green ink variant.
 struct StopListIllustration: View {
     let stopID: String
 
     var artwork: StopArtwork? = nil
+    var usesInk = false
     var body: some View {
         Group {
-            if let asset = BundledStopArtwork.resolve(stopID: stopID, override: artwork)?.mapLandmark {
+            if let media = BundledStopArtwork.resolve(stopID: stopID, override: artwork),
+               let asset = usesInk ? media.listInk : media.mapLandmark {
                 Image(asset).renderingMode(.original).resizable().scaledToFit()
             } else {
                 Canvas { context, size in

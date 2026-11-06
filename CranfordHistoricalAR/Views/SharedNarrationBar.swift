@@ -1,41 +1,39 @@
 import SwiftUI
 import TourCore
 
-/// One shared footer, always bound to the playing story rather than the walking destination.
+/// Shared transport follows the playing story, independently of the walking destination.
 struct SharedNarrationBar: View {
     @Environment(AppDependencies.self) private var dependencies
     @Environment(TourViewModel.self) private var tour
-    let availableHeight: CGFloat
-
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @ScaledMetric(relativeTo: .title2) private var transportSymbolSize: CGFloat = 36
+    let availableHeight: CGFloat
+    @ScaledMetric(relativeTo: .title2) private var transportSymbolSize: CGFloat = 32
 
-    private var artworkSize: CGFloat { max(96, min(128, availableHeight * 0.14)) }
+    private var artworkSize: CGFloat { min(72, max(56, availableHeight * 0.085)) }
 
     var body: some View {
         let player = dependencies.narrationPlayer
         if player.isPersistentPlayerVisible, let id = player.stopID,
            let stop = tour.stop(withID: id) {
-            VStack(alignment: .leading, spacing: 0) {
-                Spacer(minLength: 0)
+            VStack(alignment: .leading, spacing: 4) {
                 storyControls(for: stop)
-                    .padding(.horizontal, 16).padding(.top, 16)
+                    .padding(.leading, 16).padding(.trailing, 44).padding(.top, 12)
                 if case .failed(let message) = player.status {
                     Text(message).font(.footnote)
                         .fixedSize(horizontal: false, vertical: true)
-                        .padding(.horizontal, 16).padding(.top, 8)
+                        .padding(.horizontal, 16).padding(.top, 4)
                 }
-                Spacer(minLength: 0)
-                NarrationSeekRail(stop: stop)
-                    .frame(height: 44)
-                    .padding(.horizontal, 16).padding(.bottom, 4)
+                HStack(spacing: 4) {
+                    skipButton(backward: true)
+                    NarrationSeekRail(stop: stop)
+                    skipButton(backward: false)
+                }
+                .padding(.horizontal, 8).padding(.bottom, 8)
             }
-            // Content can grow for large text and errors; the host reserves its actual height.
-            .frame(minHeight: max(180, min(220, availableHeight * 0.2)))
             .overlay(alignment: .topTrailing) {
                 Button { player.dismissPersistentPlayer() } label: {
                     Image(systemName: "xmark")
-                        .font(.system(size: 17, weight: .medium))
+                        .font(.system(size: 23, weight: .medium))
                         .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
                 }
@@ -43,10 +41,9 @@ struct SharedNarrationBar: View {
                 .accessibilityLabel("Close player")
                 .accessibilityHint("Pauses narration and saves your position")
                 .accessibilityIdentifier("narration.closePlayer")
-                .padding(.top, 4).padding(.trailing, 4)
             }
-            .foregroundStyle(.white)
-            .background(AppTheme.forest, in: RoundedRectangle(cornerRadius: 14))
+            .foregroundStyle(AppTheme.ivory)
+            .background(AppTheme.forest, in: RoundedRectangle(cornerRadius: 24))
             .padding(.horizontal, 12).padding(.top, 6).padding(.bottom, 4)
             .background(AppTheme.ivory)
             .accessibilityIdentifier("narration.persistentPlayer")
@@ -56,32 +53,37 @@ struct SharedNarrationBar: View {
     @ViewBuilder
     private func storyControls(for stop: HistoricalStop) -> some View {
         if dynamicTypeSize.isAccessibilitySize {
-            VStack(alignment: .leading, spacing: 12) {
-                ScrollingStoryTitle(text: stop.name)
-                    .padding(.trailing, 44)
-                HStack(spacing: 16) {
+            VStack(alignment: .leading, spacing: 10) {
+                storyTitle(stop.name)
+                HStack(spacing: 12) {
                     artwork(for: stop)
                     Spacer(minLength: 0)
                     playbackButton(for: stop)
                 }
             }
         } else {
-            HStack(alignment: .center, spacing: 16) {
+            HStack(alignment: .center, spacing: 10) {
                 artwork(for: stop)
-                VStack(alignment: .leading, spacing: 12) {
-                    // The title reserves the close button's corner without wasting a full top row.
-                    ScrollingStoryTitle(text: stop.name)
-                        .padding(.trailing, 44)
-                    playbackButton(for: stop)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                storyTitle(stop.name)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                playbackButton(for: stop)
             }
         }
     }
 
+    private func storyTitle(_ title: String) -> some View {
+        Text(title)
+            .font(.system(.title3, design: .serif).weight(.semibold))
+            .fixedSize(horizontal: false, vertical: true)
+            .layoutPriority(1)
+    }
+
     private func artwork(for stop: HistoricalStop) -> some View {
-        StopListIllustration(stopID: stop.id, artwork: stop.artwork)
+        StopListIllustration(stopID: stop.id, artwork: stop.artwork, usesInk: true)
+            .padding(3)
             .frame(width: artworkSize, height: artworkSize)
+            .background(AppTheme.ivory, in: RoundedRectangle(cornerRadius: 12))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
             .accessibilityHidden(true)
     }
 
@@ -93,17 +95,16 @@ struct SharedNarrationBar: View {
         } label: {
             Group {
                 if player.status == .loading {
-                    ProgressView().tint(AppTheme.forest)
-                        .controlSize(.large)
+                    ProgressView().tint(AppTheme.forest).controlSize(.large)
                 } else {
                     Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
-                        .font(.system(size: min(48, transportSymbolSize), weight: .semibold))
+                        .font(.system(size: min(40, transportSymbolSize), weight: .semibold))
                         .offset(x: player.isPlaying ? 0 : 2)
                 }
             }
             .foregroundStyle(AppTheme.forest)
             .frame(width: 64, height: 64)
-            .background(.white, in: Circle())
+            .background(AppTheme.ivory, in: Circle())
             .contentShape(Circle())
         }
         .buttonStyle(.plain)
@@ -111,91 +112,50 @@ struct SharedNarrationBar: View {
         .accessibilityValue(player.status == .loading ? "Loading" : "")
         .accessibilityIdentifier("narration.playPause")
     }
-}
 
-/// A full spoken accessibility label, with a slow visual marquee only when the title overflows.
-private struct ScrollingStoryTitle: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @Environment(\.scenePhase) private var scenePhase
-    let text: String
-    @State private var textWidth: CGFloat = 0
-    @State private var startedAt = Date()
-    @ScaledMetric(relativeTo: .title2) private var lineHeight: CGFloat = 34
-
-    var body: some View {
-        Group {
-            if reduceMotion || dynamicTypeSize.isAccessibilitySize {
-                Text(text).font(AppTheme.Fonts.title)
-                    .fixedSize(horizontal: false, vertical: true)
-            } else {
-                GeometryReader { viewport in
-                    let overflows = textWidth > viewport.size.width + 1
-                    TimelineView(.animation(minimumInterval: 1.0 / 30, paused: !overflows || scenePhase != .active)) { context in
-                        let distance = textWidth + 28
-                        let cycle = Double(distance) / 26 + 1.5
-                        let phase = max(0, context.date.timeIntervalSince(startedAt)).truncatingRemainder(dividingBy: cycle)
-                        let offset = overflows ? min(distance, CGFloat(max(0, phase - 1.5)) * 26) : 0
-                        HStack(spacing: 28) {
-                            title
-                            if overflows { title }
-                        }
-                        .offset(x: -offset)
-                        .frame(width: viewport.size.width, height: viewport.size.height, alignment: .leading)
-                    }
-                    .clipped()
-                    .background {
-                        title.hidden().background {
-                            GeometryReader { measurement in
-                                Color.clear.preference(key: StoryTitleWidth.self, value: measurement.size.width)
-                            }
-                        }
-                    }
-                    .onChange(of: viewport.size.width) { _, _ in startedAt = Date() }
-                }
-                .frame(height: lineHeight)
-                .onPreferenceChange(StoryTitleWidth.self) { width in
-                    if abs(textWidth - width) > 0.5 { textWidth = width; startedAt = Date() }
-                }
-            }
+    private func skipButton(backward: Bool) -> some View {
+        let player = dependencies.narrationPlayer
+        return Button {
+            player.skip(by: backward ? -NarrationPlayer.skipInterval : NarrationPlayer.skipInterval)
+        } label: {
+            Image(systemName: backward ? "gobackward.15" : "goforward.15")
+                .font(.system(size: 20, weight: .regular))
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
         }
-        .onChange(of: text) { _, _ in startedAt = Date() }
-        .onChange(of: scenePhase) { _, phase in
-            if phase == .active { startedAt = Date() }
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(text)
-        .allowsHitTesting(false)
-    }
-
-    private var title: some View {
-        Text(text).font(AppTheme.Fonts.title)
-            .fixedSize(horizontal: true, vertical: false)
+        .buttonStyle(.plain)
+        .disabled(!player.canSeek)
+        .opacity(player.canSeek ? 0.9 : 0.4)
+        .accessibilityLabel(backward ? "Back 15 seconds" : "Forward 15 seconds")
+        .accessibilityIdentifier(backward ? "narration.skipBackward" : "narration.skipForward")
     }
 }
 
-private struct StoryTitleWidth: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
-}
-
-/// The rail stays visually thin, with a larger invisible touch target and VoiceOver adjustment.
+/// Seek rail and actual elapsed/total time share a 44pt target; scrubbing previews the time.
 private struct NarrationSeekRail: View {
     @Environment(AppDependencies.self) private var dependencies
+    @ScaledMetric(relativeTo: .caption) private var timelineHeight: CGFloat = 44
     let stop: HistoricalStop
     @State private var scrubProgress: Double?
 
     var body: some View {
         let player = dependencies.narrationPlayer
         let canSeek = player.stopID == stop.id && player.canSeek
+        let progress = min(1, max(0, scrubProgress ?? player.progress))
+        let elapsed = scrubProgress.flatMap { value in player.duration.map { value * $0 } } ?? player.elapsed
         GeometryReader { viewport in
-            let progress = min(1, max(0, scrubProgress ?? player.progress))
-            ZStack(alignment: .leading) {
-                Capsule().fill(.white.opacity(0.28))
-                Capsule().fill(.white).frame(width: viewport.size.width * CGFloat(progress))
+            VStack(spacing: 5) {
+                ZStack(alignment: .leading) {
+                    Capsule().fill(AppTheme.ivory.opacity(0.3))
+                    Capsule().fill(AppTheme.ivory).frame(width: viewport.size.width * CGFloat(progress))
+                }
+                .frame(height: 3)
+                ViewThatFits(in: .horizontal) {
+                    timeLabels(elapsed: elapsed, duration: player.duration, stacked: false)
+                    timeLabels(elapsed: elapsed, duration: player.duration, stacked: true)
+                }
+                .font(.caption.monospacedDigit())
             }
-            .frame(height: 3)
-            .frame(maxHeight: .infinity, alignment: .center)
             .frame(width: viewport.size.width, height: viewport.size.height)
             .contentShape(Rectangle())
             .gesture(DragGesture(minimumDistance: 0)
@@ -211,18 +171,49 @@ private struct NarrationSeekRail: View {
                     scrubProgress = nil
                 })
         }
+        .frame(height: max(44, timelineHeight))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Narration position for \(stop.name)")
-        .accessibilityValue("\(Int(min(1, max(0, scrubProgress ?? player.progress)) * 100)) percent")
+        .accessibilityValue("\(NarrationPlaybackTime.text(elapsed)) elapsed; \(NarrationPlaybackTime.text(player.duration)) total")
         .accessibilityHint(canSeek ? "Swipe up or down to move fifteen seconds" : "Seeking is currently unavailable")
         .accessibilityAdjustableAction { direction in
             guard canSeek else { return }
             switch direction {
-            case .increment: player.skip(by: 15)
-            case .decrement: player.skip(by: -15)
+            case .increment: player.skip(by: NarrationPlayer.skipInterval)
+            case .decrement: player.skip(by: -NarrationPlayer.skipInterval)
             @unknown default: break
             }
         }
         .onChange(of: player.stopID) { _, _ in scrubProgress = nil }
+        .onChange(of: player.canSeek) { _, _ in scrubProgress = nil }
+    }
+
+    @ViewBuilder
+    private func timeLabels(elapsed: TimeInterval, duration: TimeInterval?, stacked: Bool) -> some View {
+        if stacked {
+            VStack(alignment: .leading, spacing: 0) {
+                Text(NarrationPlaybackTime.text(elapsed)).fixedSize()
+                Text(NarrationPlaybackTime.text(duration)).fixedSize()
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+            HStack {
+                Text(NarrationPlaybackTime.text(elapsed)).fixedSize()
+                Spacer(minLength: 8)
+                Text(NarrationPlaybackTime.text(duration)).fixedSize()
+            }
+        }
+    }
+}
+
+enum NarrationPlaybackTime {
+    static func text(_ seconds: TimeInterval?) -> String {
+        guard let seconds, seconds.isFinite,
+              let value = Int(exactly: max(0, seconds).rounded(.down)) else { return "--:--" }
+        let remainder = String(format: "%02d", value % 60)
+        if value >= 3600 {
+            return "\(value / 3600):\(String(format: "%02d", value / 60 % 60)):\(remainder)"
+        }
+        return "\(value / 60):\(remainder)"
     }
 }

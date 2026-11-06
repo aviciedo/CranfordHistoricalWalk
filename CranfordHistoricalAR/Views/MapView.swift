@@ -22,7 +22,7 @@ struct TourMapView: View {
             ZStack(alignment: .top) {
                 if dependencies.mapBackend == .google {
                     GoogleMapView(
-                        markers: mapModel.markers(for: tour, emphasizesDestinationOnly: true),
+                        markers: mapModel.markers(for: tour),
                         userPuck: mapModel.userPuck(for: tour),
                         routeCoordinates: mapModel.walkingRouteCoordinates(for: tour).map(\.clLocationCoordinate),
                         cameraRequest: mapModel.cameraRequest,
@@ -40,7 +40,7 @@ struct TourMapView: View {
                 } else if dependencies.mapBackend == .unavailable {
                     GoogleMapUnavailableView()
                 } else {
-                    AppleTourMapView(markers: mapModel.markers(for: tour, emphasizesDestinationOnly: true),
+                    AppleTourMapView(markers: mapModel.markers(for: tour),
                         userPuck: mapModel.userPuck(for: tour),
                         routeCoordinates: mapModel.walkingRouteCoordinates(for: tour).map(\.clLocationCoordinate),
                         cameraRequest: mapModel.cameraRequest,
@@ -388,7 +388,7 @@ struct AppleTourMapView: UIViewRepresentable {
                 if markerImages[key] == nil { markerImages[key] = StopMapArtwork.image(for: marker) }
                 icon.setArtwork(markerImages[key])
                 icon.setBadge(marker)
-                icon.resize(scale: markerScale)
+                icon.resize(scale: CGFloat(MapMarkerSizing.artworkScale(baseScale: Double(markerScale), isActive: marker.isTourDestination)))
                 view.bounds = icon.bounds
                 icon.center = CGPoint(x: view.bounds.midX, y: view.bounds.midY)
                 if let placement = markerPlacements[marker.id] {
@@ -431,6 +431,7 @@ struct AppleTourMapView: UIViewRepresentable {
             let recenterArea = CGRect(x: map.bounds.maxX - 72, y: map.bounds.maxY - 76, width: 64, height: 64)
             let layout = MapMarkerSizing.layout(points: points, metersPerPoint: metersPerPoint,
                 viewport: StopMapLeaderView.viewport(in: map.bounds),
+                activeIndices: Set(models.indices.filter { models[$0].isTourDestination }),
                 reservedAreas: compactAreas + (parent.reservesNavigationControls ? [] : [recenterArea]) + StopMapLeaderView.reservedAreas(in: map.bounds, controls: parent.reservesNavigationControls,
                                                               zoomControls: parent.reservesZoomControls))
             markerScale = CGFloat(layout.scale)

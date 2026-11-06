@@ -14,6 +14,11 @@ public enum MapMarkerSizing {
     public static let maximumOffset: Double = 132
     public static let gap: Double = 10
 
+    /// The tour destination is slightly larger; selection and visit history do not change it.
+    public static func artworkScale(baseScale: Double, isActive: Bool) -> Double {
+        baseScale * (isActive ? 1.15 : 1)
+    }
+
     /// Reserve a fixed 44pt badge at its geographic anchor, independently of art zoom.
     /// The image remains centered so existing site offsets and leader lines stay truthful.
     public static func canvasWidth(scale: Double) -> Double {
@@ -61,7 +66,8 @@ public enum MapMarkerSizing {
     }()
 
     public static func layout(points: [SIMD2<Double>], metersPerPoint: Double,
-                              viewport: CGRect, reservedAreas: [CGRect] = []) -> Layout {
+                              viewport: CGRect, activeIndices: Set<Int> = [],
+                              reservedAreas: [CGRect] = []) -> Layout {
         let nominal = scale(metersPerPoint: metersPerPoint)
         guard nominal > 0, viewport.size.width >= 44, viewport.size.height >= 44 else {
             return Layout(scale: 0, placements: points.map {
@@ -80,9 +86,10 @@ public enum MapMarkerSizing {
             var rectangles: [CGRect] = []
             var placements: [Placement] = []
             var fits = true
-            let w = canvasWidth(scale: size), h = canvasHeight(scale: size)
-            let naturalOffset = (SIMD2(width / 2, height / 2) - badgeCenter) * size
             for index in points.indices {
+                let artScale = artworkScale(baseScale: size, isActive: activeIndices.contains(index))
+                let w = canvasWidth(scale: artScale), h = canvasHeight(scale: artScale)
+                let naturalOffset = (SIMD2(width / 2, height / 2) - badgeCenter) * artScale
                 let site = points[index]
                 let preferred = site + naturalOffset
                 guard visible[index] else {

@@ -300,12 +300,13 @@ struct GoogleMapView: UIViewRepresentable {
             let reserved = compactAreas + (parent.reservesNavigationControls ? [] : [recenterArea]) + StopMapLeaderView.reservedAreas(in: mapView.bounds, controls: parent.reservesNavigationControls,
                                                          zoomControls: parent.reservesZoomControls)
             let layout = MapMarkerSizing.layout(points: points, metersPerPoint: metersPerPoint,
-                                                viewport: viewport, reservedAreas: reserved)
+                                                viewport: viewport, activeIndices: Set(models.indices.filter { models[$0].isTourDestination }),
+                                                reservedAreas: reserved)
             CATransaction.begin()
             CATransaction.setDisableActions(true)
             for (model, placement) in zip(models, layout.placements) {
                 guard let marker = markersByID[model.id], let view = marker.iconView as? StopMapIconView else { continue }
-                if view.resize(scale: CGFloat(layout.scale)) { refreshSnapshot(of: marker) }
+                if view.resize(scale: CGFloat(MapMarkerSizing.artworkScale(baseScale: layout.scale, isActive: model.isTourDestination))) { refreshSnapshot(of: marker) }
                 // This display coordinate is derived anew from the original GPS point each frame.
                 // Models, walking routes, camera fitting and location services retain the true site.
                 if placement.isVisible {
@@ -594,12 +595,12 @@ enum StopMapArtwork {
     static func image(for marker: StopMarkerModel, isSelected: Bool = false, scheme: ColorScheme = .light) -> UIImage {
         let renderer = ImageRenderer(content:
             // Number badges are separate fixed-size views, never baked into zooming art.
-            StopListIllustration(stopID: marker.id, artwork: marker.artwork)
+            StopListIllustration(stopID: marker.id, artwork: marker.artwork, usesInk: true)
                 .frame(width: 96, height: 70)
                 .frame(width: CGFloat(MapMarkerSizing.width), height: CGFloat(MapMarkerSizing.height), alignment: .top)
             .environment(\.colorScheme, scheme)
             .environment(\.isEnabled, true))
-        // These are full-color illustrations, not template symbols. Keep the alpha channel
+        // These are original hunter-green ink illustrations. Keep the alpha channel
         // for cutout edges and use standard color rendering when Maps snapshots the image.
         renderer.scale = 3
         renderer.colorMode = .nonLinear
