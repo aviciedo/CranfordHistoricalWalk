@@ -48,16 +48,25 @@ final class MapViewModelTests: XCTestCase {
         var state = MapMarkerSizing.State()
         _ = state.layout(ids: [model.id], points: [[150, 175]], metersPerPoint: 200,
             viewport: viewport, activeIndices: [0])
-        let layout = state.layout(ids: [model.id], points: [[150, 230]], metersPerPoint: 200,
-            viewport: viewport, activeIndices: [0], isMoving: true)
-        overlay.update(layout, models: [model], in: map)
-        XCTAssertTrue(layout.placements[0].isVisible)
-        let mask = try XCTUnwrap(overlay.layer.mask as? CAShapeLayer)
-        let path = try XCTUnwrap(mask.path)
-        XCTAssertTrue(viewport.contains(path.boundingBoxOfPath), "Badge cutouts must not extend the artwork mask outside its clip")
-        XCTAssertFalse(path.contains(CGPoint(x: 150, y: 235), using: .evenOdd))
-        XCTAssertFalse(path.contains(CGPoint(x: 5, y: 100), using: .evenOdd))
-        XCTAssertTrue(path.contains(CGPoint(x: 50, y: 100), using: .evenOdd))
+        for pinY in [230.0, 255.0] {
+            let layout = state.layout(ids: [model.id], points: [SIMD2(150, pinY)], metersPerPoint: 200,
+                viewport: viewport, activeIndices: [0], isMoving: true)
+            overlay.update(layout, models: [model], in: map)
+            XCTAssertTrue(layout.placements[0].isVisible)
+            let mask = try XCTUnwrap(overlay.layer.mask as? CAShapeLayer)
+            let path = try XCTUnwrap(mask.path)
+            XCTAssertTrue(viewport.contains(path.boundingBoxOfPath), "Badge cutouts must not extend the artwork mask outside its clip")
+            XCTAssertFalse(path.contains(CGPoint(x: 150, y: 235), using: .evenOdd))
+            XCTAssertFalse(path.contains(CGPoint(x: 5, y: 100), using: .evenOdd))
+            XCTAssertTrue(path.contains(CGPoint(x: 50, y: 100), using: .evenOdd))
+            if pinY == 255 {
+                let hiddenPoint = CGPoint(x: 150, y: 225)
+                let art = try XCTUnwrap(overlay.subviews.first { $0 is UIButton })
+                XCTAssertTrue(art.frame.contains(hiddenPoint), "Exercise the clipped part of the illustration")
+                XCTAssertNil(overlay.artworkID(at: hiddenPoint), "Clipped artwork must not react to taps")
+                XCTAssertEqual(overlay.artworkID(at: art.center), model.id)
+            }
+        }
     }
 
     func testUpdatedCatalogImageDoesNotReuseAnOldStopThumbnail() async throws {

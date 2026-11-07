@@ -709,6 +709,7 @@ final class StopMapLeaderView: UIView, UIGestureRecognizerDelegate {
     private var artwork: [String: UIButton] = [:]
     private var imageKeys: [String: String] = [:]
     private var badgeTargets: [CGRect] = []
+    private var artworkClip: CGRect = .zero
     var onTap: ((String) -> Void)?
     private lazy var artworkTap: UITapGestureRecognizer = {
         let tap = UITapGestureRecognizer(target: self, action: #selector(tapArtwork(_:)))
@@ -750,8 +751,8 @@ final class StopMapLeaderView: UIView, UIGestureRecognizerDelegate {
         return []
     }
 
-    private func artworkID(at point: CGPoint) -> String? {
-        guard superview != nil, !isHidden, !badgeTargets.contains(where: { $0.contains(point) }) else { return nil }
+    func artworkID(at point: CGPoint) -> String? {
+        guard superview != nil, !isHidden, artworkClip.contains(point), !badgeTargets.contains(where: { $0.contains(point) }) else { return nil }
         return artwork.sorted { $0.value.layer.zPosition > $1.value.layer.zPosition }.first {
             !$0.value.isHidden && $0.value.frame.contains(point)
         }?.key
@@ -799,6 +800,7 @@ final class StopMapLeaderView: UIView, UIGestureRecognizerDelegate {
         // Cut out native badges even in an exceptionally dense cluster. No art obscures
         // the pin or intercepts its 44pt target, and numbers never travel with artwork.
         let clip = bounds.intersection(layout.viewport)
+        artworkClip = clip
         let cutouts = UIBezierPath(rect: clip.isNull ? .zero : clip)
         var holes: [CGRect] = []
         for target in badgeTargets {

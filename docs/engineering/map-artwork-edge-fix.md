@@ -18,7 +18,8 @@ number pins remain visible. It returns in different arrangements after short pau
    arrangement. Actual collisions after geometry/control/active-stop changes can still be
    resolved locally after the existing 200ms settling period.
 4. Badge cutouts are limited to the artwork clip and protect on-map number pins even when
-   their own illustration is offscreen. Nonfinite projection values cannot set UIView frames.
+   their own illustration is offscreen. Clipped artwork cannot react to taps outside the
+   same viewport. Nonfinite projection values cannot set UIView frames.
 
 Active/inactive artwork remains 96/64pt wide and number badges remain 32/26pt with 44pt tap
 targets. Geographic coordinates, tour progress, artwork assets, GPS policy and manual camera
