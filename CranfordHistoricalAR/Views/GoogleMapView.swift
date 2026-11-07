@@ -310,7 +310,10 @@ struct GoogleMapView: UIViewRepresentable {
                                                 viewport: viewport, activeIndices: Set(models.indices.filter { models[$0].isTourDestination }),
                                                 reservedAreas: reserved, isMoving: cameraMoving)
             // Native SDK badges always remain at the true geographic coordinate.
-            markerLeaders.onTap = { [weak self] id in self?.parent.onMarkerTap(id) }
+            markerLeaders.onTap = { [weak self] id in
+                self?.ignoreMapTapUntil = Date().addingTimeInterval(0.4)
+                self?.parent.onMarkerTap(id)
+            }
             markerLeaders.update(layout, models: models, in: mapView, animated: animated)
             updatePopupPlacement()
         }
@@ -701,16 +704,26 @@ final class StopMapIconView: UIView {
 
 /// Shared artwork callouts. Native geographic badges and empty map space pass through.
 @MainActor
-final class StopMapLeaderView: UIView {
+final class StopMapLeaderView: UIView, UIGestureRecognizerDelegate {
     private let lines = CAShapeLayer()
     private var artwork: [String: UIButton] = [:]
     private var imageKeys: [String: String] = [:]
     private var badgeTargets: [CGRect] = []
     var onTap: ((String) -> Void)?
+    private lazy var artworkTap: UITapGestureRecognizer = {
+        let tap = UITapGestureRecognizer(target: self, action: #selector(tapArtwork(_:)))
+        tap.cancelsTouchesInView = false
+        tap.delaysTouchesBegan = false
+        tap.delaysTouchesEnded = false
+        tap.delegate = self
+        return tap
+    }()
 
     init() {
         super.init(frame: .zero)
-        isUserInteractionEnabled = true
+        // Render above the map without putting an interactive sibling over the SDK's
+        // internal scroll view. A simultaneous map-level tap handles artwork selection.
+        isUserInteractionEnabled = false
         isAccessibilityElement = false
         backgroundColor = .clear
         lines.fillColor = nil
@@ -737,12 +750,24 @@ final class StopMapLeaderView: UIView {
         return []
     }
 
-    /// Empty space and number-badge targets pass through to native map gestures/taps.
-    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-        guard !badgeTargets.contains(where: { $0.contains(point) }) else { return nil }
-        let hit = super.hitTest(point, with: event)
-        return hit === self ? nil : hit
+    private func artworkID(at point: CGPoint) -> String? {
+        guard superview != nil, !isHidden, !badgeTargets.contains(where: { $0.contains(point) }) else { return nil }
+        return artwork.sorted { $0.value.layer.zPosition > $1.value.layer.zPosition }.first {
+            !$0.value.isHidden && $0.value.frame.contains(point)
+        }?.key
     }
+
+    @objc private func tapArtwork(_ tap: UITapGestureRecognizer) {
+        guard tap.state == .ended, let id = artworkID(at: tap.location(in: self)) else { return }
+        onTap?(id)
+    }
+
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        artworkID(at: touch.location(in: self)) != nil
+    }
+
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
+                           shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool { true }
 
     func stopAnimation() {
         for button in artwork.values {
@@ -755,6 +780,10 @@ final class StopMapLeaderView: UIView {
     func update(_ layout: MapMarkerSizing.Layout, models: [StopMarkerModel], in map: UIView,
                 animated: Bool = false) {
         if superview !== map { map.addSubview(self) }
+        if artworkTap.view !== map {
+            artworkTap.view?.removeGestureRecognizer(artworkTap)
+            map.addGestureRecognizer(artworkTap)
+        }
         frame = map.bounds
         let ids = Set(models.map(\.id))
         for id in Array(artwork.keys) where !ids.contains(id) {
@@ -767,7 +796,21 @@ final class StopMapLeaderView: UIView {
         // Cut out native badges even in an exceptionally dense cluster. No art obscures
         // the pin or intercepts its 44pt target, and numbers never travel with artwork.
         let cutouts = UIBezierPath(rect: bounds)
-        for rect in badgeTargets { cutouts.append(UIBezierPath(ovalIn: rect.insetBy(dx: 4, dy: 4))) }
+        var holes: [CGRect] = []
+        for target in badgeTargets {
+            var hole = target.insetBy(dx: 4, dy: 4)
+            // Merge overlaps before applying even-odd fill. Overlapping holes otherwise
+            // cancel each other and can paint artwork over densely packed number badges.
+            var index = 0
+            while index < holes.count {
+                if holes[index].intersects(hole) {
+                    hole = hole.union(holes.remove(at: index))
+                    index = 0
+                } else { index += 1 }
+            }
+            holes.append(hole)
+        }
+        for rect in holes { cutouts.append(UIBezierPath(rect: rect)) }
         let mask = CAShapeLayer()
         mask.fillRule = .evenOdd
         mask.path = cutouts.cgPath
@@ -780,6 +823,7 @@ final class StopMapLeaderView: UIView {
             else {
                 button = UIButton(type: .custom)
                 button.isAccessibilityElement = false // Native badge supplies the accessible target.
+                button.accessibilityIdentifier = "map.artwork.\(model.id)"
                 button.imageView?.contentMode = .scaleAspectFit
                 button.addAction(UIAction { [weak self] _ in self?.onTap?(model.id) }, for: .touchUpInside)
                 artwork[model.id] = button
@@ -804,6 +848,9 @@ final class StopMapLeaderView: UIView {
                 path.move(to: CGPoint(x: placement.site.x, y: placement.site.y))
                 path.addLine(to: CGPoint(x: end.x, y: end.y))
             }
+        }
+        for model in models where model.isTourDestination {
+            if let button = artwork[model.id] { bringSubviewToFront(button) }
         }
         if duration > 0, let old = lines.presentation()?.path ?? lines.path {
             let animation = CABasicAnimation(keyPath: "path")

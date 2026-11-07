@@ -972,6 +972,9 @@ final class TourCompletionFlowTests: XCTestCase {
         for _ in 0..<100 where tour.userLocation?.timestamp != moved.timestamp { try await Task.sleep(for: .milliseconds(2)) }
         map.updateWalkingFrame(tour: tour)
         XCTAssertNotEqual(map.cameraRequest, camera)
+        let tracking = try XCTUnwrap(map.cameraRequest)
+        XCTAssertTrue(tracking.automaticTracking, "GPS updates use the screen dead zone")
+        guard case .follow = tracking.kind else { return XCTFail("GPS must not refit the entire walking leg") }
         XCTAssertEqual(map.userPuck(for: tour)?.coordinate.longitude, moved.coordinate.longitude)
         XCTAssertEqual(map.userPuck(for: tour)?.accuracyMeters, 5)
         XCTAssertEqual(tour.currentStop?.id, stops[0].id)

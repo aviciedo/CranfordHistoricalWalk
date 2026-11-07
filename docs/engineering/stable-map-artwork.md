@@ -5,7 +5,8 @@ collision solving and whole-tour size reduction made artwork pulse and jump. The
 to both Google Maps and the Apple fallback.
 
 - Native numbered pins stay at their canonical coordinates with 44pt targets. Active visible
-  numbers are 32pt; inactive numbers are 26pt. Artwork is a separate, cached interactive overlay.
+  numbers are 32pt; inactive numbers are 26pt. Artwork is a separate cached overlay. It is touch-transparent; a simultaneous, non-cancelling
+  tap recognizer on the map selects artwork without intercepting native pan/pinch/rotation.
 - Active artwork is 96pt wide and inactive artwork 64pt, independent of zoom, selection and visits.
 - A shared layout state retains per-stop offsets during camera motion. After 200ms idle, valid
   placements remain; only conflicts are reconciled. Active artwork has priority. Ordinary

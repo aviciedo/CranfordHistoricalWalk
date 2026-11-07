@@ -20,6 +20,9 @@ final class MapViewModelTests: XCTestCase {
             viewport: map.bounds.insetBy(dx: 10, dy: 10), activeIndices: [0])
         overlay.update(layout, models: models, in: map)
         let buttons = overlay.subviews.compactMap { $0 as? UIButton }
+        XCTAssertFalse(overlay.isUserInteractionEnabled, "Artwork must never intercept the SDK's pan/pinch/rotation")
+        XCTAssertEqual(map.gestureRecognizers?.count, 1)
+        XCTAssertEqual(map.gestureRecognizers?.first?.cancelsTouchesInView, false)
         XCTAssertEqual(buttons.count, 5)
         XCTAssertEqual(buttons.filter { abs($0.bounds.width - 96) < 0.01 }.count, 1)
         XCTAssertEqual(buttons.filter { abs($0.bounds.width - 64) < 0.01 }.count, 4)
@@ -29,7 +32,7 @@ final class MapViewModelTests: XCTestCase {
         XCTAssertNil(overlay.hitTest(CGPoint(x: 389, y: 619), with: nil), "Empty overlay never steals the map")
         var tapped: String?
         overlay.onTap = { tapped = $0 }
-        buttons[0].sendActions(for: .touchUpInside)
+        buttons.first { $0.accessibilityIdentifier == "map.artwork.\(models[0].id)" }?.sendActions(for: .touchUpInside)
         XCTAssertEqual(tapped, models[0].id)
         overlay.update(layout, models: Array(models.prefix(1)), in: map)
         XCTAssertEqual(overlay.subviews.compactMap { $0 as? UIButton }.count, 1)
