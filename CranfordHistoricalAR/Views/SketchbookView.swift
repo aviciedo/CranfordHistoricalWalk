@@ -203,10 +203,13 @@ struct SketchbookPaper: View {
         GeometryReader { viewport in
             // Exclude the source scan's pale exterior beyond the right/bottom
             // paper edge. Keep the cloth gutter and the worn paper itself.
+            let frame = SketchbookPaperFraming.sourceFrame(viewportWidth: Double(viewport.size.width),
+                                                           viewportHeight: Double(viewport.size.height))
             Image("sketchbook-paper").resizable()
-                .frame(width: viewport.size.width / 0.985,
-                       height: viewport.size.height / 0.992)
+                .frame(width: CGFloat(frame?.width ?? Double(viewport.size.width)),
+                       height: CGFloat(frame?.height ?? Double(viewport.size.height)))
                 .frame(width: viewport.size.width, height: viewport.size.height, alignment: .topLeading)
+                .offset(x: CGFloat(frame?.x ?? 0), y: CGFloat(frame?.y ?? 0))
                 .clipped()
         }
         .background(AppTheme.sketchbookPaper)

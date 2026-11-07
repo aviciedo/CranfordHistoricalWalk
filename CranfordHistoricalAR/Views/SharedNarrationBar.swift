@@ -141,8 +141,9 @@ private struct NarrationSeekRail: View {
     var body: some View {
         let player = dependencies.narrationPlayer
         let canSeek = player.stopID == stop.id && player.canSeek
-        let progress = min(1, max(0, scrubProgress ?? player.progress))
-        let elapsed = scrubProgress.flatMap { value in player.duration.map { value * $0 } } ?? player.elapsed
+        let progress = NarrationPlaybackTime.railProgress(scrubFraction: scrubProgress, playbackProgress: player.progress)
+        let elapsed = NarrationPlaybackTime.displayedElapsed(scrubFraction: scrubProgress, duration: player.duration,
+                                                             fallbackElapsed: player.elapsed)
         GeometryReader { viewport in
             VStack(spacing: 5) {
                 ZStack(alignment: .leading) {
@@ -160,13 +161,14 @@ private struct NarrationSeekRail: View {
             .contentShape(Rectangle())
             .gesture(DragGesture(minimumDistance: 0)
                 .onChanged { value in
-                    guard canSeek, viewport.size.width > 0 else { return }
-                    scrubProgress = min(1, max(0, Double(value.location.x / viewport.size.width)))
+                    guard canSeek, let fraction = NarrationPlaybackTime.scrubFraction(
+                        locationX: Double(value.location.x), width: Double(viewport.size.width)) else { return }
+                    scrubProgress = fraction
                 }
                 .onEnded { value in
-                    if canSeek, let duration = player.duration, viewport.size.width > 0 {
-                        let target = min(1, max(0, Double(value.location.x / viewport.size.width)))
-                        player.seek(to: target * duration)
+                    if canSeek, let duration = player.duration, let fraction = NarrationPlaybackTime.scrubFraction(
+                        locationX: Double(value.location.x), width: Double(viewport.size.width)) {
+                        player.seek(to: fraction * duration)
                     }
                     scrubProgress = nil
                 })
@@ -206,14 +208,3 @@ private struct NarrationSeekRail: View {
     }
 }
 
-enum NarrationPlaybackTime {
-    static func text(_ seconds: TimeInterval?) -> String {
-        guard let seconds, seconds.isFinite,
-              let value = Int(exactly: max(0, seconds).rounded(.down)) else { return "--:--" }
-        let remainder = String(format: "%02d", value % 60)
-        if value >= 3600 {
-            return "\(value / 3600):\(String(format: "%02d", value / 60 % 60)):\(remainder)"
-        }
-        return "\(value / 60):\(remainder)"
-    }
-}

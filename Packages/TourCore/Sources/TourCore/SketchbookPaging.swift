@@ -24,3 +24,30 @@ public enum SketchbookCurlLayout {
         controllerIndex / 2
     }
 }
+
+/// Front-paper crop for the sketchbook scan. The reverse face stays full bleed.
+public enum SketchbookPaperFraming {
+    /// Pale exterior past the scan's right edge, as a fraction of the source.
+    private static let trailingMargin: Double = 0.015
+    /// Pale exterior past the scan's bottom edge, as a fraction of the source.
+    private static let bottomMargin: Double = 0.008
+
+    public struct SourceFrame: Equatable, Sendable {
+        public var x: Double
+        public var y: Double
+        public var width: Double
+        public var height: Double
+    }
+
+    /// Top-leading source rect. Clipping the overflow removes only the pale
+    /// exterior, so the cloth gutter on the leading edge stays in frame.
+    public static func sourceFrame(viewportWidth: Double, viewportHeight: Double) -> SourceFrame? {
+        guard viewportWidth.isFinite, viewportHeight.isFinite,
+              viewportWidth > 0, viewportHeight > 0,
+              trailingMargin > 0, trailingMargin < 1,
+              bottomMargin > 0, bottomMargin < 1 else { return nil }
+        return SourceFrame(x: 0, y: 0,
+                           width: viewportWidth / (1 - trailingMargin),
+                           height: viewportHeight / (1 - bottomMargin))
+    }
+}

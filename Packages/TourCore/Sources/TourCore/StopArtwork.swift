@@ -13,6 +13,12 @@ public struct StopArtwork: Hashable, Codable, Sendable {
         self.mapLandmark = mapLandmark; self.listHeight = listHeight
     }
     public var assetNames: [String] { [homeInk, listInk, watercolor, mapLandmark].compactMap { $0 } }
+
+    /// Map markers and the narration player ask for hunter-green ink.
+    /// Watercolor belongs to the sketchbook and is never a substitute for either choice.
+    public func renderedAssetName(usesInk: Bool) -> String? {
+        usesInk ? listInk : mapLandmark
+    }
     public var isValid: Bool {
         assetNames.allSatisfy { name in
             !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && name.count <= 160

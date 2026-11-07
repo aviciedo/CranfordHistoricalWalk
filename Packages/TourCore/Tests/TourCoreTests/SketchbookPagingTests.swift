@@ -45,4 +45,21 @@ final class SketchbookPagingTests: XCTestCase {
         XCTAssertEqual(SketchbookCurlLayout.logicalPage(controllerIndex: 1), 0)
         XCTAssertEqual(SketchbookCurlLayout.logicalPage(controllerIndex: 2), 1)
     }
+
+    func testFrontPaperKeepsTheGutterAndClipsOnlyTheTrailingPaleMargin() throws {
+        let frame = SketchbookPaperFraming.sourceFrame(viewportWidth: 200, viewportHeight: 400)
+        let source = try XCTUnwrap(frame)
+        XCTAssertEqual(source.x, 0, "The cloth gutter is on the leading edge and must not be shifted off")
+        XCTAssertEqual(source.y, 0)
+        XCTAssertEqual((source.width - 200) / source.width, 0.015, accuracy: 0.0000001)
+        XCTAssertEqual((source.height - 400) / source.height, 0.008, accuracy: 0.0000001)
+        XCTAssertLessThan((source.width - 200) / source.width, 0.02,
+                          "The retired interior crop hid the gutter behind a much larger margin")
+        XCTAssertGreaterThan(source.x + source.width, 200)
+        XCTAssertGreaterThan(source.y + source.height, 400)
+        XCTAssertNil(SketchbookPaperFraming.sourceFrame(viewportWidth: 0, viewportHeight: 400))
+        XCTAssertNil(SketchbookPaperFraming.sourceFrame(viewportWidth: -8, viewportHeight: 40))
+        XCTAssertNil(SketchbookPaperFraming.sourceFrame(viewportWidth: .nan, viewportHeight: 40))
+        XCTAssertNil(SketchbookPaperFraming.sourceFrame(viewportWidth: 40, viewportHeight: .infinity))
+    }
 }

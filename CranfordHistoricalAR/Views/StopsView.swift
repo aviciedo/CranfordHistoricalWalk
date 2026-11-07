@@ -110,10 +110,13 @@ struct StopListIllustration: View {
 
     var artwork: StopArtwork? = nil
     var usesInk = false
+    static func assetName(for stopID: String, artwork: StopArtwork? = nil, usesInk: Bool = false) -> String? {
+        BundledStopArtwork.resolve(stopID: stopID, override: artwork)?.renderedAssetName(usesInk: usesInk)
+    }
+
     var body: some View {
         Group {
-            if let media = BundledStopArtwork.resolve(stopID: stopID, override: artwork),
-               let asset = usesInk ? media.listInk : media.mapLandmark {
+            if let asset = Self.assetName(for: stopID, artwork: artwork, usesInk: usesInk) {
                 Image(asset).renderingMode(.original).resizable().scaledToFit()
             } else {
                 Canvas { context, size in
