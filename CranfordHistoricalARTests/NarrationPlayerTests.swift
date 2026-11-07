@@ -16,6 +16,11 @@ final class NarrationPlayerTests: XCTestCase {
         XCTAssertEqual(NarrationPlaybackTime.text(210), "3:30")
         XCTAssertEqual(NarrationPlaybackTime.text(3599), "59:59")
         XCTAssertEqual(NarrationPlaybackTime.text(3600), "1:00:00")
+        XCTAssertEqual(NarrationPlaybackTime.text(0), "0:00")
+        XCTAssertEqual(NarrationPlaybackTime.text(59.999), "0:59")
+        XCTAssertEqual(NarrationPlaybackTime.text(60), "1:00")
+        XCTAssertEqual(NarrationPlaybackTime.text(3661), "1:01:01")
+        XCTAssertEqual(NarrationPlaybackTime.text(-.infinity), "--:--")
     }
 
     func testFifteenSecondSkipsKeepPausedStoryAndClampToRecordingBounds() async throws {

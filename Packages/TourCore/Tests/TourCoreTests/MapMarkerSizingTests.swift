@@ -28,7 +28,19 @@ final class MapMarkerSizingTests: XCTestCase {
             }
             XCTAssertEqual(MapMarkerSizing.artworkScale(baseScale: layout.scale, isActive: true) / layout.scale,
                            1.15, accuracy: 0.0001)
+            XCTAssertEqual(MapMarkerSizing.artworkScale(baseScale: layout.scale, isActive: false), layout.scale,
+                           accuracy: 0.0001)
         }
+    }
+
+    func testIndicesOutsideTheTourDoNotEnlargeAnyMarker() {
+        let points: [SIMD2<Double>] = [[120, 220], [250, 360]]
+        let plain = MapMarkerSizing.layout(points: points, metersPerPoint: 6, viewport: viewport)
+        let unknown = MapMarkerSizing.layout(points: points, metersPerPoint: 6, viewport: viewport,
+                                            activeIndices: [-1, 2, 99])
+        XCTAssertEqual(unknown.scale, plain.scale)
+        XCTAssertEqual(unknown.placements, plain.placements)
+        XCTAssertGreaterThan(plain.scale, 0)
     }
 
     func testZoomChangesSizeWithinReadableBounds() {

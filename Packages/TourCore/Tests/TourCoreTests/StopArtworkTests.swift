@@ -25,6 +25,18 @@ final class StopArtworkTests: XCTestCase {
         XCTAssertFalse(StopArtwork(listHeight: .nan).isValid)
         XCTAssertFalse(StopArtwork(listHeight: 10000).isValid)
     }
+    func testInkChoiceNeverSubstitutesWatercolorOrTheColorLandmark() {
+        let media = StopArtwork(homeInk: "home", listInk: "ink", watercolor: "wash", mapLandmark: "landmark")
+        XCTAssertEqual(media.renderedAssetName(usesInk: true), "ink")
+        XCTAssertEqual(media.renderedAssetName(usesInk: false), "landmark")
+        XCTAssertNil(StopArtwork(listInk: "ink", watercolor: "wash").renderedAssetName(usesInk: false))
+        XCTAssertNil(StopArtwork(watercolor: "wash", mapLandmark: "landmark").renderedAssetName(usesInk: true))
+        XCTAssertNil(StopArtwork().renderedAssetName(usesInk: true))
+        XCTAssertNil(StopArtwork().renderedAssetName(usesInk: false))
+        XCTAssertEqual(StopArtwork(listInk: "").renderedAssetName(usesInk: true), "",
+                       "An explicit empty name must not fall through to another variant")
+    }
+
     func testRevisedMediaChangesRenderingCacheIdentity() {
         let first = StopArtwork(listInk: "original", mapLandmark: "landmark")
         let second = StopArtwork(listInk: "updated", mapLandmark: "landmark")

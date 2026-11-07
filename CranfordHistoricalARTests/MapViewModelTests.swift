@@ -28,6 +28,11 @@ final class MapViewModelTests: XCTestCase {
         XCTAssertEqual(SketchArtwork.assetName(for: id, artwork: media), media.watercolor)
         XCTAssertEqual(StopCollectionIllustration.assetName(for: id, isSketchUnlocked: false, artwork: media), media.listInk)
         XCTAssertEqual(StopCollectionIllustration.assetName(for: id, isSketchUnlocked: true, artwork: media), media.listInk)
+        XCTAssertEqual(StopListIllustration.assetName(for: id, artwork: media, usesInk: true), media.listInk)
+        XCTAssertEqual(StopListIllustration.assetName(for: id, artwork: media), media.mapLandmark)
+        XCTAssertNil(StopListIllustration.assetName(for: id, artwork: StopArtwork(listInk: media.listInk, watercolor: media.watercolor)))
+        XCTAssertNil(StopListIllustration.assetName(for: id, artwork: StopArtwork(watercolor: media.watercolor, mapLandmark: media.mapLandmark), usesInk: true))
+        XCTAssertNil(StopListIllustration.assetName(for: "missing-stop", usesInk: true))
         for name in media.assetNames { XCTAssertNotNil(UIImage(named: name)) }
         for stop in try XCTUnwrap(BundledStopArtwork.document).stops {
             for name in stop.artwork?.assetNames ?? [] {
@@ -230,8 +235,15 @@ final class MapViewModelTests: XCTestCase {
             let unlocked = try XCTUnwrap(StopCollectionIllustration.assetName(for: stop.id, isSketchUnlocked: true))
             XCTAssertNotNil(UIImage(named: unlocked), "Missing collected illustration for \(stop.name)")
             XCTAssertEqual(ink, unlocked, "Stops retain hunter-green ink after a plaque unlock")
+            XCTAssertEqual(StopListIllustration.assetName(for: stop.id, usesInk: true), ink,
+                           "Map and player ink must match the stops list")
+            let landmark = try XCTUnwrap(stop.artwork?.mapLandmark, "Missing color landmark for \(stop.name)")
+            XCTAssertEqual(StopListIllustration.assetName(for: stop.id), landmark)
+            XCTAssertNotEqual(landmark, ink, "Hunter-green ink is a separate asset from the color landmark")
             if stop.hasPlaqueReference {
-                XCTAssertNotEqual(ink, SketchArtwork.assetName(for: stop.id), "Sketchbook retains its watercolor")
+                let watercolor = try XCTUnwrap(SketchArtwork.assetName(for: stop.id), "Sketchbook retains its watercolor")
+                XCTAssertNotEqual(ink, watercolor)
+                XCTAssertNotEqual(StopListIllustration.assetName(for: stop.id, usesInk: true), watercolor)
             }
         }
     }
