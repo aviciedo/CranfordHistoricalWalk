@@ -38,6 +38,28 @@ final class MapViewModelTests: XCTestCase {
         XCTAssertEqual(overlay.subviews.compactMap { $0 as? UIButton }.count, 1)
     }
 
+    func testArtworkMaskClipsAtTheSameViewportAsVisibilityEvenForEdgePins() throws {
+        let stop = HistoricalStop.previewStops[0]
+        let model = StopMarkerModel(id: stop.id, coordinate: stop.clLocationCoordinate,
+            order: stop.order, name: stop.name, state: .current, isTourDestination: true)
+        let map = UIView(frame: CGRect(x: 0, y: 0, width: 390, height: 300))
+        let viewport = CGRect(x: 10, y: 10, width: 370, height: 210)
+        let overlay = StopMapLeaderView()
+        var state = MapMarkerSizing.State()
+        _ = state.layout(ids: [model.id], points: [[150, 175]], metersPerPoint: 200,
+            viewport: viewport, activeIndices: [0])
+        let layout = state.layout(ids: [model.id], points: [[150, 230]], metersPerPoint: 200,
+            viewport: viewport, activeIndices: [0], isMoving: true)
+        overlay.update(layout, models: [model], in: map)
+        XCTAssertTrue(layout.placements[0].isVisible)
+        let mask = try XCTUnwrap(overlay.layer.mask as? CAShapeLayer)
+        let path = try XCTUnwrap(mask.path)
+        XCTAssertTrue(viewport.contains(path.boundingBoxOfPath), "Badge cutouts must not extend the artwork mask outside its clip")
+        XCTAssertFalse(path.contains(CGPoint(x: 150, y: 235), using: .evenOdd))
+        XCTAssertFalse(path.contains(CGPoint(x: 5, y: 100), using: .evenOdd))
+        XCTAssertTrue(path.contains(CGPoint(x: 50, y: 100), using: .evenOdd))
+    }
+
     func testUpdatedCatalogImageDoesNotReuseAnOldStopThumbnail() async throws {
         let loader = CompositeImageLoader()
         var stop = HistoricalStop.previewStops[0]

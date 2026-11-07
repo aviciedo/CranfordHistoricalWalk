@@ -790,12 +790,16 @@ final class StopMapLeaderView: UIView, UIGestureRecognizerDelegate {
             artwork.removeValue(forKey: id)?.removeFromSuperview()
             imageKeys.removeValue(forKey: id)
         }
-        badgeTargets = layout.placements.filter(\.isVisible).map {
+        badgeTargets = layout.placements.filter {
+            $0.site.x.isFinite && $0.site.y.isFinite &&
+            map.bounds.insetBy(dx: -22, dy: -22).contains(CGPoint(x: $0.site.x, y: $0.site.y))
+        }.map {
             CGRect(x: $0.site.x - 22, y: $0.site.y - 22, width: 44, height: 44)
         }
         // Cut out native badges even in an exceptionally dense cluster. No art obscures
         // the pin or intercepts its 44pt target, and numbers never travel with artwork.
-        let cutouts = UIBezierPath(rect: bounds)
+        let clip = bounds.intersection(layout.viewport)
+        let cutouts = UIBezierPath(rect: clip.isNull ? .zero : clip)
         var holes: [CGRect] = []
         for target in badgeTargets {
             var hole = target.insetBy(dx: 4, dy: 4)
@@ -810,7 +814,10 @@ final class StopMapLeaderView: UIView, UIGestureRecognizerDelegate {
             }
             holes.append(hole)
         }
-        for rect in holes { cutouts.append(UIBezierPath(rect: rect)) }
+        for rect in holes {
+            let clipped = rect.intersection(clip)
+            if !clipped.isNull { cutouts.append(UIBezierPath(rect: clipped)) }
+        }
         let mask = CAShapeLayer()
         mask.fillRule = .evenOdd
         mask.path = cutouts.cgPath
@@ -837,6 +844,10 @@ final class StopMapLeaderView: UIView, UIGestureRecognizerDelegate {
             button.isHidden = !placement.isVisible
             let w = MapMarkerSizing.width * placement.artworkScale
             let h = MapMarkerSizing.height * placement.artworkScale
+            guard placement.center.x.isFinite, placement.center.y.isFinite, w.isFinite, h.isFinite else {
+                button.isHidden = true
+                continue
+            }
             let target = CGRect(x: placement.center.x - w / 2, y: placement.center.y - h / 2, width: w, height: h)
             if duration > 0 && button.bounds.width > 0 {
                 UIView.animate(withDuration: duration, delay: 0, options: [.beginFromCurrentState, .allowUserInteraction, .curveEaseOut]) {

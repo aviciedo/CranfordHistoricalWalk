@@ -40,6 +40,8 @@ public enum MapMarkerSizing {
     public struct Layout {
         public let scale: Double
         public let placements: [Placement]
+        /// Artwork clips here; visibility and rendering must use the same boundary.
+        public let viewport: CGRect
     }
 
     /// Constant screen dimensions prevent zoom gestures from pulsing the artwork.
@@ -51,6 +53,25 @@ public enum MapMarkerSizing {
     /// collision decisions are retained until the camera has been idle for 200 ms.
     public struct State {
         private var offsets: [String: SIMD2<Double>] = [:]
+        private var settledInput: Input?
+
+        private struct Input {
+            let ids: [String]
+            let points: [SIMD2<Double>]
+            let viewport: CGRect
+            let active: Set<Int>
+            let reserved: [CGRect]
+            let valid: Bool
+
+            func matches(_ other: Input) -> Bool {
+                ids == other.ids && viewport == other.viewport && active == other.active &&
+                reserved == other.reserved && valid == other.valid && points.count == other.points.count &&
+                zip(points, other.points).allSatisfy { a, b in
+                    abs(a.x - b.x) <= 0.5 && abs(a.y - b.y) <= 0.5
+                }
+            }
+        }
+
         public init() {}
 
         public mutating func layout(ids: [String], points: [SIMD2<Double>], metersPerPoint: Double,
@@ -60,8 +81,13 @@ public enum MapMarkerSizing {
             offsets = offsets.filter { ids.contains($0.key) }
             let base = MapMarkerSizing.scale(metersPerPoint: metersPerPoint)
             let valid = base > 0 && viewport.width >= 44 && viewport.height >= 44
-            let visible = points.map { valid && $0.x.isFinite && $0.y.isFinite &&
-                viewport.contains(CGPoint(x: $0.x, y: $0.y)) }
+            let finite = points.map { valid && $0.x.isFinite && $0.y.isFinite }
+            let input = Input(ids: ids, points: points, viewport: viewport,
+                              active: activeIndices, reserved: reservedAreas, valid: valid)
+            // An impossible-to-pack cluster must not try another arrangement on every
+            // idle/model update. Subpixel projection jitter is not a layout change.
+            let retainAll = isMoving || settledInput?.matches(input) == true
+            if !isMoving { settledInput = input }
             var result: [Int: Placement] = [:]
             var occupied: [CGRect] = []
             // Reserve all unchanged placements first. A collision elsewhere must not move them.
@@ -73,27 +99,36 @@ public enum MapMarkerSizing {
                 CGRect(x: center.x - width * scale / 2, y: center.y - height * scale / 2,
                        width: width * scale, height: height * scale)
             }
-            let badges = points.indices.filter { visible[$0] }.map {
+            let badges = points.indices.filter { finite[$0] &&
+                viewport.insetBy(dx: -22, dy: -22).contains(CGPoint(x: points[$0].x, y: points[$0].y)) }.map {
                 CGRect(x: points[$0].x - 18, y: points[$0].y - 18, width: 36, height: 36)
             }
             func fits(_ box: CGRect) -> Bool {
-                viewport.contains(box) && !reservedAreas.contains { $0.intersects(box) } &&
+                !reservedAreas.contains { $0.intersects(box) } &&
                 !occupied.contains { $0.insetBy(dx: -gap / 2, dy: -gap / 2).intersects(box) } &&
                 !badges.contains { $0.intersects(box) }
             }
             func placement(_ index: Int, _ offset: SIMD2<Double>, _ size: Double) -> Placement {
                 let site = points[index], center = site + offset
-                let edge = nearestEdge(to: site, of: rect(center, size))
-                return Placement(site: site, center: center, isVisible: visible[index],
-                                 leaderEnd: visible[index] ? edge : nil, artworkScale: size)
+                let box = rect(center, size)
+                let edge = nearestEdge(to: site, of: box)
+                // Visibility belongs to the artwork footprint, not the number pin. A
+                // pin crossing the inset edge must not blank its still-visible callout.
+                let visible = finite[index] && viewport.intersects(box)
+                return Placement(site: site, center: center, isVisible: visible,
+                                 leaderEnd: visible ? edge : nil, artworkScale: size)
             }
             for index in order {
                 let size = artworkScale(baseScale: base, isActive: activeIndices.contains(index))
                 let previous = offsets[ids[index]]
                 let offset = previous ?? SIMD2(0, -(height * size / 2 + 25))
-                if !visible[index] || isMoving || (previous != nil && fits(rect(points[index] + offset, size))) {
-                    result[index] = placement(index, offset, size)
-                    if visible[index] { occupied.append(rect(points[index] + offset, size)) }
+                let box = rect(points[index] + offset, size)
+                // Let retained artwork clip at the edge just like native map markers.
+                // Never haul it back into the viewport merely because a pan ended.
+                if !finite[index] || !viewport.intersects(box) || retainAll || (previous != nil && fits(box)) {
+                    let current = placement(index, offset, size)
+                    result[index] = current
+                    if current.isVisible { occupied.append(box) }
                     offsets[ids[index]] = offset
                 }
             }
@@ -107,7 +142,15 @@ public enum MapMarkerSizing {
                     if $0.y != $1.y { return $0.y < $1.y }
                     return $0.x < $1.x
                 }
-                let chosen = candidates.first { fits(rect(points[index] + $0, size)) }
+                let available = candidates.filter {
+                    let box = rect(points[index] + $0, size)
+                    return viewport.intersects(box) && fits(box)
+                }
+                // Fully contain new callouts when possible. Existing callouts keep
+                // their edge relationship; local collision corrections may clip.
+                let chosen = offsets[ids[index]] == nil
+                    ? (available.first { viewport.contains(rect(points[index] + $0, size)) } ?? available.first)
+                    : available.first
                 // A dense cluster must never collapse every illustration. Keep this art at
                 // full size and choose the least obstructed local slot; canonical pins remain.
                 func penalty(_ offset: SIMD2<Double>) -> Double {
@@ -125,7 +168,7 @@ public enum MapMarkerSizing {
                 result[index] = placement(index, offset, size)
                 occupied.append(rect(points[index] + offset, size))
             }
-            return Layout(scale: base, placements: points.indices.compactMap { result[$0] })
+            return Layout(scale: base, placements: points.indices.compactMap { result[$0] }, viewport: viewport)
         }
     }
 

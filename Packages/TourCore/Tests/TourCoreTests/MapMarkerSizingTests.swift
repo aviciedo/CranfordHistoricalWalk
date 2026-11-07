@@ -96,6 +96,74 @@ final class MapMarkerSizingTests: XCTestCase {
         XCTAssertEqual(first.placements, returned.placements)
     }
 
+    func testFootprintRemainsVisibleWhenItsPinCrossesBottomInset() {
+        var state = MapMarkerSizing.State()
+        let bounds = CGRect(x: 10, y: 10, width: 370, height: 210)
+        let initial = state.layout(ids: ["mill"], points: [[150, 175]], metersPerPoint: 200,
+            viewport: bounds, activeIndices: [0])
+        let shifted = SIMD2<Double>(150, 230) // Pin is outside, artwork still intersects.
+        let moving = state.layout(ids: ["mill"], points: [shifted], metersPerPoint: 200,
+            viewport: bounds, activeIndices: [0], isMoving: true)
+        XCTAssertTrue(rectangle(moving.placements[0]).intersects(bounds))
+        XCTAssertTrue(moving.placements[0].isVisible, "Never blank visible artwork because its geographic pin crossed an inset")
+        XCTAssertEqual(moving.placements[0].center - shifted,
+                       initial.placements[0].center - initial.placements[0].site)
+        let idle = state.layout(ids: ["mill"], points: [shifted], metersPerPoint: 200,
+            viewport: bounds, activeIndices: [0])
+        XCTAssertEqual(moving.placements, idle.placements, "Ending the pan must not haul artwork back inside")
+    }
+
+    func testEveryViewportEdgeClipsInsteadOfRelocatingRetainedArtwork() {
+        let shifts: [SIMD2<Double>] = [[-150, 0], [190, 0], [0, -110], [0, 160]]
+        for shift in shifts {
+            var state = MapMarkerSizing.State()
+            let bounds = CGRect(x: 0, y: 0, width: 320, height: 220)
+            let initial = state.layout(ids: ["mill"], points: [[150, 130]], metersPerPoint: 100,
+                viewport: bounds, activeIndices: [0])
+            let point = SIMD2<Double>(150, 130) + shift
+            let moving = state.layout(ids: ["mill"], points: [point], metersPerPoint: 100,
+                viewport: bounds, activeIndices: [0], isMoving: true)
+            let idle = state.layout(ids: ["mill"], points: [point], metersPerPoint: 100,
+                viewport: bounds, activeIndices: [0])
+            XCTAssertEqual(moving.placements, idle.placements)
+            XCTAssertEqual(idle.placements[0].center - point, initial.placements[0].center - initial.placements[0].site)
+            XCTAssertEqual(idle.placements[0].isVisible, rectangle(idle.placements[0]).intersects(bounds))
+            XCTAssertEqual(idle.viewport, bounds)
+        }
+    }
+
+    func testRegionalClusterVisibilityFollowsEachFootprintAcrossRecordingLikePans() {
+        var state = MapMarkerSizing.State()
+        let bounds = CGRect(x: 10, y: 10, width: 330, height: 190)
+        let cluster = (0..<5).map { SIMD2<Double>(120 + Double($0) * 0.5, 155 + Double($0) * 0.2) }
+        _ = state.layout(ids: ids, points: cluster, metersPerPoint: 200, viewport: bounds, activeIndices: [0])
+        var outsidePinWithVisibleArtwork = false
+        for delta in [0.0, 10, 20, 35, 50, 80, 100, 150, 100, 50, 20, 0] {
+            let projected = cluster.map { $0 + SIMD2<Double>(0, delta) }
+            let layout = state.layout(ids: ids, points: projected, metersPerPoint: 200,
+                viewport: bounds, activeIndices: [0], isMoving: true)
+            for placement in layout.placements {
+                let expected = rectangle(placement).intersects(bounds)
+                XCTAssertEqual(placement.isVisible, expected)
+                if placement.site.y > bounds.maxY && expected { outsidePinWithVisibleArtwork = true }
+            }
+        }
+        XCTAssertTrue(outsidePinWithVisibleArtwork, "Exercise the actual group-disappearance regression")
+    }
+
+    func testImpossibleDenseLayoutDoesNotRetryAndShuffleOnEveryIdleUpdate() {
+        var state = MapMarkerSizing.State()
+        let bounds = CGRect(x: 0, y: 0, width: 150, height: 130)
+        let cluster = Array(repeating: SIMD2<Double>(75, 90), count: 5)
+        let first = state.layout(ids: ids, points: cluster, metersPerPoint: 200,
+            viewport: bounds, activeIndices: [0])
+        for _ in 0..<25 {
+            let next = state.layout(ids: ids, points: cluster, metersPerPoint: 200,
+                viewport: bounds, activeIndices: [0])
+            XCTAssertEqual(next.placements, first.placements)
+        }
+    }
+
     func testInvalidInputIsSafe() {
         XCTAssertEqual(MapMarkerSizing.scale(metersPerPoint: 0), 0)
         XCTAssertEqual(MapMarkerSizing.scale(metersPerPoint: .nan), 0)
