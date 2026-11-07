@@ -75,6 +75,13 @@ struct MapCameraRequest: Equatable {
     var id: Int
     var kind: Kind
     var animated: Bool
+    /// Only GPS-driven requests use the dead zone. Explicit recenter always takes effect.
+    var automaticTracking = false
+
+    static func needsAutomaticRecenter(point: CGPoint, viewport: CGRect) -> Bool {
+        guard !viewport.isEmpty, point.x.isFinite, point.y.isFinite else { return false }
+        return !viewport.insetBy(dx: viewport.width * 0.15, dy: viewport.height * 0.15).contains(point)
+    }
 }
 
 /// Shared Web Mercator zoom steps, including conversion for the Apple geographic fallback.
@@ -195,7 +202,7 @@ final class MapViewModel {
         guard cameraMode == .follow, let location = tour.userLocation else { return }
         if !force, let last = lastFollowedCoordinate, GeoMath.distance(from: last, to: location.coordinate) < 4 { return }
         lastFollowedCoordinate = location.coordinate
-        push(.follow(location.clLocationCoordinate, bearing: nil), animated: true)
+        push(.follow(location.clLocationCoordinate, bearing: nil), animated: true, automaticTracking: !force)
     }
 
     /// Resume automatic framing of the active leg, including the place just left.
@@ -254,9 +261,12 @@ final class MapViewModel {
     func updateWalkingFrame(tour: TourViewModel, routeChanged: Bool = false) {
         if cameraMode == .follow { followIfNeeded(tour: tour); return }
         guard cameraMode == .navigation else { return }
-        if !routeChanged, let last = lastFramedCoordinate, let location = tour.userLocation,
-           GeoMath.distance(from: last, to: location.coordinate) < 15 { return }
-        showUserAndDestination(tour: tour)
+        if routeChanged { showUserAndDestination(tour: tour); return }
+        guard let location = tour.userLocation else { return }
+        if let last = lastFramedCoordinate,
+           GeoMath.distance(from: last, to: location.coordinate) < 4 { return }
+        lastFramedCoordinate = location.coordinate
+        push(.follow(location.clLocationCoordinate, bearing: nil), animated: true, automaticTracking: true)
     }
 
     /// Never render a straight-line estimate or an old destination's route as a walking path.
@@ -290,6 +300,7 @@ final class MapViewModel {
     /// The user dragged/zoomed; stop fighting them.
     func userDidMoveCamera() {
         if cameraMode != .free { cameraMode = .free }
+        cameraRequest = nil
     }
 
     func select(stopID: String?) {
@@ -309,8 +320,8 @@ final class MapViewModel {
         if zoom != newZoom { zoom = newZoom }
     }
 
-    private func push(_ kind: MapCameraRequest.Kind, animated: Bool) {
+    private func push(_ kind: MapCameraRequest.Kind, animated: Bool, automaticTracking: Bool = false) {
         requestCounter += 1
-        cameraRequest = MapCameraRequest(id: requestCounter, kind: kind, animated: animated)
+        cameraRequest = MapCameraRequest(id: requestCounter, kind: kind, animated: animated, automaticTracking: automaticTracking)
     }
 }

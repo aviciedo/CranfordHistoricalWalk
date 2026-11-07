@@ -516,6 +516,30 @@ final class TourCompletionFlowTests: XCTestCase {
         XCTAssertEqual(reset, [stops[0].coordinate])
     }
 
+    func testManualGestureCancelsQueuedFitAndExplicitRecenterUsesNewRequest() async throws {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        let map = MapViewModel()
+        map.showUserAndDestination(tour: tour)
+        let pendingID = try XCTUnwrap(map.cameraRequest).id
+        map.userDidMoveCamera()
+        XCTAssertNil(map.cameraRequest, "A queued zero-bounds fit must not survive a manual gesture")
+        map.mapViewportDidChange()
+        map.updateWalkingFrame(tour: tour, routeChanged: true)
+        XCTAssertNil(map.cameraRequest)
+        map.showUserAndDestination(tour: tour)
+        XCTAssertGreaterThan(try XCTUnwrap(map.cameraRequest).id, pendingID)
+        XCTAssertFalse(try XCTUnwrap(map.cameraRequest).automaticTracking)
+    }
+
+    func testAutomaticCameraDeadZoneUsesInnerSeventyPercent() async {
+        let viewport = CGRect(x: 10, y: 20, width: 400, height: 600)
+        XCTAssertFalse(MapCameraRequest.needsAutomaticRecenter(point: CGPoint(x: 210, y: 320), viewport: viewport))
+        XCTAssertFalse(MapCameraRequest.needsAutomaticRecenter(point: CGPoint(x: 75, y: 115), viewport: viewport))
+        XCTAssertTrue(MapCameraRequest.needsAutomaticRecenter(point: CGPoint(x: 40, y: 320), viewport: viewport))
+        XCTAssertTrue(MapCameraRequest.needsAutomaticRecenter(point: CGPoint(x: 210, y: 600), viewport: viewport))
+        XCTAssertFalse(MapCameraRequest.needsAutomaticRecenter(point: .zero, viewport: .zero))
+    }
+
     func testLateWalkingRouteFramesCurvesButNeverStealsManualCamera() async {
         let tour = await makeTour(); defer { cleanUp(tour) }
         tour.startTour()

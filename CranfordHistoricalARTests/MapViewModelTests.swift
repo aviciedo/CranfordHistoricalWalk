@@ -7,6 +7,34 @@ import TourCore
 
 @MainActor
 final class MapViewModelTests: XCTestCase {
+    func testIllustrationOverlayKeepsBadgeTargetsClearAndUsesApprovedSizes() {
+        let models = HistoricalStop.previewStops.enumerated().map { index, stop in
+            StopMarkerModel(id: stop.id, coordinate: stop.clLocationCoordinate,
+                order: stop.order, name: stop.name, state: .upcoming, isTourDestination: index == 0)
+        }
+        let map = UIView(frame: CGRect(x: 0, y: 0, width: 390, height: 620))
+        let overlay = StopMapLeaderView()
+        let points: [SIMD2<Double>] = [[190, 490], [230, 390], [55, 80], [190, 270], [110, 180]]
+        var state = MapMarkerSizing.State()
+        let layout = state.layout(ids: models.map(\.id), points: points, metersPerPoint: 4,
+            viewport: map.bounds.insetBy(dx: 10, dy: 10), activeIndices: [0])
+        overlay.update(layout, models: models, in: map)
+        let buttons = overlay.subviews.compactMap { $0 as? UIButton }
+        XCTAssertEqual(buttons.count, 5)
+        XCTAssertEqual(buttons.filter { abs($0.bounds.width - 96) < 0.01 }.count, 1)
+        XCTAssertEqual(buttons.filter { abs($0.bounds.width - 64) < 0.01 }.count, 4)
+        for point in points {
+            XCTAssertNil(overlay.hitTest(CGPoint(x: point.x, y: point.y), with: nil), "Native number badge keeps its tap")
+        }
+        XCTAssertNil(overlay.hitTest(CGPoint(x: 389, y: 619), with: nil), "Empty overlay never steals the map")
+        var tapped: String?
+        overlay.onTap = { tapped = $0 }
+        buttons[0].sendActions(for: .touchUpInside)
+        XCTAssertEqual(tapped, models[0].id)
+        overlay.update(layout, models: Array(models.prefix(1)), in: map)
+        XCTAssertEqual(overlay.subviews.compactMap { $0 as? UIButton }.count, 1)
+    }
+
     func testUpdatedCatalogImageDoesNotReuseAnOldStopThumbnail() async throws {
         let loader = CompositeImageLoader()
         var stop = HistoricalStop.previewStops[0]
@@ -330,7 +358,7 @@ final class MapViewModelTests: XCTestCase {
                 marker.isWalkingDestination = walking
                 icon.setBadge(marker)
                 let badge = try XCTUnwrap(icon.badgeView.image)
-                XCTAssertEqual(try opaqueBadgeWidth(badge), 40, accuracy: 1)
+                XCTAssertEqual(try opaqueBadgeWidth(badge), 32, accuracy: 1)
                 for scale in [0.1, 0.47, 0.72, 1.0, 1.3] {
                     icon.resize(scale: scale)
                     XCTAssertEqual(icon.badgeView.bounds.size, CGSize(width: 44, height: 44))

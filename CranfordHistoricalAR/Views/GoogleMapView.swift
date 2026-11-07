@@ -93,6 +93,9 @@ struct GoogleMapView: UIViewRepresentable {
         private var cameraRetryCount = 0
         private var markerSnapshotTask: Task<Void, Never>?
         private let markerLeaders = StopMapLeaderView()
+        private var markerLayout = MapMarkerSizing.State()
+        private var cameraMoving = false
+        private var markerSettleTask: Task<Void, Never>?
 
         private var userMarker: GMSMarker?
         private var accuracyCircle: GMSCircle?
@@ -156,7 +159,7 @@ struct GoogleMapView: UIViewRepresentable {
             marker.groundAnchor = groundAnchor
             marker.zIndex = model.isTourDestination ? 50 : zIndex(for: model.state, isSelected: isSelected)
             marker.position = model.coordinate
-            if markerStyle == .numberedDot && !model.isIllustrated {
+            if markerStyle == .numberedDot {
                 let view = UIImageView(image: StopMapArtwork.compactImage(for: model))
                 view.bounds = CGRect(x: 0, y: 0, width: 44, height: 44)
                 view.contentMode = .center
@@ -282,8 +285,12 @@ struct GoogleMapView: UIViewRepresentable {
         }
 
         /// Recompute from canonical sites during camera changes, using identical Apple/Google math.
-        func updateMarkerSizes() {
-            guard markerStyle == .numberedDot, let mapView, !mapView.bounds.isEmpty else { return }
+        func updateMarkerSizes(animated: Bool = false) {
+            guard markerStyle == .numberedDot else {
+                markerLeaders.removeFromSuperview()
+                return
+            }
+            guard let mapView, !mapView.bounds.isEmpty else { return }
             let models = markerModels.values.filter(\.isIllustrated).sorted { ($0.order, $0.id) < ($1.order, $1.id) }
             let points = models.map { model -> SIMD2<Double> in
                 let point = mapView.projection.point(for: model.coordinate)
@@ -299,28 +306,12 @@ struct GoogleMapView: UIViewRepresentable {
             let recenterArea = CGRect(x: mapView.bounds.maxX - 72, y: mapView.bounds.maxY - 76, width: 64, height: 64)
             let reserved = compactAreas + (parent.reservesNavigationControls ? [] : [recenterArea]) + StopMapLeaderView.reservedAreas(in: mapView.bounds, controls: parent.reservesNavigationControls,
                                                          zoomControls: parent.reservesZoomControls)
-            let layout = MapMarkerSizing.layout(points: points, metersPerPoint: metersPerPoint,
+            let layout = markerLayout.layout(ids: models.map(\.id), points: points, metersPerPoint: metersPerPoint,
                                                 viewport: viewport, activeIndices: Set(models.indices.filter { models[$0].isTourDestination }),
-                                                reservedAreas: reserved)
-            CATransaction.begin()
-            CATransaction.setDisableActions(true)
-            for (model, placement) in zip(models, layout.placements) {
-                guard let marker = markersByID[model.id], let view = marker.iconView as? StopMapIconView else { continue }
-                if view.resize(scale: CGFloat(MapMarkerSizing.artworkScale(baseScale: layout.scale, isActive: model.isTourDestination))) { refreshSnapshot(of: marker) }
-                // This display coordinate is derived anew from the original GPS point each frame.
-                // Models, walking routes, camera fitting and location services retain the true site.
-                if placement.isVisible {
-                    let position = mapView.projection.coordinate(for: CGPoint(x: placement.center.x, y: placement.center.y))
-                    if GeoMath.distance(from: marker.position.geoCoordinate, to: position.geoCoordinate) > 0.01 {
-                        marker.position = position
-                    }
-                }
-                let opacity: Float = placement.isVisible ? 1 : 0
-                if marker.opacity != opacity { marker.opacity = opacity }
-                if marker.isTappable != placement.isVisible { marker.isTappable = placement.isVisible }
-            }
-            CATransaction.commit()
-            markerLeaders.update(layout, in: mapView)
+                                                reservedAreas: reserved, isMoving: cameraMoving)
+            // Native SDK badges always remain at the true geographic coordinate.
+            markerLeaders.onTap = { [weak self] id in self?.parent.onMarkerTap(id) }
+            markerLeaders.update(layout, models: models, in: mapView, animated: animated)
             updatePopupPlacement()
         }
 
@@ -480,8 +471,15 @@ struct GoogleMapView: UIViewRepresentable {
                 for c in coordinates.dropFirst() { bounds = bounds.includingCoordinate(c) }
                 update = GMSCameraUpdate.fit(bounds, with: parent.fitInsets)
             case .follow(let coordinate, let bearing):
-                let position = GMSCameraPosition(target: coordinate, zoom: max(mapView.camera.zoom, 16.5), bearing: bearing ?? mapView.camera.bearing, viewingAngle: 0)
-                update = GMSCameraUpdate.setCamera(position)
+                if request.automaticTracking {
+                    let point = mapView.projection.point(for: coordinate)
+                    let viewport = StopMapLeaderView.viewport(in: mapView.bounds, bottomInset: parent.bottomInset)
+                    guard MapCameraRequest.needsAutomaticRecenter(point: point, viewport: viewport) else { return }
+                    update = GMSCameraUpdate.setTarget(coordinate)
+                } else {
+                    update = GMSCameraUpdate.setCamera(GMSCameraPosition(target: coordinate,
+                        zoom: max(mapView.camera.zoom, 16.5), bearing: bearing ?? mapView.camera.bearing, viewingAngle: 0))
+                }
             case .fitUserAndDestination(let a, let b):
                 var bounds = GMSCoordinateBounds(coordinate: a, coordinate: b)
                 for coordinate in parent.routeCoordinates { bounds = bounds.includingCoordinate(coordinate) }
@@ -509,18 +507,22 @@ struct GoogleMapView: UIViewRepresentable {
         // MARK: GMSMapViewDelegate
 
         nonisolated func mapView(_ mapView: GMSMapView, willMove gesture: Bool) {
-            guard gesture else { return }
-            Task { @MainActor in self.parent.onUserGesture() }
+            MainActor.assumeIsolated {
+                self.cameraMoving = true
+                self.markerSettleTask?.cancel()
+                self.markerLeaders.stopAnimation()
+                if gesture {
+                    if let request = self.parent.cameraRequest { self.lastCameraRequestID = request.id }
+                    self.parent.onUserGesture()
+                }
+            }
         }
 
         nonisolated func mapView(_ mapView: GMSMapView, didTap marker: GMSMarker) -> Bool {
             let id = marker.userData as? String
-            let displayPosition = marker.position
             Task { @MainActor in
-                let position = id.flatMap { self.markerModels[$0]?.coordinate } ?? displayPosition
                 self.ignoreMapTapUntil = Date().addingTimeInterval(0.4)
                 if let id { self.parent.onMarkerTap(id) }
-                self.mapView?.animate(toLocation: position)
             }
             // Consume the SDK tap; the selected stop drives the interactive popup and details.
             return true
@@ -539,6 +541,8 @@ struct GoogleMapView: UIViewRepresentable {
 
         nonisolated func mapView(_ mapView: GMSMapView, didChange position: GMSCameraPosition) {
             MainActor.assumeIsolated {
+                self.cameraMoving = true
+                self.markerSettleTask?.cancel()
                 self.updateMarkerSizes()
                 self.updatePopupPlacement()
             }
@@ -547,7 +551,13 @@ struct GoogleMapView: UIViewRepresentable {
         nonisolated func mapView(_ mapView: GMSMapView, idleAt position: GMSCameraPosition) {
             let zoom = position.zoom
             Task { @MainActor in
-                self.updateMarkerSizes()
+                self.markerSettleTask?.cancel()
+                self.markerSettleTask = Task { @MainActor [weak self] in
+                    do { try await Task.sleep(for: .milliseconds(200)) } catch { return }
+                    guard let self else { return }
+                    self.cameraMoving = false
+                    self.updateMarkerSizes(animated: true)
+                }
                 if let map = self.mapView { self.syncSelectedMarker(on: map, selectedID: self.selectedID) }
                 self.parent.onCameraIdle(zoom)
             }
@@ -561,7 +571,7 @@ struct StopNumberBadge: View {
     let isActive: Bool
     var diameter: CGFloat = 28
 
-    static func diameter(for marker: StopMarkerModel) -> CGFloat { marker.isTourDestination ? 40 : 26 }
+    static func diameter(for marker: StopMarkerModel) -> CGFloat { marker.isTourDestination ? 32 : 26 }
 
     private var ink: Color { isActive ? .white : AppTheme.forest }
 
@@ -579,7 +589,7 @@ struct StopNumberBadge: View {
     }
 }
 
-/// Shared Google/Apple art and fixed-size number textures. The icon view composes them.
+/// Shared Google/Apple artwork and fixed-size geographic number textures.
 @MainActor
 enum StopMapArtwork {
     static func compactImage(for marker: StopMarkerModel) -> UIImage {
@@ -596,7 +606,7 @@ enum StopMapArtwork {
         let renderer = ImageRenderer(content:
             // Number badges are separate fixed-size views, never baked into zooming art.
             StopListIllustration(stopID: marker.id, artwork: marker.artwork, usesInk: true)
-                .frame(width: 96, height: 70)
+                .frame(width: 100, height: 80)
                 .frame(width: CGFloat(MapMarkerSizing.width), height: CGFloat(MapMarkerSizing.height), alignment: .top)
             .environment(\.colorScheme, scheme)
             .environment(\.isEnabled, true))
@@ -689,26 +699,25 @@ final class StopMapIconView: UIView {
     }
 }
 
-/// Lightweight, noninteractive location lines. It never steals map gestures or marker taps.
+/// Shared artwork callouts. Native geographic badges and empty map space pass through.
 @MainActor
 final class StopMapLeaderView: UIView {
     private let lines = CAShapeLayer()
-    private let sites = CAShapeLayer()
+    private var artwork: [String: UIButton] = [:]
+    private var imageKeys: [String: String] = [:]
+    private var badgeTargets: [CGRect] = []
+    var onTap: ((String) -> Void)?
 
     init() {
         super.init(frame: .zero)
-        isUserInteractionEnabled = false
+        isUserInteractionEnabled = true
         isAccessibilityElement = false
         backgroundColor = .clear
         lines.fillColor = nil
         lines.strokeColor = UIColor(AppTheme.forest).withAlphaComponent(0.65).cgColor
         lines.lineWidth = 1.25
         lines.lineCap = .round
-        sites.fillColor = UIColor(AppTheme.forest).cgColor
-        sites.strokeColor = UIColor(AppTheme.ivory).cgColor
-        sites.lineWidth = 1
         layer.addSublayer(lines)
-        layer.addSublayer(sites)
     }
 
     required init?(coder: NSCoder) { nil }
@@ -728,22 +737,84 @@ final class StopMapLeaderView: UIView {
         return []
     }
 
-    func update(_ layout: MapMarkerSizing.Layout, in map: UIView) {
+    /// Empty space and number-badge targets pass through to native map gestures/taps.
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        guard !badgeTargets.contains(where: { $0.contains(point) }) else { return nil }
+        let hit = super.hitTest(point, with: event)
+        return hit === self ? nil : hit
+    }
+
+    func stopAnimation() {
+        for button in artwork.values {
+            if let presentation = button.layer.presentation() { button.frame = presentation.frame }
+            button.layer.removeAllAnimations()
+        }
+        lines.removeAllAnimations()
+    }
+
+    func update(_ layout: MapMarkerSizing.Layout, models: [StopMarkerModel], in map: UIView,
+                animated: Bool = false) {
         if superview !== map { map.addSubview(self) }
         frame = map.bounds
+        let ids = Set(models.map(\.id))
+        for id in Array(artwork.keys) where !ids.contains(id) {
+            artwork.removeValue(forKey: id)?.removeFromSuperview()
+            imageKeys.removeValue(forKey: id)
+        }
+        badgeTargets = layout.placements.filter(\.isVisible).map {
+            CGRect(x: $0.site.x - 22, y: $0.site.y - 22, width: 44, height: 44)
+        }
+        // Cut out native badges even in an exceptionally dense cluster. No art obscures
+        // the pin or intercepts its 44pt target, and numbers never travel with artwork.
+        let cutouts = UIBezierPath(rect: bounds)
+        for rect in badgeTargets { cutouts.append(UIBezierPath(ovalIn: rect.insetBy(dx: 4, dy: 4))) }
+        let mask = CAShapeLayer()
+        mask.fillRule = .evenOdd
+        mask.path = cutouts.cgPath
+        layer.mask = mask
         let path = UIBezierPath()
-        let dots = UIBezierPath()
-        for placement in layout.placements where placement.isVisible {
-            guard let end = placement.leaderEnd else { continue }
-            let site = CGPoint(x: placement.site.x, y: placement.site.y)
-            path.move(to: site)
-            path.addLine(to: CGPoint(x: end.x, y: end.y))
-            dots.append(UIBezierPath(ovalIn: CGRect(x: site.x - 2.5, y: site.y - 2.5, width: 5, height: 5)))
+        let duration = animated && !UIAccessibility.isReduceMotionEnabled ? 0.18 : 0
+        for (model, placement) in zip(models, layout.placements) {
+            let button: UIButton
+            if let existing = artwork[model.id] { button = existing }
+            else {
+                button = UIButton(type: .custom)
+                button.isAccessibilityElement = false // Native badge supplies the accessible target.
+                button.imageView?.contentMode = .scaleAspectFit
+                button.addAction(UIAction { [weak self] _ in self?.onTap?(model.id) }, for: .touchUpInside)
+                artwork[model.id] = button
+                addSubview(button)
+            }
+            let key = "\(model.artwork?.cacheKey ?? "")|\(model.state)"
+            if imageKeys[model.id] != key {
+                button.setImage(StopMapArtwork.image(for: model).withRenderingMode(.alwaysOriginal), for: .normal)
+                imageKeys[model.id] = key
+            }
+            button.isHidden = !placement.isVisible
+            let w = MapMarkerSizing.width * placement.artworkScale
+            let h = MapMarkerSizing.height * placement.artworkScale
+            let target = CGRect(x: placement.center.x - w / 2, y: placement.center.y - h / 2, width: w, height: h)
+            if duration > 0 && button.bounds.width > 0 {
+                UIView.animate(withDuration: duration, delay: 0, options: [.beginFromCurrentState, .allowUserInteraction, .curveEaseOut]) {
+                    button.frame = target
+                }
+            } else { UIView.performWithoutAnimation { button.frame = target } }
+            button.layer.zPosition = model.isTourDestination ? 2 : 1
+            if placement.isVisible, let end = placement.leaderEnd {
+                path.move(to: CGPoint(x: placement.site.x, y: placement.site.y))
+                path.addLine(to: CGPoint(x: end.x, y: end.y))
+            }
+        }
+        if duration > 0, let old = lines.presentation()?.path ?? lines.path {
+            let animation = CABasicAnimation(keyPath: "path")
+            animation.fromValue = old
+            animation.toValue = path.cgPath
+            animation.duration = duration
+            lines.add(animation, forKey: "settle")
         }
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         lines.path = path.cgPath
-        sites.path = dots.cgPath
         CATransaction.commit()
     }
 }

@@ -14,9 +14,9 @@ public enum MapMarkerSizing {
     public static let maximumOffset: Double = 132
     public static let gap: Double = 10
 
-    /// The tour destination is slightly larger; selection and visit history do not change it.
+    /// The tour destination is 50% larger; selection and visit history do not change it.
     public static func artworkScale(baseScale: Double, isActive: Bool) -> Double {
-        baseScale * (isActive ? 1.15 : 1)
+        baseScale * (isActive ? 1.5 : 1)
     }
 
     /// Reserve a fixed 44pt badge at its geographic anchor, independently of art zoom.
@@ -34,6 +34,7 @@ public enum MapMarkerSizing {
         public let center: SIMD2<Double>
         public let isVisible: Bool
         public let leaderEnd: SIMD2<Double>?
+        public let artworkScale: Double
     }
 
     public struct Layout {
@@ -41,101 +42,109 @@ public enum MapMarkerSizing {
         public let placements: [Placement]
     }
 
-    /// Zoom determines the nominal size; nearby sites no longer shrink the whole tour.
+    /// Constant screen dimensions prevent zoom gestures from pulsing the artwork.
     public static func scale(metersPerPoint: Double) -> Double {
-        guard metersPerPoint.isFinite, metersPerPoint > 0 else { return 0 }
-        return min(1.3, max(0.72, sqrt(3.2 / metersPerPoint)))
+        metersPerPoint.isFinite && metersPerPoint > 0 ? 0.64 : 0
     }
 
-    // Stable ordering prevents changes of selection or dictionary order from moving landmarks.
-    // Callers provide stops sorted by tour order, then ID.
+    /// Stateful placement shared by both SDKs. During camera motion only projection changes;
+    /// collision decisions are retained until the camera has been idle for 200 ms.
+    public struct State {
+        private var offsets: [String: SIMD2<Double>] = [:]
+        public init() {}
+
+        public mutating func layout(ids: [String], points: [SIMD2<Double>], metersPerPoint: Double,
+                                    viewport: CGRect, activeIndices: Set<Int> = [],
+                                    reservedAreas: [CGRect] = [], isMoving: Bool = false) -> Layout {
+            precondition(ids.count == points.count && Set(ids).count == ids.count)
+            offsets = offsets.filter { ids.contains($0.key) }
+            let base = MapMarkerSizing.scale(metersPerPoint: metersPerPoint)
+            let valid = base > 0 && viewport.width >= 44 && viewport.height >= 44
+            let visible = points.map { valid && $0.x.isFinite && $0.y.isFinite &&
+                viewport.contains(CGPoint(x: $0.x, y: $0.y)) }
+            var result: [Int: Placement] = [:]
+            var occupied: [CGRect] = []
+            // Reserve all unchanged placements first. A collision elsewhere must not move them.
+            let order = points.indices.sorted {
+                if activeIndices.contains($0) != activeIndices.contains($1) { return activeIndices.contains($0) }
+                return $0 < $1
+            }
+            func rect(_ center: SIMD2<Double>, _ scale: Double) -> CGRect {
+                CGRect(x: center.x - width * scale / 2, y: center.y - height * scale / 2,
+                       width: width * scale, height: height * scale)
+            }
+            let badges = points.indices.filter { visible[$0] }.map {
+                CGRect(x: points[$0].x - 18, y: points[$0].y - 18, width: 36, height: 36)
+            }
+            func fits(_ box: CGRect) -> Bool {
+                viewport.contains(box) && !reservedAreas.contains { $0.intersects(box) } &&
+                !occupied.contains { $0.insetBy(dx: -gap / 2, dy: -gap / 2).intersects(box) } &&
+                !badges.contains { $0.intersects(box) }
+            }
+            func placement(_ index: Int, _ offset: SIMD2<Double>, _ size: Double) -> Placement {
+                let site = points[index], center = site + offset
+                let edge = nearestEdge(to: site, of: rect(center, size))
+                return Placement(site: site, center: center, isVisible: visible[index],
+                                 leaderEnd: visible[index] ? edge : nil, artworkScale: size)
+            }
+            for index in order {
+                let size = artworkScale(baseScale: base, isActive: activeIndices.contains(index))
+                let previous = offsets[ids[index]]
+                let offset = previous ?? SIMD2(0, -(height * size / 2 + 25))
+                if !visible[index] || isMoving || (previous != nil && fits(rect(points[index] + offset, size))) {
+                    result[index] = placement(index, offset, size)
+                    if visible[index] { occupied.append(rect(points[index] + offset, size)) }
+                    offsets[ids[index]] = offset
+                }
+            }
+            for index in order where result[index] == nil {
+                let size = artworkScale(baseScale: base, isActive: activeIndices.contains(index))
+                let preferred = offsets[ids[index]] ?? SIMD2(0, -(height * size / 2 + 25))
+                let candidates = MapMarkerSizing.offsets.sorted {
+                    let a = $0 - preferred, b = $1 - preferred
+                    let da = a.x * a.x + a.y * a.y, db = b.x * b.x + b.y * b.y
+                    if da != db { return da < db }
+                    if $0.y != $1.y { return $0.y < $1.y }
+                    return $0.x < $1.x
+                }
+                let chosen = candidates.first { fits(rect(points[index] + $0, size)) }
+                // A dense cluster must never collapse every illustration. Keep this art at
+                // full size and choose the least obstructed local slot; canonical pins remain.
+                func penalty(_ offset: SIMD2<Double>) -> Double {
+                    let box = rect(points[index] + offset, size)
+                    let inside = box.intersection(viewport)
+                    let outside = box.width * box.height - (inside.isNull ? 0 : inside.width * inside.height)
+                    let overlap = (reservedAreas + occupied + badges).reduce(0.0) { total, other in
+                        let area = box.intersection(other)
+                        return total + (area.isNull ? 0 : area.width * area.height)
+                    }
+                    return outside * 20 + overlap
+                }
+                let offset = chosen ?? candidates.min { penalty($0) < penalty($1) } ?? preferred
+                offsets[ids[index]] = offset
+                result[index] = placement(index, offset, size)
+                occupied.append(rect(points[index] + offset, size))
+            }
+            return Layout(scale: base, placements: points.indices.compactMap { result[$0] })
+        }
+    }
+
     private static let offsets: [SIMD2<Double>] = {
         var values: [SIMD2<Double>] = []
         for x in stride(from: -maximumOffset, through: maximumOffset, by: 12) {
-            for y in stride(from: -maximumOffset, through: maximumOffset, by: 12) {
-                if x * x + y * y <= maximumOffset * maximumOffset { values.append(SIMD2(x, y)) }
-            }
+            for y in stride(from: -maximumOffset, through: maximumOffset, by: 12)
+                where x * x + y * y <= maximumOffset * maximumOffset { values.append(SIMD2(x, y)) }
         }
-        return values.sorted {
-            let a = $0.x * $0.x + $0.y * $0.y
-            let b = $1.x * $1.x + $1.y * $1.y
-            if a != b { return a < b }
-            if $0.y != $1.y { return $0.y < $1.y }
-            return $0.x < $1.x
-        }
+        return values
     }()
 
     public static func layout(points: [SIMD2<Double>], metersPerPoint: Double,
                               viewport: CGRect, activeIndices: Set<Int> = [],
                               reservedAreas: [CGRect] = []) -> Layout {
-        let nominal = scale(metersPerPoint: metersPerPoint)
-        guard nominal > 0, viewport.size.width >= 44, viewport.size.height >= 44 else {
-            return Layout(scale: 0, placements: points.map {
-                Placement(site: $0, center: $0, isVisible: false, leaderEnd: nil)
-            })
-        }
-        let visible: [Bool] = points.map { point in
-            guard point.x.isFinite, point.y.isFinite else { return false }
-            let screenPoint = CGPoint(x: CGFloat(point.x), y: CGFloat(point.y))
-            return viewport.contains(screenPoint)
-        }
-        var size = nominal
-        // Only exceptionally tight viewports/dense clusters reduce the common size, after
-        // exhausting bounded offsets. The 44pt targets participate in collision testing.
-        for _ in 0..<16 {
-            var rectangles: [CGRect] = []
-            var placements: [Placement] = []
-            var fits = true
-            for index in points.indices {
-                let artScale = artworkScale(baseScale: size, isActive: activeIndices.contains(index))
-                let w = canvasWidth(scale: artScale), h = canvasHeight(scale: artScale)
-                let naturalOffset = (SIMD2(width / 2, height / 2) - badgeCenter) * artScale
-                let site = points[index]
-                let preferred = site + naturalOffset
-                guard visible[index] else {
-                    placements.append(Placement(site: site, center: preferred, isVisible: false, leaderEnd: nil))
-                    continue
-                }
-                var chosen: CGRect?
-                for offset in offsets {
-                    let center = preferred + offset
-                    let originX = CGFloat(center.x - w / 2)
-                    let originY = CGFloat(center.y - h / 2)
-                    let rect = CGRect(x: originX, y: originY, width: CGFloat(w), height: CGFloat(h))
-                    guard viewport.contains(rect), !reservedAreas.contains(where: { $0.intersects(rect) }),
-                          !rectangles.contains(where: { $0.insetBy(dx: -CGFloat(gap), dy: -CGFloat(gap)).intersects(rect) }) else { continue }
-                    // Keep true locations uncovered so a later leader never starts beneath
-                    // another illustration (including coincident sites in a dense cluster).
-                    let coversAnotherSite = points.indices.contains { other in
-                        other != index && visible[other] && rect.insetBy(dx: -3, dy: -3)
-                            .contains(CGPoint(x: CGFloat(points[other].x), y: CGFloat(points[other].y)))
-                    }
-                    guard !coversAnotherSite else { continue }
-                    let edge = nearestEdge(to: site, of: rect)
-                    guard !rectangles.contains(where: { segment(from: site, to: edge, intersects: $0) }),
-                          !placements.contains(where: { previous in
-                              guard let end = previous.leaderEnd else { return false }
-                              return segment(from: previous.site, to: end, intersects: rect)
-                          }) else { continue }
-                    chosen = rect
-                    break
-                }
-                guard let rect = chosen else { fits = false; break }
-                rectangles.append(rect)
-                let center = SIMD2(Double(rect.midX), Double(rect.midY))
-                let edge = nearestEdge(to: site, of: rect)
-                let delta = edge - site
-                let end: SIMD2<Double>? = delta.x * delta.x + delta.y * delta.y > 36 ? edge : nil
-                placements.append(Placement(site: site, center: center, isVisible: true, leaderEnd: end))
-            }
-            if fits { return Layout(scale: size, placements: placements) }
-            size *= 0.9
-        }
-        // A viewport too small to fit even five 44pt controls cannot safely show them all.
-        // Keep the positions truthful rather than emitting overlapping targets.
-        return Layout(scale: 0, placements: points.map {
-            Placement(site: $0, center: $0, isVisible: false, leaderEnd: nil)
-        })
+        var state = State()
+        return state.layout(ids: points.indices.map { String($0) }, points: points,
+                            metersPerPoint: metersPerPoint, viewport: viewport,
+                            activeIndices: activeIndices, reservedAreas: reservedAreas)
     }
 
     private static func nearestEdge(to site: SIMD2<Double>, of rect: CGRect) -> SIMD2<Double> {
@@ -144,25 +153,5 @@ public enum MapMarkerSizing {
         return SIMD2<Double>(x, y)
     }
 
-    /// Slab intersection, with a little breathing room so leaders do not graze other art.
-    private static func segment(from start: SIMD2<Double>, to end: SIMD2<Double>, intersects rect: CGRect) -> Bool {
-        let box = rect.insetBy(dx: -2, dy: -2)
-        let low = SIMD2<Double>(Double(box.minX), Double(box.minY))
-        let high = SIMD2<Double>(Double(box.maxX), Double(box.maxY))
-        let direction = end - start
-        var entry = 0.0, exit = 1.0
-        for axis in 0..<2 {
-            if abs(direction[axis]) < 0.000001 {
-                if start[axis] < low[axis] || start[axis] > high[axis] { return false }
-            } else {
-                let a = (low[axis] - start[axis]) / direction[axis]
-                let b = (high[axis] - start[axis]) / direction[axis]
-                entry = max(entry, min(a, b))
-                exit = min(exit, max(a, b))
-                if entry > exit { return false }
-            }
-        }
-        return entry <= exit
-    }
 
 }

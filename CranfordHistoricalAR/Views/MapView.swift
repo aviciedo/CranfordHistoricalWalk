@@ -227,8 +227,9 @@ struct AppleTourMapView: UIViewRepresentable {
         private var layoutRetry: Task<Void, Never>?
         private var layoutAttempts = 0
         private var markerImages: [String: UIImage] = [:]
-        private var markerScale: CGFloat = 1
-        private var markerPlacements: [String: MapMarkerSizing.Placement] = [:]
+        private var markerLayout = MapMarkerSizing.State()
+        private var cameraMoving = false
+        private var markerSettleTask: Task<Void, Never>?
         private let markerLeaders = StopMapLeaderView()
 
         init(_ parent: AppleTourMapView) { self.parent = parent }
@@ -299,8 +300,17 @@ struct AppleTourMapView: UIViewRepresentable {
                 switch request.kind {
                 case .fitAll: fit(parent.markers.map(\.coordinate), on: map, animated: request.animated)
                 case .follow(let coordinate, let bearing):
-                    let camera = MKMapCamera(lookingAtCenter: coordinate, fromDistance: 850, pitch: 0, heading: bearing ?? 0)
-                    map.setCamera(camera, animated: request.animated)
+                    if request.automaticTracking {
+                        let point = map.convert(coordinate, toPointTo: map)
+                        guard MapCameraRequest.needsAutomaticRecenter(point: point,
+                            viewport: StopMapLeaderView.viewport(in: map.bounds)) else { break }
+                        let camera = MKMapCamera(lookingAtCenter: coordinate,
+                            fromDistance: map.camera.centerCoordinateDistance, pitch: map.camera.pitch, heading: map.camera.heading)
+                        map.setCamera(camera, animated: request.animated)
+                    } else {
+                        let camera = MKMapCamera(lookingAtCenter: coordinate, fromDistance: 850, pitch: 0, heading: bearing ?? map.camera.heading)
+                        map.setCamera(camera, animated: request.animated)
+                    }
                 case .fitUserAndDestination(let user, let destination):
                     fit([user, destination] + parent.routeCoordinates, on: map, animated: request.animated)
                 case .fitWalkingLeg(let coordinates):
@@ -339,7 +349,16 @@ struct AppleTourMapView: UIViewRepresentable {
 
         func mapView(_ mapView: MKMapView, regionWillChangeAnimated animated: Bool) {
             let recognizers = mapView.subviews.flatMap { $0.gestureRecognizers ?? [] } + (mapView.gestureRecognizers ?? [])
-            if recognizers.contains(where: { $0.state == .began || $0.state == .changed }) { parent.onUserGesture() }
+            cameraMoving = true
+            markerSettleTask?.cancel()
+            markerLeaders.stopAnimation()
+            if recognizers.contains(where: { $0.state == .began || $0.state == .changed }) {
+                layoutRetry?.cancel()
+                layoutRetry = nil
+                cameraID = parent.cameraRequest?.id
+                hasFitInitialMap = true
+                parent.onUserGesture()
+            }
         }
 
         private func zoomLevel(on map: MKMapView) -> Float {
@@ -350,7 +369,13 @@ struct AppleTourMapView: UIViewRepresentable {
         }
 
         func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
-            updateMarkerSizes(on: mapView)
+            markerSettleTask?.cancel()
+            markerSettleTask = Task { @MainActor [weak self, weak mapView] in
+                do { try await Task.sleep(for: .milliseconds(200)) } catch { return }
+                guard let self, let mapView else { return }
+                self.cameraMoving = false
+                self.updateMarkerSizes(on: mapView, animated: true)
+            }
             let zoom = zoomLevel(on: mapView)
             Task { @MainActor [weak self] in self?.parent.onCameraIdle(zoom) }
         }
@@ -367,41 +392,18 @@ struct AppleTourMapView: UIViewRepresentable {
             view.isAccessibilityElement = true
             view.accessibilityLabel = site.title
             if let marker = site.marker {
-                if !marker.isIllustrated {
-                    view.subviews.filter { $0 is StopMapIconView }.forEach { $0.removeFromSuperview() }
-                    let key = "compact|\(marker.id)|\(marker.order)|\(marker.isTourDestination)|\(marker.isWalkingDestination)|\(marker.artwork?.cacheKey ?? "")"
-                    if markerImages[key] == nil { markerImages[key] = StopMapArtwork.compactImage(for: marker) }
-                    view.image = markerImages[key]
-                    view.zPriority = .defaultSelected
-                    view.bounds = CGRect(x: 0, y: 0, width: 44, height: 44)
-                    view.centerOffset = .zero
-                    view.isHidden = false
-                    view.displayPriority = .required
-                    view.accessibilityTraits = .button
-                    view.accessibilityHint = "View stop"
-                    return
-                }
-                view.image = nil
-                let icon = (view.subviews.first { $0 is StopMapIconView } as? StopMapIconView) ?? StopMapIconView()
-                if icon.superview == nil { view.addSubview(icon) }
-                let key = "\(marker.id)|\(marker.order)|\(marker.state)|\(marker.isTourDestination)|\(marker.isWalkingDestination)|\(marker.artwork?.cacheKey ?? "")"
-                if markerImages[key] == nil { markerImages[key] = StopMapArtwork.image(for: marker) }
-                icon.setArtwork(markerImages[key])
-                icon.setBadge(marker)
-                icon.resize(scale: CGFloat(MapMarkerSizing.artworkScale(baseScale: Double(markerScale), isActive: marker.isTourDestination)))
-                view.bounds = icon.bounds
-                icon.center = CGPoint(x: view.bounds.midX, y: view.bounds.midY)
-                if let placement = markerPlacements[marker.id] {
-                    view.centerOffset = CGPoint(x: placement.center.x - placement.site.x,
-                                                y: placement.center.y - placement.site.y)
-                    view.isHidden = !placement.isVisible
-                } else {
-                    view.centerOffset = .zero
-                }
+                view.subviews.filter { $0 is StopMapIconView }.forEach { $0.removeFromSuperview() }
+                let key = "compact|\(marker.id)|\(marker.order)|\(marker.isTourDestination)|\(marker.isWalkingDestination)|\(marker.artwork?.cacheKey ?? "")"
+                if markerImages[key] == nil { markerImages[key] = StopMapArtwork.compactImage(for: marker) }
+                view.image = markerImages[key]
+                view.zPriority = marker.isTourDestination ? .max : .defaultSelected
+                view.bounds = CGRect(x: 0, y: 0, width: 44, height: 44)
+                view.centerOffset = .zero
+                view.isHidden = false
+                view.displayPriority = .required
                 view.accessibilityTraits = .button
                 view.accessibilityHint = "View stop"
-                view.displayPriority = .required
-                view.zPriority = marker.isTourDestination ? .max : .defaultSelected
+                return
             } else {
                 view.subviews.filter { $0 is StopMapIconView }.forEach { $0.removeFromSuperview() }
                 view.image = UIGraphicsImageRenderer(size: CGSize(width: 24, height: 24)).image { context in
@@ -415,7 +417,7 @@ struct AppleTourMapView: UIViewRepresentable {
             }
         }
 
-        private func updateMarkerSizes(on map: MKMapView) {
+        private func updateMarkerSizes(on map: MKMapView, animated: Bool = false) {
             guard !map.bounds.isEmpty else { return }
             let models = parent.markers.filter(\.isIllustrated).sorted { ($0.order, $0.id) < ($1.order, $1.id) }
             let points = models.map { marker -> SIMD2<Double> in
@@ -429,21 +431,18 @@ struct AppleTourMapView: UIViewRepresentable {
                 return CGRect(x: point.x - 22, y: point.y - 22, width: 44, height: 44)
             }
             let recenterArea = CGRect(x: map.bounds.maxX - 72, y: map.bounds.maxY - 76, width: 64, height: 64)
-            let layout = MapMarkerSizing.layout(points: points, metersPerPoint: metersPerPoint,
+            let layout = markerLayout.layout(ids: models.map(\.id), points: points, metersPerPoint: metersPerPoint,
                 viewport: StopMapLeaderView.viewport(in: map.bounds),
                 activeIndices: Set(models.indices.filter { models[$0].isTourDestination }),
                 reservedAreas: compactAreas + (parent.reservesNavigationControls ? [] : [recenterArea]) + StopMapLeaderView.reservedAreas(in: map.bounds, controls: parent.reservesNavigationControls,
-                                                              zoomControls: parent.reservesZoomControls))
-            markerScale = CGFloat(layout.scale)
-            markerPlacements = Dictionary(uniqueKeysWithValues: zip(models, layout.placements).map { ($0.id, $1) })
-            for site in sites.values {
-                guard let view = map.view(for: site) else { continue }
-                configure(view, for: site)
-            }
-            markerLeaders.update(layout, in: map)
+                                                              zoomControls: parent.reservesZoomControls), isMoving: cameraMoving)
+            markerLeaders.onTap = { [weak self] id in self?.parent.onMarkerTap(id) }
+            markerLeaders.update(layout, models: models, in: map, animated: animated)
         }
 
         func mapViewDidChangeVisibleRegion(_ mapView: MKMapView) {
+            cameraMoving = true
+            markerSettleTask?.cancel()
             updateMarkerSizes(on: mapView)
         }
 
