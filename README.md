@@ -1,3 +1,18 @@
+## Build 131 candidate — grounded AR route markers
+
+Fixes the field-reported upright arrows and camera-relative lawn placement.
+Route markers now lie flat, retain their pose during a close walk around, and
+have white caps on both sides with rounded hunter-green beveled sidewalls.
+Unaligned camera-relative 3D maneuver previews are removed; the on-screen turn
+card remains available. Measured ground and geographic alignment are required,
+and re-entry/relocalization must acquire ground and a new world pose.
+
+Includes the approved Greystone/Church foliage cleanup and accurate three-story
+Hotel ink illustration. The newer upstream ARCore-default configuration is
+preserved. Native validation is required on this exact candidate; main and release
+tags are not promoted by this change. Outdoor placement and appearance still
+require the [physical iPhone retest](docs/engineering/grounded-ar-arrow-fix.md).
+
 ## Build 130 — green illustrations and compact narration controls
 
 Restores the earlier hunter-green illustrations on Home, Stops and both map

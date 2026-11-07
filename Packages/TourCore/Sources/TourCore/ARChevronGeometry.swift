@@ -10,11 +10,9 @@ public enum ARChevronGeometry {
     }
 
     public static let bodyDepth: Float = 0.72
-    /// Artwork-only three-quarter view reveals the sidewalls without changing route yaw.
-    public static let presentationYawRadians: Float = .pi / 6
     public static let groupSpacing: Float = 1.75
 
-    /// Small corner chamfers give original geometry a substantial, softened silhouette.
+    /// Sampled corner curves soften both convex tips and the concave notch.
     public static let outline: [SIMD2<Float>] = {
         let corners: [SIMD2<Float>] = [
             [-0.58, 0.82], [-0.16, 1.02], [0.70, 0],
@@ -24,9 +22,13 @@ public enum ARChevronGeometry {
             let p = corners[i], before = corners[(i + corners.count - 1) % corners.count], after = corners[(i + 1) % corners.count]
             func clipped(_ other: SIMD2<Float>) -> SIMD2<Float> {
                 let d = other - p, length = sqrt(d.x * d.x + d.y * d.y)
-                return p + d * min(0.09, 0.045 / length)
+                return p + d * min(0.15, 0.08 / length)
             }
-            return [clipped(before), clipped(after)]
+            let start = clipped(before), end = clipped(after)
+            return (0...4).map { step in
+                let t = Float(step) / 4, u = 1 - t
+                return start * (u * u) + p * (2 * u * t) + end * (t * t)
+            }
         }
     }()
     public static let frontIndices: [UInt32] = {
@@ -67,15 +69,50 @@ public enum ARChevronGeometry {
         for i in stride(from: 0, to: frontIndices.count, by: 3) {
             mesh.indices += [frontIndices[i] + UInt32(outline.count), frontIndices[i + 2] + UInt32(outline.count), frontIndices[i + 1] + UInt32(outline.count)]
         }
-        for i in outline.indices {
-            let a = outline[i], b = outline[(i + 1) % outline.count]
-            let dx = b.x - a.x, dy = b.y - a.y
-            let length = sqrt(dx * dx + dy * dy)
-            let normal: SIMD3<Float> = [-dy / length, dx / length, 0]
-            let start = UInt32(mesh.positions.count)
-            mesh.positions += [[a.x, a.y, 0], [b.x, b.y, 0], [b.x, b.y, -depth], [a.x, a.y, -depth]]
-            mesh.normals += Array(repeating: normal, count: 4)
-            mesh.indices += [start, start + 1, start + 2, start, start + 2, start + 3]
+        let radius = min(0.045, depth / 4)
+        let outward: [SIMD2<Float>] = outline.indices.map { i in
+            func normal(_ a: SIMD2<Float>, _ b: SIMD2<Float>) -> SIMD2<Float> {
+                let d = b - a, length = sqrt(d.x * d.x + d.y * d.y)
+                return [-d.y / length, d.x / length]
+            }
+            let sum = normal(outline[(i + outline.count - 1) % outline.count], outline[i])
+                + normal(outline[i], outline[(i + 1) % outline.count])
+            return sum / sqrt(sum.x * sum.x + sum.y * sum.y)
+        }
+        let firstRing = UInt32(mesh.positions.count)
+        // Quarter-circle bevels meet the flat caps and straight extruded sidewalls.
+        for ring in 0..<8 {
+            let upper = ring < 4
+            let step = upper ? ring : 7 - ring
+            let angle = Float(step) * .pi / 6
+            let z: Float = step == 0 ? (upper ? 0 : -depth)
+                : (upper ? -radius * (1 - cos(angle)) : -depth + radius * (1 - cos(angle)))
+            for i in outline.indices {
+                let point = outline[i] + outward[i] * radius * sin(angle)
+                mesh.positions.append([point.x, point.y, z])
+                mesh.normals.append([outward[i].x * sin(angle), outward[i].y * sin(angle),
+                                     (upper ? 1 : -1) * cos(angle)])
+            }
+        }
+        for ring in 0..<7 {
+            for i in outline.indices {
+                let a = firstRing + UInt32(ring * outline.count + i)
+                let b = firstRing + UInt32(ring * outline.count + (i + 1) % outline.count)
+                let c = b + UInt32(outline.count), d = a + UInt32(outline.count)
+                mesh.indices += [a, b, c, a, c, d]
+            }
+        }
+        return mesh
+    }
+
+    /// A separately rendered white reverse cap with outward-facing winding.
+    public static func back(depth: Float = bodyDepth) -> Mesh {
+        var mesh = front()
+        let depth = depth.isFinite ? max(0.01, min(1.2, depth)) : bodyDepth
+        mesh.positions = mesh.positions.map { [$0.x, $0.y, -depth] }
+        mesh.normals = Array(repeating: [0, 0, -1], count: outline.count)
+        for i in stride(from: 0, to: mesh.indices.count, by: 3) {
+            mesh.indices.swapAt(i + 1, i + 2)
         }
         return mesh
     }

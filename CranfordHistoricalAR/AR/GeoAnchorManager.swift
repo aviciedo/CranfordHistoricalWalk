@@ -182,6 +182,11 @@ final class GeoAnchorManager {
         localizationState = .notStarted
         navigationBearing = nil
         cameraTransform = nil
+        groundHeight = nil
+        hasDetectedGround = false
+        target = nil
+        lastNavigationDestination = nil
+        lastRouteComputedAt = nil
     }
 
     func sessionWasInterrupted() {
@@ -215,6 +220,11 @@ final class GeoAnchorManager {
 
     func trackingStateDidChange(_ state: ARCamera.TrackingState) {
         trackingState = state
+        if case .limited(.relocalizing) = state {
+            resetSpatialNavigation()
+            groundHeight = nil
+            hasDetectedGround = false
+        }
         if case .normal = state {} else {
             anchors.hideAll()
             plaqueAnchors.unbind(sign: anchors.sign, returningTo: anchors.worldRoot)
@@ -243,6 +253,11 @@ final class GeoAnchorManager {
                               timestamp: TimeInterval) {
         self.cameraTransform = cameraTransform
         self.trackingState = trackingState
+        if case .limited(.relocalizing) = trackingState {
+            resetSpatialNavigation()
+            hasDetectedGround = false
+            groundHeight = nil
+        }
         if case .normal = trackingState {} else { anchors.hideAll() }
         provider.update(cameraTransform: cameraTransform, trackingState: trackingState, timestamp: timestamp)
         refreshLocalizationState()
@@ -383,16 +398,7 @@ final class GeoAnchorManager {
 
     // MARK: Placement
 
-    /// User-space position of the camera projected to the arrow plane.
-    private var cameraGroundPosition: SIMD3<Float>? {
-        guard let cameraTransform else { return nil }
-        var p = cameraTransform.translation
-        p.y = (groundHeight ?? (p.y - ARNavigationArrowEntity.heightBelowCamera)) + 0.015
-        return p
-    }
-
-    /// Prefer a nearby detected horizontal surface beneath the phone. Until one is found,
-    /// hold a stable estimated height rather than making the arrow bob with the camera.
+    /// Prefer a nearby measured horizontal surface beneath the phone.
     private func updateGroundHeight(frame: ARFrame) {
         let camera = frame.camera.transform.translation
         let candidates = frame.anchors.compactMap { $0 as? ARPlaneAnchor }.filter { plane in
@@ -404,25 +410,31 @@ final class GeoAnchorManager {
                 && below > 0.45 && below < 2.5
                 && simd_length(SIMD2(center.x - camera.x, center.z - camera.z)) < 8
         }
-        hasDetectedGround = !candidates.isEmpty
         let closest = candidates.min { lhs, rhs in
             let l = lhs.transform * SIMD4<Float>(lhs.center.x, lhs.center.y, lhs.center.z, 1)
             let r = rhs.transform * SIMD4<Float>(rhs.center.x, rhs.center.y, rhs.center.z, 1)
             return simd_length(SIMD2(l.x - camera.x, l.z - camera.z)) < simd_length(SIMD2(r.x - camera.x, r.z - camera.z))
         }
-        if let closest {
-            let center = closest.transform * SIMD4<Float>(closest.center.x, closest.center.y, closest.center.z, 1)
-            groundHeight = groundHeight.map { $0 + (center.y - $0) * 0.12 } ?? center.y
-        } else if groundHeight == nil, case .normal = frame.camera.trackingState {
-            groundHeight = camera.y - ARNavigationArrowEntity.heightBelowCamera
+        let height = closest.map {
+            ($0.transform * SIMD4<Float>($0.center.x, $0.center.y, $0.center.z, 1)).y
         }
+        updateNavigationGroundHeight(height)
+    }
+
+    /// The frame path and native tests feed the same measured-surface update.
+    /// Missing ground never invents a plane from an assumed phone height.
+    func updateNavigationGroundHeight(_ height: Float?) {
+        guard let height, height.isFinite else { hasDetectedGround = false; return }
+        hasDetectedGround = true
+        groundHeight = groundHeight.map { $0 + (height - $0) * 0.12 } ?? height
     }
 
     private func placeContent(now: TimeInterval) {
         let date = currentDate()
         hasPlacedNavigation = false
+        isNavigationGroundVerified = false
         guard !hasActivatedStop else { anchors.hideNavigation(); navigationNotice = nil; return }
-        guard let cameraTransform, let base = cameraGroundPosition else { anchors.hideNavigation(); return }
+        guard let cameraTransform else { anchors.hideNavigation(); return }
         guard let target, StopActivationPolicy.isFresh(target.locationTimestamp, now: date) else {
             resetSpatialNavigation()
             anchors.hideNavigation()
@@ -444,7 +456,9 @@ final class GeoAnchorManager {
         let projected = target.anchorCoordinate.flatMap { provider.worldPosition(for: $0, altitude: nil, heightBelowCamera: 0) }
         let pose = provider.pose
         let range = projected.map { hypot($0.x - camera.x, $0.z - camera.z) }
-        let rangeIsSafe = range.map { (Float(3)...Float(16)).contains($0) } ?? false
+        let pinnedRange = anchors.arrows.pinnedGroundPosition.map { hypot($0.x - camera.x, $0.z - camera.z) }
+        let rangeIsSafe = (pinnedRange.map { $0 <= 20 } ?? false)
+            || (range.map { (Float(3)...Float(16)).contains($0) } ?? false)
         let alignmentIsUsable = localizationState.isUsable && rangeIsSafe && direction != nil
         let mode = spatialConfidence.update(tracking: isTrackingReady,
             locationAge: max(date.timeIntervalSince(target.locationTimestamp), pose.map { date.timeIntervalSince($0.timestamp) } ?? .infinity),
@@ -458,8 +472,6 @@ final class GeoAnchorManager {
             Self.navigationLogger.notice("Spatial gate: \(String(describing: mode), privacy: .public); GPS accuracy=\(target.horizontalAccuracy, privacy: .public)m; route offset=\(target.routeOffset, privacy: .public)m; yaw accuracy=\(pose?.headingAccuracy ?? .infinity, privacy: .public)deg; preview=\(target.anchorCoordinate != nil, privacy: .public)")
         }
         guard mode == .spatial, let projected, let direction, anchors.arrows.canRender else {
-            if presentManeuverIfUsable(target: target, cameraTransform: cameraTransform,
-                                       ground: base, date: date, now: now) { return }
             isNavigationManeuverOnly = false
             anchors.hideNavigation()
             // Retain fixed geometry through a brief loss, but never render it while confidence is low.
@@ -477,7 +489,12 @@ final class GeoAnchorManager {
         }
         if isNavigationManeuverOnly { anchors.arrows.resetAnchor() }
         isNavigationManeuverOnly = false
-        var ground = SIMD3<Float>(projected.x, base.y, projected.z)
+        guard hasDetectedGround, let measuredHeight = groundHeight else {
+            anchors.hideNavigation()
+            navigationNotice = "Point toward the street to detect the ground."
+            return
+        }
+        var ground = SIMD3<Float>(projected.x, measuredHeight, projected.z)
         isNavigationGroundVerified = false
         if hasDetectedGround, let refined = detectedGroundPosition(near: ground) {
             ground.y = refined.position.y
@@ -496,40 +513,6 @@ final class GeoAnchorManager {
             message = "Turn toward the route to see the arrows."
         } else { message = nil }
         if navigationNotice != message { navigationNotice = message }
-    }
-
-    /// A readable virtual maneuver sign is distinct from street-registered route arrows.
-    /// Its orientation conveys the route instruction, never a compass direction.
-    private func presentManeuverIfUsable(target: NavigationTarget, cameraTransform: simd_float4x4,
-                                         ground: SIMD3<Float>, date: Date, now: TimeInterval) -> Bool {
-        guard allowsNativePositioningFallback, ARStreetGuidance.canShowManeuver(tracking: isTrackingReady,
-            locationAge: date.timeIntervalSince(target.locationTimestamp), accuracy: target.horizontalAccuracy,
-            routeOffset: target.routeOffset, hasCue: target.turnCue != nil), let cue = target.turnCue else { return false }
-        let camera = cameraTransform.translation
-        let forward = -SIMD3<Float>(cameraTransform.columns.2.x, 0, cameraTransform.columns.2.z)
-        guard let candidate = ARStreetGuidance.visibleCandidate(projected: nil,
-            camera: SIMD3(Double(camera.x), Double(camera.y), Double(camera.z)),
-            cameraForward: SIMD3(Double(forward.x), Double(forward.y), Double(forward.z)),
-            groundHeight: Double(ground.y)) else { return false }
-        if !isNavigationManeuverOnly { anchors.arrows.resetAnchor() }
-        // A local instruction must remain readable when the visitor looks elsewhere.
-        // This relocation is never applied to a street-registered arrow.
-        if let pinned = anchors.arrows.guidancePosition {
-            let delta = SIMD2(pinned.x - camera.x, pinned.z - camera.z)
-            let length = simd_length(delta), forwardLength = simd_length(forward)
-            if length < 3 || (forwardLength > 0.1 && simd_dot(delta, SIMD2(forward.x, forward.z)) < length * forwardLength * 0.5) {
-                anchors.arrows.resetAnchor()
-            }
-        }
-        isNavigationManeuverOnly = true
-        isNavigationGroundVerified = false
-        anchors.arrows.setVisible(true)
-        anchors.arrows.updateManeuver(ground: SIMD3(Float(candidate.position.x), Float(candidate.position.y), Float(candidate.position.z)),
-            camera: camera, instruction: .init(direction: cue.direction, streetName: cue.streetName),
-            timestamp: now, arView: anchors.arView)
-        hasPlacedNavigation = anchors.arrows.guidancePosition != nil
-        navigationNotice = "Maneuver preview · Not aligned to the street"
-        return hasPlacedNavigation
     }
 
     /// Refine the route point against detected horizontal geometry when it is in view.

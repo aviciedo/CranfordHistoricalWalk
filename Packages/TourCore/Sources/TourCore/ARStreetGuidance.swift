@@ -12,7 +12,7 @@ public enum ARStreetGuidance {
     }
 
     public static let lookAheadMeters = 8.0
-    public static let minimumClearanceMeters = 0.16
+    public static let minimumClearanceMeters = 0.015
     public static let chevronScale = 1.45
 
     public static let repositionDistanceMeters = 5.0

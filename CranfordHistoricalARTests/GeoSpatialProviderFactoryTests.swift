@@ -71,7 +71,7 @@ final class GeoSpatialProviderFactoryTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(provider.worldPosition(for: coordinate, altitude: nil, heightBelowCamera: 0)).x, 4, accuracy: 0.001)
     }
 
-    func testOrdinaryOutdoorGPSShowsManeuverAndRecoversToSpatialArrows() {
+    func testUnalignedOutdoorGPSWithholdsWorldArrowsAndRecoversAfterGroundDetection() {
         let date = Date(timeIntervalSince1970: 1_800_000_000)
         let provider = SpatialNavigationTestProvider()
         provider.pose?.timestamp = date
@@ -83,10 +83,11 @@ final class GeoSpatialProviderFactoryTests: XCTestCase {
             locationTimestamp: date, horizontalAccuracy: 9, routeOffset: 8)
         manager.setNavigationTarget(target)
         manager.updateNavigationPose(cameraTransform: matrix_identity_float4x4, trackingState: .normal, timestamp: 0)
-        XCTAssertTrue(manager.hasPlacedNavigation)
-        XCTAssertTrue(manager.isNavigationManeuverOnly)
-        XCTAssertNotNil(manager.anchors.arrows.guidancePosition)
-        XCTAssertTrue(manager.navigationNotice?.contains("Not aligned") == true)
+        XCTAssertFalse(manager.hasPlacedNavigation)
+        XCTAssertFalse(manager.isNavigationManeuverOnly)
+        XCTAssertNil(manager.anchors.arrows.guidancePosition)
+        XCTAssertNotNil(manager.navigationNotice)
+        manager.updateNavigationGroundHeight(-1.4)
         target.horizontalAccuracy = 3; target.routeOffset = 0
         manager.setNavigationTarget(target)
         for time in stride(from: 0.1, through: 2.2, by: 0.1) {
@@ -252,6 +253,7 @@ final class GeoSpatialProviderFactoryTests: XCTestCase {
         let provider = SpatialNavigationTestProvider()
         provider.pose?.timestamp = date
         let manager = GeoAnchorManager(provider: provider, currentDate: { date })
+        manager.updateNavigationGroundHeight(-1.4)
         manager.setNavigationTarget(.init(destination: provider.pose!.coordinate,
             bearingToWaypoint: 0, anchorCoordinate: provider.pose!.coordinate, turnCue: nil,
             locationTimestamp: date, horizontalAccuracy: 3, routeOffset: 0))
@@ -316,6 +318,7 @@ final class GeoSpatialProviderFactoryTests: XCTestCase {
         // Cold RealityKit initialization can exceed the location freshness limit.
         // Simulated sensors and freshness must share a clock, independent of rendering cost.
         let manager = GeoAnchorManager(provider: provider, currentDate: { date })
+        manager.updateNavigationGroundHeight(-1.4)
         manager.setNavigationTarget(.init(destination: provider.pose!.coordinate,
             bearingToWaypoint: 0, anchorCoordinate: provider.pose!.coordinate, turnCue: nil,
             locationTimestamp: date, horizontalAccuracy: 3, routeOffset: 0))
@@ -328,6 +331,15 @@ final class GeoSpatialProviderFactoryTests: XCTestCase {
         let turned = simd_float4x4(simd_quatf(angle: .pi, axis: [0, 1, 0]))
         manager.updateNavigationPose(cameraTransform: turned, trackingState: .normal, timestamp: 2.2)
         XCTAssertEqual(manager.anchors.arrows.guidancePosition, position)
+        for step in 1...36 {
+            let angle = Float(step) * .pi / 18
+            var orbit = simd_float4x4(simd_quatf(angle: angle, axis: [0, 1, 0]))
+            orbit.columns.3 = [2 * sin(angle), 0, -7 + 2 * cos(angle), 1]
+            manager.updateNavigationPose(cameraTransform: orbit, trackingState: .normal,
+                                         timestamp: 2.2 + Double(step) / 10)
+            XCTAssertEqual(manager.anchors.arrows.guidancePosition, position,
+                           "Neither heading nor a close walk around may move the marker")
+        }
         manager.trackingStateDidChange(.limited(.insufficientFeatures))
         XCTAssertNil(manager.anchors.arrows.guidancePosition)
     }
@@ -337,6 +349,7 @@ final class GeoSpatialProviderFactoryTests: XCTestCase {
         let provider = SpatialNavigationTestProvider()
         provider.pose?.timestamp = date.addingTimeInterval(-6)
         let manager = GeoAnchorManager(provider: provider, currentDate: { date })
+        manager.updateNavigationGroundHeight(-1.4)
         manager.setNavigationTarget(.init(destination: provider.pose!.coordinate,
             bearingToWaypoint: 0, anchorCoordinate: provider.pose!.coordinate, turnCue: nil,
             locationTimestamp: date, horizontalAccuracy: 3, routeOffset: 0))
@@ -381,7 +394,7 @@ final class GeoSpatialProviderFactoryTests: XCTestCase {
             return [red, green, blue, alpha].allSatisfy { abs($0 - 1) < 0.001 }
         }
         XCTAssertEqual(texturedSides.count, 3, "Each extruded body needs its cached hunter-green gradient")
-        XCTAssertEqual(whiteFaces.count, 3, "Keep the three bright white front faces")
+        XCTAssertEqual(whiteFaces.count, 6, "Both broad faces of every arrow must remain white")
         XCTAssertTrue(arrow.canRender)
     }
 
@@ -398,6 +411,56 @@ final class GeoSpatialProviderFactoryTests: XCTestCase {
         XCTAssertNotNil(arrow.guidancePosition, "Transient visibility loss retains the fixed anchor")
         arrow.resetAnchor()
         XCTAssertNil(arrow.guidancePosition)
+    }
+
+    func testRouteMarkersRequireMeasuredGroundAndReacquireAfterSessionReset() {
+        let date = Date(timeIntervalSince1970: 1_800_000_000)
+        let provider = SpatialNavigationTestProvider()
+        provider.pose?.timestamp = date
+        let manager = GeoAnchorManager(provider: provider, currentDate: { date })
+        let target = GeoAnchorManager.NavigationTarget(destination: provider.pose!.coordinate,
+            bearingToWaypoint: 0, anchorCoordinate: provider.pose!.coordinate, turnCue: nil,
+            locationTimestamp: date, horizontalAccuracy: 3, routeOffset: 0)
+        manager.setNavigationTarget(target)
+        for time in stride(from: 0.0, through: 2.2, by: 0.1) {
+            manager.updateNavigationPose(cameraTransform: matrix_identity_float4x4, trackingState: .normal, timestamp: time)
+        }
+        XCTAssertFalse(manager.hasPlacedNavigation, "Estimated phone height must not invent a street surface")
+        manager.updateNavigationGroundHeight(-1.4)
+        manager.updateNavigationPose(cameraTransform: matrix_identity_float4x4, trackingState: .normal, timestamp: 2.3)
+        XCTAssertTrue(manager.hasPlacedNavigation)
+        manager.sessionDidStop()
+        XCTAssertFalse(manager.hasDetectedGround)
+        XCTAssertNil(manager.anchors.arrows.pinnedGroundPosition)
+        manager.setNavigationTarget(target)
+        for time in stride(from: 3.0, through: 5.2, by: 0.1) {
+            manager.updateNavigationPose(cameraTransform: matrix_identity_float4x4, trackingState: .normal, timestamp: time)
+        }
+        XCTAssertFalse(manager.hasPlacedNavigation, "Re-entry must not reuse the old ground or world anchor")
+        manager.updateNavigationGroundHeight(-1.4)
+        manager.updateNavigationPose(cameraTransform: matrix_identity_float4x4, trackingState: .normal, timestamp: 5.3)
+        XCTAssertTrue(manager.hasPlacedNavigation)
+        manager.updateNavigationPose(cameraTransform: matrix_identity_float4x4,
+            trackingState: .limited(.relocalizing), timestamp: 5.4)
+        XCTAssertFalse(manager.hasDetectedGround)
+        XCTAssertNil(manager.anchors.arrows.pinnedGroundPosition)
+    }
+
+    func testChevronCapsStayHorizontalAtEveryRouteDirectionAndRestOnGround() throws {
+        for direction in [ARWalkingGuidance.Direction.ahead, .left, .right, .bearLeft, .bearRight, .turnAround] {
+            let arrow = ARNavigationArrowEntity()
+            arrow.setVisible(true)
+            arrow.updateSpatial(ground: [0, -1.4, -8], camera: .zero, routeDirection: [1, 0, 0],
+                instruction: .init(direction: direction, streetName: nil), segment: 0, timestamp: 0)
+            let face = try XCTUnwrap(arrow.findEntity(named: "navigation-white-front"))
+            let normal = face.orientation(relativeTo: nil).act(SIMD3<Float>(0, 0, 1))
+            XCTAssertEqual(normal.x, 0, accuracy: 0.0001)
+            XCTAssertEqual(normal.y, 1, accuracy: 0.0001)
+            XCTAssertEqual(normal.z, 0, accuracy: 0.0001)
+            let bounds = arrow.visualBounds(relativeTo: nil)
+            XCTAssertEqual(bounds.min.y, -1.4 + Float(ARStreetGuidance.minimumClearanceMeters), accuracy: 0.001)
+            XCTAssertLessThan(bounds.max.y, -0.6, "The mesh must lie flat below the camera, not stand upright")
+        }
     }
 
     func testDisabledFlagSelectsCoreLocation() {

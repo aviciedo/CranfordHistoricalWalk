@@ -191,7 +191,6 @@ public struct ARWorldPlacementState: Sendable {
         public let segment: Int
     }
     public private(set) var pose: Pose?
-    private var placedCamera: SIMD3<Double>?
     private var pendingSegment: Int?
     private var pendingDirection: ARWalkingGuidance.Direction?
     private var pendingYaw: Double?
@@ -210,8 +209,9 @@ public struct ARWorldPlacementState: Sendable {
         let range = hypot(dx, dz)
         let yawChange = abs(GeoMath.relativeBearing(heading: pose.yaw * 180 / .pi,
                                                     bearing: routeYaw * 180 / .pi))
-        let forward = -dx * sin(routeYaw) - dz * cos(routeYaw)
-        return (2.5...16).contains(range) && yawChange <= 25 && forward > 1
+        // A walker may approach, pass beside, or circle the marker. Camera position
+        // must not turn a ground object into a billboard or hide its reverse face.
+        return range <= 20 && yawChange <= 25
     }
 
     public mutating func update(position: SIMD3<Double>, routeYaw: Double, direction: ARWalkingGuidance.Direction,
@@ -220,9 +220,9 @@ public struct ARWorldPlacementState: Sendable {
               lastTime.map({ timestamp >= $0 }) ?? true else { clearPending(); return nil }
         if let lastTime, timestamp - lastTime > 1 { clearPending() }
         lastTime = timestamp
-        if let pose, let placedCamera {
-            let moving = hypot(camera.x - placedCamera.x, camera.z - placedCamera.z) >= 3
-            let approaching = hypot(camera.x - pose.position.x, camera.z - pose.position.z) < 3
+        if let pose {
+            let pastMarker = -(camera.x - pose.position.x) * sin(pose.yaw)
+                - (camera.z - pose.position.z) * cos(pose.yaw) > 3
             let yawChanged = abs(GeoMath.relativeBearing(heading: pose.yaw * 180 / .pi,
                                                          bearing: routeYaw * 180 / .pi)) > 25
             let changed = pose.segment != segment || pose.direction != direction || yawChanged
@@ -236,12 +236,12 @@ public struct ARWorldPlacementState: Sendable {
                 }
                 guard timestamp - (pendingSince ?? timestamp) >= 1 else { return retained }
             } else { clearPending() }
-            guard changed || moving || approaching else { return retained }
+            guard changed || pastMarker else { return retained }
         }
         let range = hypot(position.x - camera.x, position.z - camera.z)
         guard (2.5...16).contains(range) else { return nil }
         let next = Pose(position: position, yaw: routeYaw, direction: direction, segment: segment)
-        pose = next; placedCamera = camera; clearPending()
+        pose = next; clearPending()
         return next
     }
 }

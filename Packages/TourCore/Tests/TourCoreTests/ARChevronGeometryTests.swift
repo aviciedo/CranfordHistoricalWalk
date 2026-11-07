@@ -2,6 +2,24 @@ import XCTest
 @testable import TourCore
 
 final class ARChevronGeometryTests: XCTestCase {
+    func testReverseCapIsWhiteRenderableWithOppositeWindingAndNormals() {
+        let front = ARChevronGeometry.front(), back = ARChevronGeometry.back()
+        XCTAssertEqual(front.positions.count, back.positions.count)
+        for i in back.positions.indices {
+            XCTAssertEqual(back.positions[i].x, front.positions[i].x)
+            XCTAssertEqual(back.positions[i].y, front.positions[i].y)
+            XCTAssertEqual(back.positions[i].z, -ARChevronGeometry.bodyDepth)
+            XCTAssertEqual(back.normals[i], [0, 0, -1])
+        }
+        for i in stride(from: 0, to: back.indices.count, by: 3) {
+            let a = back.positions[Int(back.indices[i])], b = back.positions[Int(back.indices[i + 1])]
+            let c = back.positions[Int(back.indices[i + 2])]
+            XCTAssertLessThan((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x), 0)
+        }
+        let body = ARChevronGeometry.body(depth: ARChevronGeometry.bodyDepth)
+        XCTAssertTrue(body.normals.contains { abs($0.z) > 0.1 && abs($0.z) < 0.9 },
+                      "Curved 3D bevels need intermediate normals, not only flat end caps")
+    }
     func testFrontTriangulationCoversConcaveOutlineWithForwardWinding() {
         let mesh = ARChevronGeometry.front()
         var area: Float = 0
@@ -51,17 +69,13 @@ final class ARChevronGeometryTests: XCTestCase {
         XCTAssertTrue(mesh.indices.allSatisfy { Int($0) < mesh.positions.count })
     }
 
-    func testDeepSidesAreVisibleAtPresentationAngleWithoutChangingWhiteFace() {
+    func testDeepGroundedChevronsRetainSpacingWithoutPresentationTilt() {
         let face = ARChevronGeometry.front()
         XCTAssertTrue(face.positions.allSatisfy { $0.z == 0 })
-        let projectedSideWidth = ARChevronGeometry.bodyDepth * sin(ARChevronGeometry.presentationYawRadians)
-        XCTAssertGreaterThan(projectedSideWidth, 0.2, "Sidewalls should read as a broad solid surface, not a thin outline")
-        XCTAssertLessThan(ARChevronGeometry.presentationYawRadians, .pi / 5, "Keep the white faces readable")
         let xs = ARChevronGeometry.outline.map(\.x)
-        let projectedFace = (xs.max()! - xs.min()!) * cos(ARChevronGeometry.presentationYawRadians)
-        let projectedSpacing = ARChevronGeometry.groupSpacing * cos(ARChevronGeometry.presentationYawRadians)
-        XCTAssertGreaterThan(projectedSpacing, projectedFace + projectedSideWidth,
-                             "Deep sidewalls must not overlap the next white face")
+        let width = xs.max()! - xs.min()!
+        XCTAssertGreaterThan(ARChevronGeometry.groupSpacing, width + 0.09,
+                             "Rounded bevels must not overlap the neighboring chevron")
         let deep = ARChevronGeometry.body(depth: ARChevronGeometry.bodyDepth)
         XCTAssertEqual(deep.positions.map(\.z).min()!, -ARChevronGeometry.bodyDepth, accuracy: 0.00001)
     }

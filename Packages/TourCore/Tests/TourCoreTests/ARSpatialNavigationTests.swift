@@ -251,10 +251,25 @@ final class ARSpatialNavigationTests: XCTestCase {
             XCTAssertEqual(state.update(position: [0.5, 0, -7.3], routeYaw: 0.05, direction: .ahead,
                 segment: 0, camera: .zero, timestamp: Double(i) / 10), original)
         }
-        let next = state.update(position: [0, 0, -11], routeYaw: 0, direction: .ahead,
-                                segment: 0, camera: [0, 0, -4], timestamp: 10.1)
+        XCTAssertEqual(state.update(position: [0, 0, -11], routeYaw: 0, direction: .ahead,
+                                    segment: 0, camera: [0, 0, -4], timestamp: 10.1), original,
+                       "Approaching must retain the marker for a close ground-level view")
+        let next = state.update(position: [0, 0, -16], routeYaw: 0, direction: .ahead,
+                                segment: 0, camera: [0, 0, -11], timestamp: 10.2)
         XCTAssertNotEqual(next, original)
-        XCTAssertEqual(next?.position.z, -11)
+        XCTAssertEqual(next?.position.z, -16)
+    }
+
+    func testGroundMarkerRetainsItsPoseDuringACompleteWalkAround() throws {
+        var state = ARWorldPlacementState()
+        let first = try XCTUnwrap(state.update(position: [0, -1.4, -7], routeYaw: 0,
+            direction: .ahead, segment: 0, camera: .zero, timestamp: 0))
+        for step in 1...36 {
+            let angle = Double(step) * .pi / 18
+            let camera = SIMD3<Double>(2 * sin(angle), 0, -7 + 2 * cos(angle))
+            XCTAssertEqual(state.update(position: [0.5, -1.3, -10], routeYaw: 0,
+                direction: .ahead, segment: 0, camera: camera, timestamp: Double(step) / 10), first)
+        }
     }
 
     func testManeuverReplacementSettlesBeforeChangingWorldPose() {
