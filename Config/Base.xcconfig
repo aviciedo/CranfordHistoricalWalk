@@ -11,8 +11,12 @@ GOOGLE_ARCORE_API_KEY =
 // or "legacy" (Directions API, only for projects that still have it enabled).
 DIRECTIONS_PROVIDER = routes
 
-// Set to 1 only after adding the ARCore package in project.yml.
-ENABLE_ARCORE_GEOSPATIAL = 0
+// Request ARCore Geospatial by default now that ARCoreGeospatial is linked in project.yml.
+// Runtime must still gate on Google data-processing consent, an authorized API key,
+// full-accuracy location permission, device support, and network availability.
+// Keep the existing Apple Core Location / ARKit fallback whenever any check fails.
+// A local Secrets.xcconfig can explicitly override this setting to 0 if needed.
+ENABLE_ARCORE_GEOSPATIAL = 1
 
 // Extra Swift compilation conditions derived from the flags above are applied in Debug/Release.xcconfig.
 APP_COMPILATION_CONDITIONS =
