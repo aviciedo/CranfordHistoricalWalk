@@ -108,7 +108,7 @@ struct StopDetailView: View {
                     }
                 }
                 // Keep the primary and secondary actions stacked with a closer shared gap.
-                if stop.narrationSource != nil || stop.hasPlaqueReference {
+                if stop.narrationSource != nil || (stop.hasPlaqueReference && allowsPlaqueActions) {
                     VStack(alignment: .leading, spacing: 12) {
                         if stop.narrationSource != nil {
                             VStack(alignment: .leading, spacing: 8) {
