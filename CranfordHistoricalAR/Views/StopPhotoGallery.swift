@@ -47,12 +47,18 @@ struct StopPhotoGallery: View {
                 }
                 if photos.indices.contains(selection) {
                     let photo = photos[selection]
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(photo.caption).font(.subheadline)
-                            .fixedSize(horizontal: false, vertical: true)
-                        if let credit = photo.credit {
-                            Text(credit).font(.caption).foregroundStyle(AppTheme.secondaryInk)
-                                .fixedSize(horizontal: false, vertical: true)
+                    let hasDistinctCaption = photo.caption.trimmingCharacters(in: .whitespacesAndNewlines)
+                        .localizedCaseInsensitiveCompare(stop.name.trimmingCharacters(in: .whitespacesAndNewlines)) != .orderedSame
+                    if hasDistinctCaption || photo.credit != nil {
+                        VStack(alignment: .leading, spacing: 4) {
+                            if hasDistinctCaption {
+                                Text(photo.caption).font(.subheadline)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            if let credit = photo.credit {
+                                Text(credit).font(.caption).foregroundStyle(AppTheme.secondaryInk)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
                         }
                     }
                 }
@@ -103,9 +109,12 @@ private struct GalleryPhotoPage: View {
             Group {
                 if let image {
                     Button { onOpen(image) } label: {
-                        // Keep the whole photograph visible, especially portrait photographs.
-                        Image(uiImage: image.image).resizable().scaledToFit()
+                        // Landscape previews fill the compact gallery; portrait images stay whole.
+                        // Opening the viewer always uses the original, uncropped photograph.
+                        Image(uiImage: image.image).resizable()
+                            .aspectRatio(contentMode: image.image.size.width >= image.image.size.height ? .fill : .fit)
                             .frame(width: proxy.size.width, height: proxy.size.height)
+                            .clipped()
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)

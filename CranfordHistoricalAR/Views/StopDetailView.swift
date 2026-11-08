@@ -45,7 +45,7 @@ struct StopDetailView: View {
                 VStack(spacing: 0) {
                     returnControl
                     // Size from the full-width host, not the height left after playback opens.
-                    storyContent(galleryHeight: min(340, max(220, (viewport.size.width - 40) * 0.75)))
+                    storyContent(galleryHeight: min(280, max(180, (viewport.size.width - 40) * 0.52)))
                     SharedNarrationBar(availableHeight: viewport.size.height)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -90,15 +90,15 @@ struct StopDetailView: View {
 
     private func storyContent(galleryHeight: CGFloat) -> some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(stop.name)
+                        .font(.system(.largeTitle, design: .serif).weight(.semibold))
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityAddTraits(.isHeader)
                     StopPhotoGallery(stop: stop, height: galleryHeight,
                                      isObscured: isShowingScanner || sketchbookPresentation != nil)
                     VStack(alignment: .leading, spacing: 8) {
-                        Text(stop.name)
-                            .font(.system(.largeTitle, design: .serif).weight(.semibold))
-                            .fixedSize(horizontal: false, vertical: true)
-                            .accessibilityAddTraits(.isHeader)
                         if let date = stop.displayDate {
                             Text(date).font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
                         }
@@ -107,7 +107,7 @@ struct StopDetailView: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
-                // Related primary/secondary actions share a closer gap; other sections keep 24 points.
+                // Keep the primary and secondary actions stacked with a closer shared gap.
                 if stop.narrationSource != nil || stop.hasPlaqueReference {
                     VStack(alignment: .leading, spacing: 12) {
                         if stop.narrationSource != nil {
@@ -167,19 +167,20 @@ struct StopDetailView: View {
                             Divider()
                             DisclosureGroup(isExpanded: $isStopDetailsExpanded) {
                                 Text(stop.longDescription)
-                                    .font(.body)
+                                    .font(.body).lineSpacing(4)
                                     .fixedSize(horizontal: false, vertical: true)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                             } label: {
                                 Text("Stop details")
                             }
-                            .disclosureGroupStyle(AppMenuDisclosureStyle(title: "Stop details", symbol: "doc.text"))
+                            .disclosureGroupStyle(StopDetailsDisclosureStyle(title: "Stop details"))
                             .tint(AppTheme.forest)
                         }
                         if hasStoryScript {
                             Divider()
                             Button { isShowingStory = true } label: {
-                                AppMenuRowLabel(title: "Read the story", symbol: "book")
+                                AppMenuRowLabel(title: "Read the story", symbol: "book",
+                                                titleFont: .system(.headline, design: .serif))
                             }
                             .buttonStyle(.plain)
                             .accessibilityHint("Opens the full narration text without starting audio or changing your walk")
