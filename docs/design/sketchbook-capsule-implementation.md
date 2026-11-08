@@ -32,3 +32,8 @@ VoiceOver focus order, and iPhone/iPad comparison with the approved image. Autom
 geometry and compiler checks do not establish pixel-for-pixel visual fidelity.
 
 This is a validation candidate. Do not update main/release aliases without publication.
+
+Validation note: the first Apple run compiled Simulator and iPhone Release successfully,
+but the simulator test host was killed before establishing its test connection.
+Repeat native validation on a fresh runner; do not treat that startup failure as a
+passed test suite or alter layout assertions without a reported assertion failure.

@@ -7,6 +7,7 @@ import TourCore
 
 @MainActor
 final class MapViewModelTests: XCTestCase {
+    // Exercise real SwiftUI geometry in a visible window, including compact and accessibility layouts.
     func testSketchbookLayoutGivesSpaceToTheNotebookAndKeepsChromeSeparate() throws {
         let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
         let originalKey = scene.windows.first(where: \.isKeyWindow)
