@@ -26,10 +26,15 @@ final class MapScreenSizingTests: XCTestCase {
         XCTAssertFalse(after.requiresScrolling)
     }
 
-    func testMapDoesNotGrowToFillLargeScreensAtExpenseOfPageHierarchy() {
-        let sizes = MapScreenSizing.metrics(availableHeight: 900, destinationHeight: 160)
-        XCTAssertEqual(sizes.mapHeight, MapScreenSizing.maximumMapHeight)
-        XCTAssertLessThan(sizes.contentHeight, 900)
+    func testMapUsesRecoveredSpaceWithoutChangingDestinationHeight() {
+        let before = MapScreenSizing.metrics(availableHeight: 620, destinationHeight: 160)
+        let after = MapScreenSizing.metrics(availableHeight: 650, destinationHeight: 160)
+        XCTAssertEqual(after.mapHeight - before.mapHeight, 30)
+        XCTAssertEqual(after.destinationHeight, before.destinationHeight)
+        XCTAssertEqual(after.contentHeight, 650)
+        XCTAssertFalse(after.requiresScrolling)
+        let tall = MapScreenSizing.metrics(availableHeight: 900, destinationHeight: 160)
+        XCTAssertEqual(tall.contentHeight, 900, "Do not leave recovered screen height unused below the destination")
     }
 
     func testAccessibilityOverflowRemainsScrollableWithoutCompressingText() {
@@ -52,7 +57,7 @@ final class MapScreenSizingTests: XCTestCase {
                 let sizes = MapScreenSizing.metrics(availableHeight: available, destinationHeight: panel)
                 XCTAssertEqual(sizes.destinationHeight, panel)
                 XCTAssertGreaterThanOrEqual(sizes.mapHeight, MapScreenSizing.minimumMapHeight)
-                XCTAssertLessThanOrEqual(sizes.mapHeight, MapScreenSizing.maximumMapHeight)
+                XCTAssertLessThanOrEqual(sizes.mapHeight, max(MapScreenSizing.minimumMapHeight, available - panel))
                 if MapScreenSizing.minimumMapHeight + panel + MapScreenSizing.sectionSpacing
                     + MapScreenSizing.bottomSpacing <= available {
                     XCTAssertFalse(sizes.requiresScrolling)

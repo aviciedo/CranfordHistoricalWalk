@@ -12,7 +12,7 @@ struct BottomNavigationBar: View {
             tab(.map, title: "Map", symbol: "map", selectedSymbol: "map.fill")
             tab(.stops, title: "Stops", symbol: "signpost.right.and.left", selectedSymbol: "signpost.right.and.left.fill")
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 2)
         .background(AppTheme.navigationBackground)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Main navigation")
@@ -21,26 +21,16 @@ struct BottomNavigationBar: View {
     private func tab(_ tab: AppNavigation.Tab, title: String, symbol: String, selectedSymbol: String) -> some View {
         let selected = selection == tab
         return Button { selection = tab } label: {
-            VStack(spacing: 5) {
+            VStack(spacing: 2) {
                 Image(systemName: selected ? selectedSymbol : symbol)
                     .symbolRenderingMode(.monochrome)
-                    .font(.system(size: 24, weight: .regular))
-                    .frame(width: 32, height: 27)
+                    .font(.system(size: 22, weight: .regular))
+                    .frame(width: 30, height: 25)
                     .accessibilityHidden(true)
                 Text(title)
-                    .font(.caption.weight(selected ? .semibold : .regular))
+                    .font(.caption2.weight(selected ? .semibold : .regular))
             }
-            .frame(maxWidth: .infinity, minHeight: 52)
-            .padding(.vertical, 2)
-            .overlay(alignment: .bottom) {
-                Rectangle()
-                    .fill(AppTheme.forest)
-                    .frame(height: 2)
-                    .padding(.horizontal, 12)
-                    .opacity(selected ? 1 : 0)
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
-            }
+            .frame(maxWidth: .infinity, minHeight: 48)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

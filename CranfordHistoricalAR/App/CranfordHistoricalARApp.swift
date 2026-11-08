@@ -1,4 +1,5 @@
 import SwiftUI
+import TourCore
 
 @main
 struct CranfordHistoricalARApp: App {
@@ -29,34 +30,26 @@ struct RootView: View {
     private var isMapActive: Bool { navigation.selectedTab == .map && scenePhase == .active }
 
     var body: some View {
-        GeometryReader { viewport in
-            VStack(spacing: 0) {
-                TabView(selection: $navigation.selectedTab) {
-                    HomeView()
-                        .tabItem { Label("Home", systemImage: "house") }
-                        .tag(AppNavigation.Tab.home)
-                        .toolbar(.hidden, for: .tabBar)
-                    TourView()
-                        .tabItem { Label("Map", systemImage: "map") }
-                        .tag(AppNavigation.Tab.map)
-                        .toolbar(.hidden, for: .tabBar)
-                    StopsView()
-                        .tabItem { Label("Stops", systemImage: "mappin") }
-                        .tag(AppNavigation.Tab.stops)
-                        .toolbar(.hidden, for: .tabBar)
-                }
-                .toolbar(.hidden, for: .tabBar)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .clipped()
-
-                // Real layout siblings: screens receive only the height above the footer.
-                // This avoids relying on inset propagation through the native TabView.
-                SharedNarrationBar(availableHeight: viewport.size.height)
-                    .fixedSize(horizontal: false, vertical: true)
-                BottomNavigationBar(selection: $navigation.selectedTab)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .background(AppTheme.navigationBackground.ignoresSafeArea(edges: .bottom))
+        AppContentShell {
+            TabView(selection: $navigation.selectedTab) {
+                HomeView()
+                    .tabItem { Label("Home", systemImage: "house") }
+                    .tag(AppNavigation.Tab.home)
+                    .toolbar(.hidden, for: .tabBar)
+                TourView()
+                    .tabItem { Label("Map", systemImage: "map") }
+                    .tag(AppNavigation.Tab.map)
+                    .toolbar(.hidden, for: .tabBar)
+                StopsView()
+                    .tabItem { Label("Stops", systemImage: "mappin") }
+                    .tag(AppNavigation.Tab.stops)
+                    .toolbar(.hidden, for: .tabBar)
             }
+            .toolbar(.hidden, for: .tabBar)
+        } player: { height in
+            SharedNarrationBar(availableHeight: height)
+        } navigation: {
+            BottomNavigationBar(selection: $navigation.selectedTab)
         }
         // Paint the status-bar/notch area without moving content outside its safe area.
         .background(AppTheme.ivory.ignoresSafeArea())
@@ -86,6 +79,37 @@ struct RootView: View {
                 do { try await Task.sleep(for: .seconds(5)) }
                 catch { return }
             }
+        }
+    }
+}
+
+/// One footer reservation for every tab. Ignoring only the container's lower safe area
+/// lets the compact bar sit nearer the edge while keyboard avoidance remains native.
+struct AppContentShell<Content: View, Player: View, Navigation: View>: View {
+    private let content: Content
+    private let player: (CGFloat) -> Player
+    private let navigation: Navigation
+
+    init(@ViewBuilder content: () -> Content,
+         @ViewBuilder player: @escaping (CGFloat) -> Player,
+         @ViewBuilder navigation: () -> Navigation) {
+        self.content = content()
+        self.player = player
+        self.navigation = navigation()
+    }
+
+    var body: some View {
+        GeometryReader { viewport in
+            let bottom = AppFooterSizing.bottomClearance(safeAreaBottom: Double(viewport.safeAreaInsets.bottom))
+            let usableHeight = viewport.size.height + viewport.safeAreaInsets.bottom - CGFloat(bottom)
+            VStack(spacing: 0) {
+                content.frame(maxWidth: .infinity, maxHeight: .infinity).clipped()
+                player(usableHeight).fixedSize(horizontal: false, vertical: true)
+                navigation.fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.bottom, CGFloat(bottom))
+            .background(AppTheme.navigationBackground.ignoresSafeArea(edges: .bottom))
+            .ignoresSafeArea(.container, edges: .bottom)
         }
     }
 }

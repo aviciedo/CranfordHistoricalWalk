@@ -7,6 +7,47 @@ import TourCore
 
 @MainActor
 final class MapViewModelTests: XCTestCase {
+    func testCompactFooterUsesRecoveredHeightWithoutOverlappingPlayerOrHomeIndicator() throws {
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+        let originalKey = scene.windows.first(where: \.isKeyWindow)
+        for type in [DynamicTypeSize.large, .accessibility3] {
+            for playerHeight in [0.0, 148.0] {
+                var frames: [String: CGRect] = [:]
+                let content = AppContentShell {
+                    Color.clear.onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frames["content"] = $0 }
+                } player: { _ in
+                    Color.clear.frame(height: playerHeight)
+                        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frames["player"] = $0 }
+                } navigation: {
+                    BottomNavigationBar(selection: .constant(.home))
+                        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frames["navigation"] = $0 }
+                }
+                .environment(\.dynamicTypeSize, type)
+                let host = UIHostingController(rootView: content)
+                let window = UIWindow(windowScene: scene)
+                window.frame = scene.coordinateSpace.bounds
+                window.rootViewController = host
+                window.makeKeyAndVisible()
+                defer { window.isHidden = true; window.rootViewController = nil; originalKey?.makeKey() }
+                window.layoutIfNeeded()
+                host.view.layoutIfNeeded()
+                RunLoop.main.run(until: Date().addingTimeInterval(0.1))
+                let navigation = try XCTUnwrap(frames["navigation"])
+                let player = try XCTUnwrap(frames["player"])
+                let body = try XCTUnwrap(frames["content"])
+                let clearance = AppFooterSizing.bottomClearance(safeAreaBottom: Double(window.safeAreaInsets.bottom))
+                XCTAssertEqual(navigation.maxY, window.bounds.maxY - CGFloat(clearance), accuracy: 1,
+                    "Navigation should sit at the compact lower gap, above the home indicator")
+                XCTAssertEqual(player.maxY, navigation.minY, accuracy: 1)
+                XCTAssertEqual(body.maxY, player.minY, accuracy: 1, "Content receives all height above the actual footer")
+                XCTAssertGreaterThanOrEqual(body.minY, window.safeAreaInsets.top - 1, "Keep headings below the notch")
+                XCTAssertEqual(player.height, playerHeight, accuracy: 1)
+                XCTAssertGreaterThanOrEqual(navigation.height, 48)
+                if type == .large { XCTAssertLessThanOrEqual(navigation.height, 54) }
+            }
+        }
+    }
+
     func testIllustrationOverlayKeepsBadgeTargetsClearAndUsesApprovedSizes() {
         let models = HistoricalStop.previewStops.enumerated().map { index, stop in
             StopMarkerModel(id: stop.id, coordinate: stop.clLocationCoordinate,
