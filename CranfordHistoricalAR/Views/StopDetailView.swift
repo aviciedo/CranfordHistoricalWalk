@@ -159,8 +159,9 @@ struct StopDetailView: View {
                         }
                     }
                 }
-                if hasStopDetails || hasStoryScript {
-                    // A single zero-gap group makes both actions match Home's menu rows.
+                if hasStopDetails || hasStoryScript || (stop.hasPlaqueReference && allowsPlaqueActions) {
+                    // Related detail, story and sketch rows share dividers without
+                    // inheriting the larger gap between major page sections.
                     VStack(alignment: .leading, spacing: 0) {
                         if hasStopDetails {
                             Divider()
@@ -184,13 +185,14 @@ struct StopDetailView: View {
                             .accessibilityHint("Opens the full narration text without starting audio or changing your walk")
                             .accessibilityIdentifier("stop.readStory")
                         }
-                        if !stop.hasPlaqueReference { Divider() }
-                    }
-                }
-                if stop.hasPlaqueReference && allowsPlaqueActions {
-                    SketchCollectionRow(stop: stop,
-                                     isCollected: tour.activities[stop.id].plaqueUnlockedAt != nil) {
-                        sketchbookPresentation = SketchbookPresentation(stopID: stop.id, animated: false)
+                        if stop.hasPlaqueReference && allowsPlaqueActions {
+                            SketchCollectionRow(stop: stop,
+                                             isCollected: tour.activities[stop.id].plaqueUnlockedAt != nil) {
+                                sketchbookPresentation = SketchbookPresentation(stopID: stop.id, animated: false)
+                            }
+                        } else {
+                            Divider()
+                        }
                     }
                 }
             }
