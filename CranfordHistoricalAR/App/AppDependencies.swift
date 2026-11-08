@@ -38,13 +38,26 @@ final class AppDependencies {
         }
     }
 
+    private var arCoreEnabledOverride: Bool? {
+        #if DEVELOPER_MENU
+        developer?.isARCoreEnabled
+        #else
+        nil
+        #endif
+    }
+
+    var isARCoreRequested: Bool {
+        providerMode != .appleOnly && (arCoreEnabledOverride ?? (providerMode == .googleOnly || configuration.arCoreGeospatialEnabled))
+    }
+
     /// One provider per AR session. Selection uses the existing LocationService state — no extra manager.
     func makeGeoSpatialProvider() -> any GeoSpatialProvider {
         GeoSpatialProviderFactory.make(
             configuration: configuration,
             locationAuthorized: tourViewModel.locationAuthorization == .authorized,
             preciseLocation: tourViewModel.isPreciseLocation,
-            mode: providerMode
+            mode: providerMode,
+            arCoreEnabledOverride: arCoreEnabledOverride
         )
     }
 
@@ -69,7 +82,8 @@ final class AppDependencies {
 
     private func installDeveloperMode() {
         #if DEVELOPER_MENU
-        developer = DeveloperModeController(tour: tourViewModel, realLocationService: locationService)
+        developer = DeveloperModeController(tour: tourViewModel, realLocationService: locationService,
+                                            arCoreEnabledByDefault: providerMode == .googleOnly || configuration.arCoreGeospatialEnabled)
         #endif
     }
 

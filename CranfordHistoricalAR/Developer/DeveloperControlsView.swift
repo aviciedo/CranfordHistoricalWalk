@@ -68,6 +68,43 @@ struct DeveloperControlsView: View {
             .textSelection(.enabled)
 
             Section {
+                Toggle("Use ARCore", isOn: $developer.isARCoreEnabled)
+                    .disabled(dependencies.providerMode == .appleOnly)
+                    .accessibilityIdentifier("developer.arCoreEnabled")
+                if dependencies.providerMode == .appleOnly {
+                    Text("Switch out of Apple only mode and restart to test ARCore.").font(.footnote)
+                }
+            } header: {
+                Text("Walking AR")
+            } footer: {
+                Text("Applies the next time you open walking AR. Off uses Apple positioning; maps and routes stay unchanged. On still requires ARCore configuration, permissions and consent. Release builds ignore this switch.")
+            }
+
+            Section {
+                ForEach(tour.sketchbookStops) { stop in
+                    let unlocked = tour.activities[stop.id].plaqueUnlockedAt != nil
+                    Button { developer.unlockSketch(stopID: stop.id) } label: {
+                        HStack {
+                            Text(stop.name)
+                            Spacer()
+                            if unlocked { Image(systemName: "checkmark.circle.fill") }
+                            else { Text("Unlock").font(.subheadline) }
+                        }
+                    }
+                    .disabled(unlocked || tour.loadState != .loaded)
+                    .accessibilityLabel("\(unlocked ? "Unlocked" : "Unlock sketch"): \(stop.name)")
+                    .accessibilityIdentifier("developer.unlockSketch.\(stop.id)")
+                }
+                Button("Reset to no sketches unlocked", role: .destructive) { developer.resetSketches() }
+                    .disabled(tour.loadState != .loaded || tour.sketchbookCollectedCount == 0)
+                    .accessibilityIdentifier("developer.resetSketches")
+            } header: {
+                Text("Sketchbook testing")
+            } footer: {
+                Text("Unlock sketches individually or clear the collection. Changes are saved on this device. Visits, stories and walking progress are kept.")
+            }
+
+            Section {
                 Picker("Provider mode", selection: $pendingProviderMode) {
                     ForEach(TourProviderMode.allCases, id: \.self) { mode in
                         Text(mode.title).tag(mode)

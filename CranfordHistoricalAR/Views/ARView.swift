@@ -42,7 +42,7 @@ struct ARTourView: View {
         }
         .task {
             if model != nil || awaitingGeospatialConsent { return }
-            if dependencies.configuration.arCoreGeospatialEnabled, !ARCoreConsentStore.hasAccepted {
+            if dependencies.isARCoreRequested, !ARCoreConsentStore.hasAccepted {
                 awaitingGeospatialConsent = true
                 return
             }

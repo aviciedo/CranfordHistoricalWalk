@@ -17,6 +17,9 @@ public struct StopActivities: Codable, Equatable, Sendable {
 
 public struct StopActivityLedger: Codable, Equatable, Sendable {
     private var entries: [String: StopActivities] = [:]
+    // Optional for compatibility with existing ledgers. A testing reset must not
+    // resurrect sketches from legacy recognized-plaque visit history on relaunch.
+    private var resetSketchStopIDs: Set<String>?
     public init() {}
     public subscript(stopID: String) -> StopActivities { entries[stopID] ?? StopActivities() }
     public mutating func listened(to stopID: String, at date: Date = Date()) {
@@ -29,7 +32,12 @@ public struct StopActivityLedger: Codable, Equatable, Sendable {
         var entry = self[stopID]; entry.visitedAt = entry.visitedAt ?? date; entries[stopID] = entry
     }
     public mutating func collectSketch(at stopID: String, date: Date = Date()) {
+        resetSketchStopIDs?.remove(stopID)
         var entry = self[stopID]; entry.plaqueUnlockedAt = entry.plaqueUnlockedAt ?? date; entries[stopID] = entry
+    }
+    public mutating func clearSketches() {
+        resetSketchStopIDs = (resetSketchStopIDs ?? []).union(entries.keys)
+        for id in Array(entries.keys) { entries[id]?.plaqueUnlockedAt = nil }
     }
     public mutating func clearVisits() {
         for id in Array(entries.keys) { entries[id]?.visitedAt = nil }
@@ -38,7 +46,9 @@ public struct StopActivityLedger: Codable, Equatable, Sendable {
     public mutating func importVisits(_ visits: [StopVisitRecord]) {
         for visit in visits where visit.evidence != .simulation {
             visited(visit.stopID, at: visit.activatedAt)
-            if visit.evidence == .recognizedPlaque { collectSketch(at: visit.stopID, date: visit.activatedAt) }
+            if visit.evidence == .recognizedPlaque, resetSketchStopIDs?.contains(visit.stopID) != true {
+                collectSketch(at: visit.stopID, date: visit.activatedAt)
+            }
         }
     }
 }

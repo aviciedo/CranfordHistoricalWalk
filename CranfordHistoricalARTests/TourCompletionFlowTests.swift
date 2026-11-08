@@ -11,6 +11,64 @@ import CoreLocation
 /// The same state-flow tests run against the native model and its Linux Foundation harness.
 @MainActor
 final class TourCompletionFlowTests: XCTestCase {
+    #if DEVELOPER_MENU
+    func testDeveloperSketchControlsPersistWithoutChangingWalkOrOtherActivities() async throws {
+        let store = InMemoryStopActivityStore(), visits = InMemoryStopVisitStore()
+        let tour = await makeTour(visitStore: visits, activityStore: store)
+        defer { cleanUp(tour) }
+        let suite = "developer-sketch-\(UUID())", defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let developer = DeveloperModeController(tour: tour, realLocationService: tour.locationService, defaults: defaults)
+        let stop = try XCTUnwrap(tour.sketchbookStops.first)
+        XCTAssertTrue(tour.preparePlaqueScanner(stopID: stop.id))
+        XCTAssertEqual(tour.recognizeSketchPlaque(imageName: stop.plaque?.referenceImageName,
+            isTracked: true, trackingReady: true), .allow(.recognizedPlaque))
+        tour.endARDiscoverySession()
+        tour.finishStory(for: stop.id)
+        let progress = tour.progress, history = tour.visitRecords, read = tour.activities[stop.id].readAt
+        for stop in tour.sketchbookStops { developer.unlockSketch(stopID: stop.id) }
+        XCTAssertEqual(tour.sketchbookCollectedCount, tour.sketchbookStops.count)
+        developer.unlockSketch(stopID: "unknown")
+        for stop in tour.stops where !stop.hasPlaqueReference {
+            developer.unlockSketch(stopID: stop.id)
+            XCTAssertNil(tour.activities[stop.id].plaqueUnlockedAt)
+        }
+        developer.resetSketches()
+        XCTAssertEqual(tour.sketchbookCollectedCount, 0)
+        XCTAssertNil(tour.pendingSketchStopID)
+        XCTAssertEqual(tour.progress, progress)
+        XCTAssertEqual(tour.visitRecords, history)
+        XCTAssertEqual(tour.activities[stop.id].readAt, read)
+        XCTAssertFalse(tour.discoveriesByStopID[stop.id]?.hasVerifiedPlaque ?? true)
+        let restored = await makeTour(visitStore: visits, activityStore: store)
+        defer { cleanUp(restored) }
+        XCTAssertEqual(restored.sketchbookCollectedCount, 0, "Saved recognized visits must not re-unlock sketches on restart")
+        XCTAssertEqual(restored.visitRecords, history)
+        XCTAssertEqual(restored.activities[stop.id].readAt, read)
+        XCTAssertTrue(restored.preparePlaqueScanner(stopID: stop.id))
+        XCTAssertEqual(restored.recognizeSketchPlaque(imageName: stop.plaque?.referenceImageName,
+            isTracked: true, trackingReady: true), .allow(.recognizedPlaque))
+        XCTAssertEqual(restored.sketchbookCollectedCount, 1)
+    }
+
+    func testDeveloperARCoreSwitchPersistsBothDirectionsAndUsesConfiguredDefault() async {
+        let tour = await makeTour(); defer { cleanUp(tour) }
+        let suite = "developer-arcore-\(UUID())", defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        func controller(_ enabled: Bool) -> DeveloperModeController {
+            DeveloperModeController(tour: tour, realLocationService: tour.locationService,
+                defaults: defaults, arCoreEnabledByDefault: enabled)
+        }
+        let developer = controller(false)
+        XCTAssertFalse(developer.isARCoreEnabled)
+        developer.isARCoreEnabled = true
+        XCTAssertTrue(controller(false).isARCoreEnabled)
+        developer.isARCoreEnabled = false
+        XCTAssertFalse(controller(true).isARCoreEnabled)
+        XCTAssertEqual(tour.sketchbookCollectedCount, 0)
+    }
+    #endif
+
     func testClosingRecognizedPlaqueWithoutGPSHidesCardWithoutLosingTheAwardOrDestination() async {
         let tour = await makeTour(); defer { cleanUp(tour) }
         let destination = tour.currentStop?.id

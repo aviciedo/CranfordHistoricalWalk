@@ -23,12 +23,16 @@ enum GeoSpatialProviderFactory {
         userConsented: Bool = ARCoreConsentStore.hasAccepted,
         networkAvailable: Bool? = nil,
         deviceSupportsGeospatial: Bool = true,
-        mode: TourProviderMode = .automatic
+        mode: TourProviderMode = .automatic,
+        arCoreEnabledOverride: Bool? = nil
     ) -> GeoSpatialSelection {
         if mode == .appleOnly { return GeoSpatialSelection(backend: .coreLocation) }
+        if arCoreEnabledOverride == false {
+            return GeoSpatialSelection(backend: .coreLocation, fallbackReason: .flagDisabled)
+        }
         let chosen = GeoSpatialSelector.select(GeoSpatialSelectionInput(
             sdkLinked: isSDKLinked,
-            flagEnabled: mode == .googleOnly || configuration.arCoreGeospatialEnabled,
+            flagEnabled: arCoreEnabledOverride ?? (mode == .googleOnly || configuration.arCoreGeospatialEnabled),
             hasAPIKey: configuration.hasARCoreKey,
             userConsented: userConsented,
             deviceSupportsGeospatial: deviceSupportsGeospatial,
@@ -49,7 +53,8 @@ enum GeoSpatialProviderFactory {
         preciseLocation: Bool,
         userConsented: Bool = ARCoreConsentStore.hasAccepted,
         networkAvailable: Bool? = nil,
-        mode: TourProviderMode = .automatic
+        mode: TourProviderMode = .automatic,
+        arCoreEnabledOverride: Bool? = nil
     ) -> any GeoSpatialProvider {
         let chosen = selection(
             configuration: configuration,
@@ -57,15 +62,16 @@ enum GeoSpatialProviderFactory {
             preciseLocation: preciseLocation,
             userConsented: userConsented,
             networkAvailable: networkAvailable,
-            mode: mode
+            mode: mode,
+            arCoreEnabledOverride: arCoreEnabledOverride
         )
+        if !chosen.usesARCore {
+            return CoreLocationGeoSpatialProvider(fallbackReason: chosen.fallbackReason)
+        }
         if mode == .googleOnly, let reason = chosen.fallbackReason {
             return UnavailableGoogleGeoSpatialProvider(reason: reason)
         }
-        if chosen.usesARCore {
-            return ARCoreGeoSpatialProvider(apiKey: configuration.googleARCoreAPIKey)
-        }
-        return CoreLocationGeoSpatialProvider(fallbackReason: chosen.fallbackReason)
+        return ARCoreGeoSpatialProvider(apiKey: configuration.googleARCoreAPIKey)
     }
 }
 

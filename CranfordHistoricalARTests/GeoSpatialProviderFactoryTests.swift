@@ -8,6 +8,36 @@ import UIKit
 
 @MainActor
 final class GeoSpatialProviderFactoryTests: XCTestCase {
+    func testARCoreOffUsesNativePositioningInAutomaticAndStrictGoogleModes() {
+        var configuration = AppConfiguration.empty
+        configuration.googleARCoreAPIKey = "test-arcore-key"
+        configuration.arCoreGeospatialEnabled = true
+        for mode in [TourProviderMode.automatic, .googleOnly] {
+            let provider = GeoSpatialProviderFactory.make(configuration: configuration,
+                locationAuthorized: true, preciseLocation: true, userConsented: true,
+                networkAvailable: true, mode: mode, arCoreEnabledOverride: false)
+            XCTAssertTrue(provider is CoreLocationGeoSpatialProvider)
+            XCTAssertEqual(provider.fallbackReason, .flagDisabled)
+        }
+    }
+
+    func testARCoreOnRequestsGoogleWithoutBypassingConsentOrAppleOnlyMode() {
+        var configuration = AppConfiguration.empty
+        configuration.googleARCoreAPIKey = "test-arcore-key"
+        let enabled = GeoSpatialProviderFactory.selection(configuration: configuration,
+            locationAuthorized: true, preciseLocation: true, userConsented: true,
+            networkAvailable: true, arCoreEnabledOverride: true)
+        XCTAssertEqual(enabled.usesARCore, GeoSpatialProviderFactory.isSDKLinked)
+        let noConsent = GeoSpatialProviderFactory.selection(configuration: configuration,
+            locationAuthorized: true, preciseLocation: true, userConsented: false,
+            networkAvailable: true, arCoreEnabledOverride: true)
+        XCTAssertFalse(noConsent.usesARCore)
+        let apple = GeoSpatialProviderFactory.selection(configuration: configuration,
+            locationAuthorized: true, preciseLocation: true, userConsented: true,
+            networkAvailable: true, mode: .appleOnly, arCoreEnabledOverride: true)
+        XCTAssertEqual(apple.backend, .coreLocation)
+    }
+
     func testAppleOnlyNeverSelectsARCoreEvenWhenGoogleIsConfigured() {
         var configuration = AppConfiguration.empty
         configuration.googleARCoreAPIKey = "test-arcore-key"

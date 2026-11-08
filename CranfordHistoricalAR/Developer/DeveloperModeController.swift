@@ -11,6 +11,10 @@ final class DeveloperModeController {
     private let tour: TourViewModel
     private let realLocationService: any LocationService
     private let defaults: UserDefaults
+    static let arCoreKey = "cranford.developer.arcore-enabled.v1"
+    var isARCoreEnabled: Bool {
+        didSet { defaults.set(isARCoreEnabled, forKey: Self.arCoreKey) }
+    }
     private static let viewingKey = "cranford.developer.mill-viewing-point.v1"
     private(set) var isRefreshingGPS = false
     private(set) var gpsRefreshMessage: String?
@@ -131,10 +135,11 @@ final class DeveloperModeController {
         }
     }
 
-    init(tour: TourViewModel, realLocationService: any LocationService, defaults: UserDefaults = .standard) {
+    init(tour: TourViewModel, realLocationService: any LocationService, defaults: UserDefaults = .standard, arCoreEnabledByDefault: Bool = true) {
         self.tour = tour
         self.realLocationService = realLocationService
         self.defaults = defaults
+        self.isARCoreEnabled = defaults.object(forKey: Self.arCoreKey) as? Bool ?? arCoreEnabledByDefault
         if defaults.object(forKey: Self.captureKey) != nil {
             if let data = defaults.data(forKey: Self.captureKey),
                let archive = try? JSONDecoder().decode(GPSCaptureArchive.self, from: data), archive.isValid {
@@ -157,6 +162,9 @@ final class DeveloperModeController {
         }
 
     }
+
+    func unlockSketch(stopID: String) { tour.unlockSketchForTesting(stopID: stopID) }
+    func resetSketches() { tour.resetSketchesForTesting() }
 
     func markStoryRead() {
         if tour.phase == .notStarted { tour.startTour() }

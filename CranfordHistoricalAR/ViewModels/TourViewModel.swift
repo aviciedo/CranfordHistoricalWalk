@@ -444,6 +444,27 @@ final class TourViewModel {
     }
 
     #if DEVELOPER_MENU
+    /// Test collection state without fabricating a visit, advancing the walk or presenting a reward.
+    func unlockSketchForTesting(stopID: String, now: Date = Date()) {
+        guard loadState == .loaded, sketchbookStops.contains(where: { $0.id == stopID }) else { return }
+        activities.collectSketch(at: stopID, date: now)
+        activityStore.save(activities)
+        restoreDiscovery(for: stopID)
+    }
+
+    func resetSketchesForTesting() {
+        guard loadState == .loaded else { return }
+        activities.clearSketches()
+        activityStore.save(activities)
+        pendingSketchStopID = nil
+        plaqueConfirmedStopID = nil
+        for stop in sketchbookStops {
+            discoveriesByStopID.removeValue(forKey: stop.id)
+            continuedARStopIDs.remove(stop.id)
+            restoreDiscovery(for: stop.id)
+        }
+    }
+
     /// Visit-only and full testing resets are explicit, separate operations.
     func clearRecordedActivitiesAndRestart(includingStoriesAndSketches: Bool) {
         visitStore.removeAll()

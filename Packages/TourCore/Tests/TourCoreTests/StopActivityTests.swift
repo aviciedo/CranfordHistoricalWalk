@@ -12,6 +12,25 @@ final class StopActivityTests: XCTestCase {
         XCTAssertEqual(try JSONDecoder().decode(StopActivityLedger.self, from: saved), ledger)
         XCTAssertTrue(String(decoding: saved, as: UTF8.self).contains("bonusFoundAt"), "Preserve the legacy on-disk key")
     }
+    func testSketchResetSurvivesPersistenceAndLegacyVisitImportButAllowsNewCollection() throws {
+        let visit = StopVisitRecord(stopID: "mill", activatedAt: Date(timeIntervalSince1970: 100), evidence: .recognizedPlaque)
+        var ledger = StopActivityLedger()
+        ledger.importVisits([visit])
+        ledger.read("mill"); ledger.listened(to: "mill")
+        let before = ledger["mill"]
+        ledger.clearSketches()
+        ledger = try JSONDecoder().decode(StopActivityLedger.self, from: JSONEncoder().encode(ledger))
+        ledger.importVisits([visit])
+        XCTAssertNil(ledger["mill"].plaqueUnlockedAt, "Legacy visits must not silently undo the developer reset")
+        XCTAssertEqual(ledger["mill"].visitedAt, before.visitedAt)
+        XCTAssertEqual(ledger["mill"].readAt, before.readAt)
+        XCTAssertEqual(ledger["mill"].listenedAt, before.listenedAt)
+        let newDate = Date(timeIntervalSince1970: 200)
+        ledger.collectSketch(at: "mill", date: newDate)
+        ledger.importVisits([visit])
+        XCTAssertEqual(ledger["mill"].plaqueUnlockedAt, newDate)
+    }
+
     func testListeningAndReadingEachCompleteLearningWithoutVisitOrBonus() {
         var ledger = StopActivityLedger()
         ledger.listened(to: "mill")
