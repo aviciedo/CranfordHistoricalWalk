@@ -25,21 +25,15 @@ enum GeoSpatialProviderFactory {
         deviceSupportsGeospatial: Bool = true,
         mode: TourProviderMode = .automatic
     ) -> GeoSpatialSelection {
-        if mode == .appleOnly { return GeoSpatialSelection(backend: .coreLocation) }
-        let chosen = GeoSpatialSelector.select(GeoSpatialSelectionInput(
-            sdkLinked: isSDKLinked,
-            flagEnabled: mode == .googleOnly || configuration.arCoreGeospatialEnabled,
-            hasAPIKey: configuration.hasARCoreKey,
-            userConsented: userConsented,
-            deviceSupportsGeospatial: deviceSupportsGeospatial,
+        GeospatialSessionResolver.selection(for: choice(
+            configuration: configuration,
             locationAuthorized: locationAuthorized,
             preciseLocation: preciseLocation,
-            networkAvailable: networkAvailable ?? NetworkPathMonitor.shared.isSatisfied
+            userConsented: userConsented,
+            networkAvailable: networkAvailable,
+            deviceSupportsGeospatial: deviceSupportsGeospatial,
+            mode: mode
         ))
-        if mode == .googleOnly {
-            return GeoSpatialSelection(backend: .arCoreGeospatial, fallbackReason: chosen.fallbackReason)
-        }
-        return chosen
     }
 
     @MainActor
@@ -51,21 +45,43 @@ enum GeoSpatialProviderFactory {
         networkAvailable: Bool? = nil,
         mode: TourProviderMode = .automatic
     ) -> any GeoSpatialProvider {
-        let chosen = selection(
+        switch choice(
             configuration: configuration,
             locationAuthorized: locationAuthorized,
             preciseLocation: preciseLocation,
             userConsented: userConsented,
             networkAvailable: networkAvailable,
             mode: mode
-        )
-        if mode == .googleOnly, let reason = chosen.fallbackReason {
+        ) {
+        case .googleUnavailable(let reason):
             return UnavailableGoogleGeoSpatialProvider(reason: reason)
-        }
-        if chosen.usesARCore {
+        case .arCore:
             return ARCoreGeoSpatialProvider(apiKey: configuration.googleARCoreAPIKey)
+        case .coreLocation(let reason):
+            return CoreLocationGeoSpatialProvider(fallbackReason: reason)
         }
-        return CoreLocationGeoSpatialProvider(fallbackReason: chosen.fallbackReason)
+    }
+
+    private static func choice(
+        configuration: AppConfiguration,
+        locationAuthorized: Bool,
+        preciseLocation: Bool,
+        userConsented: Bool,
+        networkAvailable: Bool?,
+        deviceSupportsGeospatial: Bool = true,
+        mode: TourProviderMode
+    ) -> GeospatialSessionChoice {
+        GeospatialSessionResolver.resolve(
+            mode: mode,
+            geospatialRequested: configuration.arCoreGeospatialEnabled,
+            sdkLinked: isSDKLinked,
+            hasAPIKey: configuration.hasARCoreKey,
+            userConsented: userConsented,
+            deviceSupportsGeospatial: deviceSupportsGeospatial,
+            locationAuthorized: locationAuthorized,
+            preciseLocation: preciseLocation,
+            networkAvailable: networkAvailable ?? NetworkPathMonitor.shared.isSatisfied
+        )
     }
 }
 

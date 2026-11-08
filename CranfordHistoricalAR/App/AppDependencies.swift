@@ -55,8 +55,10 @@ final class AppDependencies {
         let mode = TourProviderMode.launchMode(storedValue: nil, developerEnabled: false)
         #endif
         var configuration = configuration
-        if mode == .appleOnly { configuration.arCoreGeospatialEnabled = false }
-        if mode == .googleOnly { configuration.arCoreGeospatialEnabled = true }
+        configuration.arCoreGeospatialEnabled = GeospatialLaunchPolicy.requestsGeospatial(
+            plistEnabled: configuration.arCoreGeospatialEnabled,
+            mode: mode
+        )
         if mode != .appleOnly { GoogleMapsBootstrap.configure(with: configuration) }
         let stopService = BundledJSONHistoricalStopService(resourceName: tourResourceName)
         let locationService = CoreLocationService()

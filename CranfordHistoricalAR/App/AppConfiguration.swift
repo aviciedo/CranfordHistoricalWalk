@@ -45,7 +45,7 @@ struct AppConfiguration: Sendable, Equatable {
             googleRoutesAPIKey: routes,
             googleARCoreAPIKey: AppConfiguration.looksLikeKey(arcore) ? arcore : routes,
             directionsProvider: DirectionsProvider(rawValue: string("DirectionsProvider").lowercased()) ?? .routes,
-            arCoreGeospatialEnabled: string("EnableARCoreGeospatial") == "1"
+            arCoreGeospatialEnabled: GeospatialLaunchPolicy.plistRequestsGeospatial(string("EnableARCoreGeospatial"))
         )
     }
 

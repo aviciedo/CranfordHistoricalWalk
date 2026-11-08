@@ -431,6 +431,32 @@ final class GeoSpatialProviderFactoryTests: XCTestCase {
         XCTAssertNotNil(selection.reducedAccuracyMessage)
     }
 
+    func testDefaultOnRequestWithoutConsentMatchesTheSharedResolver() {
+        var configuration = AppConfiguration.empty
+        configuration.arCoreGeospatialEnabled = true
+        configuration.googleARCoreAPIKey = "AIzaSyExampleExampleExampleExample"
+        let selection = GeoSpatialProviderFactory.selection(
+            configuration: configuration,
+            locationAuthorized: true,
+            preciseLocation: true,
+            userConsented: false,
+            networkAvailable: true
+        )
+        let resolved = GeospatialSessionResolver.selection(for: GeospatialSessionResolver.resolve(
+            mode: .automatic,
+            geospatialRequested: true,
+            sdkLinked: GeoSpatialProviderFactory.isSDKLinked,
+            hasAPIKey: true,
+            userConsented: false,
+            locationAuthorized: true,
+            preciseLocation: true,
+            networkAvailable: true
+        ))
+        XCTAssertEqual(selection, resolved)
+        XCTAssertEqual(selection.backend, .coreLocation)
+        XCTAssertFalse(selection.usesARCore)
+    }
+
     func testEnabledWithoutConsentFallsBack() {
         var configuration = AppConfiguration.empty
         configuration.arCoreGeospatialEnabled = true
