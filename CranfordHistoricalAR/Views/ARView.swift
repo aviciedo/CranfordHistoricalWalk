@@ -29,6 +29,7 @@ struct ARTourView: View {
                             startAR()
                         },
                         onDecline: {
+                            ARCoreConsentStore.decline()
                             awaitingGeospatialConsent = false
                             startAR()
                         }
@@ -42,7 +43,10 @@ struct ARTourView: View {
         }
         .task {
             if model != nil || awaitingGeospatialConsent { return }
-            if dependencies.configuration.arCoreGeospatialEnabled, !ARCoreConsentStore.hasAccepted {
+            if GeospatialLaunchPolicy.shouldPresentConsent(
+                requestsGeospatial: dependencies.configuration.arCoreGeospatialEnabled,
+                alreadyAccepted: ARCoreConsentStore.hasAccepted
+            ) {
                 awaitingGeospatialConsent = true
                 return
             }
