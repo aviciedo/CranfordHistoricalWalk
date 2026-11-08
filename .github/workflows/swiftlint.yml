@@ -1,32 +1,13 @@
 name: SwiftLint
 
+# Heavy checks are opt-in. See AGENTS.md and docs/engineering/testing-policy.md.
 on:
-  push:
-    branches: [main, 'validation/**']
-    paths:
-      - 'CranfordHistoricalAR/**/*.swift'
-      - 'CranfordHistoricalARTests/**'
-      - 'Packages/TourCore/Sources/**/*.swift'
-      - 'Packages/TourCore/Tests/**'
-      - '.swiftlint.yml'
-      - '.swiftlint-baseline.json'
-      - 'scripts/install-swiftlint.sh'
-      - '.github/workflows/swiftlint.yml'
-      - 'project.yml'
-      - 'CranfordHistoricalAR.xcodeproj/**'
-  pull_request:
-    paths:
-      - 'CranfordHistoricalAR/**/*.swift'
-      - 'CranfordHistoricalARTests/**'
-      - 'Packages/TourCore/Sources/**/*.swift'
-      - 'Packages/TourCore/Tests/**'
-      - '.swiftlint.yml'
-      - '.swiftlint-baseline.json'
-      - 'scripts/install-swiftlint.sh'
-      - '.github/workflows/swiftlint.yml'
-      - 'project.yml'
-      - 'CranfordHistoricalAR.xcodeproj/**'
   workflow_dispatch:
+    inputs:
+      confirmation:
+        description: 'Enter perform comprehensive testing to run these checks'
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -37,6 +18,7 @@ concurrency:
 
 jobs:
   swiftlint:
+    if: ${{ inputs.confirmation == 'perform comprehensive testing' }}
     runs-on: macos-15-intel
     timeout-minutes: 10
     env:

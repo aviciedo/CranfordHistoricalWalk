@@ -1,43 +1,13 @@
 name: Apple compiler checks
 
+# Heavy checks are opt-in. See AGENTS.md and docs/engineering/testing-policy.md.
 on:
-  push:
-    # Published branches share one commit. Test main once; PRs and manual runs remain enabled.
-    branches: [main, 'validation/**']
-    paths:
-      - 'CranfordHistoricalAR/**'
-      - 'CranfordHistoricalARTests/**'
-      - 'CranfordHistoricalAR.xcodeproj/**'
-      - 'Packages/TourCore/**'
-      - 'Config/**'
-      - 'assets/audio/**'
-      - 'project.yml'
-      - '.github/workflows/apple-build.yml'
-      - '.github/workflows/swiftlint.yml'
-      - '.swiftlint.yml'
-      - '.swiftlint-baseline.json'
-      - 'scripts/install-swiftlint.sh'
-      - 'scripts/summarize-apple-checks.py'
-      - 'scripts/report-startup-crash.py'
-      - 'scripts/prepare-activity-model-tests.py'
-  pull_request:
-    paths:
-      - 'CranfordHistoricalAR/**'
-      - 'CranfordHistoricalARTests/**'
-      - 'CranfordHistoricalAR.xcodeproj/**'
-      - 'Packages/TourCore/**'
-      - 'Config/**'
-      - 'assets/audio/**'
-      - 'project.yml'
-      - '.github/workflows/apple-build.yml'
-      - '.github/workflows/swiftlint.yml'
-      - '.swiftlint.yml'
-      - '.swiftlint-baseline.json'
-      - 'scripts/install-swiftlint.sh'
-      - 'scripts/summarize-apple-checks.py'
-      - 'scripts/report-startup-crash.py'
-      - 'scripts/prepare-activity-model-tests.py'
   workflow_dispatch:
+    inputs:
+      confirmation:
+        description: 'Enter perform comprehensive testing to run these checks'
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -50,6 +20,7 @@ concurrency:
 
 jobs:
   apple-toolchain:
+    if: ${{ inputs.confirmation == 'perform comprehensive testing' }}
     # macos-latest currently selects arm64; build 110 never obtained that runner.
     # Use GitHub's documented standard Intel pool and an explicitly installed Xcode.
     runs-on: macos-15-intel

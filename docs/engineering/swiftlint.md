@@ -1,5 +1,9 @@
 # SwiftLint setup and policy
 
+SwiftLint is now opt-in under the owner’s [testing policy](testing-policy.md). Do not
+install or run it for routine development. Run the commands below only as part of an
+explicit **perform comprehensive testing** request.
+
 Run these commands from the repository root on a Mac with Xcode installed:
 
 ```sh
@@ -44,13 +48,14 @@ a replacement baseline, then review and commit its diff:
 Keep complexity, file-length and formatting rules deferred until a separate reviewed
 change; adding rules can expose existing findings and should not trigger a mass rewrite.
 
-## Continuous integration
+## Manual CI
 
-`.github/workflows/swiftlint.yml` installs the pinned tool on macOS and runs strict lint
-with GitHub annotations. It never fixes code or updates the baseline. Both push and
-pull-request filters cover sources, policy, baseline, installer and workflow changes.
-The existing Apple build/test gate remains separate and also runs for lint setup changes.
+The SwiftLint workflow is available through `workflow_dispatch` only, with the input
+`confirmation: perform comprehensive testing`. It does not run on pushes or pull
+requests. The Apple build/test workflow is likewise manual; run both for an explicitly
+requested comprehensive check on the exact candidate commit.
 
-The recommended protected-branch checks are `apple-toolchain` and `swiftlint`.
-Repository owners must configure protection in GitHub settings; this setup does not
-claim those server settings were changed. No Maestro or snapshot-testing setup is added.
+The workflows retain their existing tools, rules and reports. This policy changes
+when they run, not the checks themselves. Mandatory branch-protection checks are not
+a default requirement; server settings are managed separately and are not changed by
+editing this file. No Maestro or snapshot-testing setup is added.

@@ -1,3 +1,17 @@
+## Current development workflow — comprehensive testing is opt-in
+
+Routine changes use quick, relevant checks. Apple builds/native tests, SwiftLint,
+full core/model suites and other heavy verification run only when explicitly requested:
+**perform comprehensive testing**. Pushes and pull requests no longer trigger the
+Apple or SwiftLint workflows; both remain available for manual dispatch with that
+phrase as the `confirmation` input. Publication does not implicitly request these checks.
+
+Comprehensive testing is strongly suggested before a public release and for changes
+to AR, permissions, maps/routing, persistence, audio/concurrency, dependencies or build
+configuration. Recommendations do not trigger runs. See [testing policy](docs/engineering/testing-policy.md),
+[release policy](docs/engineering/release-policy.md) and [agent instructions](AGENTS.md).
+This policy supersedes mandatory-check language in the historical build notes below.
+
 ## Build 131 candidate — grounded AR route markers
 
 Fixes the field-reported upright arrows and camera-relative lawn placement.
