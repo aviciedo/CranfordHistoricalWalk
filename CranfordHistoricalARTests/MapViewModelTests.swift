@@ -7,6 +7,68 @@ import TourCore
 
 @MainActor
 final class MapViewModelTests: XCTestCase {
+    func testSketchbookLayoutGivesSpaceToTheNotebookAndKeepsChromeSeparate() throws {
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+        let originalKey = scene.windows.first(where: \.isKeyWindow)
+        for type in [DynamicTypeSize.large, .accessibility3] {
+            for compact in [false, true] {
+                var frames: [String: CGRect] = [:]
+                let content = SketchbookScreenLayout {
+                    SketchbookHeader(collected: 0, total: 3, onDismiss: {})
+                        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frames["header"] = $0 }
+                } pages: {
+                    Color.clear
+                        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frames["pages"] = $0 }
+                        .padding(.horizontal, 4)
+                } footer: {
+                    SketchbookPagination(page: 1, total: 3, enabled: true, onPrevious: {}, onNext: {})
+                        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frames["footer"] = $0 }
+                }
+                .environment(\.dynamicTypeSize, type)
+                .environment(\.colorScheme, .light)
+                let window = UIWindow(windowScene: scene)
+                window.frame = compact ? CGRect(x: 0, y: 0, width: 320, height: 568) : scene.coordinateSpace.bounds
+                let host = UIHostingController(rootView: content)
+                window.rootViewController = host
+                window.makeKeyAndVisible()
+                defer { window.isHidden = true; window.rootViewController = nil; originalKey?.makeKey() }
+                window.layoutIfNeeded(); host.view.layoutIfNeeded()
+                RunLoop.main.run(until: Date().addingTimeInterval(0.1))
+                let header = try XCTUnwrap(frames["header"])
+                let pages = try XCTUnwrap(frames["pages"])
+                let footer = try XCTUnwrap(frames["footer"])
+                let clearance = CGFloat(AppFooterSizing.bottomClearance(safeAreaBottom: Double(window.safeAreaInsets.bottom)))
+                XCTAssertEqual(pages.minX, 4, accuracy: 1)
+                XCTAssertEqual(pages.width, window.bounds.width - 8, accuracy: 1)
+                XCTAssertEqual(pages.minY, header.maxY + 8, accuracy: 1)
+                XCTAssertEqual(footer.minY, pages.maxY + 8, accuracy: 1)
+                XCTAssertEqual(footer.maxY, window.bounds.maxY - clearance, accuracy: 1)
+                XCTAssertGreaterThanOrEqual(header.minY, window.safeAreaInsets.top - 1)
+                XCTAssertGreaterThan(pages.height, 100, "Large text must retain a scrollable notebook viewport")
+                XCTAssertGreaterThanOrEqual(footer.height, 44)
+                if type == .large && !compact {
+                    XCTAssertLessThanOrEqual(footer.height, 45, "Pagination must stay a single quiet row")
+                    let usable = window.bounds.height - window.safeAreaInsets.top - clearance
+                    if window.bounds.width >= 375 && usable >= 650 {
+                        XCTAssertGreaterThan(pages.height / usable, 0.75, "The notebook should dominate the available page")
+                    }
+                }
+            }
+        }
+    }
+
+    func testSketchbookInstructionKeepsReadableLinesAtSmallAndLargeTextSizes() {
+        for type in [DynamicTypeSize.large, .accessibility3] {
+            for width in [200.0, 320.0] {
+                let host = UIHostingController(rootView: SketchbookCollectInstruction().environment(\.dynamicTypeSize, type))
+                let size = host.sizeThatFits(in: CGSize(width: width, height: 1))
+                XCTAssertLessThanOrEqual(size.width, width + 1)
+                XCTAssertGreaterThan(size.height, 30, "Keep both instruction lines visible")
+                if type.isAccessibilitySize { XCTAssertGreaterThan(size.height, 60) }
+            }
+        }
+    }
+
     func testCompactFooterUsesRecoveredHeightWithoutOverlappingPlayerOrHomeIndicator() throws {
         let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
         let originalKey = scene.windows.first(where: \.isKeyWindow)

@@ -34,25 +34,10 @@ struct SketchbookView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                ScreenBackButton { dismiss() }
-                Spacer()
-                // This presentation deliberately closes back to its tour-stop host.
-                Button { dismiss() } label: {
-                    Image(systemName: "xmark").font(.system(size: 17, weight: .medium))
-                        .frame(width: 44, height: 44).background(.white, in: Circle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Close sketchbook")
-                .accessibilityHint("Returns to the previous screen; your sketches stay collected")
-                .accessibilityIdentifier("sketchbook.close")
-            }
-            .padding(.horizontal, 24).padding(.top, 8)
-            Text("Your sketchbook")
-                .font(.system(.largeTitle, design: .serif).weight(.semibold))
-                .accessibilityAddTraits(.isHeader)
-                .padding(.horizontal, 24)
+        SketchbookScreenLayout {
+            SketchbookHeader(collected: tour.sketchbookCollectedCount, total: stops.count,
+                             onDismiss: { dismiss() })
+        } pages: {
             if stops.isEmpty {
                 ContentUnavailableView("No on-site sketches yet", systemImage: "book.closed",
                                        description: Text("Plaque discoveries will appear here when they become available."))
@@ -74,11 +59,15 @@ struct SketchbookView: View {
                 }
                 .padding(.horizontal, 4)
                 .accessibilityIdentifier("sketchbook.pages")
-                pagination
+            }
+        } footer: {
+            if !stops.isEmpty {
+                SketchbookPagination(page: currentPageIndex + 1, total: stops.count,
+                                     enabled: !isAwaitingSketch,
+                                     onPrevious: { pageSelection.wrappedValue = currentPageIndex - 1 },
+                                     onNext: { pageSelection.wrappedValue = currentPageIndex + 1 })
             }
         }
-        .padding(.bottom, 12)
-        .background(AppTheme.ivory.ignoresSafeArea())
         .foregroundStyle(AppTheme.forest)
         .preferredColorScheme(.light)
         .environment(\.colorScheme, .light)
@@ -116,31 +105,122 @@ struct SketchbookView: View {
         hasSelectedInitialPage = true
     }
 
-    private var pagination: some View {
-        VStack(spacing: 6) {
-            HStack {
-                pageButton("Previous page", symbol: "chevron.left", disabled: currentPageIndex == 0) { pageSelection.wrappedValue = currentPageIndex - 1 }
-                Spacer(minLength: 8)
-                Text("Page \(currentPageIndex + 1) of \(stops.count)")
-                    .font(.system(.headline, design: .serif)).monospacedDigit()
-                    .accessibilityIdentifier("sketchbook.pageCount")
-                Spacer(minLength: 8)
-                pageButton("Next page", symbol: "chevron.right", disabled: currentPageIndex >= stops.count - 1) { pageSelection.wrappedValue = currentPageIndex + 1 }
+}
+
+/// Header and pagination receive their natural heights; the physical notebook owns
+/// every remaining point. The compact bottom gap matches the main app's footer.
+struct SketchbookScreenLayout<Header: View, Pages: View, Footer: View>: View {
+    private let header: Header
+    private let pages: Pages
+    private let footer: Footer
+
+    init(@ViewBuilder header: () -> Header, @ViewBuilder pages: () -> Pages,
+         @ViewBuilder footer: () -> Footer) {
+        self.header = header()
+        self.pages = pages()
+        self.footer = footer()
+    }
+
+    var body: some View {
+        GeometryReader { viewport in
+            VStack(spacing: 8) {
+                header.fixedSize(horizontal: false, vertical: true)
+                pages.frame(maxWidth: .infinity, maxHeight: .infinity)
+                footer.fixedSize(horizontal: false, vertical: true)
             }
-            Text("\(tour.sketchbookCollectedCount) of \(stops.count) sketches found")
-                .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
-                .accessibilityIdentifier("sketchbook.collectionCount")
+            .padding(.bottom, CGFloat(AppFooterSizing.bottomClearance(safeAreaBottom: Double(viewport.safeAreaInsets.bottom))))
+            .background {
+                AppTheme.ivory.overlay { SketchbookPageBack().opacity(0.25) }
+                    .ignoresSafeArea()
+            }
+            .ignoresSafeArea(.container, edges: .bottom)
         }
+    }
+}
+
+struct SketchbookHeader: View {
+    let collected: Int
+    let total: Int
+    let onDismiss: () -> Void
+    @ScaledMetric(relativeTo: .title) private var headingSize: CGFloat = 30
+
+    var body: some View {
+        VStack(spacing: 8) {
+            HStack {
+                ScreenBackButton(action: onDismiss)
+                Spacer(minLength: 12)
+                Button(action: onDismiss) {
+                    Image(systemName: "xmark").font(.system(size: 17, weight: .medium))
+                        .frame(width: 44, height: 44).background(.white, in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Close sketchbook")
+                .accessibilityHint("Returns to the previous screen; your sketches stay collected")
+                .accessibilityIdentifier("sketchbook.close")
+            }
+            HStack(alignment: .center, spacing: 12) {
+                Text("Your sketchbook")
+                    .font(.system(size: min(headingSize, 40), weight: .semibold, design: .serif))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityAddTraits(.isHeader)
+                if total > 0 {
+                    SketchbookCollectionCounter(collected: collected, total: total)
+                        .fixedSize()
+                }
+            }
+        }
+        .padding(.horizontal, 16).padding(.top, 8)
+        .foregroundStyle(AppTheme.forest)
+    }
+}
+
+struct SketchbookCollectionCounter: View {
+    let collected: Int
+    let total: Int
+    private var value: String { "\(max(0, min(collected, total))) of \(max(0, total))" }
+
+    var body: some View {
+        Text(value)
+            .font(.footnote.weight(.medium)).monospacedDigit()
+            .padding(.horizontal, 10).padding(.vertical, 4)
+            .foregroundStyle(AppTheme.forest)
+            .background(AppTheme.sketchbookPaper.opacity(0.8), in: Capsule())
+            .overlay { Capsule().strokeBorder(AppTheme.forest.opacity(0.3), lineWidth: 1) }
+            .accessibilityLabel("Sketches collected")
+            .accessibilityValue(value)
+            .accessibilityIdentifier("sketchbook.collectionCount")
+    }
+}
+
+struct SketchbookPagination: View {
+    let page: Int
+    let total: Int
+    let enabled: Bool
+    let onPrevious: () -> Void
+    let onNext: () -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            pageButton("Previous page", symbol: "chevron.left", disabled: page <= 1, action: onPrevious)
+            Text("Page \(page) of \(total)")
+                .font(.footnote).monospacedDigit()
+                .frame(maxWidth: .infinity)
+                .accessibilityIdentifier("sketchbook.pageCount")
+            pageButton("Next page", symbol: "chevron.right", disabled: page >= total, action: onNext)
+        }
+        .foregroundStyle(AppTheme.secondaryInk)
         .padding(.horizontal, 32)
     }
 
-    private func pageButton(_ title: String, symbol: String, disabled: Bool, action: @escaping () -> Void) -> some View {
+    private func pageButton(_ title: String, symbol: String, disabled: Bool,
+                            action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image(systemName: symbol).font(.title3.weight(.medium))
-                .frame(width: 48, height: 48).background(.white, in: Circle())
+            Image(systemName: symbol).font(.body.weight(.regular))
+                .frame(width: 44, height: 44).contentShape(Rectangle())
         }
-        .buttonStyle(.plain).disabled(disabled || isAwaitingSketch)
-        .opacity(disabled ? 0.3 : 1)
+        .buttonStyle(.plain).disabled(disabled || !enabled)
+        .opacity(disabled ? 0.35 : 1)
         .accessibilityLabel(title)
     }
 }
@@ -174,17 +254,13 @@ private struct SketchbookLeaf: View {
                         .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
                         .opacity(revealSketch ? 1 : 0)
                 } else {
-                    VStack(spacing: 8) {
-                        Label("Not discovered", systemImage: "lock")
-                        Text("Find the on-site plaque to unlock this sketch.")
-                            .font(.subheadline).foregroundStyle(AppTheme.secondaryInk)
-                    }
-                    .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                    SketchbookCollectInstruction()
+                        .padding(.horizontal, 12)
                 }
                 Spacer(minLength: 24)
             }
             .padding(.leading, 16).padding(.trailing, 8).padding(.vertical, 24)
-            .frame(maxWidth: .infinity, minHeight: max(0, availableHeight - 12))
+            .frame(maxWidth: .infinity, minHeight: max(0, availableHeight))
             .animation(.easeOut(duration: reduceMotion ? 0.2 : 0.9), value: revealSketch)
         }
         .scrollBounceBehavior(.basedOnSize)
@@ -194,6 +270,23 @@ private struct SketchbookLeaf: View {
         .background { SketchbookPaper() }
         // Keep the snapshot rectangular and opaque to its last pixel. A rounded
         // mask reveals the hosting background at the bottom of a moving leaf.
+    }
+}
+
+struct SketchbookCollectInstruction: View {
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "lock")
+                .font(.title2.weight(.light)).accessibilityHidden(true)
+            Text("Scan this stop’s plaque\nto collect the sketch.")
+                .font(.subheadline)
+                .fixedSize(horizontal: false, vertical: true)
+                .multilineTextAlignment(.leading)
+        }
+        .foregroundStyle(AppTheme.forest)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Scan this stop’s plaque to collect the sketch.")
+        .accessibilityIdentifier("sketchbook.collectInstruction")
     }
 }
 
