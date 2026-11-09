@@ -329,6 +329,36 @@ final class ARSpatialNavigationTests: XCTestCase {
             segment: 0, camera: .zero, timestamp: 0.2), first)
     }
 
+    func testDistantGroundMarkerStaysPutUntilRouteYawActuallyChanges() throws {
+        var state = ARWorldPlacementState()
+        let original = try XCTUnwrap(state.update(position: [0, 0, -7], routeYaw: 0, direction: .ahead,
+                                                   segment: 0, camera: .zero, timestamp: 0))
+        XCTAssertEqual(state.update(position: [0.4, 0, -7.2], routeYaw: 0, direction: .ahead,
+            segment: 0, camera: [0, 0, 11], timestamp: 0.2), original,
+                       "Eighteen metres in front is still the same grounded chevron")
+        XCTAssertEqual(state.update(position: [0.4, 0, -7.2], routeYaw: 0, direction: .ahead,
+            segment: 0, camera: [0, 0, 13], timestamp: 0.4), original)
+        XCTAssertNil(state.update(position: [0.4, 0, -7.2], routeYaw: 0, direction: .ahead,
+            segment: 0, camera: [0, 0, 13.5], timestamp: 0.6))
+        XCTAssertEqual(state.pose, original, "Leaving the 20 m window hides the arrow without dropping its pose")
+        XCTAssertEqual(state.update(position: [0.4, 0, -7.2], routeYaw: 0, direction: .ahead,
+            segment: 0, camera: [0, 0, 11], timestamp: 0.8), original)
+
+        let drift = 24 * Double.pi / 180
+        XCTAssertEqual(state.update(position: [0, 0, -7], routeYaw: drift, direction: .ahead,
+            segment: 0, camera: .zero, timestamp: 1), original,
+                       "Yaw drift inside the 25 degree retain window must not relocate the marker")
+        let turn = 26 * Double.pi / 180
+        XCTAssertNil(state.update(position: [0, 0, -7], routeYaw: turn, direction: .ahead,
+            segment: 0, camera: .zero, timestamp: 1.2))
+        XCTAssertEqual(state.pose, original)
+        let replaced = try XCTUnwrap(state.update(position: [0, 0, -7], routeYaw: turn, direction: .ahead,
+            segment: 0, camera: .zero, timestamp: 2.2))
+        XCTAssertEqual(replaced.position, [0, 0, -7])
+        XCTAssertEqual(replaced.yaw, turn, accuracy: 0.000001)
+        XCTAssertNotEqual(replaced, original)
+    }
+
     func testWorldYawWrapDoesNotInventASharpTurn() {
         var state = ARWorldPlacementState()
         let first = state.update(position: [0, 0, 7], routeYaw: 179 * .pi / 180,

@@ -31,6 +31,54 @@ final class StopActivityTests: XCTestCase {
         XCTAssertEqual(ledger["mill"].plaqueUnlockedAt, newDate)
     }
 
+    func testSketchResetBlocksOnlyResetStopsAndKeepsANewerCollection() throws {
+        let mill = StopVisitRecord(stopID: "mill", activatedAt: Date(timeIntervalSince1970: 100), evidence: .recognizedPlaque)
+        let park = StopVisitRecord(stopID: "park", activatedAt: Date(timeIntervalSince1970: 150), evidence: .recognizedPlaque)
+        let practice = StopVisitRecord(stopID: "practice", activatedAt: Date(timeIntervalSince1970: 160), evidence: .simulation)
+        var ledger = StopActivityLedger()
+        ledger.importVisits([mill, park, practice])
+        ledger.read("church")
+        ledger.clearSketches()
+
+        let hotel = StopVisitRecord(stopID: "hotel", activatedAt: Date(timeIntervalSince1970: 180), evidence: .recognizedPlaque)
+        ledger.importVisits([mill, park, practice, hotel])
+        XCTAssertNil(ledger["mill"].plaqueUnlockedAt)
+        XCTAssertNil(ledger["park"].plaqueUnlockedAt)
+        XCTAssertNil(ledger["practice"].plaqueUnlockedAt)
+        XCTAssertEqual(ledger["mill"].visitedAt, mill.activatedAt)
+        XCTAssertNotNil(ledger["church"].readAt)
+        XCTAssertEqual(ledger["hotel"].plaqueUnlockedAt, hotel.activatedAt,
+                       "A stop that was not in the ledger must still unlock from its recognized visit")
+
+        let collected = Date(timeIntervalSince1970: 300)
+        ledger.collectSketch(at: "mill", date: collected)
+        let saved = try JSONEncoder().encode(ledger)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: saved) as? [String: Any])
+        let reset = try XCTUnwrap(object["resetSketchStopIDs"] as? [String])
+        XCTAssertTrue(reset.contains("park"))
+        XCTAssertTrue(reset.contains("church"))
+        XCTAssertFalse(reset.contains("mill"), "Collecting again must clear that stop from the saved reset list")
+        XCTAssertFalse(reset.contains("hotel"))
+
+        ledger = try JSONDecoder().decode(StopActivityLedger.self, from: saved)
+        ledger.importVisits([mill, hotel])
+        XCTAssertEqual(ledger["mill"].plaqueUnlockedAt, collected,
+                       "The older recognized visit must not replace the sketch collected after reset")
+        XCTAssertEqual(ledger["hotel"].plaqueUnlockedAt, hotel.activatedAt)
+        XCTAssertNil(ledger["park"].plaqueUnlockedAt)
+        XCTAssertNotNil(ledger["church"].readAt)
+    }
+
+    func testLedgerSavedBeforeSketchResetStillAwardsRecognizedVisits() throws {
+        let old = Data(#"{"entries":{"mill":{"visitedAt":100,"readAt":90}}}"#.utf8)
+        var ledger = try JSONDecoder().decode(StopActivityLedger.self, from: old)
+        let visit = StopVisitRecord(stopID: "mill", activatedAt: Date(timeIntervalSince1970: 100), evidence: .recognizedPlaque)
+        ledger.importVisits([visit])
+        XCTAssertEqual(ledger["mill"].plaqueUnlockedAt, visit.activatedAt)
+        XCTAssertEqual(ledger["mill"].visitedAt, Date(timeIntervalSinceReferenceDate: 100))
+        XCTAssertEqual(ledger["mill"].readAt, Date(timeIntervalSinceReferenceDate: 90))
+    }
+
     func testListeningAndReadingEachCompleteLearningWithoutVisitOrBonus() {
         var ledger = StopActivityLedger()
         ledger.listened(to: "mill")
