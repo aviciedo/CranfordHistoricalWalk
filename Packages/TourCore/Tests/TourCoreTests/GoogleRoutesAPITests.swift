@@ -103,6 +103,55 @@ final class GoogleRoutesAPITests: XCTestCase {
         XCTAssertThrowsError(try GoogleRoutesAPI.walkingRoute(from: empty, origin: origin, destination: destination))
     }
 
+    func testDurationFallsBackAndGeometryLessRoutesAreRejected() throws {
+        let polyline = "ipkcFfichVnP@j@B"
+        let staticOnly = """
+        {"routes":[{"distanceMeters":120,"staticDuration":"90s","polyline":{"encodedPolyline":"\(polyline)"}}]}
+        """.data(using: .utf8)!
+        XCTAssertEqual(try GoogleRoutesAPI.walkingRoute(from: staticOnly, origin: origin, destination: destination).durationSeconds, 90)
+
+        let stepsOnly = """
+        {"routes":[{"distanceMeters":120,"polyline":{"encodedPolyline":"\(polyline)"},"legs":[{"steps":[
+          {"distanceMeters":40,"staticDuration":"30s","startLocation":{"latLng":{"latitude":1,"longitude":2}},"endLocation":{"latLng":{"latitude":1.001,"longitude":2}}},
+          {"distanceMeters":80,"staticDuration":"50s","polyline":{"encodedPolyline":"\(polyline)"}}
+        ]}]}]}
+        """.data(using: .utf8)!
+        let stepped = try GoogleRoutesAPI.walkingRoute(from: stepsOnly, origin: origin, destination: destination)
+        XCTAssertEqual(stepped.durationSeconds, 80)
+        XCTAssertEqual(stepped.routeSteps.count, 2)
+
+        let pace = """
+        {"routes":[{"distanceMeters":140,"polyline":{"encodedPolyline":"\(polyline)"}}]}
+        """.data(using: .utf8)!
+        let estimated = try GoogleRoutesAPI.walkingRoute(from: pace, origin: origin, destination: destination)
+        XCTAssertEqual(estimated.durationSeconds, 140 / WalkingRoute.defaultWalkingSpeed, accuracy: 0.0001)
+
+        let shapeless = #"{"routes":[{"distanceMeters":10,"duration":"8s","polyline":{"encodedPolyline":""}}]}"#.data(using: .utf8)!
+        XCTAssertThrowsError(try GoogleRoutesAPI.walkingRoute(from: shapeless, origin: origin, destination: destination)) { error in
+            XCTAssertEqual(error as? GoogleRoutesAPI.ParseError, .missingGeometry)
+        }
+    }
+
+    func testAPIErrorEnvelopeWinsOverAPartialRoute() {
+        let json = #"{"error":{"code":403,"message":"blocked","status":"PERMISSION_DENIED"},"routes":[{"distanceMeters":10,"duration":"8s","polyline":{"encodedPolyline":"ipkcFfichVnP@j@B"}}]}"#.data(using: .utf8)!
+        XCTAssertThrowsError(try GoogleRoutesAPI.walkingRoute(from: json, origin: origin, destination: destination)) { error in
+            XCTAssertEqual(error as? GoogleRoutesAPI.ParseError, .api(code: 403, status: "PERMISSION_DENIED", message: "blocked"))
+        }
+    }
+
+    func testLegacyMarkupDoesNotLeakIntoWalkingInstructions() throws {
+        let json = """
+        {"status":"OK","routes":[{"overview_polyline":{"points":"ipkcFfichVnP@j@B"},"legs":[{"distance":{"value":120},"duration":{"value":90},"steps":[
+          {"distance":{"value":120},"duration":{"value":90},"start_location":{"lat":37.42,"lng":-122.08},"end_location":{"lat":37.41,"lng":-122.07},
+           "html_instructions":"Turn <b>left</b> onto <b>North Ave E</b><div style=\\"font-size:0.9em\\">Destination will be on the right</div>",
+           "maneuver":"turn-left"}]}]}]}
+        """.data(using: .utf8)!
+        let instruction = try XCTUnwrap(try GoogleDirectionsLegacyAPI.walkingRoute(from: json, origin: origin, destination: destination).routeSteps.first?.instruction)
+        XCTAssertFalse(instruction.contains("<"))
+        XCTAssertFalse(instruction.contains(">"))
+        XCTAssertEqual(instruction, "Turn left onto North Ave E Destination will be on the right")
+    }
+
     func testFallsBackToStepGeometryWhenOverviewMissing() throws {
         let json = """
         {"routes":[{"distanceMeters":120,"duration":"86s","legs":[{"steps":[{"distanceMeters":120,"staticDuration":"86s","polyline":{"encodedPolyline":"ipkcFfichVnP@j@B"}}]}]}]}
