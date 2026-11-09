@@ -218,6 +218,25 @@ final class ARStreetGuidanceTests: XCTestCase {
         XCTAssertLessThan(GeoMath.distance(from: point, to: route.routeCoordinates[1]), 0.05)
     }
 
+    func testMergedGroundPlaneStillContainsWalkerAfterItsCenterMovesAway() {
+        // Center is 12 m behind the camera; a 30 m sidewalk plane still extends underfoot.
+        XCTAssertTrue(ARStreetGuidance.cameraIsInsidePlaneExtent(
+            localX: 0.2, localZ: 12, centerX: 0, centerZ: 0, extentWidth: 4, extentHeight: 30))
+        // The same center distance is not ground when the surface does not reach the phone.
+        XCTAssertFalse(ARStreetGuidance.cameraIsInsidePlaneExtent(
+            localX: 0, localZ: 12, centerX: 0, centerZ: 0, extentWidth: 4, extentHeight: 2))
+        XCTAssertTrue(ARStreetGuidance.cameraIsInsidePlaneExtent(
+            localX: 2.2, localZ: -1, centerX: 0, centerZ: 0, extentWidth: 4, extentHeight: 2, margin: 0.5))
+        XCTAssertFalse(ARStreetGuidance.cameraIsInsidePlaneExtent(
+            localX: 3, localZ: 0, centerX: 0, centerZ: 0, extentWidth: 4, extentHeight: 2, margin: 0.5))
+        for bad in [Float.nan, .infinity, -1, 0] {
+            XCTAssertFalse(ARStreetGuidance.cameraIsInsidePlaneExtent(
+                localX: 0, localZ: 0, centerX: 0, centerZ: 0, extentWidth: bad, extentHeight: 4))
+            XCTAssertFalse(ARStreetGuidance.cameraIsInsidePlaneExtent(
+                localX: bad, localZ: 0, centerX: 0, centerZ: 0, extentWidth: 4, extentHeight: 4))
+        }
+    }
+
     func testEstimatedOffRouteOrInvalidSegmentDoesNotPlaceStreetGuidance() {
         var route = cornerRoute()
         var progress = RouteProgressCalculator.progress(along: route, userLocation: route.origin)
