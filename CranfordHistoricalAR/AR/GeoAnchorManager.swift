@@ -405,10 +405,17 @@ final class GeoAnchorManager {
             let center = plane.transform * SIMD4<Float>(plane.center.x, plane.center.y, plane.center.z, 1)
             let below = camera.y - center.y
             let planeArea = plane.planeExtent.width * plane.planeExtent.height
-            return plane.alignment == .horizontal && planeArea >= 0.5
-                && plane.classification != .table && plane.classification != .seat && plane.classification != .ceiling
-                && below > 0.45 && below < 2.5
-                && simd_length(SIMD2(center.x - camera.x, center.z - camera.z)) < 8
+            guard plane.alignment == .horizontal, planeArea >= 0.5,
+                  plane.classification != .table, plane.classification != .seat, plane.classification != .ceiling,
+                  below > 0.45, below < 2.5 else { return false }
+            // A small surface in front of the phone is still valid. A long merged plane is
+            // also valid when the phone is over its extent, even if the center is far behind.
+            if simd_length(SIMD2(center.x - camera.x, center.z - camera.z)) < 8 { return true }
+            let local = plane.transform.inverse * SIMD4<Float>(camera.x, camera.y, camera.z, 1)
+            return ARStreetGuidance.cameraIsInsidePlaneExtent(
+                localX: local.x, localZ: local.z,
+                centerX: plane.center.x, centerZ: plane.center.z,
+                extentWidth: plane.planeExtent.width, extentHeight: plane.planeExtent.height)
         }
         let closest = candidates.min { lhs, rhs in
             let l = lhs.transform * SIMD4<Float>(lhs.center.x, lhs.center.y, lhs.center.z, 1)

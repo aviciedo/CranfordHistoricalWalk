@@ -18,6 +18,21 @@ public enum ARStreetGuidance {
     public static let repositionDistanceMeters = 5.0
     public static let instructionSettleSeconds = 1.5
 
+    /// A merged ground plane keeps its center at the middle of everything scanned so far.
+    /// The walker can still be standing on that plane after the center is many meters behind.
+    /// Extent is in the plane's local axes, around the plane center: width along X, height along Z.
+    public static func cameraIsInsidePlaneExtent(
+        localX: Float, localZ: Float,
+        centerX: Float, centerZ: Float,
+        extentWidth: Float, extentHeight: Float,
+        margin: Float = 0.5
+    ) -> Bool {
+        let values = [localX, localZ, centerX, centerZ, extentWidth, extentHeight, margin]
+        guard values.allSatisfy(\.isFinite), extentWidth > 0, extentHeight > 0, margin >= 0 else { return false }
+        return abs(localX - centerX) <= extentWidth / 2 + margin
+            && abs(localZ - centerZ) <= extentHeight / 2 + margin
+    }
+
     public struct Candidate: Equatable, Sendable {
         public let position: SIMD3<Double>
         public let isLocalSign: Bool
