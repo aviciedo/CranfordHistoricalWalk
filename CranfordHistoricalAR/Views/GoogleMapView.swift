@@ -752,10 +752,13 @@ final class StopMapLeaderView: UIView, UIGestureRecognizerDelegate {
     }
 
     func artworkID(at point: CGPoint) -> String? {
-        guard superview != nil, !isHidden, artworkClip.contains(point), !badgeTargets.contains(where: { $0.contains(point) }) else { return nil }
-        return artwork.sorted { $0.value.layer.zPosition > $1.value.layer.zPosition }.first {
-            !$0.value.isHidden && $0.value.frame.contains(point)
-        }?.key
+        guard superview != nil, !isHidden else { return nil }
+        let targets = artwork.map { entry in
+            MapArtworkTarget(id: entry.key, frame: entry.value.frame, zPosition: entry.value.layer.zPosition,
+                             isHidden: entry.value.isHidden)
+        }
+        return MapArtworkHitTesting.artworkID(at: point, clip: artworkClip, badgeTargets: badgeTargets,
+                                               artwork: targets)
     }
 
     @objc private func tapArtwork(_ tap: UITapGestureRecognizer) {
@@ -802,23 +805,10 @@ final class StopMapLeaderView: UIView, UIGestureRecognizerDelegate {
         let clip = bounds.intersection(layout.viewport)
         artworkClip = clip
         let cutouts = UIBezierPath(rect: clip.isNull ? .zero : clip)
-        var holes: [CGRect] = []
-        for target in badgeTargets {
-            var hole = target.insetBy(dx: 4, dy: 4)
-            // Merge overlaps before applying even-odd fill. Overlapping holes otherwise
-            // cancel each other and can paint artwork over densely packed number badges.
-            var index = 0
-            while index < holes.count {
-                if holes[index].intersects(hole) {
-                    hole = hole.union(holes.remove(at: index))
-                    index = 0
-                } else { index += 1 }
-            }
-            holes.append(hole)
-        }
-        for rect in holes {
-            let clipped = rect.intersection(clip)
-            if !clipped.isNull { cutouts.append(UIBezierPath(rect: clipped)) }
+        // Overlapping holes must already be one region. Even-odd fill would otherwise
+        // cancel the intersection and paint artwork over densely packed number badges.
+        for rect in MapArtworkMask.badgeCutouts(badgeTargets, clippedTo: clip) {
+            cutouts.append(UIBezierPath(rect: rect))
         }
         let mask = CAShapeLayer()
         mask.fillRule = .evenOdd

@@ -103,6 +103,38 @@ final class GoogleRoutesAPITests: XCTestCase {
         XCTAssertThrowsError(try GoogleRoutesAPI.walkingRoute(from: empty, origin: origin, destination: destination))
     }
 
+    func testRouteWithoutWalkableGeometryIsRejected() {
+        XCTAssertEqual(Polyline.decode("_p~iF~ps|U").count, 1)
+        let onePoint = #"{"routes":[{"distanceMeters":12,"duration":"9s","polyline":{"encodedPolyline":"_p~iF~ps|U"}}]}"#.data(using: .utf8)!
+        let noSteps = #"{"routes":[{"distanceMeters":12,"duration":"9s","legs":[{"steps":[{"distanceMeters":12}]}]}]}"#.data(using: .utf8)!
+        for data in [onePoint, noSteps] {
+            XCTAssertThrowsError(try GoogleRoutesAPI.walkingRoute(from: data, origin: origin, destination: destination)) { error in
+                XCTAssertEqual(error as? GoogleRoutesAPI.ParseError, .missingGeometry)
+            }
+        }
+    }
+
+    func testMissingDurationUsesStaticTimeThenAWalkingPace() throws {
+        let line = "ipkcFfichVnP@j@B"
+        XCTAssertGreaterThanOrEqual(Polyline.decode(line).count, 2)
+        func body(_ fields: String) throws -> WalkingRoute {
+            let json = #"{"routes":[{"distanceMeters":140,"polyline":{"encodedPolyline":"\#(line)"}\#(fields)}]}"#
+            return try GoogleRoutesAPI.walkingRoute(from: Data(json.utf8), origin: origin, destination: destination)
+        }
+        let paced = try body(#","duration":"0s""#)
+        XCTAssertEqual(paced.durationSeconds, 140 / WalkingRoute.defaultWalkingSpeed, accuracy: 0.001)
+        XCTAssertEqual(try body("").durationSeconds, paced.durationSeconds, accuracy: 0.001)
+        XCTAssertEqual(try body(#","duration":"not-a-duration","staticDuration":"100s""#).durationSeconds, 100)
+        XCTAssertEqual(try body(#","staticDuration":"86s""#).durationSeconds, 86)
+    }
+
+    func testLegacyMarkupDoesNotLeakIntoTheTurnInstruction() {
+        let marked = #"<div style="font-size:0.9em">Turn <b>left</b> onto <b>North Ave E</b></div>"#
+        XCTAssertEqual(marked.strippingHTMLTags(), "Turn left onto North Ave E")
+        XCTAssertEqual("  Head   <b>north</b>  ".strippingHTMLTags(), "Head north")
+        XCTAssertFalse(marked.strippingHTMLTags().contains("<"))
+    }
+
     func testFallsBackToStepGeometryWhenOverviewMissing() throws {
         let json = """
         {"routes":[{"distanceMeters":120,"duration":"86s","legs":[{"steps":[{"distanceMeters":120,"staticDuration":"86s","polyline":{"encodedPolyline":"ipkcFfichVnP@j@B"}}]}]}]}
