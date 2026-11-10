@@ -164,6 +164,28 @@ final class MapMarkerSizingTests: XCTestCase {
         }
     }
 
+    func testNumberBadgeStaysInsideTheCanvasAtShippedArtworkScales() {
+        let scales = [0.0, 0.64, MapMarkerSizing.artworkScale(baseScale: 0.64, isActive: true), 1.0]
+        for scale in scales {
+            let canvasWidth = MapMarkerSizing.canvasWidth(scale: scale)
+            let canvasHeight = MapMarkerSizing.canvasHeight(scale: scale)
+            XCTAssertGreaterThanOrEqual(canvasWidth, 44, "scale \(scale)")
+            XCTAssertGreaterThanOrEqual(canvasHeight, 44, "scale \(scale)")
+            XCTAssertTrue(canvasWidth.isFinite && canvasHeight.isFinite)
+            let artWidth = MapMarkerSizing.width * scale
+            let artHeight = MapMarkerSizing.height * scale
+            let originX = (canvasWidth - artWidth) / 2
+            let originY = (canvasHeight - artHeight) / 2
+            let badgeX = originX + artWidth * MapMarkerSizing.badgeCenter.x / MapMarkerSizing.width
+            let badgeY = originY + artHeight * MapMarkerSizing.badgeCenter.y / MapMarkerSizing.height
+            XCTAssertGreaterThanOrEqual(badgeX - 22, -0.001, "scale \(scale)")
+            XCTAssertGreaterThanOrEqual(badgeY - 22, -0.001, "scale \(scale)")
+            XCTAssertLessThanOrEqual(badgeX + 22, canvasWidth + 0.001, "scale \(scale)")
+            XCTAssertLessThanOrEqual(badgeY + 22, canvasHeight + 0.001, "scale \(scale)")
+        }
+        XCTAssertEqual(MapMarkerSizing.artworkScale(baseScale: 0.64, isActive: true), 0.96, accuracy: 0.0001)
+    }
+
     func testInvalidInputIsSafe() {
         XCTAssertEqual(MapMarkerSizing.scale(metersPerPoint: 0), 0)
         XCTAssertEqual(MapMarkerSizing.scale(metersPerPoint: .nan), 0)
