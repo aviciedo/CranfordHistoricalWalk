@@ -31,6 +31,67 @@ final class StopActivityTests: XCTestCase {
         XCTAssertEqual(ledger["mill"].plaqueUnlockedAt, newDate)
     }
 
+    func testSketchSuppressionIsPerStopAndAnEmptyResetDoesNotBlockNewAwards() throws {
+        let saved = Data(#"{"entries":{"mill":{"visitedAt":100,"listenedAt":40},"church":{"visitedAt":120,"readAt":50}},"resetSketchStopIDs":["mill","church","future"]}"#.utf8)
+        var ledger = try JSONDecoder().decode(StopActivityLedger.self, from: saved)
+        func visit(_ id: String, _ seconds: Double, _ evidence: StopVisitEvidence) -> StopVisitRecord {
+            StopVisitRecord(stopID: id, activatedAt: Date(timeIntervalSinceReferenceDate: seconds), evidence: evidence)
+        }
+        ledger.importVisits([
+            visit("mill", 100, .recognizedPlaque),
+            visit("church", 80, .recognizedPlaque),
+            visit("park", 110, .recognizedPlaque),
+            visit("future", 90, .recognizedPlaque),
+            visit("river", 70, .onSiteARMarker),
+            visit("practice", 60, .simulation)
+        ])
+        XCTAssertNil(ledger["mill"].plaqueUnlockedAt, "A saved reset must survive the next launch import")
+        XCTAssertEqual(ledger["mill"].visitedAt, Date(timeIntervalSinceReferenceDate: 100))
+        XCTAssertEqual(ledger["mill"].listenedAt, Date(timeIntervalSinceReferenceDate: 40))
+        XCTAssertNil(ledger["church"].plaqueUnlockedAt)
+        XCTAssertEqual(ledger["church"].visitedAt, Date(timeIntervalSinceReferenceDate: 120))
+        XCTAssertEqual(ledger["church"].readAt, Date(timeIntervalSinceReferenceDate: 50))
+        XCTAssertNil(ledger["future"].plaqueUnlockedAt, "Suppression applies even when that stop has no ledger row yet")
+        XCTAssertEqual(ledger["future"].visitedAt, Date(timeIntervalSinceReferenceDate: 90))
+        XCTAssertEqual(ledger["park"].plaqueUnlockedAt, Date(timeIntervalSinceReferenceDate: 110))
+        XCTAssertEqual(ledger["river"].visitedAt, Date(timeIntervalSinceReferenceDate: 70))
+        XCTAssertNil(ledger["river"].plaqueUnlockedAt)
+        XCTAssertEqual(ledger["practice"], StopActivities())
+
+        ledger.importVisits([visit("park", 1, .recognizedPlaque)])
+        XCTAssertEqual(ledger["park"].plaqueUnlockedAt, Date(timeIntervalSinceReferenceDate: 110),
+                       "Importing another stop must not rewrite an existing award")
+        ledger.collectSketch(at: "mill", date: Date(timeIntervalSinceReferenceDate: 200))
+        ledger.collectSketch(at: "future", date: Date(timeIntervalSinceReferenceDate: 300))
+        ledger.importVisits([visit("mill", 100, .recognizedPlaque), visit("future", 90, .recognizedPlaque),
+                             visit("church", 80, .recognizedPlaque)])
+        XCTAssertEqual(ledger["mill"].plaqueUnlockedAt, Date(timeIntervalSinceReferenceDate: 200))
+        XCTAssertEqual(ledger["future"].plaqueUnlockedAt, Date(timeIntervalSinceReferenceDate: 300))
+        XCTAssertNil(ledger["church"].plaqueUnlockedAt, "Recollecting one stop must not lift another stop's suppression")
+        XCTAssertEqual(ledger["park"].plaqueUnlockedAt, Date(timeIntervalSinceReferenceDate: 110))
+
+        ledger.clearSketches()
+        ledger = try JSONDecoder().decode(StopActivityLedger.self, from: JSONEncoder().encode(ledger))
+        ledger.importVisits([
+            visit("mill", 100, .recognizedPlaque), visit("park", 110, .recognizedPlaque),
+            visit("future", 90, .recognizedPlaque), visit("hotel", 140, .recognizedPlaque)
+        ])
+        XCTAssertNil(ledger["mill"].plaqueUnlockedAt)
+        XCTAssertNil(ledger["park"].plaqueUnlockedAt)
+        XCTAssertNil(ledger["future"].plaqueUnlockedAt)
+        XCTAssertEqual(ledger["hotel"].plaqueUnlockedAt, Date(timeIntervalSinceReferenceDate: 140),
+                       "A later reset suppresses stops that now have rows, not stops that appear afterwards")
+        XCTAssertEqual(ledger["church"].readAt, Date(timeIntervalSinceReferenceDate: 50))
+        XCTAssertEqual(ledger["mill"].listenedAt, Date(timeIntervalSinceReferenceDate: 40))
+
+        var empty = StopActivityLedger()
+        empty.clearSketches()
+        empty = try JSONDecoder().decode(StopActivityLedger.self, from: JSONEncoder().encode(empty))
+        empty.importVisits([visit("park", 110, .recognizedPlaque)])
+        XCTAssertEqual(empty["park"].plaqueUnlockedAt, Date(timeIntervalSinceReferenceDate: 110),
+                       "Clearing a ledger with no rows must not become a global sketch block")
+    }
+
     func testListeningAndReadingEachCompleteLearningWithoutVisitOrBonus() {
         var ledger = StopActivityLedger()
         ledger.listened(to: "mill")

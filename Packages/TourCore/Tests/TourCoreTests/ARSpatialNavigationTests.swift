@@ -272,6 +272,44 @@ final class ARSpatialNavigationTests: XCTestCase {
         }
     }
 
+    func testGroundedPlacementRejectsCameraDistancesOutsideTheUsableWindow() {
+        var rejected = ARWorldPlacementState()
+        for (z, time) in [(-2.4, 0.0), (-17.0, 0.1)] {
+            XCTAssertNil(rejected.update(position: [0, 0, z], routeYaw: 0, direction: .ahead,
+                segment: 0, camera: .zero, timestamp: time))
+            XCTAssertNil(rejected.pose, "A camera-relative candidate outside 2.5...16 m must not create an anchor")
+        }
+        XCTAssertEqual(rejected.update(position: [0, 0, -2.5], routeYaw: 0, direction: .ahead,
+            segment: 0, camera: .zero, timestamp: 0.2)?.position.z, -2.5)
+        var farEdge = ARWorldPlacementState()
+        XCTAssertEqual(farEdge.update(position: [0, 0, -16], routeYaw: 0, direction: .ahead,
+            segment: 0, camera: .zero, timestamp: 0)?.position.z, -16)
+
+        var state = ARWorldPlacementState()
+        let first = state.update(position: [0, 0, -7], routeYaw: 0, direction: .ahead,
+                                 segment: 0, camera: .zero, timestamp: 0)
+        XCTAssertEqual(state.update(position: [0, 0, -30], routeYaw: 0, direction: .ahead,
+            segment: 0, camera: [0, 0, -6], timestamp: 0.2), first,
+                       "Standing one metre from the marker must keep it, not slide it with the camera")
+        XCTAssertEqual(state.update(position: [0, 0, -40], routeYaw: 0, direction: .ahead,
+            segment: 0, camera: [0, 0, 13], timestamp: 0.3), first,
+                       "Twenty metres is still the same grounded marker")
+        XCTAssertNil(state.update(position: [0, 0, -40], routeYaw: 0, direction: .ahead,
+            segment: 0, camera: [0, 0, 14], timestamp: 0.4))
+        XCTAssertEqual(state.pose, first, "Losing sight of a distant marker must not adopt the rejected candidate")
+        XCTAssertEqual(state.update(position: [0, 0, -40], routeYaw: 0, direction: .ahead,
+            segment: 0, camera: .zero, timestamp: 0.5), first)
+        XCTAssertNil(state.update(position: [0, 0, -12], routeYaw: 0, direction: .ahead,
+            segment: 0, camera: [0, 0, -11], timestamp: 0.6),
+                     "After passing the marker, a candidate under the camera is not a grounded placement")
+        XCTAssertEqual(state.pose, first)
+        let next = state.update(position: [0, 0, -16], routeYaw: 0, direction: .ahead,
+                                segment: 0, camera: [0, 0, -11], timestamp: 0.7)
+        XCTAssertEqual(next?.position.x, 0)
+        XCTAssertEqual(next?.position.y, 0)
+        XCTAssertEqual(next?.position.z, -16)
+    }
+
     func testManeuverReplacementSettlesBeforeChangingWorldPose() {
         var state = ARWorldPlacementState()
         let first = state.update(position: [0, 0, -7], routeYaw: 0, direction: .ahead, segment: 0, camera: .zero, timestamp: 0)
